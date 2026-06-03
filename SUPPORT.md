@@ -38,14 +38,14 @@ Your contribution helps us work on:
 
 ---
 
-## Support structure
+## Support options
 
-VelantisWind can be supported in three different ways:
+VelantisWind can be supported in three simple ways:
 
-| Type                  | Best suited for                                                                                | Purpose                                                                                     |
+| Option                | Best suited for                                                                                | Purpose                                                                                     |
 | --------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| One-time support      | Individuals, users, students, open-source supporters or companies making a single contribution | Help fund development, documentation and validation                                         |
-| Monthly sponsorship   | Regular users, professionals, small teams or organizations                                     | Support long-term maintenance and continuous improvement                                    |
+| One-time support      | Individuals, users, students, open-source supporters or companies making a single contribution | Support development, documentation and validation without a recurring commitment            |
+| Monthly sponsorship   | Regular users, professionals, companies or organizations                                       | Support long-term maintenance and continuous improvement                                    |
 | Technical partnership | Companies, consultants, universities or project teams                                          | Explore validation, workflow adaptation, pilot projects or specific technical collaboration |
 
 ---
@@ -54,19 +54,15 @@ VelantisWind can be supported in three different ways:
 
 One-time support is open to anyone who wants to contribute to the project without a monthly commitment.
 
-| Level                 | Suggested contribution | Recognition                                                |
-| --------------------- | ---------------------: | ---------------------------------------------------------- |
-| Micro Supporter       |                From €1 | Optional name in the supporters list                       |
-| Individual Supporter  |                    €10 | Optional name in the supporters list                       |
-| Open-source Supporter |                    €25 | Optional name in the supporters list                       |
-| Project Backer        |                    €50 | Name in the supporters list                                |
-| Professional Backer   |                   €100 | Name and optional link                                     |
-| Workflow Backer       |                   €250 | Name or organization mention                               |
-| Organization Backer   |                   €500 | Organization name or small logo recognition                |
-| Major Backer          |                 €1,000 | Logo recognition in supporters section                     |
-| Strategic Backer      |                 €2,500 | Featured recognition and optional collaboration discussion |
+| Level               |           Contribution | Recognition                                            |
+| ------------------- | ---------------------: | ------------------------------------------------------ |
+| Open Supporter      | Custom amount, from €1 | Optional acknowledgement                               |
+| Project Supporter   |                    €25 | Optional name in the supporters list                   |
+| Professional Backer |                   €100 | Name and optional link                                 |
+| Organization Backer |                   €500 | Small logo or organization mention                     |
+| Major Backer        |                 €2,500 | Featured recognition and optional technical discussion |
 
-One-time supporters may choose to remain anonymous.
+Recognition is optional. Supporters may choose to remain anonymous.
 
 Larger one-time contributions can be especially useful for funding documentation, translation, validation cases, example datasets, interface improvements or specific development milestones.
 
@@ -76,14 +72,13 @@ Larger one-time contributions can be especially useful for funding documentation
 
 Monthly sponsorship helps support the long-term maintenance and evolution of VelantisWind.
 
-| Level                | Suggested support | Suitable for                                          | Recognition                                                |
-| -------------------- | ----------------: | ----------------------------------------------------- | ---------------------------------------------------------- |
-| Community Sponsor    |        €5 / month | Individual users, students and open-source supporters | Name in supporters list                                    |
-| Professional Sponsor |       €25 / month | Engineers, consultants and regular users              | Name and optional link                                     |
-| Workflow Sponsor     |       €75 / month | Small teams or technical users                        | Name or small logo recognition                             |
-| Validation Sponsor   |      €150 / month | Companies, universities or consultants                | Logo recognition and validation sponsor mention            |
-| Technical Sponsor    |      €500 / month | Organizations interested in long-term development     | Featured logo and sponsor mention                          |
-| Strategic Sponsor    |            Custom | Strategic technical partners                          | Featured visibility and dedicated collaboration discussion |
+| Level                | Contribution | Recognition                                                                                      |
+| -------------------- | -----------: | ------------------------------------------------------------------------------------------------ |
+| Community Sponsor    |   €5 / month | Optional name in the supporters list                                                             |
+| Professional Sponsor |  €25 / month | Name and optional link                                                                           |
+| Workflow Sponsor     | €100 / month | Small logo or organization mention                                                               |
+| Validation Sponsor   | €250 / month | Logo recognition and validation sponsor mention                                                  |
+| Technical Sponsor    | €500 / month | Featured logo recognition in GitHub, documentation, website or the plugin About/Sponsors section |
 
 Monthly sponsorship does not create ownership, exclusivity or control over the open-source roadmap.
 
@@ -134,18 +129,44 @@ Workflow adaptations, technical collaborations and project-specific developments
 
 ---
 
+## Academic and research collaboration
+
+VelantisWind is also open to collaboration with universities and research groups.
+
+The project can provide a practical open-source framework for applied academic work in wind energy, GIS, environmental assessment, renewable energy engineering and QGIS plugin development.
+
+One possible collaboration model is to connect VelantisWind with future Bachelor’s and Master’s thesis projects, so that student work with real technical value can contribute to the evolution of the plugin.
+
+Potential academic collaboration areas include:
+
+| Area                                    | Example                                                                                            |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Bachelor’s and Master’s thesis projects | TFG or TFM projects focused on improving, validating or extending parts of VelantisWind            |
+| Applied research                        | Wind resource analysis, GIS-based workflows, environmental assessment or renewable energy planning |
+| Plugin development                      | New QGIS tools, interface improvements, data handling or reporting features                        |
+| Validation studies                      | Comparison with real cases, reference calculations or internal academic workflows                  |
+| Documentation and education             | Tutorials, teaching material and open-source learning resources                                    |
+| New modules                             | Development of additional features that may be integrated into the project if technically aligned  |
+
+Academic contributions can be reviewed case by case and, when they are useful, technically sound and aligned with the project, they may be integrated into the open-source repository.
+
+This approach allows universities and students to work on practical renewable energy tools while contributing to a real open-source project.
+
+---
+
 ## Partnership options
 
 Companies, consultants, universities and wind energy professionals can collaborate with VelantisWind in different ways.
 
-| Role                  | Description                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| Beta tester           | Test the plugin and provide feedback                                               |
-| Validation partner    | Compare results with real projects or internal workflows                           |
-| Technical contributor | Help improve calculations, documentation or workflows                              |
-| Sponsor               | Help fund maintenance, validation and new features                                 |
-| Workflow partner      | Explore adaptations for specific project needs                                     |
-| Founding partner      | Support the long-term development of the project through a strategic collaboration |
+| Role                  | Description                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| Beta tester           | Test the plugin and provide feedback                                                                |
+| Validation partner    | Compare results with real projects or internal workflows                                            |
+| Technical contributor | Help improve calculations, documentation or workflows                                               |
+| Sponsor               | Help fund maintenance, validation and new features                                                  |
+| Workflow partner      | Explore adaptations for specific project needs                                                      |
+| Academic partner      | Collaborate through applied research, TFG/TFM projects, validation studies or educational use cases |
+| Founding partner      | Support the long-term development of the project through a strategic collaboration                  |
 
 ---
 
@@ -157,10 +178,11 @@ Sponsorship is optional and helps accelerate development, validation, documentat
 
 Sponsorship does not imply ownership of the project, exclusivity, or control over the open-source roadmap.
 
-Custom adaptations, technical collaborations and project-specific developments can be discussed separately depending on the needs of each partner.
+Custom adaptations, technical collaborations, academic collaborations and project-specific developments can be discussed separately depending on the needs of each partner.
 
 ---
 
 ## Contact
 
-For sponsorship, collaboration, validation cases, custom workflow adaptations or technical partnerships, please contact the VelantisWind team through the official project channels.
+For sponsorship, collaboration, validation cases, custom workflow adaptations, academic collaboration or technical partnerships, please contact VelantisWind at:
+info@velantiswind.com
