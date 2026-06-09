@@ -297,7 +297,7 @@ If your company uses a proxy, configure pip using your organization’s recommen
 A typical command looks like:
 
 ```bat
-python -m pip install py_wake==2.6.18 --proxy http://USER:PASSWORD@proxy.company.com:PORT
+python -m pip install py_wake==2.6.18 --proxy http://proxy.company.com:PORT
 ```
 
 Do not share proxy credentials in screenshots, logs or GitHub issues.

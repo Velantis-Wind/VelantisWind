@@ -344,7 +344,7 @@ def calculate_agr_iso_simple(
 
 
 # ============================================================================
-# APANTALLAMIENTO TOPOGRÁFICO (PROVISIONAL)
+# TOPOGRAPHIC SCREENING - PROVISIONAL
 # ============================================================================
 
 def _adaptive_profile_num_points(
