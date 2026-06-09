@@ -1,0 +1,12 @@
+# Energy/AEP scientific dependencies for the QGIS Python environment.
+# Install these in the same Python interpreter used by QGIS/OSGeo4W.
+# Exact pins are intentionally avoided for the experimental release because
+# QGIS/OSGeo4W environments vary by platform and bundled GDAL/Qt versions.
+
+py_wake
+numpy
+scipy
+xarray
+matplotlib
+pandas
+openpyxl
