@@ -10,9 +10,13 @@ The plugin brings wind energy calculations into a GIS environment, helping users
 
 ## Project status
 
-VelantisWind is currently under active development.
+VelantisWind is currently under active development and is being released as an experimental open-source QGIS plugin.
 
-The project is being prepared for public release, beta testing, validation with real wind farm cases and future community contributions.
+The project is open for wider testing, validation with real wind farm cases and future community contributions.
+
+VelantisWind is designed to support **QGIS 3.x** and **QGIS 4.0**. The plugin has been developed and tested mainly on QGIS 3.x, while QGIS 4.0 / Qt6 compatibility is being actively tested and improved.
+
+For production or validation workflows, QGIS 3.x LTR is currently recommended. QGIS 4.0 users are welcome to test the plugin and report any compatibility issues.
 
 ---
 
@@ -81,24 +85,195 @@ VelantisWind is designed for:
 
 ## Installation
 
-Installation instructions will be added before the public release.
+VelantisWind is a QGIS plugin. Some parts of the plugin may run with the standard QGIS Python environment, but the **Energy / AEP module requires PyWake** for wake-aware energy calculations.
 
-The plugin is being developed for QGIS and may require additional Python dependencies depending on the selected modules.
+PyWake is **not a QGIS plugin**, so it will not appear in the QGIS Plugin Manager. It is an external Python library that must be installed in the same Python environment used by QGIS.
 
-Planned installation documentation will include:
+---
 
-* QGIS version compatibility
-* Python dependency installation
-* Plugin installation from ZIP
-* Example project setup
-* Troubleshooting guide
-* Known limitations
+## Recommended environment
+
+| Component          | Recommended                       |
+| ------------------ | --------------------------------- |
+| QGIS               | QGIS 3.x LTR or QGIS 4.0          |
+| Operating system   | Windows 10 / Windows 11           |
+| Python environment | QGIS / OSGeo4W Python environment |
+| PyWake version     | `py_wake==2.6.18`                 |
+
+For production or validation workflows, QGIS 3.x LTR is currently recommended. QGIS 4.0 compatibility is supported and under active testing.
+
+---
+
+## Installing PyWake on Windows
+
+### Step 1 — Open OSGeo4W Shell
+
+On Windows, QGIS usually installs a tool called **OSGeo4W Shell**.
+
+To open it:
+
+1. Open the Windows Start menu.
+2. Search for `OSGeo4W Shell`.
+3. Open it.
+
+This shell is important because it uses the same Python environment as QGIS.
+
+Do not install PyWake from a normal Windows terminal unless you are sure it points to the same Python environment used by QGIS.
+
+---
+
+### Step 2 — Install PyWake
+
+Inside OSGeo4W Shell, run:
+
+```bash
+python -m pip install py_wake==2.6.18
+```
+
+Wait until the installation finishes.
+
+If the installation completes successfully, restart QGIS before using VelantisWind.
+
+---
+
+### Step 3 — Verify the installation
+
+To check that PyWake was installed correctly, run this command in OSGeo4W Shell:
+
+```bash
+python -c "import py_wake; print('PyWake installed successfully')"
+```
+
+If no error appears, PyWake is available in the QGIS Python environment.
+
+You can also check the installed package with:
+
+```bash
+python -m pip show py_wake
+```
+
+---
+
+## Installing VelantisWind from ZIP
+
+After installing PyWake, open QGIS and install VelantisWind from the plugin ZIP file:
+
+1. Open QGIS.
+2. Go to:
+
+```text
+Plugins → Manage and Install Plugins
+```
+
+3. Open the tab:
+
+```text
+Install from ZIP
+```
+
+4. Select the VelantisWind ZIP file.
+5. Click:
+
+```text
+Install Plugin
+```
+
+6. Restart QGIS if needed.
+
+After installation, VelantisWind should appear in the QGIS plugin menu or toolbar.
+
+---
+
+## Full installation summary
+
+The recommended installation process is:
+
+1. Open **OSGeo4W Shell**.
+2. Install PyWake:
+
+```bash
+python -m pip install py_wake==2.6.18
+```
+
+3. Restart QGIS.
+4. Install VelantisWind from ZIP:
+
+```text
+Plugins → Manage and Install Plugins → Install from ZIP
+```
+
+5. Select the VelantisWind ZIP package.
+6. Enable and open the plugin.
+
+---
+
+## Troubleshooting
+
+### QGIS says that PyWake is missing
+
+Make sure PyWake was installed from **OSGeo4W Shell**, not from a normal system terminal.
+
+Run:
+
+```bash
+python -m pip show py_wake
+```
+
+inside OSGeo4W Shell.
+
+If PyWake is not found, install it again:
+
+```bash
+python -m pip install py_wake==2.6.18
+```
+
+Then restart QGIS.
+
+---
+
+### The plugin was installed, but the Energy / AEP module does not run
+
+Please check:
+
+* PyWake is installed in the QGIS Python environment.
+* QGIS was restarted after installing PyWake.
+* The selected wind resource files are valid.
+* The turbine and layout input files are correctly selected.
+* The full error message has been copied for debugging.
+
+If the issue continues, please report the full traceback.
+
+---
+
+### Multiple QGIS versions are installed
+
+If you have more than one QGIS installation, make sure you open the **OSGeo4W Shell** corresponding to the same QGIS version where VelantisWind is installed.
+
+Installing PyWake into one QGIS environment will not automatically make it available in another QGIS installation.
+
+---
+
+### Permission or installation errors
+
+If the installation fails due to permissions, try opening OSGeo4W Shell as administrator.
+
+Right-click:
+
+```text
+OSGeo4W Shell → Run as administrator
+```
+
+Then run:
+
+```bash
+python -m pip install py_wake==2.6.18
+```
 
 ---
 
 ## Documentation
 
-Documentation is currently being prepared.
+Documentation is currently being prepared and expanded.
 
 Planned documentation sections include:
 
@@ -121,6 +296,43 @@ VelantisWind is being tested and validated with real and representative wind far
 Validation work may include comparison against reference calculations, internal workflows, real project outputs or technical feedback from beta testers and collaborators.
 
 If you are interested in testing VelantisWind with real project data or helping validate the plugin, please contact the project team.
+
+Please avoid sharing confidential project data in public GitHub issues.
+
+---
+
+## Known limitations
+
+VelantisWind is intended for early-stage analysis, validation workflows and geospatial pre-assessment tasks.
+
+The results should be reviewed by qualified professionals before being used in engineering, permitting, investment or construction decisions.
+
+Current limitations may include:
+
+* Ongoing validation against commercial and internal reference workflows
+* Dependency on correct wind resource, turbine and layout input data
+* Possible installation issues depending on the QGIS Python environment
+* Module-specific assumptions that should be reviewed for each project
+* Ongoing testing across QGIS 3.x and QGIS 4.0 environments
+
+---
+
+## Reporting issues
+
+When reporting installation or execution issues, please include:
+
+* QGIS version
+* Windows version
+* VelantisWind version
+* Full error message or traceback
+* Whether PyWake was installed from OSGeo4W Shell
+* Output of:
+
+```bash
+python -m pip show py_wake
+```
+
+Please avoid sharing confidential project data in public GitHub issues.
 
 ---
 
@@ -169,7 +381,7 @@ Academic contributions can be reviewed case by case and, when technically aligne
 
 ## Contributing
 
-Contribution guidelines will be added as the project moves towards public release.
+Community contributions are welcome as the project evolves.
 
 Future contribution paths may include:
 
@@ -181,13 +393,17 @@ Future contribution paths may include:
 * New QGIS workflow ideas
 * Code contributions through pull requests
 
+Contribution guidelines will be expanded as the project matures.
+
 ---
 
 ## License
 
-The license will be defined before the public release.
+VelantisWind is free and open source.
 
-VelantisWind is intended to remain free and open source.
+This project is distributed under the GNU General Public License v3.0.
+
+See the `LICENSE` file for details.
 
 ---
 
@@ -195,4 +411,5 @@ VelantisWind is intended to remain free and open source.
 
 For collaboration, validation cases, academic partnerships, sponsorship or technical workflow discussions, please contact:
 
-info@velantiswind.com
+[info@velantiswind.com](mailto:info@velantiswind.com)
+
