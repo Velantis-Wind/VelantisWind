@@ -23,8 +23,10 @@ def _is_model_layer(lyr: QgsVectorLayer) -> bool:
             return False
         if bool(lyr.customProperty("velantis/noise_output", False)):
             return False
+        if bool(lyr.customProperty("velantis/shadow_output", False)):
+            return False
         name = (lyr.name() or "").strip()
-        if name.startswith("Noise ·"):
+        if name.startswith("Noise ·") or name.startswith("Shadow ·"):
             return False
         model_name = (lyr.customProperty("velantis/model_name", "") or "").strip()
         coords_csv = (lyr.customProperty("velantis/coords_csv", "") or "").strip()
@@ -37,37 +39,53 @@ def _is_model_layer(lyr: QgsVectorLayer) -> bool:
     return False
 
 
+def _iter_group_layers_recursive(node):
+    try:
+        children = node.children()
+    except Exception:
+        children = []
+    for child in children:
+        try:
+            lyr = child.layer()
+        except Exception:
+            lyr = None
+        if lyr is not None:
+            yield lyr
+        else:
+            yield from _iter_group_layers_recursive(child)
+
+
 def _iter_model_layers(prj: QgsProject, source_layer_ids: Optional[List[str]] = None) -> List[QgsVectorLayer]:
     out: List[QgsVectorLayer] = []
+    seen = set()
     wanted = set(str(x) for x in (source_layer_ids or []) if str(x))
     try:
         root = prj.layerTreeRoot()
-        group = None
         for child in root.children():
-            if getattr(child, "name", lambda: None)() == _GROUP_NAME:
-                group = child
-                break
-        if group is not None:
-            for child in group.children():
-                try:
-                    lyr = child.layer()
-                except Exception:
-                    lyr = None
+            if getattr(child, "name", lambda: None)() not in (_GROUP_NAME, "VelantisWind · Turbine layouts"):
+                continue
+            for lyr in _iter_group_layers_recursive(child):
                 if not _is_model_layer(lyr):
                     continue
-                if wanted and lyr.id() not in wanted:
+                lid = str(lyr.id())
+                if wanted and lid not in wanted:
+                    continue
+                if lid in seen:
                     continue
                 out.append(lyr)
-            if out:
-                return out
+                seen.add(lid)
     except Exception:
         pass
     for lyr in prj.mapLayers().values():
         if not _is_model_layer(lyr):
             continue
-        if wanted and lyr.id() not in wanted:
+        lid = str(lyr.id())
+        if wanted and lid not in wanted:
+            continue
+        if lid in seen:
             continue
         out.append(lyr)
+        seen.add(lid)
     return out
 
 

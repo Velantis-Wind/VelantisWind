@@ -21,7 +21,7 @@ This guide shows the shortest path to check that Velantis Wind opens correctly a
 Copy the plugin folder to:
 
 ```text
-QGIS3/profiles/default/python/plugins/VelantisWind/
+QGIS3/profiles/default/python/plugins/velantiswind/
 ```
 
 Then restart QGIS and enable the plugin.

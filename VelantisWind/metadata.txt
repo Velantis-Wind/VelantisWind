@@ -3,12 +3,12 @@ name=Velantis Wind
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Wind-farm pre-assessment in QGIS: Energy/AEP, Noise and Shadow Flicker workflows.
-version=0.1.12
+version=0.1.13
 author=VelantisWind Project
 email=info@velantiswind.com
 license=GPL-3.0-or-later
 
-about=Experimental open-source QGIS plugin for early-stage wind-farm pre-assessment. It includes Energy/AEP workflows based on PyWake-compatible inputs, wind-turbine noise screening with fast and ISO-aligned engines, and DEM/DSM-aware shadow flicker workflows. This experimental release is intended for screening, layout comparison, design iteration and technical feedback. It is not certified regulatory or bankable assessment software. External scientific dependencies are not bundled. The Energy/AEP module requires py_wake to be installed in the same Python environment used by QGIS; Noise and Shadow Flicker can be tested independently.
+about=Experimental open-source QGIS plugin for early-stage wind-farm pre-assessment. It includes Energy/AEP workflows, wind-turbine noise screening and shadow flicker analysis. This package is marked as compatible with QGIS 3.x and QGIS 4.0. A Qt5/Qt6 compatibility layer is included, but QGIS 4 support should still be validated with real installations and user feedback. Important installation note: the Energy/AEP module requires PyWake to be installed separately in the same Python environment used by QGIS. PyWake is not a QGIS plugin and will not appear in the QGIS plugin manager. On Windows, open OSGeo4W Shell and run: python -m pip install py_wake==2.6.18. Then restart QGIS. Noise and Shadow Flicker can be tested independently without PyWake. This experimental release is intended for screening, layout comparison, workflow testing and technical feedback. It is not certified regulatory or bankable assessment software. Full installation instructions, documentation and troubleshooting are available on the project website and GitHub repository.
 
 tracker=https://github.com/Velantis-Wind/VelantisWind/issues
 repository=https://github.com/Velantis-Wind/VelantisWind
@@ -21,4 +21,4 @@ experimental=True
 deprecated=False
 hasProcessingProvider=False
 server=False
-changelog=0.1.10 - Experimental publication package for QGIS 3.x. QGIS 4 compatibility work is in progress. Includes Energy/AEP, Noise and Shadow Flicker modules, public documentation, PyWake installation notes, troubleshooting, limitations, GPL-3.0-or-later licensing and quiet-by-default diagnostics via VELANTISWIND_DEBUG.
+changelog=0.1.13 - Adds independent turbine layout import directly from the Noise and Shadow Flicker modules. Users can now create/load turbine point layers from each module without first using the Energy/AEP tab. Adds shared layout-source utilities and improves cross-module detection of VelantisWind turbine layers. Keeps QGIS 3.x/QGIS 4.x experimental metadata and PyWake guidance.

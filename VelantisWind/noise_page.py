@@ -27,6 +27,7 @@ from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, 
 from .noise_results_dialog import NoiseResultsDialog
 from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish
 from .ui_core.responsive import configure_scroll_area, configure_table
+from .ui_core.layout_sources import import_turbine_layout_from_csv
 
 _GROUP_NAME = "AEP · Coordenadas por modelo"
 
@@ -76,7 +77,7 @@ class NoisePage(QtWidgets.QWidget):
                 "Ayuda · Fuentes acústicas",
                 """
                 <b>Qué seleccionas aquí</b><br><br>
-                Esta lista contiene las capas de turbinas detectadas desde el módulo de Energía. Cada capa suele representar un modelo de aerogenerador o un layout acústico preparado.<br><br>
+                Esta lista contiene las capas de turbinas detectadas o importadas en VelantisWind. Cada capa suele representar un modelo de aerogenerador o un layout acústico preparado.<br><br>
                 <b>Cómo usarlo</b><br>
                 • Marca una o varias capas fuente si quieres calcular el ruido acumulado de todo el parque.<br>
                 • Si tienes varios modelos de turbina, normalmente conviene mantenerlos todos marcados.<br>
@@ -179,7 +180,7 @@ class NoisePage(QtWidgets.QWidget):
                 "Ayuda · Grupos fuente acústicos",
                 """
                 <b>Qué representa cada fila</b><br><br>
-                Cada fila resume un grupo de turbinas usado como fuente acústica. Normalmente viene de un modelo de aerogenerador detectado en el módulo de Energía.<br><br>
+                Cada fila resume un grupo de turbinas usado como fuente acústica. Normalmente viene de un modelo de aerogenerador detectado o importado en VelantisWind.<br><br>
                 <b>Columnas clave</b><br>
                 • Grupo fuente y parque: nombres para que informes y exportaciones sean legibles.<br>
                 • HH y D: altura de buje y diámetro usados para la geometría de propagación.<br>
@@ -195,7 +196,7 @@ class NoisePage(QtWidgets.QWidget):
                 "Help · Acoustic sources",
                 """
                 <b>What you select here</b><br><br>
-                This list contains the turbine layers detected from the Energy module. Each layer usually represents one turbine model or one prepared acoustic layout.<br><br>
+                This list contains the turbine layers detected or imported in VelantisWind. Each layer usually represents one turbine model or one prepared acoustic layout.<br><br>
                 <b>How to use it</b><br>
                 • Tick one or several source layers if you want to calculate the accumulated noise from the whole wind farm.<br>
                 • If you have several turbine models, it is usually better to keep all of them selected.<br>
@@ -298,7 +299,7 @@ class NoisePage(QtWidgets.QWidget):
                 "Help · Acoustic source groups",
                 """
                 <b>What each row represents</b><br><br>
-                Each row summarizes a turbine group used as an acoustic source. It usually comes from a turbine model detected in the Energy module.<br><br>
+                Each row summarizes a turbine group used as an acoustic source. It can come from Energy or from a layout imported directly in this module.<br><br>
                 <b>Key columns</b><br>
                 • Source group and wind farm: names used to keep reports and exports readable.<br>
                 • HH and D: hub height and diameter used for propagation geometry.<br>
@@ -408,17 +409,20 @@ class NoisePage(QtWidgets.QWidget):
         self.lst_sources.setMaximumHeight(140)
         self.lst_sources.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         self.lst_sources.itemChanged.connect(self._on_sources_changed)
-        self.lst_sources.setToolTip("Selecciona una o varias capas fuente detectadas desde Energía. Si marcas varias, el cálculo de ruido usará todas ellas a la vez.")
+        self.lst_sources.setToolTip("Selecciona una o varias capas fuente detectadas/importadas en VelantisWind. Si marcas varias, el cálculo de ruido usará todas ellas a la vez.")
         grid_inputs.addWidget(self.lst_sources, row, 1, 1, 3)
         row += 1
 
         src_btns = QtWidgets.QHBoxLayout()
         self.btn_sources_all = QtWidgets.QPushButton("Marcar todas")
         self.btn_sources_none = QtWidgets.QPushButton("Desmarcar todas")
+        self.btn_import_layout = QtWidgets.QPushButton("Importar layout CSV…")
         self.btn_sources_all.clicked.connect(lambda: self._set_all_sources_checked(True))
         self.btn_sources_none.clicked.connect(lambda: self._set_all_sources_checked(False))
+        self.btn_import_layout.clicked.connect(self._import_turbine_layout_for_noise)
         src_btns.addWidget(self.btn_sources_all)
         src_btns.addWidget(self.btn_sources_none)
+        src_btns.addWidget(self.btn_import_layout)
         src_btns.addStretch(1)
         grid_inputs.addLayout(src_btns, row, 1, 1, 3)
         row += 1
@@ -470,7 +474,7 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addLayout(btn_rg_row, row, 0, 1, 4)
         row += 1
 
-        self.chk_use_layout = QtWidgets.QCheckBox("Usar layout activo del proyecto")
+        self.chk_use_layout = QtWidgets.QCheckBox("Usar layouts de turbinas seleccionados/detectados")
         self.chk_use_layout.setChecked(True)
         self.chk_use_layout.setEnabled(False)
         grid_inputs.addWidget(self.chk_use_layout, row, 0, 1, 2)
@@ -816,6 +820,30 @@ class NoisePage(QtWidgets.QWidget):
         except:
             pass
 
+    def _import_turbine_layout_for_noise(self):
+        """Import a turbine-coordinate CSV directly from the Noise module."""
+        try:
+            layer = import_turbine_layout_from_csv(self, module="noise")
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Noise · Import layout", f"Could not import the turbine layout:\n{e}")
+            return
+        if layer is None:
+            return
+        try:
+            default_lwa = layer.customProperty("velantis/default_lwa_dba", None)
+            if default_lwa is not None:
+                settings = self._load_noise_model_settings()
+                settings[str(layer.id())] = float(default_lwa)
+                self._qsettings.setValue("noise/source_group_lwa_json", json.dumps(settings, ensure_ascii=False))
+        except Exception:
+            pass
+        self.refresh_from_project()
+        QtWidgets.QMessageBox.information(
+            self,
+            "Noise · Import layout",
+            f"Imported '{layer.name()}' with {int(layer.featureCount())} turbine(s)."
+        )
+
     def refresh_from_project(self):
         prj = QgsProject.instance()
         self._model_rows = self._detect_models(prj)
@@ -1155,7 +1183,7 @@ class NoisePage(QtWidgets.QWidget):
             hh = info.get("hub_height")
             diam = info.get("diameter")
             cfg_key = str(info.get("source_group_key") or info.get("layer_id") or name)
-            lwa = float(saved.get(cfg_key, saved.get(name, 105.0)))
+            lwa = float(saved.get(cfg_key, saved.get(name, info.get("default_lwa", 105.0))))
             curve_path = str(saved_curves.get(cfg_key, '') or saved_curves.get(name, '') or '')
             note = str(info.get("notes") or "Detected from project source layer")
             if curve_path:
@@ -1243,7 +1271,8 @@ class NoisePage(QtWidgets.QWidget):
             if diam is not None:
                 notes.append(f"D={float(diam):.1f} m")
             if lyr.customProperty("velantis/coords_csv", None):
-                notes.append("layout imported from Energy")
+                source_module = str(lyr.customProperty("velantis/source_module", "") or "").strip()
+                notes.append(f"layout imported from {source_module}" if source_module else "layout imported from CSV")
             source_group_name = (lyr.customProperty("velantis/noise_group_name", "") or "").strip() or lname
             park_name = (lyr.customProperty("velantis/park_name", "") or "").strip()
             meta_overrides = self._load_source_group_meta_settings().get(lyr.id(), {})
@@ -1262,6 +1291,7 @@ class NoisePage(QtWidgets.QWidget):
                     "n_turbines": int(lyr.featureCount()),
                     "hub_height": float(hh) if hh is not None else None,
                     "diameter": float(diam) if diam is not None else None,
+                    "default_lwa": float(lyr.customProperty("velantis/default_lwa_dba", 105.0) or 105.0),
                     "notes": (("Wind farm=" + park_name + " · ") if park_name else "") + ("Model=" + base_name + (" · " + " · ".join(notes) if notes else "")),
                 }
             )
@@ -1289,34 +1319,52 @@ class NoisePage(QtWidgets.QWidget):
             return False
         return False
 
+    def _iter_group_layers_recursive(self, node):
+        try:
+            children = node.children()
+        except Exception:
+            children = []
+        for child in children:
+            try:
+                lyr = child.layer()
+            except Exception:
+                lyr = None
+            if lyr is not None:
+                yield lyr
+            else:
+                yield from self._iter_group_layers_recursive(child)
+
     def _iter_model_layers(self, prj: QgsProject) -> List[QgsVectorLayer]:
+        """Find all Velantis turbine/model layers, not only Energy-generated ones."""
         out: List[QgsVectorLayer] = []
+        seen = set()
         try:
             root = prj.layerTreeRoot()
-            group = None
             for child in root.children():
                 try:
                     child_name = child.name()
                 except Exception:
                     child_name = None
-                if child_name == _GROUP_NAME:
-                    group = child
-                    break
-            if group is not None:
-                for child in group.children():
+                if child_name not in (_GROUP_NAME, "VelantisWind · Turbine layouts"):
+                    continue
+                for lyr in self._iter_group_layers_recursive(child):
                     try:
-                        lyr = child.layer()
+                        lid = lyr.id()
                     except Exception:
-                        lyr = None
-                    if self._is_model_layer(lyr):
+                        lid = None
+                    if lid and lid not in seen and self._is_model_layer(lyr):
                         out.append(lyr)
-                if out:
-                    return out
+                        seen.add(lid)
         except Exception:
             pass
         for lyr in prj.mapLayers().values():
-            if self._is_model_layer(lyr):
+            try:
+                lid = lyr.id()
+            except Exception:
+                lid = None
+            if lid and lid not in seen and self._is_model_layer(lyr):
                 out.append(lyr)
+                seen.add(lid)
         return out
 
     def _geom_label(self, gtype: int) -> str:
@@ -1636,7 +1684,7 @@ class NoisePage(QtWidgets.QWidget):
         ok = True
         if not self._model_rows:
             ok = False
-            msgs.append("• No se han detectado capas de coordenadas por modelo. Genera primero el layout desde Energía.")
+            msgs.append("• No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.")
         else:
             n_models = len(self._model_rows)
             n_turbs = sum(int(r.get("n_turbines", 0)) for r in self._model_rows)
@@ -1647,7 +1695,7 @@ class NoisePage(QtWidgets.QWidget):
             elif len(src_ids) > 1:
                 msgs.append(f"• Acoustic sources: will use {len(src_ids)} source layers manually selected from Inputs.")
             else:
-                msgs.append("• Acoustic sources: will use all WT layers automatically detected from Energy.")
+                msgs.append("• Acoustic sources: will use all WT layers automatically detected/imported in VelantisWind.")
 
         if self.chk_multi_receivers.isChecked():
             n_groups = 0

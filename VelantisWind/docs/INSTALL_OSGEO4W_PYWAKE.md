@@ -300,7 +300,7 @@ A typical command looks like:
 python -m pip install py_wake==2.6.18 --proxy http://proxy.company.com:PORT
 ```
 
-Do not share proxy credentials in screenshots, logs or GitHub issues.
+If your proxy requires authentication, configure credentials using your organization's approved secure method. Do not share proxy credentials in screenshots, logs or GitHub issues.
 
 ---
 

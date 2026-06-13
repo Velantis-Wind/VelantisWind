@@ -35,6 +35,7 @@ from .shadow_core import (
     DEFAULT_MAX_SHADOW_DISTANCE_M,
 )
 from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish
+from .ui_core.layout_sources import import_turbine_layout_from_csv
 from .shadow_core.timezone_utils import (
     detect_timezone_name,
     load_iana_timezones,
@@ -117,7 +118,7 @@ class ShadowPage(QtWidgets.QWidget):
                 "Ayuda · Capas de cálculo",
                 """
                 <b>Capa de turbinas</b><br><br>
-                Selecciona la capa de coordenadas generada desde el módulo de Energía. Esa capa define la posición de las turbinas que proyectan sombra.<br><br>
+                Selecciona la capa de coordenadas detectada o importada en VelantisWind. Esa capa define la posición de las turbinas que proyectan sombra.<br><br>
                 <b>Capa de receptores</b><br>
                 Debe ser una capa de puntos con las ubicaciones donde quieres evaluar el shadow flicker, por ejemplo viviendas o receptores sensibles.<br><br>
                 <b>Consejo</b><br>
@@ -218,7 +219,7 @@ class ShadowPage(QtWidgets.QWidget):
                 "Help · Calculation layers",
                 """
                 <b>Turbine layer</b><br><br>
-                Select the coordinate layer generated from the Energy module. This layer defines the turbine positions that cast shadow flicker.<br><br>
+                Select the turbine-coordinate layer detected or imported in VelantisWind. This layer defines the turbine positions that cast shadow flicker.<br><br>
                 <b>Receiver layer</b><br>
                 This should be a point layer with the locations where you want to evaluate shadow flicker, for example houses or sensitive receptors.<br><br>
                 <b>Tip</b><br>
@@ -479,12 +480,20 @@ class ShadowPage(QtWidgets.QWidget):
         grid_inputs = QtWidgets.QGridLayout(grp_inputs)
         row = 0
         
-        # Sources (turbines) - simplified to a simple combo
-        grid_inputs.addWidget(self._label_with_help("Turbine layer:", "Select turbines from the Energy module", "layers"), row, 0)
+        # Sources (turbines) - can be detected from any Velantis turbine layout or imported here
+        grid_inputs.addWidget(self._label_with_help("Turbine layer:", "Select or import the turbine-coordinate layer", "layers"), row, 0)
         self.cb_turbines = QtWidgets.QComboBox()
         self.cb_turbines.currentIndexChanged.connect(self._on_turbine_layer_changed)
-        self.cb_turbines.setToolTip("Select the turbine-coordinate layer from the Energy module")
+        self.cb_turbines.setToolTip("Select a VelantisWind turbine-coordinate layer, or import one directly from this module")
         grid_inputs.addWidget(self.cb_turbines, row, 1, 1, 3)
+        row += 1
+
+        turbine_btns = QtWidgets.QHBoxLayout()
+        self.btn_import_layout = QtWidgets.QPushButton("Import turbine layout CSV…")
+        self.btn_import_layout.clicked.connect(self._import_turbine_layout_for_shadow)
+        turbine_btns.addWidget(self.btn_import_layout)
+        turbine_btns.addStretch(1)
+        grid_inputs.addLayout(turbine_btns, row, 1, 1, 3)
         row += 1
         
         # Receiver layer
@@ -817,6 +826,32 @@ class ShadowPage(QtWidgets.QWidget):
     
     # ========== UPDATE METHODS ==========
     
+    def _import_turbine_layout_for_shadow(self):
+        """Import a turbine-coordinate CSV directly from the Shadow module."""
+        try:
+            layer = import_turbine_layout_from_csv(self, module="shadow")
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Shadow · Import layout", f"Could not import the turbine layout:\n{e}")
+            return
+        if layer is None:
+            return
+        try:
+            self._qsettings.setValue("shadow/turbine_layer_id", layer.id())
+        except Exception:
+            pass
+        self.refresh_from_project()
+        try:
+            idx = self.cb_turbines.findData(layer.id(), QtCore.Qt.UserRole)
+            if idx >= 0:
+                self.cb_turbines.setCurrentIndex(idx)
+        except Exception:
+            pass
+        QtWidgets.QMessageBox.information(
+            self,
+            "Shadow · Import layout",
+            f"Imported '{layer.name()}' with {int(layer.featureCount())} turbine(s)."
+        )
+
     def refresh_from_project(self):
         """Refresh the interface from the QGIS project."""
         prj = QgsProject.instance()
@@ -854,7 +889,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.cb_turbines.clear()
         self.cb_turbines.addItem("— Select turbine layer —", None)
         
-        # Only show layers from the "AEP · Coordenadas por modelo" group
+        # Show any VelantisWind turbine/model layer, regardless of which module imported it.
         for model_info in self._model_rows:
             lid = str(model_info.get("layer_id", ""))
             if not lid:
@@ -969,14 +1004,18 @@ class ShadowPage(QtWidgets.QWidget):
         item_n.setTextAlignment(QtCore.Qt.AlignCenter)
         self.tbl_models.setItem(0, 1, item_n)
         
-        # Column 2: Hub Height (editable) - try saved value or use default
-        saved_hh = self._qsettings.value(f"shadow/model_{model_info.get('name')}_hh", "100.0", type=str)
+        # Column 2: Hub Height (editable) - try saved value, imported metadata or default
+        default_hh = model_info.get('hub_height')
+        default_hh_txt = f"{float(default_hh):.1f}" if default_hh is not None else "100.0"
+        saved_hh = self._qsettings.value(f"shadow/model_{model_info.get('name')}_hh", default_hh_txt, type=str)
         item_hh = QtWidgets.QTableWidgetItem(saved_hh)
         item_hh.setTextAlignment(QtCore.Qt.AlignCenter)
         self.tbl_models.setItem(0, 2, item_hh)
         
-        # Column 3: Rotor Diameter (editable) - try saved value or use default
-        saved_d = self._qsettings.value(f"shadow/model_{model_info.get('name')}_d", "120.0", type=str)
+        # Column 3: Rotor Diameter (editable) - try saved value, imported metadata or default
+        default_d = model_info.get('diameter')
+        default_d_txt = f"{float(default_d):.1f}" if default_d is not None else "120.0"
+        saved_d = self._qsettings.value(f"shadow/model_{model_info.get('name')}_d", default_d_txt, type=str)
         item_d = QtWidgets.QTableWidgetItem(saved_d)
         item_d.setTextAlignment(QtCore.Qt.AlignCenter)
         self.tbl_models.setItem(0, 3, item_d)
@@ -1067,7 +1106,7 @@ class ShadowPage(QtWidgets.QWidget):
                     source_description = f"selected layer '{lyr.name()}'"
                     debug_print(f"[Shadow] Centroid calculated from {source_description}: {len(all_coords)} turbines")
             
-            # Opción 2: Si no hay selected layer, usar todas las del módulo Energía
+            # Opción 2: Si no hay selected layer, usar todas las capas de turbinas detectadas/importadas
             if not all_coords:
                 for info in self._model_rows:
                     lyr = prj.mapLayer(str(info.get("layer_id", "")))
@@ -1321,7 +1360,7 @@ class ShadowPage(QtWidgets.QWidget):
             if name.startswith("Noise ·") or name.startswith("Shadow ·"):
                 return False
 
-            # Layers created/updated by the Energy module carry these properties.
+            # Velantis turbine layers created/imported by any module carry these properties.
             model_name = (lyr.customProperty("velantis/model_name", "") or "").strip()
             coords_csv = (lyr.customProperty("velantis/coords_csv", "") or "").strip()
             if model_name or coords_csv:
@@ -1352,27 +1391,19 @@ class ShadowPage(QtWidgets.QWidget):
                 yield from self._iter_group_layers_recursive(child)
 
     def _iter_model_layers(self, prj: QgsProject) -> List[QgsVectorLayer]:
-        """Find turbine/model layers, preferring the Energy output group.
-
-        The search is recursive inside the Energy group and falls back to the
-        whole project when no Velantis model layers are found there.
-        """
+        """Find turbine/model layers imported by any VelantisWind module."""
         out: List[QgsVectorLayer] = []
         seen = set()
         try:
             root = prj.layerTreeRoot()
-            group = None
             for child in root.children():
                 try:
                     child_name = child.name()
                 except Exception:
                     child_name = None
-                if child_name == _GROUP_NAME:
-                    group = child
-                    break
-
-            if group is not None:
-                for lyr in self._iter_group_layers_recursive(group):
+                if child_name not in (_GROUP_NAME, "VelantisWind · Turbine layouts"):
+                    continue
+                for lyr in self._iter_group_layers_recursive(child):
                     try:
                         lid = lyr.id()
                     except Exception:
@@ -1380,8 +1411,6 @@ class ShadowPage(QtWidgets.QWidget):
                     if lid and lid not in seen and self._is_model_layer(lyr):
                         out.append(lyr)
                         seen.add(lid)
-                if out:
-                    return out
         except Exception:
             pass
 
@@ -1400,7 +1429,7 @@ class ShadowPage(QtWidgets.QWidget):
 
         Only actual Velantis turbine/model layers are returned. Plain point
         receiver layers remain available in the receiver combo even if the user
-        has placed them inside the Energy/AEP group.
+        has placed them inside a Velantis layer group.
         """
         models: List[Dict] = []
         for lyr in self._iter_model_layers(prj):
@@ -1408,9 +1437,21 @@ class ShadowPage(QtWidgets.QWidget):
                 model_name = (lyr.customProperty("velantis/model_name", "") or "").strip()
             except Exception:
                 model_name = ""
+            try:
+                hh = lyr.customProperty("velantis/hub_height_m", None)
+                hh = float(hh) if hh is not None else None
+            except Exception:
+                hh = None
+            try:
+                diam = lyr.customProperty("velantis/diameter_m", None)
+                diam = float(diam) if diam is not None else None
+            except Exception:
+                diam = None
             models.append({
                 'layer_id': lyr.id(),
                 'name': model_name or lyr.name(),
                 'n_turbines': lyr.featureCount(),
+                'hub_height': hh,
+                'diameter': diam,
             })
         return models

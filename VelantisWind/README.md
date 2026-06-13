@@ -2,11 +2,11 @@
 
 **Open-source wind-farm pre-assessment workflows directly inside QGIS.**
 
-Velantis Wind is an experimental QGIS 3.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
+Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
 
 > **Status:** experimental release. Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
 >
-> **Compatibility:** this public package targets QGIS 3.x. QGIS 4 compatibility work is in progress and should be tested separately before declaring the plugin QGIS 4-ready.
+> **Compatibility:** this public package is marked as compatible with QGIS 3.x and QGIS 4.x. QGIS 4 support remains experimental and should be validated with real installations and user feedback.
 
 ---
 
@@ -37,7 +37,7 @@ The plugin is designed for transparent pre-assessment, GIS-based QA/QC, technica
 Copy the plugin folder into your QGIS profile plugin directory:
 
 ```text
-QGIS3/profiles/default/python/plugins/VelantisWind/
+QGIS3/profiles/default/python/plugins/velantiswind/
 ```
 
 Then restart QGIS and enable **Velantis Wind** from the Plugin Manager.
@@ -76,29 +76,31 @@ Detailed installation guide:
 
 ### Noise
 
-1. Load turbine source layer(s).
-2. Load a receptor layer.
-3. Open **Velantis Wind → Noise**.
-4. Select fast or ISO-aligned engine.
-5. Set source level/curve, receptor height, radius and optional DEM/DSM or land-use layer.
-6. Run the calculation.
-7. Review compliance, critical receiver, raster and isophones.
+1. Open **Velantis Wind → Noise**.
+2. Load an existing turbine source layer or import a turbine layout CSV directly from the Noise module.
+3. Define the turbine/noise attributes required by the module.
+4. Load a receptor layer.
+5. Select fast or ISO-aligned engine.
+6. Set source level/curve, receptor height, radius and optional DEM/DSM or land-use layer.
+7. Run the calculation.
+8. Review compliance, critical receiver, raster and isophones.
 
 ### Shadow Flicker
 
-1. Load turbine and receptor layers.
-2. Optionally load a DEM/DSM.
-3. Open **Velantis Wind → Shadow Flicker**.
-4. Set observer height, time step, year/time assumptions and raster options.
-5. Run the calculation.
-6. Review annual hours, real/adjusted hours, monthly tables and raster outputs.
+1. Open **Velantis Wind → Shadow Flicker**.
+2. Load an existing turbine layer or import a turbine layout CSV directly from the Shadow Flicker module.
+3. Define the turbine geometry required by the module.
+4. Load receptor layers and optionally a DEM/DSM.
+5. Set observer height, time step, year/time assumptions and raster options.
+6. Run the calculation.
+7. Review annual hours, real/adjusted hours, monthly tables and raster outputs.
 
 ---
 
 ## Repository layout
 
 ```text
-VelantisWind/
+velantiswind/
 ├─ __init__.py              # QGIS plugin factory
 ├─ metadata.txt             # QGIS plugin metadata
 ├─ plugin.py                # QGIS plugin entry point

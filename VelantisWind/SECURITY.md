@@ -10,7 +10,7 @@ Security and critical bug reports should target the latest experimental release 
 
 | Version | Status |
 |---|---|
-| `0.1.10` | Supported for experimental feedback |
+| `0.1.13` | Supported for experimental feedback |
 | Older ZIPs | Superseded |
 
 ---

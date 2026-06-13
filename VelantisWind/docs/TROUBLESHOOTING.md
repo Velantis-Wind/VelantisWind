@@ -13,7 +13,7 @@ Check:
 - The folder is located inside the active QGIS profile, for example:
 
 ```text
-QGIS3/profiles/default/python/plugins/VelantisWind/
+QGIS3/profiles/default/python/plugins/velantiswind/
 ```
 
 Try:
