@@ -19,6 +19,23 @@ from typing import Any, Dict, Iterable, List, Optional
 from qgis.PyQt import QtWidgets
 
 
+def _is_de() -> bool:
+    try:
+        from ...i18n import current_language  # type: ignore
+    except Exception:
+        try:
+            from ..i18n import current_language  # type: ignore
+        except Exception:
+            try:
+                from i18n import current_language  # type: ignore
+            except Exception:
+                return False
+    try:
+        return str(current_language()).lower().startswith("de")
+    except Exception:
+        return False
+
+
 
 def _process_events() -> None:
     """Keep the UI responsive while preserving the current synchronous flow."""
@@ -70,18 +87,18 @@ def _calculate_sequential(
             return None
 
         progress_pct = int(100 * i / total_receptors)
-        suffix = f"\n{label_suffix}" if label_suffix else f"\n{len(turbines)} turbine(s) · 365 days"
+        suffix = f"\n{label_suffix}" if label_suffix else (f"\n{len(turbines)} Windturbine(n) · 365 Tage" if _is_de() else f"\n{len(turbines)} éolienne(s) · 365 jours")
         _set_progress(
             progress_dialog,
             progress_pct,
-            f"Calculating receiver {i+1}/{total_receptors}: {receptor['name']}{suffix}",
+            (f"Berechnung Rezeptor {i+1}/{total_receptors}: {receptor['name']}{suffix}" if _is_de() else f"Calcul du récepteur {i+1}/{total_receptors} : {receptor['name']}{suffix}"),
         )
 
         debug_print(f"[Shadow] Receptor {i+1}/{total_receptors}: {receptor['name']} - Starting calculation...")
 
         def callback(prog, msg):
             if _was_cancelled(progress_dialog):
-                raise InterruptedError("Calculation cancelled by the user")
+                raise InterruptedError("Berechnung durch den Benutzer abgebrochen" if _is_de() else "Calcul annulé par l’utilisateur")
             if use_fine_progress:
                 receptor_progress = progress_pct + int((100 / total_receptors) * float(prog))
                 _set_progress(progress_dialog, min(99, receptor_progress))

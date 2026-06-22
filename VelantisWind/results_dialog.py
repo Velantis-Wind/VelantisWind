@@ -11,10 +11,108 @@ from typing import Dict, Any, List, Optional, Tuple
 
 import html as html_mod
 import os
+import re
 
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtGui import QIcon, QPixmap
-from .i18n import apply_i18n, install_runtime_i18n_patches, translate_html, tr_text as _tr
+from .i18n import apply_i18n, install_runtime_i18n_patches, translate_html, tr_text as _tr, current_language
+
+
+
+
+def _cleanup_german_aep_html(text: str) -> str:
+    """Last-mile cleanup for generated AEP HTML in German.
+
+    The report is assembled from dynamic Spanish/French/English fragments and
+    table headers, so the generic i18n engine can leave residual mixed phrases.
+    This function only runs for the German UI and avoids touching calculations.
+    """
+    if not text:
+        return text
+    html = str(text)
+    repl = [
+        ("Informe técnico AEP", "Technischer AEP-Bericht"),
+        ("Módulo Energía · Flujo PyWake", "Energiemodul · PyWake-Workflow"),
+        ("Resumen global", "Gesamtübersicht"),
+        ("Por modelo de aerogenerador", "Nach Windturbinenmodell"),
+        ("Por aerogenerador", "Nach Windturbine"),
+        ("Por sector de viento", "Nach Windsektor"),
+        ("Esta tabla replica el resumen por turbina visible en la interfaz. Para análisis GIS/Excel, usa también el CSV por turbina que genera el flujo AEP.", "Diese Tabelle entspricht der in der Oberfläche sichtbaren Zusammenfassung je Turbine. Für GIS-/Excel-Analysen sollte zusätzlich der vom AEP-Workflow erzeugte Turbinen-CSV verwendet werden."),
+        ("Resumen AEP del parque", "AEP-Zusammenfassung des Windparks"),
+        ("Informe técnico generado desde el módulo Energía de Velantis Wind.", "Technischer Bericht aus dem Energiemodul von Velantis Wind."),
+        ("AEP bruto (free-stream)", "Brutto-AEP (Freistrom)"),
+        ("AEP neto (operativo)", "Netto-AEP (operativ)"),
+        ("Pérdidas totales", "Gesamtverluste"),
+        ("Desglose de pérdidas", "Verlustaufschlüsselung"),
+        ("Estelas", "Nachläufe"),
+        ("Impacto TI/turbulencia", "TI-/Turbulenzeinfluss"),
+        ("Diagnóstico incremental: positivo = recupera AEP frente al wake-only; negativo = reduce AEP. No se debe interpretar siempre como pérdida contable.", "Inkrementelle Diagnose: positiv = AEP-Rückgewinnung gegenüber wake-only; negativ = AEP-Reduktion. Dies ist nicht immer als buchhalterischer Verlust zu interpretieren."),
+        ("Bloqueo", "Blockage"),
+        ("Otras pérdidas", "Sonstige Verluste"),
+        ("Métricas adicionales", "Zusätzliche Kennzahlen"),
+        ("Potencia instalada", "Installierte Leistung"),
+        ("Factor de capacidad neto", "Netto-Kapazitätsfaktor"),
+        ("Energía específica neta", "Spezifischer Nettoertrag"),
+        ("MWh/MW·año", "MWh/MW·Jahr"),
+        ("Métricas adicionales no disponibles: no se pudo determinar la potencia nominal de las turbinas. Vuelve a definir el modelo desde «Definir…» para que la curva de potencia se guarde con la metadata.", "Zusätzliche Kennzahlen nicht verfügbar: Die Nennleistung der Turbinen konnte nicht bestimmt werden. Definiere das Modell erneut über „Definieren…“, damit die Leistungskennlinie in den Metadaten gespeichert wird."),
+        ("Selección del usuario", "Benutzerauswahl"),
+        ("Configuración solicitada al solver", "An den Solver übergebene Konfiguration"),
+        ("Configuración finalmente ejecutada", "Tatsächlich ausgeführte Konfiguration"),
+        ("Notas físicas y de compatibilidad", "Physikalische und Kompatibilitätshinweise"),
+        ("Modelo de aerogenerador", "Windturbinenmodell"),
+        ("Modelos / clusters de aerogeneradores", "Windturbinenmodelle / Cluster"),
+        ("aerogenerador(es)", "Windturbine(n)"),
+        ("AEP neta del cluster", "Netto-AEP des Clusters"),
+        ("del AEP neto del parque", "des Netto-AEP des Windparks"),
+        ("Pérdida total (wake/TI/bloqueo)", "Gesamtverlust (Nachlauf/TI/Blockage)"),
+        ("sobre AEP bruto del cluster", "bezogen auf das Brutto-AEP des Clusters"),
+        ("Déficit de estela", "Nachlaufdefizit"),
+        ("Modelo de turbulencia", "Turbulenzmodell"),
+        ("Modelo de bloqueo", "Blockage-Modell"),
+        ("Promedio rotor", "Rotormittelung"),
+        ("Superposición", "Überlagerung"),
+        ("Motor", "Rechenkern"),
+        ("Aviso de TI ambiente", "Hinweis zur Umgebungs-TI"),
+        ("no se ha proporcionado un raster de TI", "es wurde kein TI-Raster angegeben"),
+        ("El cálculo ha usado", "Die Berechnung hat"),
+        ("uniforme como fallback", "gleichmäßig als Fallback verwendet"),
+        ("Este valor afecta directamente al AEP en wakes TI-driven", "Dieser Wert beeinflusst das AEP direkt bei TI-gesteuerten Nachlaufmodellen"),
+        ("Para resultados representativos, carga un raster TI en la sección de recurso o revisa la sensibilidad de turbulencia.", "Für repräsentative Ergebnisse lade ein TI-Raster im Ressourcenbereich oder prüfe die Turbulenzsensitivität."),
+        ("Sustitución de modelo de bloqueo", "Ersetzung des Blockage-Modells"),
+        ("Aviso de compatibilidad", "Kompatibilitätshinweis"),
+        ("La combinación de wake TI-driven con SelfSimilarity2020 no convergió en PyWake.", "Die Kombination aus TI-gesteuertem Nachlauf und SelfSimilarity2020 konvergierte in PyWake nicht."),
+        ("Se ha mantenido el bloqueo sustituyéndolo por", "Blockage wurde beibehalten, aber ersetzt durch"),
+        ("El resto de la selección se ha respetado.", "Die übrige Auswahl wurde beibehalten."),
+        ("La simulación no pudo ejecutarse exactamente con la combinación pedida y PyWake requirió una degradación automática.", "Die Simulation konnte nicht exakt mit der angeforderten Kombination ausgeführt werden; PyWake erforderte eine automatische Degradierung."),
+        ("Paso aplicado", "Angewendeter Schritt"),
+        ("Generated by Velantis Wind · QGIS energy module · PyWake-based AEP workflow.", "Erstellt mit Velantis Wind · QGIS-Energiemodul · PyWake-basierter AEP-Workflow."),
+        ("Table truncated in the HTML report: showing", "Tabelle im HTML-Bericht gekürzt: angezeigt werden"),
+        ("rows. The CSV export contains the full detail.", "Zeilen. Der CSV-Export enthält alle Details."),
+        ("Free AEP", "Brutto-AEP"),
+        ("Net AEP", "Netto-AEP"),
+        ("Wake losses", "Nachlaufverluste"),
+        ("Wake lossess", "Nachlaufverluste"),
+        ("Blockage losses", "Blockage-Verluste"),
+        ("TI impact", "TI-Einfluss"),
+        ("Net specific yield", "Spezifischer Nettoertrag"),
+        ("By wind sector", "Nach Windsektor"),
+    ]
+    for a, b in repl:
+        html = html.replace(a, b)
+    html = re.sub(r"(\d+[\.,]?\d*)\s*%\s*del AEP neto del parque", r"\1 % des Netto-AEP des Windparks", html)
+    html = re.sub(r"(\d+[\.,]?\d*)\s*%\s*sobre AEP bruto del cluster", r"\1 % bezogen auf das Brutto-AEP des Clusters", html)
+    html = re.sub(r"\bPaso aplicado\s*:", "Angewendeter Schritt:", html)
+    return html
+
+
+def _localized_report_html(text: str) -> str:
+    out = translate_html(text)
+    try:
+        if str(current_language()).lower().startswith("de"):
+            out = _cleanup_german_aep_html(out)
+    except Exception:
+        pass
+    return out
 
 
 def _is_debug_enabled() -> bool:
@@ -195,8 +293,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
             <tr>
               <td style="vertical-align:middle; width:70px;">{logo_html}</td>
               <td style="vertical-align:middle; text-align:left; color:#1f3d36;">
-                <div style="font-size:18px; font-weight:700;">Informe técnico AEP</div>
-                <div style="font-size:11px; color:#6b7d78;">Módulo Energía · Flujo PyWake · {html_mod.escape(generated)}</div>
+                <div style="font-size:18px; font-weight:700;">{html_mod.escape("Technischer AEP-Bericht" if str(current_language()).lower().startswith("de") else _tr("Informe técnico AEP"))}</div>
+                <div style="font-size:11px; color:#6b7d78;">{html_mod.escape(("Energiemodul · PyWake-Workflow" if str(current_language()).lower().startswith("de") else _tr("Módulo Energía · Flujo PyWake")) + " · " + generated)}</div>
               </td>
             </tr>
           </table>
@@ -249,12 +347,12 @@ class AEPResultsDialog(QtWidgets.QDialog):
         return s
 
     def _wrap_report_document(self, body_html: str) -> str:
-        """Wrap the AEP report as a standalone English HTML document."""
+        """Wrap the AEP report as a standalone localized HTML document."""
         doc = f'''<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Velantis Wind · AEP technical report</title>
+  <title>{html_mod.escape("Velantis Wind · Technischer AEP-Bericht" if str(current_language()).lower().startswith("de") else _tr("Velantis Wind · AEP technical report"))}</title>
   <style>
     body {{ font-family: Arial, Helvetica, sans-serif; margin: 28px; color: #1f2933; }}
     h3 {{ color: #17443b; margin-top: 22px; border-bottom: 1px solid #d8e2dc; padding-bottom: 4px; }}
@@ -271,10 +369,10 @@ class AEPResultsDialog(QtWidgets.QDialog):
 </head>
 <body>
 {body_html}
-<div class="vw-footer">Generated by Velantis Wind · QGIS energy module · PyWake-based AEP workflow.</div>
+<div class="vw-footer">{html_mod.escape("Erstellt mit Velantis Wind · QGIS-Energiemodul · PyWake-basierter AEP-Workflow." if str(current_language()).lower().startswith("de") else _tr("Generated by Velantis Wind · QGIS energy module · PyWake-based AEP workflow."))}</div>
 </body>
 </html>'''
-        return self._translate_html_to_en(doc)
+        return _localized_report_html(doc)
 
     def __init__(self, parent=None, results: Dict[str, Any] = None):
         install_runtime_i18n_patches()
@@ -476,32 +574,21 @@ class AEPResultsDialog(QtWidgets.QDialog):
             parts.append("<h3>Por sector de viento</h3>")
             parts.append(self._qtable_to_html(sector_table, max_rows=None))
         joined = "\n".join(parts)
-        # The exported report follows the language selected in the hub: the report
-        # body is authored in Spanish, so only translate to English when needed.
-        try:
-            from . import i18n as _i18n
-        except Exception:
-            try:
-                import i18n as _i18n  # type: ignore
-            except Exception:
-                _i18n = None  # type: ignore
-        if _i18n is not None:
-            try:
-                if _i18n.is_spanish():
-                    return joined
-            except Exception:
-                pass
-        return self._translate_html_to_en(joined)
+        # Keep the exported report in the language selected in the VelantisWind hub.
+        # The body is authored in Spanish and then translated by the multi-language
+        # i18n engine (Spanish/English/French/German).
+        return _localized_report_html(joined)
 
     def _export_report_html(self) -> None:
         """Exporta el informe AEP visual como HTML con cabecera corporativa."""
         try:
             default_name = "velantiswind_aep_technical_report.html"
+            _lang = str(current_language()).lower()
             path, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
-                "Exportar informe AEP",
+                ("AEP-Bericht exportieren" if _lang.startswith("de") else _tr("Exportar informe AEP")),
                 default_name,
-                "HTML (*.html);;Todos los archivos (*)",
+                ("HTML (*.html);;Alle Dateien (*)" if _lang.startswith("de") else _tr("HTML (*.html);;Todos los archivos (*)")),
             )
             if not path:
                 return
@@ -716,12 +803,12 @@ class AEPResultsDialog(QtWidgets.QDialog):
         layout.setSpacing(8)
 
         # Cabecera explicativa breve
-        intro = QtWidgets.QLabel(
+        intro = QtWidgets.QLabel(_tr(
             "<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por "
             "dirección del viento. La diferencia entre cada barra representa las pérdidas "
             "por estela en ese sector — útil para ver qué direcciones limitan más el "
             "rendimiento del parque."
-        )
+        ))
         intro.setWordWrap(True)
         intro.setStyleSheet("color: #4f5d6b;")
         layout.addWidget(intro)
@@ -743,11 +830,11 @@ class AEPResultsDialog(QtWidgets.QDialog):
         d_free = sum_free - global_free if global_free > 0 else 0.0
         d_net = sum_net - global_net if global_net > 0 else 0.0
         tol = max(1.0, 0.001 * max(abs(global_net), abs(sum_net), 1.0))
-        ok_txt = "OK" if abs(d_net) <= tol else "revisar"
+        ok_txt = "OK" if abs(d_net) <= tol else _tr("revisar")
         total_lbl = QtWidgets.QLabel(
-            f"<b>Total sectores:</b> AEP libre {_fmt_mwh(sum_free)} MWh · "
-            f"AEP neto {_fmt_mwh(sum_net)} MWh · pérdidas {_fmt_mwh(sum_loss)} MWh. "
-            f"Comparación con resumen: Δ neto = {_fmt_mwh(d_net)} MWh ({ok_txt})."
+            f"<b>{_tr('Total sectores')}:</b> {_tr('AEP libre')} {_fmt_mwh(sum_free)} MWh · "
+            f"{_tr('AEP neto')} {_fmt_mwh(sum_net)} MWh · {_tr('pérdidas')} {_fmt_mwh(sum_loss)} MWh. "
+            f"{_tr('Comparación con resumen')}: Δ {_tr('neto')} = {_fmt_mwh(d_net)} MWh ({ok_txt})."
         )
         total_lbl.setWordWrap(True)
         total_lbl.setStyleSheet("color: #4f5d6b; background: #f7f9fb; border: 1px solid #d8e0e8; padding: 6px;")
@@ -763,20 +850,20 @@ class AEPResultsDialog(QtWidgets.QDialog):
             ax1.set_theta_direction(-1)  # convención meteorológica (CW desde N)
             ax1.bar(theta, free_arr, width=width, alpha=0.45,
                     color="#1f7dc2", edgecolor="white", linewidth=0.5,
-                    label="AEP libre")
+                    label=_tr("AEP libre"))
             ax1.bar(theta, wake_arr, width=width, alpha=0.85,
                     color="#103b67", edgecolor="white", linewidth=0.5,
-                    label="AEP neto")
-            ax1.set_title("AEP por dirección [MWh]", fontsize=11, color="#103b67")
+                    label=_tr("AEP neto"))
+            ax1.set_title(_tr("AEP por dirección [MWh]"), fontsize=11, color="#103b67")
             ax1.legend(loc="upper right", bbox_to_anchor=(1.25, 1.1), fontsize=8)
 
             # Subplot 2: pérdidas % por sector (barras lineales)
             ax2 = fig.add_subplot(1, 2, 2)
             ax2.bar(wd_arr, loss_pct, width=max(width * 360 / (2 * np.pi) * 0.9, 1.0),
                     color="#b8860b", alpha=0.85, edgecolor="white", linewidth=0.5)
-            ax2.set_xlabel("Dirección [°]", fontsize=10)
-            ax2.set_ylabel("Pérdidas por estela [%]", fontsize=10)
-            ax2.set_title("Pérdidas por estela por sector", fontsize=11, color="#103b67")
+            ax2.set_xlabel(_tr("Dirección [°]"), fontsize=10)
+            ax2.set_ylabel(_tr("Pérdidas por estela [%]"), fontsize=10)
+            ax2.set_title(_tr("Pérdidas por estela por sector"), fontsize=11, color="#103b67")
             ax2.set_xlim(0, 360)
             ax2.grid(True, alpha=0.3, linestyle=":")
             ax2.tick_params(labelsize=9)
@@ -788,7 +875,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             layout.addWidget(canvas, 1)
         except Exception as e:
             _debug_print(f"[Results] Error renderizando rosa de sectores: {e}")
-            err_lbl = QtWidgets.QLabel(f"No se pudo generar la rosa de sectores: {e}")
+            err_lbl = QtWidgets.QLabel(f"{_tr('No se pudo generar la rosa de sectores')}: {e}")
             err_lbl.setStyleSheet("color: #b00;")
             layout.addWidget(err_lbl)
             return
@@ -991,9 +1078,9 @@ class AEPResultsDialog(QtWidgets.QDialog):
         tol = max(1.0, 0.001 * max(abs(aep_free), abs(balance), 1.0))
         ok = abs(delta) <= tol
         lbl = QtWidgets.QLabel(
-            f"Bruto: <b>{_fmt_mwh(aep_free)} MWh</b> · Neto + pérdidas: "
+            f"{_tr('Bruto')}: <b>{_fmt_mwh(aep_free)} MWh</b> · {_tr('Neto + pérdidas')}: "
             f"<b>{_fmt_mwh(balance)} MWh</b> · Δ = {_fmt_mwh(delta)} MWh "
-            f"({'OK' if ok else 'revisar'})"
+            f"({'OK' if ok else _tr('revisar')})"
         )
         lbl.setWordWrap(True)
         lbl.setStyleSheet("color: #4f5d6b;")
@@ -1009,7 +1096,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         except Exception as e:
-            err = QtWidgets.QLabel(f"No se pudo generar el gráfico total: {e}")
+            err = QtWidgets.QLabel(f"{_tr('No se pudo generar el gráfico total')}: {e}")
             err.setWordWrap(True)
             err.setStyleSheet("color: #b00;")
             layout.addWidget(err)
@@ -1019,23 +1106,23 @@ class AEPResultsDialog(QtWidgets.QDialog):
             fig = plt.Figure(figsize=(5.0, 3.4), tight_layout=True)
             ax = fig.add_subplot(1, 1, 1)
             x = [0, 1, 2]
-            labels = ["Bruto", "Neto+pérd.", "Neto"]
-            ax.bar([x[0]], [aep_free], label="AEP bruto")
-            ax.bar([x[1]], [aep_net], label="AEP neto")
-            ax.bar([x[1]], [loss_wake], bottom=[aep_net], label="Estelas")
-            ax.bar([x[1]], [loss_ti], bottom=[aep_net + loss_wake], label="TI")
-            ax.bar([x[1]], [loss_blk], bottom=[aep_net + loss_wake + loss_ti], label="Bloqueo")
+            labels = [_tr("Bruto"), _tr("Neto+pérd."), _tr("Neto")]
+            ax.bar([x[0]], [aep_free], label=_tr("AEP bruto"))
+            ax.bar([x[1]], [aep_net], label=_tr("AEP neto"))
+            ax.bar([x[1]], [loss_wake], bottom=[aep_net], label=_tr("Estelas"))
+            ax.bar([x[1]], [loss_ti], bottom=[aep_net + loss_wake], label=_tr("TI"))
+            ax.bar([x[1]], [loss_blk], bottom=[aep_net + loss_wake + loss_ti], label=_tr("Bloqueo"))
             # Solo apilamos "Otras" si el residuo es perceptible. Con la
             # decomposición correcta es ~0 y añadir una barra de altura 0 mete
             # ruido en la leyenda.
             _balance_base = max(abs(aep_free), abs(aep_net), 1.0)
             if loss_other > 0.5 and (loss_other / _balance_base) > 5e-4:
-                ax.bar([x[1]], [loss_other], bottom=[aep_net + loss_wake + loss_ti + loss_blk], label="Otras")
-            ax.bar([x[2]], [aep_net], label="AEP neto final")
+                ax.bar([x[1]], [loss_other], bottom=[aep_net + loss_wake + loss_ti + loss_blk], label=_tr("Otras"))
+            ax.bar([x[2]], [aep_net], label=_tr("AEP neto final"))
             ax.set_xticks(x)
             ax.set_xticklabels(labels)
-            ax.set_ylabel("MWh/año")
-            ax.set_title("Comprobación del balance total")
+            ax.set_ylabel(_tr("MWh/año"))
+            ax.set_title(_tr("Comprobación del balance total"))
             ax.grid(True, axis="y", alpha=0.25, linestyle=":")
             ax.legend(fontsize=8)
             canvas = FigureCanvasQTAgg(fig)
@@ -1044,7 +1131,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             layout.addWidget(canvas, 1)
         except Exception as e:
-            err = QtWidgets.QLabel(f"No se pudo renderizar el balance total: {e}")
+            err = QtWidgets.QLabel(f"{_tr('No se pudo renderizar el balance total')}: {e}")
             err.setWordWrap(True)
             err.setStyleSheet("color: #b00;")
             layout.addWidget(err)
@@ -1395,11 +1482,11 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 return ""
             rows = []
             labels = {
-                "engine": "Engine",
-                "wake_deficit": "Wake deficit",
+                "engine": "Motor",
+                "wake_deficit": "Déficit de estela",
                 "turbulence": "Modelo de turbulencia",
                 "blockage": "Modelo de bloqueo",
-                "rotor_avg": "Rotor-average",
+                "rotor_avg": "Promedio rotor",
                 "superposition": "Superposición",
             }
             for key in ("engine", "wake_deficit", "turbulence", "blockage", "rotor_avg", "superposition"):
@@ -1519,7 +1606,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
         """
 
         self._last_report_html_raw = report_body
-        self._last_report_html = translate_html(report_body)
+        self._last_report_html = _localized_report_html(report_body)
         self.txt_report.setHtml(self._last_report_html)
 
 
@@ -1732,13 +1819,13 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
             b = self._summary(self.result_b)
             fig = plt.Figure(figsize=(7.2, 2.4), tight_layout=True)
             ax = fig.add_subplot(1, 1, 1)
-            labels = ["AEP neto", "Pérd. total", "Wake"]
+            labels = [_tr("AEP neto"), _tr("Pérd. total"), _tr("Wake")]
             ax.bar([0, 1, 2], [a["aep_net"], a["loss_total"], a["wake_loss"]], width=0.35, label="A")
             ax.bar([0.35, 1.35, 2.35], [b["aep_net"], b["loss_total"], b["wake_loss"]], width=0.35, label="B")
             ax.set_xticks([0.175, 1.175, 2.175])
             ax.set_xticklabels(labels)
-            ax.set_ylabel("MWh/año")
-            ax.set_title("Comparación global")
+            ax.set_ylabel(_tr("MWh/año"))
+            ax.set_title(_tr("Comparación global"))
             ax.grid(True, axis="y", alpha=0.25, linestyle=":")
             ax.legend(fontsize=8)
             canvas = FigureCanvasQTAgg(fig)

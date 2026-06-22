@@ -25,12 +25,122 @@ from qgis.PyQt.QtGui import QGuiApplication
 from .noise_core.noise_compute import compute_noise, load_acoustic_curve_csv, evaluate_acoustic_curve
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from .noise_results_dialog import NoiseResultsDialog
-from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish
+from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish, current_language
 from .ui_core.responsive import configure_scroll_area, configure_table
 from .ui_core.layout_sources import import_turbine_layout_from_csv
 
 _GROUP_NAME = "AEP · Coordenadas por modelo"
 
+
+# Direct helper for long help popups. It bypasses the generic fragment cache so
+# clickable ℹ dialogs do not end up half Spanish / half French.
+def _tr_help(text):
+    if text is None:
+        return text
+    s = str(text)
+    try:
+        if current_language() in {"fr", "de"}:
+            lang = current_language()
+            if lang == "de":
+                try:
+                    from . import i18n_de as _vw_i18n_lang  # type: ignore
+                except Exception:
+                    import i18n_de as _vw_i18n_lang  # type: ignore
+                table = getattr(_vw_i18n_lang, "TO_DE", {}) or {}
+            else:
+                try:
+                    from . import i18n_fr as _vw_i18n_lang  # type: ignore
+                except Exception:
+                    import i18n_fr as _vw_i18n_lang  # type: ignore
+                table = getattr(_vw_i18n_lang, "TO_FR", {}) or {}
+            if s in table:
+                return table[s]
+            st = s.strip()
+            if st in table:
+                return table[st]
+            try:
+                import re as _re
+                norm_s = _re.sub(r"\s+", " ", st.replace("\u00a0", " ")).strip()
+                if not hasattr(_tr_help, "_norm_%s" % current_language()):
+                    setattr(_tr_help, "_norm_%s" % current_language(), {
+                        _re.sub(r"\s+", " ", str(k).replace("\u00a0", " ")).strip(): v
+                        for k, v in table.items()
+                    })
+                hit = getattr(_tr_help, "_norm_%s" % current_language(), {}).get(norm_s)
+                if hit is not None:
+                    return hit
+            except Exception:
+                pass
+            # For translated help dialogs, prefer a clean source fallback over mixed fragments.
+            return st or s
+    except Exception:
+        pass
+    return _tr(s)
+
+
+def _help_ok_label() -> str:
+    lang = current_language()
+    if lang == "fr":
+        return "Fermer"
+    if lang == "de":
+        return "Schließen"
+    if lang == "en":
+        return "OK"
+    return "Aceptar"
+
+
+def _set_help_ok_text(msg) -> None:
+    try:
+        msg.button(QtWidgets.QMessageBox.Ok).setText(_help_ok_label())
+    except Exception:
+        pass
+
+
+
+def _de_cleanup_noise_status(text: str) -> str:
+    """Final DE-only cleanup for visible Noise status/fallback messages."""
+    s = str(text or "")
+    repl = [
+        ("Acoustic sources: will use 1 source layer manually selected from Inputs.", "Akustische Quellen: Es wird 1 manuell in den Eingaben ausgewählter Quell-Layer verwendet."),
+        ("Acoustic sources: will use", "Akustische Quellen: Es werden"),
+        ("source layers manually selected from Inputs.", "manuell in den Eingaben ausgewählte Quell-Layer verwendet."),
+        ("Acoustic sources: will use all WT layers automatically detected/imported in VelantisWind.", "Akustische Quellen: Es werden alle in VelantisWind automatisch erkannten/importierten WT-Layer verwendet."),
+        ("Receptores", "Rezeptoren"),
+        ("Grupos fuente acústicos", "Akustische Quellgruppen"),
+        ("Escenario acústico", "Akustisches Szenario"),
+        ("Altura de receptor configurada", "Konfigurierte Rezeptorhöhe"),
+        ("Radio máximo configurado", "Konfigurierter Maximalradius"),
+        ("Atenuación lineal α", "Lineare Dämpfung α"),
+        ("Factor de suelo G", "Bodenfaktor G"),
+        ("Límite de receptor", "Rezeptorgrenzwert"),
+        ("Configured isophones", "Konfigurierte Isophonen"),
+        ("MDT/DSM seleccionado", "Ausgewähltes DGM/DSM"),
+        ("Método actual", "Aktuelle Methode"),
+        ("Parámetros de consultoría acústica", "Akustische Beratungsparameter"),
+        ("cálculo acústico", "Akustikberechnung"),
+        ("fuente-receptor", "Quelle-Rezeptor"),
+        ("consultoría eólica", "Windenergie-Beratung"),
+        ("receptores fuera de radio", "Rezeptoren außerhalb des Radius"),
+        ("mapa de ruido ráster", "Schallraster"),
+        ("isófonas", "Isophonen"),
+        ("límite de receptor", "Rezeptorgrenzwert"),
+        ("factor de suelo", "Bodenfaktor"),
+        ("revisión rápida de cumplimiento", "schnelle Konformitätsprüfung"),
+        ("influencia del terreno", "Geländeeinfluss"),
+        ("will use G global", "verwendet den globalen G-Wert"),
+        ("0=duro, 1=poroso", "0=hart, 1=porös"),
+        ("elemento(s)", "Element(e)"),
+        ("modelo(s)", "Modell(e)"),
+        ("turbina(s)", "Windturbine(n)"),
+        ("grupo(s)", "Gruppe(n)"),
+        ("capa(s)", "Layer"),
+        ("Curvas disponibles", "Verfügbare Kurven"),
+        ("LwA fijo", "fester LwA"),
+        ("por grupo fuente acústico", "je akustischer Quellgruppe"),
+    ]
+    for a,b in repl:
+        s=s.replace(a,b)
+    return s
 
 class NoisePage(QtWidgets.QWidget):
     def __init__(self, parent=None, on_back: Optional[Callable[[], None]] = None):
@@ -70,8 +180,135 @@ class NoisePage(QtWidgets.QWidget):
         return wrap
 
     def _noise_help_text(self, key: str):
-        """Bilingual help texts for the clickable ℹ buttons."""
-        es = is_spanish()
+        """Help texts for the clickable ℹ buttons.
+
+        Spanish is the canonical source for runtime translation.  English is
+        returned only when English is explicitly selected; French and future
+        languages use the Spanish source so tr_text can translate the full help
+        popup instead of producing mixed fragment translations.
+        """
+        lang = current_language()
+        if lang == "de":
+            data_de = {
+                "sources": (
+                    "Hilfe · Akustische Quellen",
+                    """
+                    <b>Was hier ausgewählt wird</b><br><br>
+                    Diese Liste enthält die in VelantisWind erkannten oder importierten Turbinen-Layer. Jeder Layer steht normalerweise für ein Turbinenmodell oder ein vorbereitetes akustisches Layout.<br><br>
+                    <b>Verwendung</b><br>
+                    • Markieren Sie einen oder mehrere Quellen-Layer, wenn der kumulierte Schall des gesamten Windparks berechnet werden soll.<br>
+                    • Wenn mehrere Turbinenmodelle vorhanden sind, sollten diese normalerweise alle aktiviert bleiben.<br>
+                    • In der darunterliegenden Tabelle der Quellgruppen kann jedem Modell ein fester LwA-Wert oder eine akustische Kennlinie zugewiesen werden.<br><br>
+                    <b>Hinweis</b><br>
+                    Wenn das Ergebnis zu niedrig erscheint, prüfen Sie, ob versehentlich ein Turbinen-Layer abgewählt wurde.
+                    """,
+                ),
+                "receivers": (
+                    "Hilfe · Rezeptoren und Grenzwerte",
+                    """
+                    <b>Was Rezeptoren sind</b><br><br>
+                    Rezeptoren sind Punkte oder Polygone, an denen der Schallpegel bewertet wird, zum Beispiel Wohngebäude, Ortschaften, Höfe oder sensible Grenzen.<br><br>
+                    <b>Einfacher Modus</b><br>
+                    Wählen Sie einen einzelnen Rezeptor-Layer und verwenden Sie einen globalen dB(A)-Grenzwert. Das reicht für eine erste Prüfung aus.<br><br>
+                    <b>Kategorie-Modus</b><br>
+                    Aktivieren Sie mehrere Layer, wenn Rezeptoren nach Kategorie getrennt werden sollen, zum Beispiel Wohnen, Industrie oder Umwelt. Jeder Layer kann einen eigenen Tagesgrenzwert, Nachtgrenzwert und eine eigene Höhe haben.<br><br>
+                    <b>Grenzwertkriterium</b><br>
+                    Manuell/global verwendet den allgemeinen Grenzwert. Tag/Nacht verwendet die je Layer konfigurierten Grenzwerte, wenn mit mehreren Kategorien gearbeitet wird.
+                    """,
+                ),
+                "map": (
+                    "Hilfe · Schallkarte und Isophonen",
+                    """
+                    <b>GIS-Schallkarte</b><br><br>
+                    Erzeugt ein Raster mit dem geschätzten Schallpegel um den Windpark. Das ist hilfreich, um akustische Einflussbereiche zu visualisieren, erhöht aber die Rechenzeit.<br><br>
+                    <b>Auflösung</b><br>
+                    Eine kleinere Zellgröße liefert mehr Detail, dauert aber länger. Für schnelle Tests sind 100–200 m sinnvoll; für feinere Ausgaben kann die Zellgröße reduziert werden, wenn das Gebiet nicht sehr groß ist.<br><br>
+                    <b>Isophonen</b><br>
+                    Isophonen sind Linien gleichen Schallpegels, zum Beispiel 35, 40, 45 und 50 dB(A). Das Plugin erzeugt sie aus dem Schallraster.
+                    """,
+                ),
+                "terrain": (
+                    "Hilfe · DGM/DSM, Abstand und Rezeptorhöhe",
+                    """
+                    <b>Rezeptorhöhe</b><br><br>
+                    Höhe, in der der Schall am Rezeptor bewertet wird. Für Wohnrezeptoren ist 4 m ein üblicher Wert, kann aber an das Kriterium der Studie angepasst werden.<br><br>
+                    <b>Maximaler Radius</b><br>
+                    Begrenzt, welche Turbinen zu jedem Rezeptor beitragen. Ein zu kleiner Radius kann relevante Quellen ausschließen; ein sehr großer Radius erhöht die Rechenzeit.<br><br>
+                    <b>DGM/DSM</b><br>
+                    Wenn ein Geländeraster ausgewählt wird, kann die Berechnung 3D-Abstände verwenden und spätere topografische Korrekturen besser vorbereiten. Wenn kein Raster ausgewählt wird, wird ebenes Gelände angenommen.
+                    """,
+                ),
+                "ground": (
+                    "Hilfe · Dämpfung, Boden und Landnutzung",
+                    """
+                    <b>Lineare Dämpfung α</b><br><br>
+                    Im schnellen Rechenkern fasst α die atmosphärische Absorption über die Entfernung vereinfacht zusammen. Es ersetzt nicht die frequenzbandweise Berechnung des ISO-orientierten Rechenkerns.<br><br>
+                    <b>Bodenfaktor G</b><br>
+                    G=0 steht für harten oder reflektierenden Boden; G=1 für porösen oder absorbierenden Boden. Zwischenwerte mischen beide Verhaltensweisen.<br><br>
+                    <b>Landnutzung</b><br>
+                    Wenn ein Landnutzungs-Layer gewählt wird, kann das Plugin für jeden Pfad einen effektiven G-Wert abschätzen. Andernfalls wird der manuell definierte globale G-Wert verwendet.<br><br>
+                    <b>Erwartetes Layer-Format</b><br>
+                    • Es muss ein <b>polygonaler Vektor-Layer</b> in QGIS sein, z. B. GeoPackage oder Shapefile. Raster, Linien und Punkte werden nicht als Landnutzung gelesen.<br>
+                    • Er sollte im <b>gleichen CRS wie das Projekt</b> liegen. Wenn das nicht der Fall ist, reprojizieren Sie ihn vor der Berechnung.<br>
+                    • Jedes Polygon sollte einen Geländebereich mit einem G-Wert oder einer Landnutzungsklasse abdecken.<br><br>
+                    <b>Empfohlene Felder</b><br>
+                    Bevorzugt wird ein numerisches Feld mit Werten zwischen 0 und 1, z. B. <code>g_factor</code>, <code>g</code>, <code>ground_g</code>, <code>g_value</code> oder <code>G</code>.<br>
+                    • <code>0</code> = harter/reflektierender Boden: urban, Asphalt, Fels, Industrie.<br>
+                    • <code>0.5</code> = gemischter Boden.<br>
+                    • <code>1</code> = poröser/absorbierender Boden: Acker, Wiese, Weide, Wald, Vegetation.<br><br>
+                    <b>Text-Alternative</b><br>
+                    Wenn kein numerisches Feld vorhanden ist, versucht das Plugin eine Textspalte wie <code>uso_suelo</code>, <code>uso</code>, <code>clase</code>, <code>landuse</code>, <code>cover</code> oder <code>type</code> zu lesen. Wenn die Klasse nicht erkannt wird, dient der globale G-Wert als Fallback.
+                    """,
+                ),
+                "engine": (
+                    "Hilfe · Schall-Rechenkern",
+                    """
+                    <b>Schneller Rechenkern</b><br><br>
+                    Verwendet einen vereinfachten Quelle-Rezeptor-Ansatz mit globalem LwA, geometrischer Divergenz, linearer Absorption und Bodenkorrektur. Er ist schnell und für Screening geeignet.<br><br>
+                    <b>ISO-orientierter Rechenkern</b><br>
+                    Arbeitet mit Oktavbändern und nähert die Struktur der ISO 9613-2 mit Adiv, Aatm und Agr an. Er benötigt mehr Informationen, z. B. atmosphärische Bedingungen und akustische Spektren, sofern verfügbar.<br><br>
+                    <b>Empfehlung</b><br>
+                    Verwenden Sie den schnellen Rechenkern für Iterationen und den ISO-orientierten Rechenkern für Rezeptoren nahe am Grenzwert oder für belastbarere technische Vergleiche.
+                    """,
+                ),
+                "atmos": (
+                    "Hilfe · Atmosphärische Bedingungen",
+                    """
+                    <b>Wofür diese Werte verwendet werden</b><br><br>
+                    Im ISO-orientierten Rechenkern beeinflussen Temperatur, relative Luftfeuchte und Luftdruck die atmosphärische Absorption nach Frequenzband.<br><br>
+                    <b>Wahl der Werte</b><br>
+                    Verwenden Sie repräsentative Standortbedingungen oder das regulatorische Szenario, das untersucht werden soll. Wenn kein gemessener Druck vorliegt, ist 101,325 kPa ein Referenzwert auf Meereshöhe; in höheren Lagen ist er normalerweise geringer.<br><br>
+                    <b>Wichtig</b><br>
+                    Diese Parameter ändern nicht die akustische Emission der Turbine; sie ändern, wie sich der Schall bis zu den Rezeptoren ausbreitet.
+                    """,
+                ),
+                "acoustic": (
+                    "Hilfe · Akustische Emission LwA und Kennlinien",
+                    """
+                    <b>Fester LwA</b><br><br>
+                    Weist jeder Quellgruppe einen einzigen Schallleistungspegel zu. Das ist einfach und nützlich, wenn nur ein garantierter Wert vorliegt oder ein konservativer Fall gerechnet werden soll.<br><br>
+                    <b>Akustische Kennlinie LwA(ws)</b><br>
+                    Ermöglicht den Import einer Kennlinie in Abhängigkeit von der Windgeschwindigkeit. Das Plugin kann die Emission bei einer bestimmten Windgeschwindigkeit auswerten oder den ungünstigsten Wert der Kennlinie verwenden.<br><br>
+                    <b>Erwartetes CSV</b><br>
+                    Verwenden Sie Spalten für Windgeschwindigkeit und LwA. Ein übliches Format ist <code>ws,LwA</code> oder ein entsprechender Spaltenname.
+                    """,
+                ),
+                "groups": (
+                    "Hilfe · Akustische Quellgruppen",
+                    """
+                    <b>Was jede Zeile darstellt</b><br><br>
+                    Jede Zeile fasst eine Turbinengruppe zusammen, die als akustische Quelle verwendet wird. Normalerweise stammt sie aus einem in VelantisWind erkannten oder importierten Turbinenmodell.<br><br>
+                    <b>Wichtige Spalten</b><br>
+                    • Quellgruppe und Windpark: Namen, damit Berichte und Exporte lesbar bleiben.<br>
+                    • HH und D: Nabenhöhe und Durchmesser für die Ausbreitungsgeometrie.<br>
+                    • Fester LwA: globale akustische Emission, wenn keine Kennlinie verwendet wird.<br>
+                    • CSV-Kennlinie: importierte ws/LwA-Datei für diese Gruppe.<br><br>
+                    <b>Hinweis</b><br>
+                    Wenn mehrere Turbinenmodelle vorhanden sind, prüfen Sie vor der Berechnung, ob jede Gruppe die richtige akustische Emission hat.
+                    """,
+                ),
+            }
+            return data_de.get(key, ("Hilfe", "Für dieses Element ist keine Hilfe verfügbar."))
         data_es = {
             "sources": (
                 "Ayuda · Fuentes acústicas",
@@ -310,16 +547,110 @@ class NoisePage(QtWidgets.QWidget):
                 """,
             ),
         }
-        return (data_es if es else data_en).get(key, ("Help", "No help available for this item."))
+
+        data_fr = {'sources': ('Aide · Sources acoustiques',
+                     '<b>Ce que vous sélectionnez ici</b><br><br>Cette liste contient les couches d’éoliennes détectées ou '
+                     'importées dans VelantisWind. Chaque couche représente généralement un modèle d’éolienne ou un layout '
+                     'acoustique préparé.<br><br><b>Comment l’utiliser</b><br>• Cochez une ou plusieurs couches source si vous '
+                     'voulez calculer le bruit cumulé de tout le parc.<br>• Si vous avez plusieurs modèles d’éolienne, il est '
+                     'généralement préférable de les garder tous sélectionnés.<br>• Le tableau des groupes source ci-dessous '
+                     'permet d’assigner un LwA fixe ou une courbe acoustique à chaque groupe.<br><br><b>Conseil</b><br>Si le '
+                     'résultat semble trop bas, vérifiez qu’aucune couche d’éoliennes n’a été laissée décochée par erreur.'),
+         'receivers': ('Aide · Récepteurs et limites',
+                       '<b>Ce que sont les récepteurs</b><br><br>Ce sont les points ou polygones où le niveau sonore est '
+                       'évalué, par exemple des habitations, des noyaux urbains, des fermes ou des limites '
+                       'sensibles.<br><br><b>Mode simple</b><br>Sélectionnez une seule couche de récepteurs et utilisez une '
+                       'limite globale en dB(A). C’est suffisant pour une première vérification.<br><br><b>Mode par '
+                       'catégories</b><br>Activez plusieurs couches si vous voulez séparer les récepteurs par catégorie, par '
+                       'exemple résidentiel, industriel ou environnemental. Chaque couche peut avoir sa propre limite de jour, '
+                       'limite de nuit et hauteur.<br><br><b>Critère de limite</b><br>Manuel/global utilise la limite '
+                       'générale. Jour/nuit utilise les limites configurées par couche lorsque vous travaillez avec plusieurs '
+                       'catégories.'),
+         'map': ('Aide · Carte de bruit et isophones',
+                 '<b>Carte GIS de bruit</b><br><br>Génère une grille raster avec le niveau sonore estimé autour du parc. Elle '
+                 'est utile pour visualiser les zones d’influence acoustique, mais augmente le temps de '
+                 'calcul.<br><br><b>Résolution</b><br>Une résolution plus fine donne plus de détail mais prend plus de temps. '
+                 'Pour des tests rapides, utilisez 100–200 m ; pour des sorties plus fines, vous pouvez réduire la taille de '
+                 'cellule si la zone n’est pas trop grande.<br><br><b>Isophones</b><br>Les isophones sont des lignes de niveau '
+                 'sonore égal, par exemple 35, 40, 45 et 50 dB(A). Le plugin les génère à partir du raster de bruit.'),
+         'terrain': ('Aide · MDT/DSM, distance et hauteur de récepteur',
+                     '<b>Hauteur du récepteur</b><br><br>Elle représente la hauteur à laquelle le bruit est évalué. Une valeur '
+                     'courante pour des récepteurs résidentiels est 4 m, mais elle peut être ajustée au critère de '
+                     'l’étude.<br><br><b>Rayon maximal</b><br>Il limite les éoliennes qui contribuent à chaque récepteur. Un '
+                     'rayon trop petit peut exclure des sources importantes ; un rayon très grand augmente le coût de '
+                     'calcul.<br><br><b>MDT/DSM</b><br>Si vous sélectionnez un raster de terrain, le calcul peut utiliser des '
+                     'distances 3D et préparer de meilleures corrections topographiques futures. S’il n’est pas sélectionné, '
+                     'le terrain est supposé plat.'),
+         'ground': ('Aide · Atténuation, sol et land-use',
+                    '<b>Atténuation linéaire α</b><br><br>Dans le moteur rapide, α résume de façon simplifiée l’absorption '
+                    'atmosphérique avec la distance. Il ne remplace pas le calcul par bandes du moteur ISO.<br><br><b>Facteur '
+                    'de sol G</b><br>G=0 représente un sol dur ou réfléchissant ; G=1 représente un sol poreux/absorbant. Les '
+                    'valeurs intermédiaires mélangent les deux comportements.<br><br><b>Usage du sol</b><br>Si vous choisissez '
+                    'une couche de land-use, le plugin peut estimer un G effectif pour chaque trajet. Sinon, il utilise le G '
+                    'global défini manuellement.<br><br><b>Format de couche attendu</b><br>• Il doit s’agir d’une <b>couche '
+                    'vectorielle polygonale</b> chargée dans QGIS, par exemple GeoPackage ou Shapefile. Les rasters, lignes et '
+                    'points ne sont pas lus comme couches d’usage du sol.<br>• Elle doit utiliser le <b>même CRS que le '
+                    'projet</b>. Si ce n’est pas le cas, reprojetez-la avant le calcul.<br>• Chaque polygone doit couvrir une '
+                    'zone de terrain avec une valeur G ou une classe d’usage du sol.<br><br><b>Champs '
+                    'recommandés</b><br>Option préférée : un champ numérique avec des valeurs entre 0 et 1 nommé '
+                    '<code>g_factor</code>, <code>g</code>, <code>ground_g</code>, <code>g_value</code> ou '
+                    '<code>G</code>.<br>• <code>0</code> = sol dur/réfléchissant : urbain, asphalte, roche, industriel.<br>• '
+                    '<code>0.5</code> = sol mixte.<br>• <code>1</code> = sol poreux/absorbant : cultures, prairie, pâturage, '
+                    'forêt, végétation.<br><br><b>Alternative par classe texte</b><br>S’il n’y a pas de champ numérique, le '
+                    'plugin essaie de lire une colonne texte nommée <code>uso_suelo</code>, <code>uso</code>, '
+                    '<code>clase</code>, <code>landuse</code>, <code>cover</code> ou <code>type</code>. Si la classe n’est pas '
+                    'reconnue, le G global est utilisé comme secours.'),
+         'engine': ('Aide · Moteur de calcul du bruit',
+                    '<b>Moteur rapide</b><br><br>Utilise une approche source–récepteur simplifiée avec LwA global, divergence '
+                    'géométrique, absorption linéaire et correction de sol. Il est rapide et utile pour le '
+                    'screening.<br><br><b>Moteur aligné ISO</b><br>Travaille par bandes d’octave et approxime la structure ISO '
+                    '9613-2 avec Adiv, Aatm et Agr. Il nécessite plus d’informations, comme les conditions atmosphériques et '
+                    'les spectres acoustiques lorsqu’ils sont disponibles.<br><br><b>Recommandation</b><br>Utilisez le moteur '
+                    'rapide pour itérer et le moteur aligné ISO pour vérifier les récepteurs proches de la limite ou préparer '
+                    'une comparaison technique plus sérieuse.'),
+         'atmos': ('Aide · Conditions atmosphériques',
+                   '<b>À quoi elles servent</b><br><br>Dans le moteur aligné ISO, la température, l’humidité relative et la '
+                   'pression influencent l’absorption atmosphérique par bande de fréquence.<br><br><b>Comment choisir les '
+                   'valeurs</b><br>Utilisez des conditions représentatives du site ou le scénario réglementaire que vous '
+                   'voulez étudier. Si vous n’avez pas de pression mesurée, 101.325 kPa est une référence au niveau de la mer '
+                   '; en altitude elle est généralement plus faible.<br><br><b>Important</b><br>Ces paramètres ne changent pas '
+                   'l’émission acoustique de l’éolienne ; ils changent la façon dont le son se propage jusqu’aux récepteurs.'),
+         'acoustic': ('Aide · Émission acoustique LwA et courbes',
+                      '<b>LwA fixe</b><br><br>Attribue un seul niveau de puissance acoustique à chaque groupe source. C’est '
+                      'simple et utile lorsque vous n’avez qu’une valeur garantie ou que vous voulez créer un cas '
+                      'conservateur.<br><br><b>Courbe acoustique LwA(ws)</b><br>Permet d’importer une courbe selon la vitesse '
+                      'du vent. Le plugin peut évaluer l’émission à une vitesse précise ou prendre le pire cas de la '
+                      'courbe.<br><br><b>CSV attendu</b><br>Utilisez des colonnes de vitesse du vent et de LwA. Le format '
+                      'habituel est une table de type <code>ws,LwA</code> ou des noms équivalents.'),
+         'groups': ('Aide · Groupes source acoustiques',
+                    '<b>Ce que représente chaque ligne</b><br><br>Chaque ligne résume un groupe d’éoliennes utilisé comme '
+                    'source acoustique. Il provient généralement d’un modèle d’éolienne détecté ou importé dans '
+                    'VelantisWind.<br><br><b>Colonnes clés</b><br>• Groupe source et parc : noms utilisés pour rendre les '
+                    'rapports et exportations lisibles.<br>• HH et D : hauteur de moyeu et diamètre utilisés pour la géométrie '
+                    'de propagation.<br>• LwA fixe : émission acoustique globale si vous n’utilisez pas de courbe.<br>• CSV de '
+                    'courbe : fichier ws/LwA importé pour ce groupe.<br><br><b>Conseil</b><br>Si vous avez plusieurs modèles '
+                    'd’éolienne, vérifiez que chaque groupe possède l’émission acoustique correcte avant de calculer.')}
+        if lang == "fr":
+            return data_fr.get(key, ("Aide", "Aucune aide disponible pour cet élément."))
+        if lang == "en":
+            return data_en.get(key, ("Help", "No help available for this item."))
+        return data_es.get(key, ("Ayuda", "No hay ayuda disponible para este elemento."))
 
     def _show_noise_help(self, key: str) -> None:
         title, body = self._noise_help_text(key)
         msg = QtWidgets.QMessageBox(self)
-        msg.setWindowTitle(title)
+        if current_language() in ("fr", "de"):
+            msg.setWindowTitle(title)
+        else:
+            msg.setWindowTitle(_tr_help(title))
         msg.setIcon(QtWidgets.QMessageBox.Information)
         msg.setTextFormat(QtCore.Qt.RichText)
-        msg.setText(body.strip())
+        if current_language() in ("fr", "de"):
+            msg.setText(body.strip())
+        else:
+            msg.setText(_tr_help(body.strip()))
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        _set_help_ok_text(msg)
         msg.exec_()
 
     def _build_ui(self):
@@ -1682,20 +2013,29 @@ class NoisePage(QtWidgets.QWidget):
     def _check_configuration(self):
         msgs: List[str] = []
         ok = True
+        de = str(current_language()).lower().startswith("de")
+        fr = current_language() == "fr"
+
         if not self._model_rows:
             ok = False
-            msgs.append("• No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.")
+            if de:
+                msgs.append("• Es wurden keine Koordinaten-Layer nach Modell erkannt. Importieren Sie hier ein CSV-Layout oder verwenden Sie ein aus dem Energiemodul erzeugtes Layout.")
+            else:
+                msgs.append("• No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.")
         else:
             n_models = len(self._model_rows)
             n_turbs = sum(int(r.get("n_turbines", 0)) for r in self._model_rows)
-            msgs.append(f"• Layout detectado: {n_models} modelo(s) WT y {n_turbs} turbina(s).")
+            if de:
+                msgs.append(f"• Layout erkannt: {n_models} WT-Modell(e) und {n_turbs} Windturbine(n).")
+            else:
+                msgs.append(f"• Layout detectado: {n_models} modelo(s) WT y {n_turbs} turbina(s).")
             src_ids = self._selected_source_layer_ids() or []
             if len(src_ids) == 1:
-                msgs.append("• Acoustic sources: will use 1 source layer manually selected from Inputs.")
+                msgs.append("• Akustische Quellen: Es wird 1 manuell in den Eingaben ausgewählter Quell-Layer verwendet." if de else "• Acoustic sources: will use 1 source layer manually selected from Inputs.")
             elif len(src_ids) > 1:
-                msgs.append(f"• Acoustic sources: will use {len(src_ids)} source layers manually selected from Inputs.")
+                msgs.append(f"• Akustische Quellen: Es werden {len(src_ids)} manuell in den Eingaben ausgewählte Quell-Layer verwendet." if de else f"• Acoustic sources: will use {len(src_ids)} source layers manually selected from Inputs.")
             else:
-                msgs.append("• Acoustic sources: will use all WT layers automatically detected/imported in VelantisWind.")
+                msgs.append("• Akustische Quellen: Es werden alle in VelantisWind automatisch erkannten/importierten WT-Layer verwendet." if de else "• Acoustic sources: will use all WT layers automatically detected/imported in VelantisWind.")
 
         if self.chk_multi_receivers.isChecked():
             n_groups = 0
@@ -1711,22 +2051,22 @@ class NoisePage(QtWidgets.QWidget):
                     n_feats += int(lyr.featureCount())
             if n_groups == 0:
                 ok = False
-                msgs.append("• Falta configurar al menos una capa de receptores en la tabla multi-capa.")
+                msgs.append("• Es muss mindestens ein Rezeptor-Layer in der Mehrlayer-Tabelle konfiguriert werden." if de else "• Falta configurar al menos una capa de receptores en la tabla multi-capa.")
             else:
-                msgs.append(f"• Receptores multi-capa: {n_groups} capa(s) activas y {n_feats} elemento(s) totales.")
-                msgs.append(f"• Criterio de límite por capa: {self.cb_limit_scenario.currentText()}.")
+                msgs.append(f"• Mehrlayer-Rezeptoren: {n_groups} aktive Layer und {n_feats} Elemente insgesamt." if de else f"• Receptores multi-capa: {n_groups} capa(s) activas y {n_feats} elemento(s) totales.")
+                msgs.append(f"• Grenzwertkriterium je Layer: {self.cb_limit_scenario.currentText()}." if de else f"• Criterio de límite por capa: {self.cb_limit_scenario.currentText()}.")
         else:
             receiver_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
             if not receiver_id:
                 ok = False
-                msgs.append("• Falta seleccionar la capa de receptores. Para este flujo se recomienda una capa de puntos o polígonos de viviendas/receptores.")
+                msgs.append("• Es fehlt ein Rezeptor-Layer. Für diesen Workflow wird ein Punkt- oder Polygon-Layer mit Wohngebäuden/Rezeptoren empfohlen." if de else "• Falta seleccionar la capa de receptores. Para este flujo se recomienda una capa de puntos o polígonos de viviendas/receptores.")
             else:
                 lyr = QgsProject.instance().mapLayer(receiver_id)
                 if isinstance(lyr, QgsVectorLayer):
-                    msgs.append(f"• Receptores: {lyr.name()} ({int(lyr.featureCount())} elemento(s)).")
+                    msgs.append(f"• Rezeptoren: {lyr.name()} ({int(lyr.featureCount())} Element(e))." if de else f"• Receptores: {lyr.name()} ({int(lyr.featureCount())} elemento(s)).")
                     if lyr.id() in {str(r.get('layer_id')) for r in self._model_rows}:
                         ok = False
-                        msgs.append("• La capa de receptores coincide con el layout de turbinas. Elige una capa distinta de viviendas/receptores.")
+                        msgs.append("• Der Rezeptor-Layer entspricht dem Turbinenlayout. Wählen Sie einen anderen Layer für Wohngebäude/Rezeptoren." if de else "• La capa de receptores coincide con el layout de turbinas. Elige una capa distinta de viviendas/receptores.")
 
         if self.tbl_models.rowCount() > 0:
             ok_rows = 0
@@ -1751,54 +2091,61 @@ class NoisePage(QtWidgets.QWidget):
                 ok = False
             if empty_groups > 0:
                 ok = False
-                msgs.append(f"• Grupos fuente acústicos: faltan {empty_groups} nombre(s) de grupo en la tabla.")
+                msgs.append(f"• Akustische Quellgruppen: In der Tabelle fehlen {empty_groups} Gruppenname(n)." if de else f"• Grupos fuente acústicos: faltan {empty_groups} nombre(s) de grupo en la tabla.")
             dups = len(group_names) - len(set(group_names))
             if dups > 0:
                 ok = False
-                msgs.append(f"• Grupos fuente acústicos: hay {dups} nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.")
-            msgs.append(f"• Grupos fuente acústicos: {ok_rows}/{self.tbl_models.rowCount()} grupo(s) con LwA válido.")
+                msgs.append(f"• Akustische Quellgruppen: {dups} doppelte Gruppenname(n). Benennen Sie sie für Export und Nachverfolgbarkeit um." if de else f"• Grupos fuente acústicos: hay {dups} nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.")
+            msgs.append(f"• Akustische Quellgruppen: {ok_rows}/{self.tbl_models.rowCount()} Gruppe(n) mit gültigem LwA." if de else f"• Grupos fuente acústicos: {ok_rows}/{self.tbl_models.rowCount()} grupo(s) con LwA válido.")
 
         mode = self._current_acoustic_mode()
         if mode == 'curve':
             curve_settings = self._load_curve_settings()
             n_curves = sum(1 for r in self._model_rows if curve_settings.get(str(r.get('source_group_key') or r.get('layer_id') or r.get('name') or '')) or curve_settings.get(str(r.get('name') or '')))
             if self.chk_curve_worst.isChecked():
-                msgs.append(f"• Escenario acústico: curvas LwA(ws) en peor caso. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).")
+                msgs.append(f"• Akustisches Szenario: LwA(ws)-Kurven im Worst Case. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e)." if de else f"• Escenario acústico: curvas LwA(ws) en peor caso. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).")
             else:
-                msgs.append(f"• Escenario acústico: curvas LwA(ws) a {self.sp_eval_ws.value():.1f} m/s. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).")
+                msgs.append(f"• Akustisches Szenario: LwA(ws)-Kurven bei {self.sp_eval_ws.value():.1f} m/s. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e)." if de else f"• Escenario acústico: curvas LwA(ws) a {self.sp_eval_ws.value():.1f} m/s. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).")
         else:
-            msgs.append("• Escenario acústico: LwA fijo por grupo fuente acústico.")
+            msgs.append("• Akustisches Szenario: fester LwA je akustischer Quellgruppe." if de else "• Escenario acústico: LwA fijo por grupo fuente acústico.")
         if self.chk_multi_receivers.isChecked():
-            msgs.append("• Altura de receptor: se toma de cada capa configurada en la tabla multi-capa.")
+            msgs.append("• Rezeptorhöhe: wird aus jedem in der Mehrlayer-Tabelle konfigurierten Layer übernommen." if de else "• Altura de receptor: se toma de cada capa configurada en la tabla multi-capa.")
         else:
-            msgs.append(f"• Altura de receptor configurada: {self.sp_receiver_h.value():.1f} m.")
-        msgs.append(f"• Radio máximo configurado: {self.sp_max_radius.value():.0f} m.")
-        msgs.append(f"• Atenuación lineal α: {self.sp_alpha.value():.4f} dB/m (absorción atmosférica simplificada).")
+            msgs.append(f"• Konfigurierte Rezeptorhöhe: {self.sp_receiver_h.value():.1f} m." if de else f"• Altura de receptor configurada: {self.sp_receiver_h.value():.1f} m.")
+        msgs.append(f"• Konfigurierter Maximalradius: {self.sp_max_radius.value():.0f} m." if de else f"• Radio máximo configurado: {self.sp_max_radius.value():.0f} m.")
+        msgs.append(f"• Lineare Dämpfung α: {self.sp_alpha.value():.4f} dB/m (vereinfachte atmosphärische Absorption)." if de else f"• Atenuación lineal α: {self.sp_alpha.value():.4f} dB/m (absorción atmosférica simplificada).")
         ground_mode = str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or 'global')
         if ground_mode == 'landuse':
             lu_id = self.cb_landuse.currentData(QtCore.Qt.UserRole)
             lu = QgsProject.instance().mapLayer(lu_id) if lu_id else None
             if lu is not None:
-                msgs.append(f"• Suelo/terreno: desde capa de uso del suelo '{lu.name()}'. G global de respaldo = {self.sp_ground_g.value():.2f}.")
+                msgs.append(f"• Boden/Gelände: aus Landnutzungs-Layer '{lu.name()}'. Globaler G-Fallback = {self.sp_ground_g.value():.2f}." if de else f"• Suelo/terreno: desde capa de uso del suelo '{lu.name()}'. G global de respaldo = {self.sp_ground_g.value():.2f}.")
             else:
-                msgs.append(f"• Suelo/terreno: modo capa activado pero sin capa válida; will use G global = {self.sp_ground_g.value():.2f}.")
+                msgs.append(f"• Boden/Gelände: Layer-Modus aktiv, aber kein gültiger Layer; globaler G-Wert = {self.sp_ground_g.value():.2f} wird als Fallback verwendet." if de else f"• Suelo/terreno: modo capa activado pero sin capa válida; will use G global = {self.sp_ground_g.value():.2f}.")
         else:
-            msgs.append(f"• Factor de suelo G: {self.sp_ground_g.value():.2f} (0=duro, 1=poroso).")
+            msgs.append(f"• Bodenfaktor G: {self.sp_ground_g.value():.2f} (0=hart, 1=porös)." if de else f"• Factor de suelo G: {self.sp_ground_g.value():.2f} (0=duro, 1=poroso).")
         if self.chk_multi_receivers.isChecked():
-            msgs.append("• Límite de receptor: se toma de cada capa configurada en la tabla multi-capa.")
+            msgs.append("• Rezeptorgrenzwert: wird aus jedem in der Mehrlayer-Tabelle konfigurierten Layer übernommen." if de else "• Límite de receptor: se toma de cada capa configurada en la tabla multi-capa.")
         else:
-            msgs.append(f"• Límite de receptor: {self.sp_limit.value():.1f} dB(A).")
-        msgs.append(f"• Configured isophones: {self.le_iso_levels.text().strip() or '35,40,45,50'} dB(A).")
+            msgs.append(f"• Rezeptorgrenzwert: {self.sp_limit.value():.1f} dB(A)." if de else f"• Límite de receptor: {self.sp_limit.value():.1f} dB(A).")
+        msgs.append(f"• Konfigurierte Isophonen: {self.le_iso_levels.text().strip() or '35,40,45,50'} dB(A)." if de else f"• Configured isophones: {self.le_iso_levels.text().strip() or '35,40,45,50'} dB(A).")
         dem_id = self.cb_dem.currentData(QtCore.Qt.UserRole)
         if dem_id:
             dem = QgsProject.instance().mapLayer(dem_id)
             if dem:
-                msgs.append(f"• MDT/DSM seleccionado: {dem.name()} (se muestreará terreno fuente/receptor en el cálculo acústico).")
+                msgs.append(f"• Ausgewähltes DGM/DSM: {dem.name()} (Gelände an Quelle/Rezeptor wird im akustischen Rechenkern abgetastet)." if de else f"• MDT/DSM seleccionado: {dem.name()} (se muestreará terreno fuente/receptor en el cálculo acústico).")
         else:
-            msgs.append("• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.")
+            msgs.append("• Kein DGM/DSM ausgewählt. Die Akustikberechnung startet mit planaren Koordinaten und relativen Quell-/Rezeptorhöhen." if de else "• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.")
 
-        msgs.append("• Método actual: cálculo acústico fuente-receptor para consultoría eólica (Lp = LwA - Adiv - Aatm - Aground). Además puede crear capas GIS de fuentes, enlaces dominantes, receptores fuera de radio, mapa de ruido ráster e isófonas.")
-        msgs.append("• Parámetros de consultoría acústica: límite de receptor, isófonas y factor de suelo G para revisión rápida de cumplimiento e influencia del terreno.")
+        if de:
+            msgs.append("• Aktuelle Methode: akustische Quelle-Rezeptor-Berechnung für Windenergie-Beratung (Lp = LwA - Adiv - Aatm - Aground). Zusätzlich können GIS-Layer für Quellen, dominante Verbindungen, Rezeptoren außerhalb des Radius, Schallraster und Isophonen erzeugt werden.")
+            msgs.append("• Beratungsparameter: Rezeptorgrenzwert, Isophonen und Bodenfaktor G für eine schnelle Prüfung von Einhaltung und Geländeeinfluss.")
+        else:
+            msgs.append("• Método actual: cálculo acústico fuente-receptor para consultoría eólica (Lp = LwA - Adiv - Aatm - Aground). Además puede crear capas GIS de fuentes, enlaces dominantes, receptores fuera de radio, mapa de ruido ráster e isófonas.")
+            msgs.append("• Parámetros de consultoría acústica: límite de receptor, isófonas y factor de suelo G para revisión rápida de cumplimiento e influencia del terreno.")
+        
+        if str(current_language()).lower().startswith("de"):
+            msgs = [_de_cleanup_noise_status(m) for m in msgs]
         self.txt_status.setPlainText("\n".join(msgs))
         self.btn_calc.setEnabled(ok)
 
@@ -1814,20 +2161,20 @@ class NoisePage(QtWidgets.QWidget):
                 w_layer = self.tbl_receiver_groups.cellWidget(r,1)
                 lyr = QgsProject.instance().mapLayer(str(w_layer.currentData(QtCore.Qt.UserRole) or "")) if w_layer else None
                 if not isinstance(lyr, QgsVectorLayer):
-                    errors.append(f"Fila {r+1}: capa de receptores no válida.")
+                    errors.append(f"Zeile {r+1}: ungültiger Rezeptor-Layer." if str(current_language()).lower().startswith("de") else f"Fila {r+1}: capa de receptores no válida.")
                     continue
                 if int(lyr.featureCount()) <= 0:
-                    errors.append(f"Fila {r+1}: la capa '{lyr.name()}' está vacía.")
+                    errors.append(f"Zeile {r+1}: Der Layer '{lyr.name()}' ist leer." if str(current_language()).lower().startswith("de") else f"Fila {r+1}: la capa '{lyr.name()}' está vacía.")
                 n_active += 1
             if n_active <= 0:
-                errors.append("No hay capas activas de receptores por categoría.")
+                errors.append("Es gibt keine aktiven Rezeptor-Layer nach Kategorie." if str(current_language()).lower().startswith("de") else "No hay capas activas de receptores por categoría.")
         else:
             receiver_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
             lyr = QgsProject.instance().mapLayer(receiver_id) if receiver_id else None
             if not isinstance(lyr, QgsVectorLayer):
-                errors.append("Select a valid receiver layer.")
+                errors.append("Wählen Sie einen gültigen Rezeptor-Layer aus." if str(current_language()).lower().startswith("de") else "Select a valid receiver layer.")
             elif int(lyr.featureCount()) <= 0:
-                errors.append(f"La capa de receptores '{lyr.name()}' está vacía.")
+                errors.append(f"Der Rezeptor-Layer '{lyr.name()}' ist leer." if str(current_language()).lower().startswith("de") else f"La capa de receptores '{lyr.name()}' está vacía.")
         for row in range(self.tbl_models.rowCount()):
             name_item = self.tbl_models.item(row, 0)
             name = name_item.text().strip() if name_item else f"fila {row+1}"
@@ -1836,13 +2183,13 @@ class NoisePage(QtWidgets.QWidget):
                 if lwa <= 0:
                     raise ValueError
             except Exception:
-                errors.append(f"{name}: LwA fijo inválido.")
+                errors.append(f"{name}: ungültiger fester LwA." if str(current_language()).lower().startswith("de") else f"{name}: LwA fijo inválido.")
         if float(self.sp_max_radius.value()) <= 0:
-            errors.append("El radio máximo debe ser mayor que 0.")
+            errors.append("Der maximale Radius muss größer als 0 sein." if str(current_language()).lower().startswith("de") else "El radio máximo debe ser mayor que 0.")
         if float(self.sp_grid_res.value()) <= 0:
-            errors.append("La resolución del raster debe ser mayor que 0.")
+            errors.append("Die Rasterauflösung muss größer als 0 sein." if str(current_language()).lower().startswith("de") else "La resolución del raster debe ser mayor que 0.")
         if str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or 'global') == 'landuse' and not self.cb_landuse.currentData(QtCore.Qt.UserRole):
-            warnings.append("Modo suelo desde capa activo sin capa válida: will use G global como respaldo.")
+            warnings.append("Bodenmodus aus Layer ist aktiv, aber ohne gültigen Layer: Der globale G-Wert wird als Fallback verwendet." if str(current_language()).lower().startswith("de") else "Modo suelo desde capa activo sin capa válida: will use G global como respaldo.")
         return errors, warnings
 
     def _run_noise(self):

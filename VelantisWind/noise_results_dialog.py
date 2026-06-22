@@ -4,10 +4,11 @@ from __future__ import annotations
 from typing import Dict, List
 import csv
 import os
+import re
 
 from qgis.PyQt import QtCore, QtWidgets, QtGui
 from qgis.PyQt.QtGui import QGuiApplication
-from .i18n import apply_i18n, install_runtime_i18n_patches, translate_html, tr_text as _tr
+from .i18n import apply_i18n, current_language, install_runtime_i18n_patches, translate_html, tr_text as _tr
 from .ui_core.responsive import fit_to_screen, configure_table
 from qgis.core import QgsFeatureRequest, QgsVectorLayer
 
@@ -26,33 +27,486 @@ except Exception:
 # still kept internally in the result payload, but the default dialog and exports
 # should stay readable for consultancy workflows.
 CONSULTANCY_RECEIVER_COLUMNS = [
-    ("rec_id", "id receptor"),
-    ("rec_type", "tipo"),
-    ("noise_dba", "nivel total dB(A)"),
-    ("limit_dba", "límite dB(A)"),
-    ("margin_db", "margen límite dB"),
-    ("state", "estado"),
-    ("exceeds", "supera límite"),
-    ("n_src", "nº turbinas"),
-    ("near_m", "dist. turbina cercana (m)"),
-    ("dom_model", "modelo dominante"),
-    ("dom_group", "grupo fuente dom."),
-    ("dom_park", "parque dom."),
-    ("src_lwa", "LwA fuente dom. dB(A)"),
+    ("rec_id", "ID récepteur"),
+    ("rec_type", "type"),
+    ("noise_dba", "niveau total dB(A)"),
+    ("limit_dba", "limite dB(A)"),
+    ("margin_db", "marge par rapport à la limite dB"),
+    ("state", "état"),
+    ("exceeds", "dépasse la limite"),
+    ("n_src", "nb éoliennes"),
+    ("near_m", "dist. éolienne proche (m)"),
+    ("dom_model", "modèle dominant"),
+    ("dom_group", "groupe source dom."),
+    ("dom_park", "parc dom."),
+    ("src_lwa", "LwA source dom. dB(A)"),
     ("adiv_db", "Adiv dB"),
     ("aatm_db", "Aatm dB"),
     ("aground_db", "Agr/Aground dB"),
-    ("abar_max_db", "Abar máx. dB"),
-    ("ground_g", "G suelo"),
-    ("ground_md", "modo suelo"),
-    ("rec_h_m", "h receptor m"),
-    ("rec_z_m", "z terreno receptor m"),
-    ("rec_ac_z_m", "z acústica receptor m"),
-    ("dom_src_lyr", "capa fuente dominante"),
+    ("abar_max_db", "Abar max. dB"),
+    ("ground_g", "G sol"),
+    ("ground_md", "mode sol"),
+    ("rec_h_m", "h récepteur m"),
+    ("rec_z_m", "z terrain récepteur m"),
+    ("rec_ac_z_m", "z acoustique récepteur m"),
+    ("dom_src_lyr", "couche source dominante"),
 ]
 
 CONSULTANCY_RECEIVER_KEYS = [key for key, _label in CONSULTANCY_RECEIVER_COLUMNS]
 CONSULTANCY_RECEIVER_HEADERS = [label for _key, label in CONSULTANCY_RECEIVER_COLUMNS]
+
+
+
+def _cleanup_german_noise_html(html: str) -> str:
+    """Post-process German HTML generated from the French report template.
+
+    The runtime translator is intentionally conservative and non-cascading to
+    avoid corrupting short UI labels.  The noise report is long HTML assembled
+    from older French text blocks, so a final DE-only cleanup makes the visible
+    report much less mixed without affecting other languages.
+    """
+    repl = [
+
+        ("Récepteur critique (niveau sonore le plus élevé)", "Kritischer Rezeptor (höchster Schallpegel)"),
+        ("ID récepteur", "Rezeptor-ID"),
+        ("Niveau total", "Gesamtpegel"),
+        ("Limite applicable", "Anwendbarer Grenzwert"),
+        ("Marge", "Abstand zum Grenzwert"),
+        ("Modèle dominant", "Dominantes Modell"),
+        ("Groupe source", "Quellgruppe"),
+        ("Éoliennes contributrices dans le rayon", "Beitragende Windturbinen im Radius"),
+        ("Décomposition des atténuations", "Aufschlüsselung der Dämpfungen"),
+        ("Les valeurs affichées ci-dessous sont les amplitudes d’atténuation utilisées par le modèle. Dans l’équation principale, ces termes sont soustraits au niveau de source.", "Die unten angezeigten Werte sind die vom Modell verwendeten Dämpfungsbeträge. In der Hauptgleichung werden diese Terme vom Quellpegel abgezogen."),
+        ("Puissance acoustique de l’éolienne", "Schallleistung der Windturbine"),
+        ("Dispersion géométrique", "Geometrische Ausbreitungsdämpfung"),
+        ("Absorption dans l’air", "Luftabsorption"),
+        ("Effet du sol", "Bodeneffekt"),
+        ("Diffraction topographique", "Topografische Abschirmung"),
+        ("Abar maximal des contributeurs", "Maximaler Abar der Beitragenden"),
+        ("Abar maximal parmi toutes les éoliennes qui contribuent au récepteur", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Abar pondéré par énergie", "Energiegewichteter Abar"),
+        ("Moyenne pondérée par la contribution acoustique de chaque éolienne", "Mittelwert, gewichtet nach dem akustischen Beitrag jeder Windturbine"),
+        ("Trajets écrantés", "Abgeschirmte Pfade"),
+        ("Nombre d’éoliennes contributrices avec Abar &gt; 0 dB", "Anzahl beitragender Windturbinen mit Abar &gt; 0 dB"),
+        ("Note : le niveau résultant inclut la sommation énergétique multi-source et multi-bande ; ce n’est pas une soustraction directe depuis une seule éolienne.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; er ist keine direkte Subtraktion von einer einzelnen Windturbine."),
+        ("Note : le niveau résultant inclut", "Hinweis: Der Ergebnispegel enthält"),
+        ("sommation énergétique multi-source et multi-bande", "energetische Summierung über mehrere Quellen und Frequenzbänder"),
+        ("ce n’est pas une soustraction directe depuis une seule éolienne", "dies ist keine direkte Subtraktion von einer einzelnen Windturbine"),
+        ("Bande dominante", "Dominantes Band"),
+        ("Origine du spectre", "Spektrumquelle"),
+        ("Glossaire des symboles", "Symbolglossar"),
+        ("Définition compacte des symboles qui apparaissent dans les formules et tableaux de ce rapport.", "Kompakte Definition der Symbole, die in Formeln und Tabellen dieses Berichts erscheinen."),
+        ("Symbole", "Symbol"),
+        ("Signification", "Bedeutung"),
+        ("Portée de ce rapport — à lire avant d’utiliser les résultats", "Geltungsbereich dieses Berichts — vor Nutzung der Ergebnisse lesen"),
+        ("Ce que c’est", "Was es ist"),
+        ("Ce que ce n’est pas", "Was es nicht ist"),
+        ("Simplifications appliquées dans ce mode", "In diesem Modus angewendete Vereinfachungen"),
+        ("Recommandation", "Empfehlung"),
+        ("Statistiques des atténuations", "Dämpfungsstatistik"),
+        ("Statistiques des Dämpfungen", "Dämpfungsstatistik"),
+        ("Estadísticos de Dämpfungen", "Dämpfungsstatistik"),
+        ("Estadísticos de", "Statistik der"),
+        ("Dämpfungen (Abgedeckte Rezeptoren)", "Dämpfungen (abgedeckte Rezeptoren)"),
+        ("Abgedeckte Rezeptoren", "abgedeckte Rezeptoren"),
+        ("Abar Maximum parmi les Turbinen contributrices", "Maximaler Abar-Wert unter den beitragenden Windturbinen"),
+        ("Abar Maximum", "Maximaler Abar"),
+        ("Abar moyen", "Mittlerer Abar"),
+        ("au Rezeptor", "zum Rezeptor"),
+        ("bandes", "Frequenzbänder"),
+        ("bandes.", "Frequenzbänder."),
+        ("Turbinen contributrices", "beitragende Windturbinen"),
+        ("Turbinen contribuyentes", "beitragende Windturbinen"),
+        ("con Turbinen", "mit Windturbinen"),
+        ("con Abar", "mit Abar"),
+        ("Numero de", "Anzahl"),
+        ("Número de", "Anzahl"),
+        ("numéro de", "Anzahl"),
+        ("d’éoliennes", "Windturbinen"),
+        ("de Windturbinen", "Windturbinen"),
+        ("eólica", "Windenergie"),
+        ("Turbine", "Windturbine"),
+        ("Turbinen", "Windturbinen"),
+        ("Rezeptor ne", "Rezeptor bedeutet nicht"),
+        (" ne signifie pas que ", " bedeutet nicht, dass "),
+        (" désactivé", " deaktiviert"),
+        ("désactivé", "deaktiviert"),
+        ("pour le dominanten Pfad", "für den dominanten Pfad"),
+        ("für den dominanten Pfad konnte kein gültiges DGM-Profil extrahiert werden", "für den dominanten Pfad kein gültiges DGM-Profil extrahiert werden konnte"),
+        ("Der Wert Abar dominanter Pfad", "Der Abar-Wert des dominanten Pfads"),
+        ("la Wert", "Der Wert"),
+        ("est obtenu par", "wird ermittelt durch"),
+        ("par sommation énergétique", "durch energetische Summierung"),
+        ("de toutes", "aller"),
+        ("und Frequenzbänder.", "und Frequenzbänder."),
+        ("Im ISO-orientierten Rechenkern, das DGM ändert nicht", "Im ISO-orientierten Rechenkern ändert das DGM nicht"),
+        ("Im schnellen Rechenkern, das DGM", "Im schnellen Rechenkern das DGM"),
+        ("In dieser Berechnung,", "In dieser Berechnung"),
+        ("l’atmosphärische Absorption", "die atmosphärische Absorption"),
+        ("l’Bodeneffekt", "der Bodeneffekt"),
+        ("l’Landnutzung", "die Landnutzung"),
+        ("l’Windturbine", "die Windturbine"),
+        ("l’Emission", "die Emission"),
+        ("l’équation", "die Gleichung"),
+        ("l’itération", "die Iteration"),
+        ("d’Dämpfung", "Dämpfung"),
+        ("d’topografische", "topografische"),
+        ("d’Landnutzung", "Landnutzung"),
+        ("mit ein <b>einziger", "mit einem <b>einzigen"),
+        ("ein <b>einziger manueller G-Wert</b>", "einem <b>einzigen manuellen G-Wert</b>"),
+        ("ein <b>einziger G-Wert je Pfad</b>", "ein <b>einziger G-Wert je Pfad</b>"),
+        ("with ein", "mit einem"),
+        ("with eine", "mit einer"),
+        ("with un", "mit einem"),
+        ("with une", "mit einer"),
+        ("with ", "mit "),
+        ("Adiv représente la geometrische Divergenz", "Adiv steht für die geometrische Divergenz"),
+        ("Aatm wird berechnet je Band", "Aatm wird je Band berechnet"),
+        ("und dépend von", "und hängt ab von"),
+        ("dépend von", "hängt ab von"),
+        ("und des Drucks", "und vom Druck"),
+        ("mit einer formulation vereinfacht", "mit einer vereinfachten Formulierung"),
+        ("Agr ist appliqué comme terme", "Agr wird als Term angewendet"),
+        ("terme de Boden/Gelände", "Boden-/Geländeterm"),
+        ("topografische Abschirmung de base", "grundlegende topografische Abschirmung"),
+        ("lorsqu’un MDT ist disponible", "wenn ein DGM verfügbar ist"),
+        ("Table synthétique pour la Beratung", "Übersichtstabelle für die Beratung"),
+        ("résultats acoustiques par Rezeptor", "akustische Ergebnisse je Rezeptor"),
+        ("source dominante", "dominante Quelle"),
+        ("atténuations principales", "wichtigste Dämpfungen"),
+        ("Les diagnostics internes MDT par paire", "Die internen DGM-Paardiagnosen"),
+        ("sind conservés en mémoire", "werden im Speicher gehalten"),
+        ("mais ne sind pas affichés por defecto", "werden aber standardmäßig nicht angezeigt"),
+        ("n’introduit pas de terme explicite", "führt keinen expliziten Term ein"),
+        ("Même si une Layer de relief existe dans le projet", "Auch wenn im Projekt ein Gelände-Layer vorhanden ist"),
+        ("ce mode ne calcule pas", "berechnet dieser Modus nicht"),
+        ("n’extrait pas de ligne de visée", "extrahiert keine Sichtlinie"),
+        ("n’applique pas de diffraction", "wendet keine Beugung an"),
+        ("la Physik se base donc uniquement sur", "die Physik basiert daher nur auf"),
+        ("la correction empirique de Gelände", "der empirischen Geländekorrektur"),
+        ("Les Werte affichées ci-dessous", "Die unten angezeigten Werte"),
+        ("sind les Beträge", "sind die Beträge"),
+        ("verwendet par le Modell", "die vom Modell verwendet werden"),
+        ("ces termes sind soustraits", "diese Terme werden abgezogen"),
+        ("au niveau de source", "vom Quellpegel"),
+        ("Entrées tatsächlich verwendet dans ce Berechnung", "In dieser Berechnung tatsächlich verwendete Eingaben"),
+        ("Ce moteur travaille en", "Dieser Rechenkern arbeitet mit"),
+        ("Les bandes ne sind pas un résultat", "Die Bänder sind kein Ergebnis"),
+        ("mais la <b>grille fréquentielle de la Methode</b>", "sondern das <b>Frequenzraster der Methode</b>"),
+        ("le Berechnung a besoin", "die Berechnung benötigt"),
+        ("d’une <b>entrée acoustique je Band</b>", "einen <b>akustischen Eingang je Band</b>"),
+        ("Cette entrée kann provenir", "Dieser Eingang kann stammen"),
+        ("d’un Spektrum mesuré/importé", "aus einem gemessenen/importierten Spektrum"),
+        ("ou d’un gabarit/fallback ajusté", "oder aus einer angepassten Vorlage/einem Fallback"),
+        ("au niveau global opérationnel", "an den globalen Betriebspegel"),
+        ("Der Term de Boden se décompose en", "Der Bodenterm wird aufgeteilt in"),
+        ("trois paramètres de Boden indépendants", "drei unabhängige Bodenparameter"),
+        ("werden nicht verwendet ;", "werden nicht verwendet;"),
+        ("ist verwendet", "wird verwendet"),
+        ("Mathématiquement, le plugin applique", "Mathematisch wendet das Plugin an"),
+        ("Lecture correcte d’Abar", "Korrekte Interpretation von Abar"),
+        ("correspond uniquement à", "bezieht sich nur auf"),
+        ("qui contribue le plus", "die am stärksten beiträgt"),
+        ("à sa bande dominante", "und auf ihr dominantes Band"),
+        ("niveen total", "Gesamtpegel"),
+        ("est obtenu par sommation énergétique", "wird durch energetische Summierung ermittelt"),
+        ("Limites und recommandations", "Grenzen und Empfehlungen"),
+        ("Engine rapide", "Schneller Rechenkern"),
+        ("Engine ISO-orientiert", "ISO-orientierter Rechenkern"),
+        ("Adapté au Screening préliminaire", "Geeignet für vorläufiges Screening"),
+        ("aux cartes agiles", "und schnelle Karten"),
+        ("Adapté aux études techniques préliminaires", "Geeignet für vorläufige technische Studien"),
+        ("aux comparaisons", "Vergleiche"),
+        ("à la conception", "für die Auslegung"),
+        ("Simplifications connues", "Bekannte Vereinfachungen"),
+        ("Modèles multiples", "Mehrere Modelle"),
+        ("pris en charge", "unterstützt"),
+        ("n’est pas activé", "ist nicht aktiviert"),
+        ("peut être coûteux", "kann rechenintensiv sein"),
+        ("sur de grandes cartes", "auf großen Karten"),
+        ("Pour les études réglementaires critiques", "Für kritische regulatorische Studien"),
+        ("valider avec des mesures", "mit Messungen validieren"),
+        ("logiciel commercial certifié", "zertifizierte kommerzielle Software"),
+        ("calculée", "berechnet"),
+        ("calculé", "berechnet"),
+        ("appliqué", "angewendet"),
+        ("appliquée", "angewendet"),
+        ("simplificada", "vereinfacht"),
+        ("simplifié", "vereinfacht"),
+        ("simplifiée", "vereinfacht"),
+        ("terme de", "Term für"),
+        ("de sol", "des Bodens"),
+        ("de terrain", "des Geländes"),
+        (" pour ", " für "),
+        ("Acoustic sources", "Akustische Quellen"),
+        ("Noise · Sources", "Schall · Quellen"),
+        ("Sources", "Quellen"),
+        ("Receptores", "Rezeptoren"),
+        ("Rezeptor cubiertos", "abgedeckte Rezeptoren"),
+        ("Rezeptoren cubiertos", "abgedeckte Rezeptoren"),
+        ("Trayectorias apantalladas", "Abgeschirmte Pfade"),
+        ("Número de Turbinen contribuyentes con Abar &gt; 0 dB", "Anzahl beitragender Windturbinen mit Abar &gt; 0 dB"),
+        ("Número de Turbinen contribuyentes con Abar > 0 dB", "Anzahl beitragender Windturbinen mit Abar > 0 dB"),
+        ("NIVEL RESULTANTE", "ERGEBNISPEGEL"),
+        ("NIVEAU RÉSULTANT", "ERGEBNISPEGEL"),
+        ("Nivel resultante", "Ergebnispegel"),
+        ("Banda dominante", "Dominantes Band"),
+        ("Bande dominante", "Dominantes Band"),
+        ("Origen Spektrum", "Spektrumquelle"),
+        ("Origine du spectre", "Spektrumquelle"),
+        ("Estadísticos de Dämpfungen (Abgedeckte Rezeptoren)", "Dämpfungsstatistik (abgedeckte Rezeptoren)"),
+        ("Estadísticos de Dämpfungen", "Dämpfungsstatistik"),
+        ("Statistiques des Dämpfungen", "Dämpfungsstatistik"),
+        ("DGM-Lesart :", "DGM-Hinweis:"),
+        ("au kritischer Rezeptor", "am kritischen Rezeptor"),
+        ("ne signifie pas que das DGM ist désactivé", "bedeutet nicht, dass das DGM deaktiviert ist"),
+        ("es bedeutet, dass für den dominanten Pfad konnte kein gültiges DGM-Profil extrahiert werden", "es bedeutet, dass für den dominanten Pfad kein gültiges DGM-Profil extrahiert werden konnte"),
+        ("Korrekte Interpretation von Abar :", "Korrekte Interpretation von Abar:"),
+        ("la Wert Abar dominanter Pfad", "Der Wert Abar des dominanten Pfads"),
+        ("bezieht sich nur auf die Windturbine die am stärksten beiträgt", "bezieht sich nur auf die Windturbine, die am stärksten zum Rezeptor beiträgt"),
+        ("und auf ihr dominantes Band", "und auf ihr dominantes Band"),
+        ("Le Gesamtpegel des Rezeptors", "Der Gesamtpegel des Rezeptors"),
+        ("de toutes die Windturbinen und bandes", "aller Windturbinen und Frequenzbänder"),
+        ("toutes die Windturbinen und bandes", "aller Windturbinen und Frequenzbänder"),
+        ("Abar Maximal entre les Turbinen contributrices", "Maximaler Abar-Wert unter den beitragenden Windturbinen"),
+        ("Abar maximal parmi les Turbinen contributrices", "Maximaler Abar-Wert unter den beitragenden Windturbinen"),
+        ("Abar moyen", "Mittlerer Abar"),
+        ("nach akustischem Beitrag gewichtetes Abar", "Nach akustischem Beitrag gewichteter Abar"),
+        ("trajets écrantés", "abgeschirmte Pfade"),
+        ("Höhen des dominanten Pfads :", "Höhen des dominanten Pfads:"),
+        ("Gelände Windturbine", "Gelände Turbine"),
+        ("hub=", "Nabenhöhe="),
+        ("akustische Turbinenhöhe", "akustische Turbinenhöhe"),
+        ("Gelände Rezeptor", "Gelände Rezeptor"),
+        ("h Rezeptor", "Rezeptorhöhe"),
+        ("akustische Rezeptorhöhe", "akustische Rezeptorhöhe"),
+        ("Nota: el nivel resultante incluye la suma energética multi-Quelle y multi-banda; no es una resta directa de una única Turbine.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; er ist keine direkte Subtraktion von einer einzelnen Turbine."),
+        ("Nota: el nivel resultante incluye", "Hinweis: Der Ergebnispegel enthält"),
+        ("la suma energética multi-Quelle y multi-banda", "die energetische Summierung über mehrere Quellen und Frequenzbänder"),
+        ("no es una resta directa de una única Turbine", "er ist keine direkte Subtraktion von einer einzelnen Turbine"),
+        ("Aatm (atmospheric)", "Aatm (Atmosphäre)"),
+        ("Agr (sol)", "Agr (Boden)"),
+        ("Abar trayectoria dominante", "Abar dominanter Pfad"),
+        ("Maximum contributors Abar", "Maximaler Abar-Wert der beitragenden Turbinen"),
+        ("Energy-weighted Abar", "Energiegewichteter Abar"),
+        ("Average weighted by the acoustic contribution of each turbine", "Mittelwert, gewichtet nach dem akustischen Beitrag jeder Turbine"),
+        ("Number de Windturbinen contributrices avec Abar &gt; 0 dB", "Anzahl beitragender Windturbinen mit Abar &gt; 0 dB"),
+        ("Number de Windturbinen contributrices avec Abar > 0 dB", "Anzahl beitragender Windturbinen mit Abar > 0 dB"),
+        ("Description", "Beschreibung"),
+        ("Valeur [dB]", "Wert [dB]"),
+        ("Terme", "Term"),
+        ("Moyenne [dB]", "Mittelwert [dB]"),
+        ("Maximum [dB]", "Maximum [dB]"),
+        ("Promedio ponderado por la contribución acústica de cada turbina", "Mittelwert, gewichtet nach dem akustischen Beitrag jeder Turbine"),
+        ("Número de turbinas contribuyentes", "Anzahl beitragender Windturbinen"),
+        ("contributrices", "beitragend"),
+        ("contribuyentes", "beitragend"),
+        (" avec ", " mit "),
+    ]
+
+    repl.extend([
+        # Critical receptor table / visible summary leftovers
+        ("Dämpfung due zur Bodeneffekt", "Dämpfung durch Bodeneffekt"),
+        ("Dämpfung due zur Bodenefekt", "Dämpfung durch Bodeneffekt"),
+        ("Dämpfung due zur Bodeneffekt", "Dämpfung durch Bodeneffekt"),
+        ("Máximo Abar zwischen todas las turbinas que contribuyen al receptor", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Máximo Abar entre todas las turbinas que contribuyen al receptor", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Anzahl beitragenWindturbinen mit Abar &gt; 0 dB", "Anzahl beitragender Windturbinen mit Abar &gt; 0 dB"),
+        ("Anzahl beitragenWindturbinen mit Abar > 0 dB", "Anzahl beitragender Windturbinen mit Abar > 0 dB"),
+        ("Anzahl beitragenWindturbinen", "Anzahl beitragender Windturbinen"),
+        ("Número de Turbinen contribuyentes con Abar &gt; 0 dB", "Anzahl beitragender Windturbinen mit Abar &gt; 0 dB"),
+        ("Número de Turbinen contribuyentes con Abar > 0 dB", "Anzahl beitragender Windturbinen mit Abar > 0 dB"),
+        ("Nota: el nivel resultante incluye la suma energética multi-Quelle y multi-banda; no es una resta directa de una única Turbine.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; er ist keine direkte Subtraktion von einer einzelnen Windturbine."),
+        ("Nota: el nivel resultante incluye la suma energética multi-Quelle y multi-banda; no es una resta directa de una única Windturbine.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; er ist keine direkte Subtraktion von einer einzelnen Windturbine."),
+        ("Banda dominante:", "Dominantes Band:"),
+        ("Origen Spectrum:", "Spektrumquelle:"),
+        ("Origen Spektrum:", "Spektrumquelle:"),
+        ("Die unten angezeigten Werte sind die Beträge Dämpfung die vom Modell verwendet werden. In die Gleichung principale, diese Term werden abgezogen au niveau der Quelle.", "Die unten angezeigten Werte sind die vom Modell verwendeten Dämpfungsbeträge. In der Hauptgleichung werden diese Terme vom Quellpegel abgezogen."),
+        ("Beträge Dämpfung", "Dämpfungsbeträge"),
+        ("In die Gleichung principale", "In der Hauptgleichung"),
+        ("diese Term werden abgezogen au niveau der Quelle", "diese Terme werden vom Quellpegel abgezogen"),
+        ("Dämpfung die vom Modell verwendet werden", "Dämpfungsbeträge, die vom Modell verwendet werden"),
+
+        # Topographic-screening section leftovers
+        ("Écran topographique mit MDT", "Topografische Abschirmung mit DGM"),
+        ("Écran topographique avec MDT", "Topografische Abschirmung mit DGM"),
+        ("Das DGM ändert nicht die Emission der Windturbine noch die atmosphärische Absorption. Seine Funktion ist es, zu beschreiben la géométrie real des Pfads und d'alimenter der Term Abar,b.", "Das DGM ändert weder die Schallemission der Windturbine noch die atmosphärische Absorption. Seine Funktion besteht darin, die reale Geometrie des Quelle-Rezeptor-Pfads zu beschreiben und den topografischen Abschirmungsterm Abar,b zu speisen."),
+        ("Das DGM ändert nicht die Emission der Windturbine", "Das DGM ändert die Schallemission der Windturbine nicht"),
+        ("noch die atmosphärische Absorption", "und nicht die atmosphärische Absorption"),
+        ("Seine Funktion ist es, zu beschreiben la géométrie real des Pfads und d'alimenter der Term Abar,b", "Seine Funktion besteht darin, die reale Geometrie des Quelle-Rezeptor-Pfads zu beschreiben und den Term Abar,b zu speisen"),
+        ("la géométrie real des Pfads", "die reale Geometrie des Pfads"),
+        ("d'alimenter der Term", "den Term zu speisen"),
+        ("Perfil del terreno", "Geländeprofil"),
+        ("le profil Quelle–Rezeptor ist extrait du MDT mit einem adaptive Abtastung", "das Quelle-Rezeptor-Profil wird aus dem DGM mit adaptiver Abtastung extrahiert"),
+        ("le profil Quelle-Rezeptor ist extrait du MDT mit einem adaptive Abtastung", "das Quelle-Rezeptor-Profil wird aus dem DGM mit adaptiver Abtastung extrahiert"),
+        ("Línea de visión", "Sichtlinie"),
+        ("la droite zwischen la Höhe efectiva der Quelle und la Rezeptorhöhe ist construite", "die Gerade zwischen der effektiven Quellhöhe und der Rezeptorhöhe wird konstruiert"),
+        ("Si le Gelände bleibt toujours en dessous, alors", "Wenn das Gelände stets darunter bleibt, gilt"),
+        ("Obstáculo dominante", "Dominantes Hindernis"),
+        ("si une colline ou une crête dépasse", "wenn ein Hügel oder Grat die Sichtlinie überschreitet"),
+        ("la Höhe au-dessus de la ligne de visée wird berechnet", "wird die Höhe über der Sichtlinie berechnet"),
+        ("le relief coupe la vision directe", "das Gelände schneidet die direkte Sichtlinie"),
+        ("eine Dämpfung supplémentaire par diffraction kann apparaître", "eine zusätzliche Dämpfung durch Beugung kann auftreten"),
+        ("Géométrie real de l'obstacle", "Reale Geometrie des Hindernisses"),
+        ("le plugin utilise la position réelle de l'obstacle dominant", "das Plugin verwendet die reale Position des dominanten Hindernisses"),
+        ("et calcule", "und berechnet"),
+        ("Activation conservative", "Konservative Aktivierung"),
+        ("Abar ist nicht aktiviert für de petites irrégularités du MDT", "Abar wird nicht für kleine DGM-Unregelmäßigkeiten aktiviert"),
+        ("un seuil minimal lié à la résolution du raster ist exigé", "es wird ein Mindestschwellwert in Bezug auf die Rasterauflösung verlangt"),
+        ("Diffraction de tipo Fresnel", "Fresnel-artige Beugung"),
+        ("Diffraction de type Fresnel", "Fresnel-artige Beugung"),
+        ("mit cette géométrie", "mit dieser Geometrie"),
+        ("une différence de chemins und un nombre de Fresnel sind estimés", "werden eine Weglängendifferenz und eine Fresnel-Zahl geschätzt"),
+        ("Ce nombre est ensuite transformé en une Dämpfung", "Diese Zahl wird anschließend in eine Dämpfung umgewandelt"),
+        ("dépendante de la fréquence au moyen de l’approximation actuelle du plugin", "die mit der aktuellen Plugin-Näherung frequenzabhängig ist"),
+        ("En l’implémentation actuelle", "In der aktuellen Implementierung"),
+        ("Abar ist également limité à des Werte raisonnables", "Abar wird außerdem auf plausible Werte begrenzt"),
+        ("plafonnement supérieur", "obere Begrenzung"),
+        ("afin d’éviter des suratténuations parasites", "um unerwünschte Überdämpfungen zu vermeiden"),
+        ("En l’absence de MDT ou d’obstacle pertinent", "Ohne DGM oder relevantes Hindernis"),
+        ("alors Abar,b = 0", "gilt Abar,b = 0"),
+    ])
+
+
+    repl.extend([
+        ("Abar dominanter Pfad", "Abar des dominanten Pfads"),
+        ("Maximaler Abar beitragend", "Maximaler Abar-Wert der Beitragenden"),
+        ("Abar maximal contrib.", "Maximaler Abar-Wert der Beitragenden"),
+        ("Maximaler Abar zwischen todas las turbinas que contribuyen al receptor", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Máximo Abar zwischen todas las turbinas que contribuyen al receptor", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Máximo Abar entre toutes les éoliennes qui contribuent au récepteur", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Mittelwert, gewichtet nach dem akustischen Beitrag jeder Turbine", "Mittelwert, gewichtet nach dem akustischen Beitrag jeder Windturbine"),
+        ("Anzahl beitragenWindturbinen", "Anzahl beitragender Windturbinen"),
+        ("Anzahl beitragendWindturbinen", "Anzahl beitragender Windturbinen"),
+        ("Anzahl beitragen Turbinen", "Anzahl beitragender Windturbinen"),
+        ("Anzahl de Windturbinen", "Anzahl der Windturbinen"),
+        ("Número de Turbinen contribuyentes con Abar &gt; 0 dB", "Anzahl beitragender Windturbinen mit Abar &gt; 0 dB"),
+        ("Número de Turbinen contribuyentes con Abar > 0 dB", "Anzahl beitragender Windturbinen mit Abar > 0 dB"),
+        ("ERGENISPEGEL", "ERGEBNISPEGEL"),
+        ("NIVEAU RÉSULTANT", "ERGEBNISPEGEL"),
+        ("NIVEL RESULTANTE", "ERGEBNISPEGEL"),
+        ("Nota : le niveau résultant inclut", "Hinweis: Der Ergebnispegel enthält"),
+        ("Nota: el nivel resultante incluye", "Hinweis: Der Ergebnispegel enthält"),
+        ("la suma energética multi-Quelle y multi-banda", "die energetische Summierung über mehrere Quellen und Frequenzbänder"),
+        ("la sommation énergétique multi-Quelle y multi-banda", "die energetische Summierung über mehrere Quellen und Frequenzbänder"),
+        ("multi-Quelle y multi-banda", "über mehrere Quellen und Frequenzbänder"),
+        ("no es una resta directa de una única Windturbine", "dies ist keine direkte Subtraktion von einer einzelnen Windturbine"),
+        ("no es una resta directa de una única Turbine", "dies ist keine direkte Subtraktion von einer einzelnen Windturbine"),
+        ("ce n’est pas une resta directa de una única Windturbine", "dies ist keine direkte Subtraktion von einer einzelnen Windturbine"),
+        ("Dominantes Band:", "Dominantes Frequenzband:"),
+        ("Banda dominante", "Dominantes Frequenzband"),
+        ("Origen Spectrum", "Spektrumquelle"),
+        ("Origen Spektrum", "Spektrumquelle"),
+        ("Spektrumquelle:", "Spektrumquelle:"),
+        ("Estadísticos de Dämpfungen", "Dämpfungsstatistik"),
+        ("Statistiques de Dämpfungen", "Dämpfungsstatistik"),
+        ("(Abgedeckte Rezeptoren)", "(abgedeckte Rezeptoren)"),
+        ("Dämpfung due zur Bodeneffekt", "Dämpfung durch Bodeneffekt"),
+        ("Dämpfung due zur Bodenefekt", "Dämpfung durch Bodeneffekt"),
+        ("Dämpfung due à l’effet de sol", "Dämpfung durch Bodeneffekt"),
+        ("DEM auf dem dominanten Pfad", "DGM auf dem dominanten Pfad"),
+        ("Abar trayectoria dominante", "Abar des dominanten Pfads"),
+        ("Trayectorias apantalladas", "Abgeschirmte Pfade"),
+        ("Trajectoires écrantées", "Abgeschirmte Pfade"),
+        ("con Abar", "mit Abar"),
+        ("contribuyen al receptor", "zum Rezeptor beitragen"),
+        ("entre todas las turbinas", "unter allen Windturbinen"),
+        ("zwischen todas las turbinas", "unter allen Windturbinen"),
+        ("todas las turbinas", "allen Windturbinen"),
+        ("éoliennes qui contribuent au récepteur", "Windturbinen, die zum Rezeptor beitragen"),
+        # Topographic-screening report section
+        ("Écran topographique mit MDT", "Topografische Abschirmung mit DGM"),
+        ("Écran topographique avec MDT", "Topografische Abschirmung mit DGM"),
+        ("Das DGM ändert nicht die Emission der Windturbine noch die atmosphärische Absorption", "Das DGM ändert weder die Schallemission der Windturbine noch die atmosphärische Absorption"),
+        ("Das DGM ändert die Schallemission der Windturbine nicht und nicht die atmosphärische Absorption", "Das DGM ändert weder die Schallemission der Windturbine noch die atmosphärische Absorption"),
+        ("Seine Funktion ist es, zu beschreiben la géométrie real des Pfads und d'alimenter der Term Abar,b", "Seine Funktion besteht darin, die reale Geometrie des Quelle-Rezeptor-Pfads zu beschreiben und den Term Abar,b zu speisen"),
+        ("zu beschreiben la géométrie real des Pfads", "die reale Geometrie des Quelle-Rezeptor-Pfads zu beschreiben"),
+        ("d'alimenter der Term Abar,b", "den Term Abar,b zu speisen"),
+        ("Perfil del terreno", "Geländeprofil"),
+        ("le profil Quelle–Rezeptor ist extrait du MDT mit einem adaptive Abtastung", "das Quelle-Rezeptor-Profil wird aus dem DGM mit adaptiver Abtastung extrahiert"),
+        ("le profil Quelle-Rezeptor ist extrait du MDT mit einem adaptive Abtastung", "das Quelle-Rezeptor-Profil wird aus dem DGM mit adaptiver Abtastung extrahiert"),
+        ("Línea de visión", "Sichtlinie"),
+        ("la droite zwischen la Höhe efectiva der Quelle und la Rezeptorhöhe ist construite", "die Gerade zwischen der effektiven Quellhöhe und der Rezeptorhöhe wird konstruiert"),
+        ("Si le Gelände bleibt toujours en dessous, alors", "Wenn das Gelände stets darunter bleibt, gilt"),
+        ("Obstáculo dominante", "Dominantes Hindernis"),
+        ("si une colline ou une crête dépasse", "wenn ein Hügel oder Grat die Sichtlinie überschreitet"),
+        ("la Höhe au-dessus de la ligne de visée wird berechnet", "wird die Höhe über der Sichtlinie berechnet"),
+        ("le relief coupe la vision directe", "das Gelände schneidet die direkte Sichtlinie"),
+        ("eine Dämpfung supplémentaire par diffraction kann apparaître", "eine zusätzliche Dämpfung durch Beugung kann auftreten"),
+        ("Géométrie real de l'obstacle", "Reale Geometrie des Hindernisses"),
+        ("le plugin utilise la position réelle de l'obstacle dominant", "das Plugin verwendet die reale Position des dominanten Hindernisses"),
+        ("et calcule", "und berechnet"),
+        ("Activation conservative", "Konservative Aktivierung"),
+        ("Abar ist nicht activé für de petites irrégularités du MDT", "Abar wird nicht für kleine DGM-Unregelmäßigkeiten aktiviert"),
+        ("Abar ist nicht aktiviert für de petites irrégularités du MDT", "Abar wird nicht für kleine DGM-Unregelmäßigkeiten aktiviert"),
+        ("un seuil minimal lié à la résolution du raster ist exigé", "es wird ein Mindestschwellwert in Bezug auf die Rasterauflösung verlangt"),
+        ("Diffraction de tipo Fresnel", "Fresnel-artige Beugung"),
+        ("Diffraction de type Fresnel", "Fresnel-artige Beugung"),
+        ("mit cette géométrie", "mit dieser Geometrie"),
+        ("une différence de chemins und un nombre de Fresnel sind estimés", "werden eine Weglängendifferenz und eine Fresnel-Zahl geschätzt"),
+        ("Ce nombre est ensuite transformé en une Dämpfung", "Diese Zahl wird anschließend in eine Dämpfung umgewandelt"),
+        ("dépendante de la fréquence au moyen de l’approximation actuelle du plugin", "die mit der aktuellen Plugin-Näherung frequenzabhängig ist"),
+        ("En l’implémentation actuelle", "In der aktuellen Implementierung"),
+        ("Abar ist également limité à des Werte raisonnables", "Abar wird außerdem auf plausible Werte begrenzt"),
+        ("plafonnement supérieur", "obere Begrenzung"),
+        ("afin d’éviter des suratténuations parasites", "um unerwünschte Überdämpfungen zu vermeiden"),
+        ("En l’absence de MDT ou d’obstacle pertinent", "Ohne DGM oder relevantes Hindernis"),
+        ("alors Abar,b = 0", "gilt Abar,b = 0"),
+    ])
+
+    repl.extend([
+        ("Dämpfung due zur Bodeneffekt", "Dämpfung durch Bodeneffekt"),
+        ("Dämpfung due zur Bodenwirkung", "Dämpfung durch Bodeneffekt"),
+        ("Atenuación por MDT en la trayectoria dominante", "Dämpfung durch DGM auf dem dominanten Pfad"),
+        ("Atenuación por apantallamiento topográfico", "Dämpfung durch topografische Abschirmung"),
+        ("Trayectorias apantalladas", "Abgeschirmte Pfade"),
+        ("Trajets écrantés", "Abgeschirmte Pfade"),
+        ("NIVEL RESULTANTE", "ERGEBNISPEGEL"),
+        ("NIVEAU RÉSULTANT", "ERGEBNISPEGEL"),
+        ("Banda dominante", "Dominantes Frequenzband"),
+        ("Origen Spectrum", "Spektrumquelle"),
+        ("Origen Spektrum", "Spektrumquelle"),
+        ("Nota: el nivel resultante incluye la suma energética multi-Quelle y multi-banda; no es una resta directa de una única Windturbine.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; dies ist keine direkte Subtraktion von einer einzelnen Windturbine."),
+        ("Nota: el nivel resultante incluye la suma energética multi-fuente y multi-banda; no es una resta directa de una única turbina.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; dies ist keine direkte Subtraktion von einer einzelnen Windturbine."),
+        ("Máximo Abar zwischen todas las turbinas que contribuyen al receptor", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Maximo Abar zwischen todas las turbinas que contribuyen al receptor", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen"),
+        ("Número de Turbinen contribuyentes con Abar", "Anzahl beitragender Windturbinen mit Abar"),
+        ("Número de Windturbinen contribuyentes con Abar", "Anzahl beitragender Windturbinen mit Abar"),
+        ("Anzahl beitragenWindturbinen", "Anzahl beitragender Windturbinen"),
+        ("Anzahl beitragen Windturbinen", "Anzahl beitragender Windturbinen"),
+        ("Estadísticos de Dämpfungen", "Dämpfungsstatistik"),
+        ("Estadísticos de Dämpfungen (Abgedeckte Rezeptoren)", "Dämpfungsstatistik (abgedeckte Rezeptoren)"),
+        ("Écran topographique mit MDT", "Topografische Abschirmung mit DGM"),
+        ("mit MDT", "mit DGM"),
+        ("del receptor", "des Rezeptors"),
+        ("al receptor", "zum Rezeptor"),
+        ("de una única", "einer einzelnen"),
+        ("turbina", "Windturbine"),
+    ])
+
+    repl.extend([
+        # Final grammar smoothing after broad fragment replacements
+        ("Anzahl beitragende Windturbinen", "Anzahl beitragender Windturbinen"),
+        ("Anzahl beitragend Windturbinen", "Anzahl beitragender Windturbinen"),
+        ("Anzahl beitragende Turbinen", "Anzahl beitragender Turbinen"),
+        ("Anzahl beitragend Turbinen", "Anzahl beitragender Turbinen"),
+        ("Dämpfung Dämpfung", "Dämpfung"),
+        ("Dämpfungsbeträge Dämpfung", "Dämpfungsbeträge"),
+        ("in der Hauptgleichung, diese Terme", "In der Hauptgleichung werden diese Terme"),
+        ("In der Hauptgleichung, diese Terme", "In der Hauptgleichung werden diese Terme"),
+        ("diese Terme werden abgezogen vom Quellpegel", "diese Terme werden vom Quellpegel abgezogen"),
+        ("diese Terme werden vom Quellpegel abgezogen vom Quellpegel", "diese Terme werden vom Quellpegel abgezogen"),
+    ])
+
+    for a, b in repl:
+        html = html.replace(a, b)
+    # Final conservative regex pass for common mixed-language connectors.
+    html = re.sub(r"Número de\s+(?:Turbinen|Windturbinen)\s+contribuyentes\s+con\s+Abar\s*(&gt;|>)\s*0\s*dB", r"Anzahl beitragender Windturbinen mit Abar \1 0 dB", html)
+    html = re.sub(r"Máximo Abar.*?(?:contribuyen al receptor|contribuent au récepteur)", "Maximaler Abar-Wert unter allen Windturbinen, die zum Rezeptor beitragen", html)
+    html = re.sub(r"Nota\s*:\s*el nivel resultante.*?(?:Turbine|Windturbine)\.", "Hinweis: Der Ergebnispegel enthält die energetische Summierung über mehrere Quellen und Frequenzbänder; dies ist keine direkte Subtraktion von einer einzelnen Windturbine.", html)
+    html = re.sub(r"Banda dominante\s*:", "Dominantes Frequenzband:", html)
+    html = re.sub(r"Origen\s+(?:Spectrum|Spektrum)\s*:", "Spektrumquelle:", html)
+    return html
 
 
 class NoiseResultsDialog(QtWidgets.QDialog):
@@ -60,12 +514,12 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         install_runtime_i18n_patches()
         super().__init__(parent)
         self._res = result or {}
-        self.setWindowTitle(_tr("Noise · Technical summary"))
+        self.setWindowTitle("Schall · Technische Übersicht" if str(current_language()).lower().startswith("de") else _tr("Bruit · Résumé technique"))
         self.setModal(True)
         self._resize_to_screen()
         self._build_ui()
-        self._fill()
         apply_i18n(self)
+        self._fill()
 
     def _resize_to_screen(self):
         fit_to_screen(self, preferred=(1100, 820), minimum=(680, 460), max_ratio=(0.92, 0.90))
@@ -76,7 +530,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         root.setSpacing(8)
 
         header = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("Noise · Calculation summary")
+        title = QtWidgets.QLabel("Schall · Berechnungsübersicht" if str(current_language()).lower().startswith("de") else "Bruit · Résumé du calcul")
         title.setStyleSheet("font-size:20px; font-weight:700; color:#103b67;")
         header.addWidget(title, 1)
         header.addStretch(1)
@@ -94,67 +548,93 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         root.addWidget(self.tabs, 1)
 
         self.page_summary = QtWidgets.QTextBrowser(self)
-        self.tabs.addTab(self.page_summary, "Resumen")
+        self.tabs.addTab(self.page_summary, "Résumé")
 
         self.tbl_models = QtWidgets.QTableWidget(0, 6, self)
-        self.tbl_models.setHorizontalHeaderLabels(["Modelo WT", "Turbinas", "LwA eff.", "HH", "D", "Notas"])
+        self.tbl_models.setHorizontalHeaderLabels(["Modèle WT", "Éoliennes", "LwA eff.", "HH", "D", "Notes"])
         configure_table(self.tbl_models, stretch_columns=(0, 5))
         self.tbl_models.horizontalHeader().setStretchLastSection(True)
-        self.tabs.addTab(self.tbl_models, "Modelos")
+        self.tabs.addTab(self.tbl_models, "Modèles")
 
         self.tbl_top = QtWidgets.QTableWidget(0, len(CONSULTANCY_RECEIVER_HEADERS), self)
         self.tbl_top.setHorizontalHeaderLabels(CONSULTANCY_RECEIVER_HEADERS)
         self.tbl_top.setToolTip(
-            "Tabla resumida para consultoría: resultados acústicos por receptor, "
-            "cumplimiento, fuente dominante y atenuaciones principales. "
-            "Los diagnósticos internos MDT por pares se conservan en memoria, pero no se muestran por defecto."
+            "Table synthétique pour la consultation : résultats acoustiques par récepteur, "
+            "conformité, source dominante et atténuations principales. "
+            "Les diagnostics internes MDT par paire sont conservés en mémoire, mais ne sont pas affichés par défaut."
         )
         configure_table(self.tbl_top, stretch_columns=(0, 1, 9, 10, 11, 22))
         self.tbl_top.horizontalHeader().setStretchLastSection(True)
-        self.tabs.addTab(self.tbl_top, "Top receptores")
+        self.tabs.addTab(self.tbl_top, "principaux récepteurs")
 
         # Internal MDT screening table kept for compatibility with helper methods,
         # but no longer exposed as a default consultancy tab/export.
         self.tbl_mdt = QtWidgets.QTableWidget(0, 27, self)
         self.tbl_mdt.setHorizontalHeaderLabels([
-            'id receptor', 'nivel total dB(A)', 'nº turbinas', 'Abar max contrib. dB',
-            'Abar ponderada dB', 'turbinas apant.', 'estado MDT dom.', 'Abar dom. dB',
-            'ID fuente max Abar', 'estado max Abar', 'obs. max Abar m',
-            'umbral max Abar m', 'd1 max Abar m', 'd2 max Abar m',
-            'ID fuente max obst.', 'estado max obst.', 'obs. max obst. m',
-            'umbral max obst. m', 'd1 max obst. m', 'd2 max obst. m',
-            'z terreno receptor m', 'h receptor m', 'z acústica receptor m',
-            'z terreno turb. dom. m', 'z acústica turb. dom. m',
-            'z terreno turb. max Abar m', 'z acústica turb. max Abar m'
+            'ID récepteur', 'niveau total dB(A)', 'nb éoliennes', 'Abar max contrib. dB',
+            'Abar pondéré dB', 'éoliennes écrantées', 'état MDT dom.', 'Abar dom. dB',
+            'ID source Abar max', 'état Abar max', 'obs. Abar max m',
+            'seuil Abar max m', 'd1 Abar max m', 'd2 Abar max m',
+            'ID source obstacle max', 'état obstacle max', 'obs. obstacle max m',
+            'seuil obstacle max m', 'd1 obstacle max m', 'd2 obstacle max m',
+            'z terrain récepteur m', 'h récepteur m', 'z acoustique récepteur m',
+            'z terrain éolienne dom. m', 'z acoustique éolienne dom. m',
+            'z terrain éolienne Abar max m', 'z acoustique éolienne Abar max m'
         ])
 
         self.tbl_layers = QtWidgets.QTableWidget(0, 2, self)
-        self.tbl_layers.setHorizontalHeaderLabels(["Capa", "Estado"])
+        self.tbl_layers.setHorizontalHeaderLabels(["Couche", "État"])
         self.tbl_layers.horizontalHeader().setStretchLastSection(True)
-        self.tabs.addTab(self.tbl_layers, "Capas creadas")
+        self.tabs.addTab(self.tbl_layers, "Couches créées")
 
         btns = QtWidgets.QHBoxLayout()
-        self.btn_export_summary = QtWidgets.QPushButton("Exportar informe…")
-        self.btn_export_summary.setToolTip("Guarda el resumen técnico en HTML o TXT.")
+        self.btn_export_summary = QtWidgets.QPushButton("Exporter le rapport…")
+        self.btn_export_summary.setToolTip("Enregistre le résumé technique en HTML ou TXT.")
         self.btn_export_summary.clicked.connect(self._export_summary)
-        self.btn_export_receivers = QtWidgets.QPushButton("Exportar receptores CSV…")
-        self.btn_export_receivers.setToolTip("Guarda una tabla limpia con una fila por receptor y las columnas necesarias para consultoría.")
+        self.btn_export_receivers = QtWidgets.QPushButton("Exporter les récepteurs CSV…")
+        self.btn_export_receivers.setToolTip("Enregistre un tableau propre avec une ligne par récepteur et les colonnes nécessaires pour la consultation.")
         self.btn_export_receivers.clicked.connect(self._export_receivers_csv)
-        self.btn_export_exceed = QtWidgets.QPushButton("Exportar excedencias CSV…")
-        self.btn_export_exceed.setToolTip("Guarda solo los receptores que superan su límite acústico.")
+        self.btn_export_exceed = QtWidgets.QPushButton("Exporter les dépassements CSV…")
+        self.btn_export_exceed.setToolTip("Enregistre uniquement les récepteurs qui dépassent leur limite acoustique.")
         self.btn_export_exceed.clicked.connect(self._export_exceedances_csv)
-        self.btn_export_xlsx = QtWidgets.QPushButton("Exportar paquete XLSX…")
-        self.btn_export_xlsx.setToolTip("Guarda resumen, modelos, receptores y excedencias en un único libro Excel.")
+        self.btn_export_xlsx = QtWidgets.QPushButton("Exporter le paquet XLSX…")
+        self.btn_export_xlsx.setToolTip("Enregistre le résumé, les modèles, les récepteurs et les dépassements dans un seul classeur Excel.")
         self.btn_export_xlsx.clicked.connect(self._export_package_xlsx)
         btns.addWidget(self.btn_export_summary)
         btns.addWidget(self.btn_export_receivers)
         btns.addWidget(self.btn_export_exceed)
         btns.addWidget(self.btn_export_xlsx)
         btns.addStretch(1)
-        close_btn = QtWidgets.QPushButton("Cerrar")
+        close_btn = QtWidgets.QPushButton("Fermer")
         close_btn.setMinimumHeight(34)
         close_btn.clicked.connect(self.accept)
         btns.addWidget(close_btn)
+
+        if str(current_language()).lower().startswith("de"):
+            self.tabs.setTabText(0, "Übersicht")
+            self.tabs.setTabText(1, "Modelle")
+            self.tabs.setTabText(2, "Top-Rezeptoren")
+            self.tabs.setTabText(3, "Erzeugte Layer")
+            self.tbl_models.setHorizontalHeaderLabels(["WT-Modell", "Windturbinen", "LwA eff.", "NH", "D", "Notizen"])
+            self.tbl_top.setHorizontalHeaderLabels([
+                "Rezeptor-ID", "Typ", "Gesamtpegel dB(A)", "Grenzwert dB(A)",
+                "Abstand zum Grenzwert dB", "Status", "überschreitet Grenzwert",
+                "Anz. Windturbinen", "nächste Windturbine (m)", "dominantes Modell",
+                "dom. Quellgruppe", "dom. Park", "LwA dom. Quelle dB(A)",
+                "Adiv dB", "Aatm dB", "Agr/Aground dB", "Abar max. dB",
+                "G Boden", "Bodenmodus", "Rezeptorhöhe m", "z Gelände Rezeptor m",
+                "z akustisch Rezeptor m", "dominanter Quell-Layer"
+            ])
+            self.tbl_layers.setHorizontalHeaderLabels(["Layer", "Status"])
+            self.btn_export_summary.setText("Bericht exportieren…")
+            self.btn_export_summary.setToolTip("Speichert die technische Übersicht als HTML oder TXT.")
+            self.btn_export_receivers.setText("Rezeptoren als CSV exportieren…")
+            self.btn_export_receivers.setToolTip("Speichert eine saubere Tabelle mit einer Zeile pro Rezeptor.")
+            self.btn_export_exceed.setText("Überschreitungen als CSV exportieren…")
+            self.btn_export_exceed.setToolTip("Speichert nur Rezeptoren, die ihren akustischen Grenzwert überschreiten.")
+            self.btn_export_xlsx.setText("XLSX-Paket exportieren…")
+            self.btn_export_xlsx.setToolTip("Speichert Übersicht, Modelle, Rezeptoren und Überschreitungen in einer Excel-Datei.")
+            close_btn.setText("Schließen")
         root.addLayout(btns)
 
     def _fill(self):
@@ -366,7 +846,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         dem_layer_name = str(report.get('dem_layer_name') or self._res.get('dem_layer_name') or '')
         dem_used = bool(report.get('dem_used', self._res.get('dem_used', False)))
         engine = str(report.get('engine') or ('iso_aligned' if str(self._res.get('method') or '').startswith('iso_') else 'fast'))
-        engine_label = str(report.get('engine_label') or ('ISO-aligned por bandas' if engine == 'iso_aligned' else 'Rápido LwA global'))
+        engine_label = str(report.get('engine_label') or ('ISO-aligned par bandes' if engine == 'iso_aligned' else 'Rapide LwA global'))
         equation = str(report.get('equation') or ('Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b' if engine == 'iso_aligned' else 'Lp = LwA - Adiv - Aatm - Aground'))
         alpha = float(report.get('alpha_db_per_m', self._res.get('alpha_db_per_m', 0.0)))
         g = float(report.get('ground_factor_g', self._res.get('ground_factor_g', 0.0)))
@@ -380,18 +860,18 @@ class NoiseResultsDialog(QtWidgets.QDialog):
 
         if str(acoustic.get('mode') or 'fixed') == 'curve':
             if bool(acoustic.get('use_curve_worst_case', False)):
-                acoustic_txt = 'Curvas acústicas LwA(ws) en peor caso'
+                acoustic_txt = 'Courbes acoustiques LwA(ws) en cas le plus défavorable'
             else:
                 try:
-                    acoustic_txt = f"Curvas acústicas LwA(ws) a {float(acoustic.get('eval_ws_m_s')):.1f} m/s"
+                    acoustic_txt = f"Courbes acoustiques LwA(ws) à {float(acoustic.get('eval_ws_m_s')):.1f} m/s"
                 except Exception:
-                    acoustic_txt = 'Curvas acústicas LwA(ws)'
+                    acoustic_txt = 'Courbes acoustiques LwA(ws)'
         else:
-            acoustic_txt = 'LwA fijo por grupo fuente acústico'
+            acoustic_txt = 'LwA fixe par groupe de source acoustique'
 
         eff_lines = []
         for d in list(acoustic.get('effective_models') or []):
-            group_name = str(d.get('name') or 'Grupo')
+            group_name = str(d.get('name') or 'Groupe')
             park_name = str(d.get('park_name') or '').strip()
             model_name = str(d.get('model_name') or '').strip()
             spec_src = ''
@@ -402,16 +882,16 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             try:
                 line = f"<li><b>{group_name}</b>: {float(d.get('lwa_effective')):.2f} dB(A)"
             except Exception:
-                line = f"<li><b>{group_name}</b>: sin valor"
+                line = f"<li><b>{group_name}</b>: sans valeur"
             extra = []
             if model_name:
-                extra.append(f"modelo {model_name}")
+                extra.append(f"modèle {model_name}")
             if park_name:
-                extra.append(f"parque {park_name}")
+                extra.append(f"parc {park_name}")
             if str(d.get('curve_note') or '').strip():
                 extra.append(str(d.get('curve_note')))
             if spec_src:
-                extra.append(f"espectro {spec_src}")
+                extra.append(f"spectre {spec_src}")
             if extra:
                 line += " · " + " · ".join(extra)
             line += "</li>"
@@ -419,7 +899,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
 
         spectrum_detail_blocks = []
         for sp in spectrum_rows:
-            group_name = str(sp.get('group_name') or 'Grupo')
+            group_name = str(sp.get('group_name') or 'Groupe')
             model_name = str(sp.get('model_name') or group_name)
             spec_src = str(sp.get('spectrum_source') or '')
             lw_oct = {int(k): float(v) for k, v in (sp.get('lw_octave') or {}).items()}
@@ -442,16 +922,16 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 rows.append(f"<tr><td>{f}</td><td style='text-align:right;'>{sref_txt}</td><td style='text-align:right;'>{a_txt}</td><td style='text-align:right;'>{lw_txt}</td></tr>")
             delta_line = ''
             if delta_db is not None:
-                delta_line = f"<p><b>Δ aplicado:</b> {delta_db:.2f} dB. Este desplazamiento eleva o reduce toda la plantilla espectral para que su suma A-ponderada reproduzca el <code>LwA_objetivo</code> de la curva acústica o del LwA fijo.</p>"
-            origin_line = '<p><b>Interpretación:</b> el espectro final <code>Lw,b</code> es el que entra realmente en la ecuación por bandas. Si existe <code>S_b^ref</code>, corresponde a la plantilla de referencia antes del ajuste global <code>Δ</code>.</p>' if sref else '<p><b>Interpretación:</b> en este grupo no se ha usado una plantilla interna visible; el espectro final <code>Lw,b</code> procede directamente del espectro cargado/importado o de una biblioteca externa.</p>'
+                delta_line = f"<p><b>Δ appliqué :</b> {delta_db:.2f} dB. Ce décalage augmente ou réduit toute la forme spectrale afin que sa somme pondérée A reproduise le <code>LwA_cible</code> de la courbe acoustique ou du LwA fixe.</p>"
+            origin_line = '<p><b>Interprétation :</b> le spectre final <code>Lw,b</code> est celui qui entre réellement dans l’équation par bandes. Si <code>S_b^ref</code> existe, il correspond à la forme de référence avant l’ajustement global <code>Δ</code>.</p>' if sref else '<p><b>Interprétation :</b> pour ce groupe, aucune forme interne visible n’a été utilisée ; le spectre final <code>Lw,b</code> provient directement du spectre chargé/importé ou d’une bibliothèque externe.</p>'
             spectrum_detail_blocks.append(f"""
                 <div class='card'>
-                    <h4>2.1 Espectro usado por el grupo fuente: {group_name}</h4>
-                    <p><b>Modelo:</b> {model_name} · <b>Origen del espectro:</b> {spec_src or '-'}.</p>
-                    <p><b>Qué representa cada columna:</b> <code>S_b^ref</code> es la plantilla espectral de referencia (si existe), <code>A_weight,b</code> la ponderación A de cada banda y <code>Lw,b</code> el nivel final en dB realmente usado por el cálculo.</p>
+                    <h4>2.1 Spectre utilisé par le groupe source : {group_name}</h4>
+                    <p><b>Modèle :</b> {model_name} · <b>Origine du spectre :</b> {spec_src or '-'}.</p>
+                    <p><b>Ce que représente chaque colonne :</b> <code>S_b^ref</code> est la forme spectrale de référence (si elle existe), <code>A_weight,b</code> la pondération A de chaque bande et <code>Lw,b</code> le niveau final en dB réellement utilisé par le calcul.</p>
                     {delta_line}
                     <table>
-                        <tr><th>Banda [Hz]</th><th style='text-align:right;'>S_b^ref [dB]</th><th style='text-align:right;'>A_weight,b [dB]</th><th style='text-align:right;'>Lw,b final [dB]</th></tr>
+                        <tr><th>Bande [Hz]</th><th style='text-align:right;'>S_b^ref [dB]</th><th style='text-align:right;'>A_weight,b [dB]</th><th style='text-align:right;'>Lw,b final [dB]</th></tr>
                         {''.join(rows)}
                     </table>
                     {origin_line}
@@ -543,15 +1023,15 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             crit_maxab_d2 = _crit_float('max_abar_obstacle_receiver_m', 'maxab_d2', default=0.0)
             
             status_badge = 'badge-success' if crit_margin <= 0 else 'badge-danger'
-            status_text = 'CUMPLE' if crit_margin <= 0 else 'EXCEDE'
+            status_text = 'CONFORME' if crit_margin <= 0 else 'DÉPASSE'
             card_class = 'card-success' if crit_margin <= 0 else 'card-danger'
 
             crit_adiv_txt = _fmt_equation_term(crit_adiv)
             crit_aatm_txt = _fmt_equation_term(crit_aatm)
             crit_agr_txt = _fmt_equation_term(crit_agr)
             crit_abar_txt = _fmt_equation_term(crit_abar)
-            crit_agr_desc = f"Atenuación por efecto del terreno (G_eff={crit_g_eff:.2f})"
-            crit_abar_desc = "Atenuación por MDT en la trayectoria dominante"
+            crit_agr_desc = f"Atténuation due à l’effet de sol (G_eff={crit_g_eff:.2f})"
+            crit_abar_desc = "Atténuation due au MDT sur le trajet dominant"
             crit_abar_max_txt = _fmt_equation_term(crit_abar_max)
             crit_abar_mean_txt = _fmt_equation_term(crit_abar_mean)
             crit_abar_ew_txt = _fmt_equation_term(crit_abar_ew)
@@ -570,23 +1050,23 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                     return 'N/A'
 
             dominant_height_html = (
-                f"<br><b>Alturas trayectoria dominante:</b> terreno turbina={_fmt_m_or_na(crit_src_z)} m · "
-                f"hub={_fmt_m_or_na(crit_hub_h)} m AGL · altura acústica turbina={_fmt_m_or_na(crit_src_ac_z)} m · "
-                f"terreno receptor={_fmt_m_or_na(crit_rec_z)} m · h receptor={_fmt_m_or_na(crit_rec_h)} m AGL · "
-                f"altura acústica receptor={_fmt_m_or_na(crit_rec_ac_z)} m."
+                f"<br><b>Hauteurs du trajet dominant :</b> terrain éolienne={_fmt_m_or_na(crit_src_z)} m · "
+                f"hub={_fmt_m_or_na(crit_hub_h)} m AGL · hauteur acoustique éolienne={_fmt_m_or_na(crit_src_ac_z)} m · "
+                f"terrain récepteur={_fmt_m_or_na(crit_rec_z)} m · h récepteur={_fmt_m_or_na(crit_rec_h)} m AGL · "
+                f"hauteur acoustique récepteur={_fmt_m_or_na(crit_rec_ac_z)} m."
             )
             maxabar_height_html = ''
             if float(crit_abar_max or 0.0) > 0.005:
                 maxabar_height_html = (
-                    f"<br><b>Trayectoria con Abar máximo:</b> fuente={crit_maxab_src} · estado={crit_maxab_state or '-'} · "
+                    f"<br><b>Trajet avec Abar maximal :</b> source={crit_maxab_src} · état={crit_maxab_state or '-'} · "
                     f"obs={_fmt_m_or_na(crit_maxab_obs_h)} m · d1={_fmt_m_or_na(crit_maxab_d1)} m · d2={_fmt_m_or_na(crit_maxab_d2)} m."
                 )
             abar_summary_html = ''
             if dem_used and engine == 'iso_aligned':
                 abar_summary_html = f"""
                 <div class='note'>
-                    <b>Lectura correcta de Abar:</b> el valor <b>Abar trayectoria dominante</b> corresponde solo a la turbina que más contribuye al receptor y a su banda dominante. El nivel total del receptor se obtiene sumando energéticamente todas las turbinas y bandas.
-                    <br><b>Abar máximo entre turbinas contribuyentes:</b> {crit_abar_max_txt} dB · <b>Abar medio:</b> {crit_abar_mean_txt} dB · <b>Abar ponderado por contribución energética:</b> {crit_abar_ew_txt} dB · <b>trayectorias apantalladas:</b> {crit_abar_screen_n}/{crit_n_turb_i if crit_n_turb_i else crit_n_turb}.
+                    <b>Lecture correcte d’Abar :</b> la valeur <b>Abar du trajet dominant</b> correspond uniquement à l’éolienne qui contribue le plus au récepteur et à sa bande dominante. Le niveau total du récepteur est obtenu par sommation énergétique de toutes les éoliennes et bandes.
+                    <br><b>Abar maximal parmi les éoliennes contributrices :</b> {crit_abar_max_txt} dB · <b>Abar moyen :</b> {crit_abar_mean_txt} dB · <b>Abar pondéré par contribution énergétique :</b> {crit_abar_ew_txt} dB · <b>trajets écrantés :</b> {crit_abar_screen_n}/{crit_n_turb_i if crit_n_turb_i else crit_n_turb}.
                     {dominant_height_html}
                     {maxabar_height_html}
                 </div>
@@ -596,237 +1076,237 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             if dem_used and engine == 'iso_aligned':
                 if abs(float(crit_abar)) < 0.005:
                     reason_map = {
-                        'los_clear': 'la línea de visión entre la turbina dominante y este receptor queda despejada según el MDT',
-                        'below_threshold': 'se detectó relieve, pero por debajo del umbral conservador de activación',
-                        'no_profile': 'no se pudo extraer un perfil MDT válido para el trayecto dominante',
-                        'no_dem': 'no había MDT disponible en este trayecto',
+                        'los_clear': 'la ligne de visée entre l’éolienne dominante et ce récepteur est dégagée selon le MDT',
+                        'below_threshold': 'un relief a été détecté, mais sous le seuil conservateur d’activation',
+                        'no_profile': 'aucun profil MDT valide n’a pu être extrait pour le trajet dominant',
+                        'no_dem': 'aucun MDT n’était disponible sur ce trajet',
                     }
-                    reason = reason_map.get(crit_abar_state, 'no se detectó obstáculo topográfico relevante en el trayecto dominante')
+                    reason = reason_map.get(crit_abar_state, 'aucun obstacle topographique pertinent n’a été détecté sur le trajet dominant')
                     extra = ''
                     if float(crit_obs_thr) > 0.0:
-                        extra = f" Umbral de activación: {crit_obs_thr:.2f} m."
+                        extra = f" Seuil d’activation: {crit_obs_thr:.2f} m."
                     if float(abar_stats.get('max', 0.0) or 0.0) > 0.005:
-                        extra += f" Otros receptores sí presentan apantallamiento (Abar máx. {float(abar_stats.get('max',0.0)):.2f} dB)."
-                    abar_note_html = f"<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: Abar=0 en el receptor crítico no implica que el MDT esté desactivado; significa que {reason}.{extra}</i></p>"
+                        extra += f" D’autres récepteurs présentent bien un écran (Abar max. {float(abar_stats.get('max',0.0)):.2f} dB)."
+                    abar_note_html = f"<p style='margin:8px 0 10px 0;color:#495057;'><i>Lecture MDT : Abar=0 au récepteur critique ne signifie pas que le MDT est désactivé ; cela signifie que {reason}.{extra}</i></p>"
                 else:
-                    abar_note_html = f"<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: obstáculo dominante estimado {crit_obs_h:.2f} m; d1={crit_obs_d1:.1f} m, d2={crit_obs_d2:.1f} m; estado={crit_abar_state or 'active'}.</i></p>"
+                    abar_note_html = f"<p style='margin:8px 0 10px 0;color:#495057;'><i>Lecture MDT : obstacle dominant estimé {crit_obs_h:.2f} m; d1={crit_obs_d1:.1f} m, d2={crit_obs_d2:.1f} m; état={crit_abar_state or 'actif'}.</i></p>"
 
             crit_html = f"""
         <div class='{card_class}'>
-            <h3>🎯 Receptor crítico (mayor nivel sonoro)</h3>
+            <h3>🎯 Récepteur critique (niveau sonore le plus élevé)</h3>
             
             <table style='margin-bottom: 20px;'>
                 <tr>
                     <td style='width: 50%; padding-right: 20px;'>
-                        <p><b>ID Receptor:</b> {crit_id}</p>
-                        <p><b>Nivel total:</b> <span style='font-size:28px; font-weight:bold; color:{'#dc3545' if crit_margin > 0 else '#28a745'};'>{crit_level:.2f} dB(A)</span></p>
-                        <p><b>Límite aplicable:</b> {crit_limit:.2f} dB(A)</p>
-                        <p><b>Margen:</b> {crit_margin:+.2f} dB <span class='{status_badge}'>{status_text}</span></p>
+                        <p><b>ID récepteur :</b> {crit_id}</p>
+                        <p><b>Niveau total :</b> <span style='font-size:28px; font-weight:bold; color:{'#dc3545' if crit_margin > 0 else '#28a745'};'>{crit_level:.2f} dB(A)</span></p>
+                        <p><b>Limite applicable :</b> {crit_limit:.2f} dB(A)</p>
+                        <p><b>Marge :</b> {crit_margin:+.2f} dB <span class='{status_badge}'>{status_text}</span></p>
                     </td>
                     <td style='width: 50%;'>
-                        <p><b>Modelo dominante:</b> {crit_model}</p>
-                        <p><b>Grupo fuente:</b> {crit_group}</p>
-                        <p><b>Turbinas contribuyentes dentro del radio:</b> {crit_n_turb}</p>
-                        <p><b>Distancia:</b> {crit_dist:.1f} m</p>
+                        <p><b>Modèle dominant :</b> {crit_model}</p>
+                        <p><b>Groupe source :</b> {crit_group}</p>
+                        <p><b>Éoliennes contributrices dans le rayon :</b> {crit_n_turb}</p>
+                        <p><b>Distance :</b> {crit_dist:.1f} m</p>
                     </td>
                 </tr>
             </table>
             
-            <h4>📊 Desglose de atenuaciones</h4>
-            <p style='margin: 6px 0 10px 0; color:#495057;'><i>Los valores mostrados a continuación son las magnitudes de atenuación usadas por el modelo. En la ecuación principal estos términos se restan al nivel de fuente.</i></p>
+            <h4>📊 Décomposition des atténuations</h4>
+            <p style='margin: 6px 0 10px 0; color:#495057;'><i>Les valeurs affichées ci-dessous sont les amplitudes d’atténuation utilisées par le modèle. Dans l’équation principale, ces termes sont soustraits au niveau de source.</i></p>
             <table style='margin: 16px 0;'>
                 <tr>
-                    <th>Término</th>
-                    <th style='text-align: right;'>Valor [dB]</th>
-                    <th>Descripción</th>
+                    <th>Terme</th>
+                    <th style='text-align: right;'>Valeur [dB]</th>
+                    <th>Description</th>
                 </tr>
                 <tr style='background: #e3f2fd;'>
-                    <td><b>LwA fuente dominante</b></td>
+                    <td><b>LwA source dominante</b></td>
                     <td style='text-align: right;'><b>{crit_lwa:.2f}</b></td>
-                    <td>Potencia sonora de la turbina</td>
+                    <td>Puissance acoustique de l’éolienne</td>
                 </tr>
                 <tr>
-                    <td>Adiv (divergencia)</td>
+                    <td>Adiv (divergence)</td>
                     <td style='text-align: right;'>{crit_adiv_txt}</td>
-                    <td>Dispersión geométrica</td>
+                    <td>Dispersion géométrique</td>
                 </tr>
                 <tr>
-                    <td>Aatm (atmosférica)</td>
+                    <td>Aatm (atmosphérique)</td>
                     <td style='text-align: right;'>{crit_aatm_txt}</td>
-                    <td>Absorción en el aire</td>
+                    <td>Absorption dans l’air</td>
                 </tr>
                 <tr>
-                    <td>Agr (suelo)</td>
+                    <td>Agr (sol)</td>
                     <td style='text-align: right;'>{crit_agr_txt}</td>
                     <td>{crit_agr_desc}</td>
                 </tr>
                 <tr>
-                    <td>Abar trayectoria dominante</td>
+                    <td>Abar trajet dominant</td>
                     <td style='text-align: right;'>{crit_abar_txt}</td>
                     <td>{crit_abar_desc}</td>
                 </tr>
                 <tr>
-                    <td>Abar máximo contribuyentes</td>
+                    <td>Abar maximal des contributeurs</td>
                     <td style='text-align: right;'>{crit_abar_max_txt}</td>
-                    <td>Máximo Abar entre todas las turbinas que contribuyen al receptor</td>
+                    <td>Abar maximal parmi toutes les éoliennes qui contribuent au récepteur</td>
                 </tr>
                 <tr>
-                    <td>Abar ponderado por energía</td>
+                    <td>Abar pondéré par énergie</td>
                     <td style='text-align: right;'>{crit_abar_ew_txt}</td>
-                    <td>Promedio ponderado por la contribución acústica de cada turbina</td>
+                    <td>Moyenne pondérée par la contribution acoustique de chaque éolienne</td>
                 </tr>
                 <tr>
-                    <td>Trayectorias apantalladas</td>
+                    <td>Trajets écrantés</td>
                     <td style='text-align: right;'>{crit_abar_screen_n}/{crit_n_turb}</td>
-                    <td>Número de turbinas contribuyentes con Abar &gt; 0 dB</td>
+                    <td>Nombre d’éoliennes contributrices avec Abar &gt; 0 dB</td>
                 </tr>
                 <tr style='background: #1e3a5f; color: white; font-weight: bold;'>
-                    <td>NIVEL RESULTANTE</td>
+                    <td>NIVEAU RÉSULTANT</td>
                     <td style='text-align: right;'>{crit_level:.2f}</td>
                     <td>dB(A)</td>
                 </tr>
             </table>
             {abar_note_html}
             {abar_summary_html}
-            <p style='margin: 6px 0 10px 0; color:#495057;'><i>Nota: el nivel resultante incluye la suma energética multi-fuente y multi-banda; no es una resta directa de una única turbina.</i></p>
+            <p style='margin: 6px 0 10px 0; color:#495057;'><i>Note : le niveau résultant inclut la sommation énergétique multi-source et multi-bande ; ce n’est pas une soustraction directe depuis une seule éolienne.</i></p>
             
             <p style='margin-top: 16px;'>
-                <b>Banda dominante:</b> {crit_freq} Hz &nbsp;&nbsp;&nbsp;
-                <b>Origen espectro:</b> {crit_spec_src}
+                <b>Bande dominante :</b> {crit_freq} Hz &nbsp;&nbsp;&nbsp;
+                <b>Origine du spectre :</b> {crit_spec_src}
             </p>
         </div>
             """
         else:
-            crit_html = "<div class='card'><p>Receptor crítico no disponible.</p></div>"
+            crit_html = "<div class='card'><p>Récepteur critique non disponible.</p></div>"
 
         rec_types_html = ''.join([f"<li><b>{k}:</b> {v}</li>" for k, v in sorted(receiver_type_counts.items())])
         compliance = self._res.get('receiver_type_compliance') or {}
-        compliance_html = ''.join([f"<li><b>{k}:</b> {int((v or {}).get('exceed',0))}/{int((v or {}).get('total',0))} superan el límite" + (f" · cubiertos {int((v or {}).get('covered',0))}" if (v or {}).get('covered') is not None else '') + "</li>" for k, v in sorted(compliance.items())])
-        suelo_txt = 'global' if ground_mode != 'landuse' else f"desde capa ({landuse_layer_name or 'sin nombre'})"
-        grid_txt = 'no generado'
+        compliance_html = ''.join([f"<li><b>{k}:</b> {int((v or {}).get('exceed',0))}/{int((v or {}).get('total',0))} dépassent la limite" + (f" · couverts {int((v or {}).get('covered',0))}" if (v or {}).get('covered') is not None else '') + "</li>" for k, v in sorted(compliance.items())])
+        suelo_txt = 'global' if ground_mode != 'landuse' else f"depuis couche ({landuse_layer_name or 'sans nom'})"
+        grid_txt = 'non généré'
         if self._res.get('grid_layer') is not None:
-            grid_txt = f"sí · resolución pedida {float(grid_diag.get('requested_resolution_m',0.0)):.1f} m · efectiva {float(grid_diag.get('effective_resolution_m',0.0)):.1f} m"
+            grid_txt = f"oui · résolution demandée {float(grid_diag.get('requested_resolution_m',0.0)):.1f} m · effective {float(grid_diag.get('effective_resolution_m',0.0)):.1f} m"
             if bool(grid_diag.get('auto_adjusted', False)):
-                grid_txt += ' · autoajustada'
+                grid_txt += ' · auto-ajustée'
         limit_mode = str(limit_stats.get('mode') or 'global').lower()
         limit_scn = str(limit_stats.get('scenario') or 'custom').lower()
         if limit_mode == 'by_field':
-            scn_txt = {'day': 'diurno', 'night': 'nocturno', 'custom': 'personalizado'}.get(limit_scn, limit_scn or 'personalizado')
+            scn_txt = {'day': 'diurne', 'night': 'nocturne', 'custom': 'personnalisé'}.get(limit_scn, limit_scn or 'personnalisé')
             if abs(float(limit_stats.get('min',45.0)) - float(limit_stats.get('max',45.0))) < 1e-9:
-                limit_html = f"<p><b>Límites aplicados:</b> desde campos de receptor ({scn_txt}) · valor único {float(limit_stats.get('min',45.0)):.1f} dB(A)</p>"
+                limit_html = f"<p><b>Limites appliquées :</b> depuis les champs des récepteurs ({scn_txt}) · valeur unique {float(limit_stats.get('min',45.0)):.1f} dB(A)</p>"
             else:
-                limit_html = f"<p><b>Límites aplicados:</b> desde campos de receptor ({scn_txt}) · rango {float(limit_stats.get('min',45.0)):.1f}–{float(limit_stats.get('max',45.0)):.1f} dB(A)</p>"
+                limit_html = f"<p><b>Limites appliquées :</b> depuis les champs des récepteurs ({scn_txt}) · plage {float(limit_stats.get('min',45.0)):.1f}–{float(limit_stats.get('max',45.0)):.1f} dB(A)</p>"
         else:
-            limit_html = f"<p><b>Límite de referencia:</b> {float(limit_stats.get('max',45.0)):.1f} dB(A)</p>"
+            limit_html = f"<p><b>Limite de référence :</b> {float(limit_stats.get('max',45.0)):.1f} dB(A)</p>"
 
         equations_html = f"<pre style='background:#f6f8fb;border:1px solid #d9e2ef;padding:10px;border-radius:6px;white-space:pre-wrap;'>{equation}</pre>"
 
         if not crit:
             crit_adiv_txt = crit_aatm_txt = crit_agr_txt = crit_abar_txt = '-'
-            crit_agr_desc = 'Efecto del terreno'
-            crit_abar_desc = 'Difracción topográfica'
+            crit_agr_desc = 'Effet du sol'
+            crit_abar_desc = 'Diffraction topographique'
 
         param_lines = [
-            f"<li><b>Motor:</b> {engine_label}</li>",
-            f"<li><b>Altura de receptor:</b> {rec_h:.1f} m</li>",
-            f"<li><b>Radio máximo:</b> {radius:.0f} m</li>",
-            f"<li><b>Modo suelo:</b> {suelo_txt}</li>",
+            f"<li><b>Moteur :</b> {engine_label}</li>",
+            f"<li><b>Hauteur du récepteur :</b> {rec_h:.1f} m</li>",
+            f"<li><b>Rayon maximal :</b> {radius:.0f} m</li>",
+            f"<li><b>Mode sol :</b> {suelo_txt}</li>",
         ]
         if ground_mode == 'landuse':
             param_lines.extend([
-                f"<li><b>G global de respaldo:</b> {g:.2f}</li>",
-                f"<li><b>G_eff medio usado:</b> {float(g_eff_stats.get('mean', g)):.2f}</li>",
-                f"<li><b>G_eff receptor crítico usado:</b> {float(g_eff_stats.get('critical', g)):.2f}</li>",
+                f"<li><b>G global de secours:</b> {g:.2f}</li>",
+                f"<li><b>G_eff moyen utilisé:</b> {float(g_eff_stats.get('mean', g)):.2f}</li>",
+                f"<li><b>G_eff du récepteur critique utilisé:</b> {float(g_eff_stats.get('critical', g)):.2f}</li>",
             ])
         else:
             param_lines.extend([
-                f"<li><b>G usado:</b> {g:.2f}</li>",
-                f"<li><b>G_eff medio:</b> {float(g_eff_stats.get('mean', g)):.2f}</li>",
-                f"<li><b>G_eff receptor crítico:</b> {float(g_eff_stats.get('critical', g)):.2f}</li>",
+                f"<li><b>G utilisé:</b> {g:.2f}</li>",
+                f"<li><b>G_eff moyen:</b> {float(g_eff_stats.get('mean', g)):.2f}</li>",
+                f"<li><b>G_eff du récepteur critique:</b> {float(g_eff_stats.get('critical', g)):.2f}</li>",
             ])
         param_lines.extend([
-            f"<li><b>MDT/DSM:</b> {'sí · ' + (dem_layer_name or 'sin nombre') if dem_used else 'no'}</li>",
-            f"<li><b>Uso del suelo:</b> {'sí · ' + (landuse_layer_name or 'sin nombre') if bool(report.get('landuse_used', False)) else 'no'}</li>",
-            f"<li><b>Escenario acústico:</b> {acoustic_txt}</li>",
+            f"<li><b>MDT/DSM:</b> {'oui · ' + (dem_layer_name or 'sans nom') if dem_used else 'non'}</li>",
+            f"<li><b>Occupation du sol:</b> {'oui · ' + (landuse_layer_name or 'sans nom') if bool(report.get('landuse_used', False)) else 'non'}</li>",
+            f"<li><b>Scénario acoustique :</b> {acoustic_txt}</li>",
         ])
         if engine == 'iso_aligned':
             param_lines.extend([
-                f"<li><b>Temperatura:</b> {temp_c:.1f} °C</li>",
-                f"<li><b>Humedad relativa:</b> {hum_pct:.1f} %</li>",
-                f"<li><b>Presión:</b> {pressure_kpa:.3f} kPa</li>",
+                f"<li><b>Température :</b> {temp_c:.1f} °C</li>",
+                f"<li><b>Humidité relative :</b> {hum_pct:.1f} %</li>",
+                f"<li><b>Pression :</b> {pressure_kpa:.3f} kPa</li>",
             ])
         else:
-            param_lines.append(f"<li><b>α atmosférico:</b> {alpha:.4f} dB/m</li>")
+            param_lines.append(f"<li><b>α atmosphérique :</b> {alpha:.4f} dB/m</li>")
 
         term_lines = [
-            f"<li><b>Adiv:</b> {'activo' if terms.get('Adiv', True) else 'no'}</li>",
-            f"<li><b>Aatm:</b> {'activo' if terms.get('Aatm', True) else 'no'}" + (' (T, HR, P simplificado)' if engine == 'iso_aligned' else ' (α·distancia)') + "</li>",
-            f"<li><b>Agr/Aground:</b> {'activo' if terms.get('Agr', True) else 'no'}</li>",
-            f"<li><b>Abar:</b> {'activo' if terms.get('Abar', False) else 'no activo'}</li>",
-            f"<li><b>G efectivo desde landuse:</b> {'sí' if terms.get('landuse_g', False) else 'no'}</li>",
+            f"<li><b>Adiv:</b> {'actif' if terms.get('Adiv', True) else 'non'}</li>",
+            f"<li><b>Aatm:</b> {'actif' if terms.get('Aatm', True) else 'non'}" + (' (T, HR, P simplifié)' if engine == 'iso_aligned' else ' (α·distance)') + "</li>",
+            f"<li><b>Agr/Aground:</b> {'actif' if terms.get('Agr', True) else 'non'}</li>",
+            f"<li><b>Abar:</b> {'actif' if terms.get('Abar', False) else 'inactif'}</li>",
+            f"<li><b>G effectif depuis l’occupation du sol:</b> {'oui' if terms.get('landuse_g', False) else 'non'}</li>",
         ]
 
         pressure_warning_html = ''
         if engine == 'iso_aligned' and (pressure_kpa < 85.0 or pressure_kpa > 105.0):
             pressure_warning_html = (
-                "<p class='note'><b>Revisión recomendada:</b> la presión atmosférica introducida "
-                f"({pressure_kpa:.3f} kPa) está fuera del rango típico usado como referencia en muchos estudios "
-                "preliminares. Si no es un dato medido del emplazamiento, revisa si debería estar cerca de 101.325 kPa "
-                "o ajustada por altitud.</p>"
+                "<p class='note'><b>Révision recommandée :</b> la pression atmosphérique saisie "
+                f"({pressure_kpa:.3f} kPa) est hors de la plage typique utilisée comme référence dans de nombreuses études "
+                "préliminaires. Si ce n’est pas une mesure du site, vérifier si elle devrait être proche de 101,325 kPa "
+                "ou ajustée à l’altitude.</p>"
             )
 
         interpretation = (
-            "Adiv representa la divergencia geométrica. Aatm se calcula por banda y depende de T, HR y presión, con formulación simplificada. "
-            "Agr se aplica como término de suelo/terreno y Abar como apantallamiento topográfico básico cuando hay MDT."
+            "Adiv représente la divergence géométrique. Aatm est calculé par bande et dépend de T, HR et de la pression, avec une formulation simplifiée. "
+            "Agr est appliqué comme terme de sol/terrain et Abar comme écran topographique de base lorsqu’un MDT est disponible."
             if engine == 'iso_aligned' else
-            "Adiv representa la divergencia geométrica, Aatm la atenuación atmosférica simplificada α·distancia y Aground una corrección simplificada del efecto suelo/terreno."
+            "Adiv représente la divergence géométrique, Aatm l’atténuation atmosphérique simplifiée α·distance et Aground une correction simplifiée de l’effet de sol/terrain."
         )
 
         if engine == 'iso_aligned':
             methodology_flow_html = f"""
             <div class='card card-info'>
-                <h3>🧭 Cómo se ha ejecutado el cálculo ISO-aligned</h3>
-                <p>Esta sección explica el flujo real que sigue el plugin para que el resultado por receptor sea trazable. El nivel final de cada receptor <b>no sale de una única resta simple</b>, sino de calcular todas las contribuciones fuente–receptor dentro del radio de cálculo y sumarlas energéticamente.</p>
+                <h3>🧭 Comment le calcul ISO-aligned a été exécuté</h3>
+                <p>Cette section explique le flux réel suivi par le plugin afin que le résultat par récepteur soit traçable. Le niveau final de chaque récepteur <b>ne provient pas d’une simple soustraction unique</b>, mais du calcul de toutes les contributions source–récepteur dans le rayon de calcul, puis de leur sommation énergétique.</p>
                 <ol>
-                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>{radius:.0f} m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>
-                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta corrida: <b>{acoustic_txt}</b>.</li>
-                    <li><b>Conversión a bandas:</b> el motor ISO-aligned necesita un espectro <code>Lw,b</code> en 8 bandas de octava. Si no hay espectro específico, el plugin reconstruye uno desde una plantilla/fallback y lo ajusta para reproducir el LwA operativo.</li>
-                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b> y no generan nivel acústico útil.</li>
-                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula distancia 3D, cotas acústicas, <b>G</b> o <b>G_eff</b> del suelo y, si hay MDT/DSM, el posible apantallamiento topográfico del trayecto.</li>
-                    <li><b>Propagación por banda:</b> en cada banda se aplica <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv depende de la distancia, Aatm,b de frecuencia/atmósfera, Agr,b del suelo y Abar,b del MDT si hay obstáculo relevante.</li>
-                    <li><b>Suma por fuente:</b> las 8 bandas se ponderan en A y se suman energéticamente para obtener el nivel A-ponderado de esa turbina en el receptor.</li>
-                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>
-                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>
+                    <li><b>Lecture des entrées SIG:</b> les éoliennes/sources acoustiques, les récepteurs, la hauteur du récepteur et le rayon maximal de calcul sont pris en compte (<b>{radius:.0f} m</b>), la couche d’occupation du sol si elle existe et le MDT/DSM s’il est actif.</li>
+                    <li><b>État acoustique de chaque groupe source :</b> pour chaque modèle ou groupe d’éoliennes, un <b>LwA opérationnel</b> est obtenu à partir d’une valeur fixe ou d’une courbe <code>LwA(ws)</code>. Dans ce calcul: <b>{acoustic_txt}</b>.</li>
+                    <li><b>Conversion en bandes:</b> le moteur ISO-aligned a besoin d’un spectre <code>Lw,b</code> en 8 bandes d’octave. S’il n’existe pas de spectre spécifique, le plugin en reconstruit un à partir d’un gabarit/fallback et l’ajuste pour reproduire le LwA opérationnel.</li>
+                    <li><b>Sélection des contributeurs par récepteur:</b> pour chaque récepteur, les éoliennes situées dans le rayon maximal sont recherchées. Les récepteurs sans sources dans ce rayon sont marqués comme <b>hors rayon</b> et ne produisent pas de niveau acoustique utile.</li>
+                    <li><b>Calcul par trajet source–récepteur :</b> pour chaque éolienne contributrice, la distance 3D, les cotes acoustiques, <b>G</b> ou <b>G_eff</b> du sol et, si un MDT/DSM est disponible, l’éventuel écran topographique du trajet sont calculés.</li>
+                    <li><b>Propagation par bande:</b> dans chaque bande, on applique <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv dépend de la distance, Aatm,b de la fréquence/de l’atmosphère, Agr,b du sol et Abar,b du MDT s’il existe un obstacle pertinent.</li>
+                    <li><b>Sommation par source :</b> les 8 bandes sont pondérées A puis sommées énergétiquement pour obtenir le niveau pondéré A de cette éolienne au récepteur.</li>
+                    <li><b>Sommation du récepteur:</b> toutes les éoliennes contributrices sont sommées énergétiquement pour obtenir le <b>niveau total dB(A)</b> du récepteur.</li>
+                    <li><b>Comparaison avec les limites:</b> le niveau total est comparé à la limite attribuée au récepteur ou à la limite de référence. La marge, l’état de conformité et le tableau des dépassements en découlent.</li>
                 </ol>
-                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(LpA,fuente/10))</div>
-                <p><b>Lectura práctica:</b> el receptor crítico es el de mayor nivel total o el que queda con peor margen frente al límite. La columna “fuente dominante” identifica la turbina/grupo que más contribuye, pero el resultado final del receptor incluye todas las fuentes dentro del radio.</p>
+                <div class='formula'>LpA,récepteur = 10·log10(Σ_sources 10^(LpA,source/10))</div>
+                <p><b>Lecture pratique :</b> le récepteur critique est celui qui présente le niveau total le plus élevé ou la marge la plus défavorable par rapport à la limite. La colonne « source dominante » identifie l’éolienne/le groupe qui contribue le plus, mais le résultat final du récepteur inclut toutes les sources dans le rayon.</p>
             </div>
             <div class='card'>
-                <h3>🔎 Qué diferencia este modo del modo Screening</h3>
-                <p>El modo ISO-aligned es más pesado pero más trazable: usa bandas de octava, ponderación A final, absorción atmosférica dependiente de frecuencia, suelo por regiones y apantallamiento topográfico <b>Abar</b> cuando hay MDT/DSM. Es el modo recomendado para informes técnicos preliminares y revisión de receptores sensibles.</p>
+                <h3>🔎 Ce qui distingue ce mode du mode Screening</h3>
+                <p>Le mode ISO-aligned est plus lourd mais plus traçable : il utilise les bandes d’octave, la pondération A finale, l’absorption atmosphérique dépendante de la fréquence, le sol par régions et l’écran topographique <b>Abar</b> lorsqu’un MDT/DSM est disponible. C’est le mode recommandé pour les rapports techniques préliminaires et la revue des récepteurs sensibles.</p>
             </div>
             """
         else:
             methodology_flow_html = f"""
             <div class='card card-info'>
-                <h3>🧭 Cómo se ha ejecutado el cálculo Screening</h3>
-                <p>Esta sección explica el flujo real que sigue el plugin en el modo rápido. El objetivo es obtener una estimación ágil para mapas, comparación de alternativas y detección inicial de receptores sensibles.</p>
+                <h3>🧭 Comment le calcul Screening a été exécuté</h3>
+                <p>Cette section explique le flux réel suivi par le plugin en mode rapide. L’objectif est d’obtenir une estimation agile pour les cartes, la comparaison d’alternatives et la détection initiale des récepteurs sensibles.</p>
                 <ol>
-                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>{radius:.0f} m</b>) y la capa de uso del suelo si existe.</li>
-                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta corrida: <b>{acoustic_txt}</b>.</li>
-                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b>.</li>
-                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula la distancia 3D, la divergencia geométrica, una absorción atmosférica simplificada <code>α·d</code> y una corrección empírica de suelo.</li>
-                    <li><b>Uso del suelo:</b> si hay capa de land-use, el plugin puede calcular un <b>G_eff</b> por trayecto; si no, usa el <b>G global</b> definido por el usuario.</li>
-                    <li><b>Propagación simplificada:</b> se aplica <code>Lp = LwA - Adiv - Aatm - Aground</code>. No hay bandas de octava ni apantallamiento topográfico explícito <code>Abar</code>.</li>
-                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>
-                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>
+                    <li><b>Lecture des entrées SIG:</b> les éoliennes/sources acoustiques, les récepteurs, la hauteur du récepteur et le rayon maximal de calcul sont pris en compte (<b>{radius:.0f} m</b>) et la couche d’occupation du sol si elle existe.</li>
+                    <li><b>État acoustique de chaque groupe source :</b> chaque modèle ou groupe d’éoliennes utilise un seul <b>LwA opérationnel</b>, défini par une valeur fixe ou par une courbe <code>LwA(ws)</code>. Dans ce calcul: <b>{acoustic_txt}</b>.</li>
+                    <li><b>Sélection des contributeurs par récepteur:</b> pour chaque récepteur, les éoliennes situées dans le rayon maximal sont recherchées. Les récepteurs sans sources dans ce rayon sont marqués comme <b>hors rayon</b>.</li>
+                    <li><b>Calcul par trajet source–récepteur :</b> pour chaque éolienne contributrice, la distance 3D, la divergence géométrique, une absorption atmosphérique simplifiée <code>α·d</code> et une correction empirique de sol sont calculées.</li>
+                    <li><b>Occupation du sol:</b> si une couche de land-use est disponible, le plugin peut calculer un <b>G_eff</b> par trajet ; sinon, il utilise le <b>G global</b> défini par l’utilisateur.</li>
+                    <li><b>Propagation simplifiée:</b> <code>Lp = LwA - Adiv - Aatm - Aground</code> est appliqué. Il n’y a ni bandes d’octave ni écran topographique explicite <code>Abar</code>.</li>
+                    <li><b>Sommation du récepteur:</b> toutes les éoliennes contributrices sont sommées énergétiquement pour obtenir le <b>niveau total dB(A)</b> du récepteur.</li>
+                    <li><b>Comparaison avec les limites:</b> le niveau total est comparé à la limite attribuée au récepteur ou à la limite de référence. La marge, l’état de conformité et le tableau des dépassements en découlent.</li>
                 </ol>
-                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(Lp,fuente/10))</div>
-                <p><b>Lectura práctica:</b> este modo es útil para screening inicial. Si un receptor aparece cerca del límite o en excedencia, conviene recalcularlo con el modo ISO-aligned y revisar espectros, terreno, uso del suelo y límites aplicados.</p>
+                <div class='formula'>LpA,récepteur = 10·log10(Σ_sources 10^(Lp,source/10))</div>
+                <p><b>Lecture pratique :</b> ce mode est utile pour le criblage initial. Si un récepteur apparaît proche de la limite ou en dépassement, il est conseillé de le recalculer en mode ISO-aligned et de revoir les spectres, le terrain, l’occupation du sol et les limites appliquées.</p>
             </div>
             <div class='card'>
-                <h3>🔎 Qué diferencia este modo del modo ISO-aligned</h3>
-                <p>El modo Screening sacrifica detalle para ganar velocidad. No propaga por bandas, no usa T/HR/P por frecuencia, no calcula <b>Abar</b> desde MDT y resume la atmósfera con un único coeficiente <b>α</b>. Por eso debe interpretarse como preevaluación rápida, no como informe acústico detallado.</p>
+                <h3>🔎 Ce qui distingue ce mode du mode ISO-aligned</h3>
+                <p>Le mode Screening sacrifie le détail pour gagner en vitesse. Il ne propage pas par bandes, n’utilise pas T/HR/P par fréquence, ne calcule pas <b>Abar</b> depuis le MDT et résume l’atmosphère avec un coefficient unique <b>α</b>. Il doit donc être interprété comme une préévaluation rapide, et non comme un rapport acoustique détaillé.</p>
             </div>
             """
 
@@ -850,162 +1330,162 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             if dem_used:
                 mdt_expl_html = f"""
                 <div class='card'>
-                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>
-                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>
+                    <h3>🗺️ Physique du MDT et de l’écran topographique</h3>
+                    <p>Dans le moteur ISO-aligned, le MDT <b>ne modifie pas l’émission de l’éolienne</b> ni l’absorption atmosphérique. Sa fonction est de décrire la <b>géométrie réelle du trajet source–récepteur</b> et d’alimenter le terme d’écran topographique <b>Abar,b</b>.</p>
                     <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>
-                    <h4>Cómo entra el MDT en el cálculo</h4>
+                    <h4>Comment le MDT entre dans le calcul</h4>
                     <ol>
-                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>
-                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>
-                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>
+                        <li><b>Profil du terrain :</b> le profil source–récepteur est extrait du MDT avec un <b>échantillonnage adaptatif</b>, ajusté à la distance et à la résolution du raster. Le profil est calculé <b>une seule fois</b> par paire source–récepteur et réutilisé sur les 8 bandes afin de réduire le temps de calcul.</li>
+                        <li><b>Ligne de visée directe :</b> le profil est comparé à la droite reliant la source acoustique à sa hauteur effective et le récepteur à sa hauteur d’évaluation. Si le terrain reste toujours sous cette droite, il n’y a pas d’obstacle topographique pertinent et <b>Abar,b = 0</b>.</li>
+                        <li><b>Détection de l’obstacle dominant :</b> si une colline ou une crête du MDT dépasse au-dessus de la ligne de visée, le modèle considère qu’il existe un écran topographique. La grandeur clé est la hauteur de l’obstacle au-dessus de la ligne de visée:</li>
                     </ol>
-                    <div class='formula'>h_obs = z_terreno - z_LOS</div>
-                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>
+                    <div class='formula'>h_obs = z_terrain - z_LOS</div>
+                    <p>lorsque <b>h_obs &gt; 0</b>, le relief coupe la vision directe et une atténuation supplémentaire par diffraction peut apparaître.</p>
                     <ol start='4'>
-                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>
-                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>
-                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>
+                        <li><b>Activation conservatrice:</b> Abar n’est pas activé pour de petites irrégularités du relief ; un seuil minimal lié à la résolution du MDT est appliqué.</li>
+                        <li><b>Géométrie réelle de l’obstacle :</b> le calcul utilise la <b>position réelle</b> de l’obstacle dominant et obtient <b>d1</b> (source → obstacle) et <b>d2</b> (obstacle → récepteur) réels, au lieu de supposer systématiquement un obstacle au point médian.</li>
+                        <li><b>Diffraction de type Fresnel:</b> avec cette géométrie, une différence de chemins approximative est estimée et transformée en atténuation dépendante de la fréquence:</li>
                     </ol>
                     <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>
-                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>
-                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>
-                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>
-                    <p><b>MDT usado en esta corrida:</b> {dem_layer_name or 'sin nombre'}.</p>
+                    <p>où <b>δ</b> est la différence de chemins approximative, <b>f</b> la fréquence et <b>c</b> la vitesse du son. Le nombre <b>C</b> est ensuite traduit en une atténuation <b>Abar,b</b>, d’autant plus élevée que le relief bloque le trajet. C’est l’approximation implémentée dans le calcul.</p>
+                    <p><b>Interprétation physique:</b> en terrain plat ou en l’absence d’intersection avec la ligne de visée, <b>Abar</b> est généralement négligeable. En terrain complexe, le MDT peut introduire plusieurs dB d’atténuation supplémentaire et modifier le récepteur critique.</p>
+                    <p><b>Implémentation actuelle :</b> obstacle dominant unique, profil adaptatif avec limites de coût, géométrie réelle de l’obstacle, activation conservatrice et atténuation plafonnée à des valeurs raisonnables.</p>
+                    <p><b>MDT utilisé dans ce calcul:</b> {dem_layer_name or 'sans nom'}.</p>
                 </div>
                 """
             else:
                 mdt_expl_html = """
                 <div class='card'>
-                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>
-                    <p>En esta corrida <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>
+                    <h3>🗺️ Physique du MDT et de l’écran topographique</h3>
+                    <p>Dans ce calcul, <b>aucun MDT/DSM n’a été utilisé</b>, donc le terme d’écran topographique est fixé à:</p>
                     <div class='formula'>Abar,b = 0</div>
-                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>
+                    <p>L’évaluation est réalisée sans introduire d’écrans topographiques. La géométrie du trajet est résolue sans profil de terrain et le calcul dépend de Lw,b, Adiv, Aatm,b et Agr,b.</p>
                 </div>
                 """
 
             if ground_mode == 'landuse':
                 ground_expl_html = f"""
                 <div class='card'>
-                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>
-                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>
+                    <h3>🌱 Physique de l’occupation du sol et calcul de G_eff</h3>
+                    <p>Lorsque le mode sol est <b>depuis une couche</b>, le calcul n’utilise pas une seule valeur manuelle pour tout le parc. Pour chaque trajet source–récepteur, un <b>G_eff</b> est calculé depuis la couche d’occupation du sol:</p>
                     <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>
-                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>
+                    <p>où <b>G_i</b> est la valeur attribuée à chaque polygone intercepté par le trajet et <b>L_i</b> la longueur du trajet à l’intérieur de ce polygone.</p>
                     <ul>
-                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>
-                        <li><b>G = 0.5</b>: terreno mixto.</li>
-                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>
+                        <li><b>G = 0</b>: sol dur (urbano/asfalto/roca).</li>
+                        <li><b>G = 0.5</b>: terrain mixte.</li>
+                        <li><b>G = 1</b>: sol meuble/poreux (agricole, prairie, forestier, végétalisé).</li>
                     </ul>
-                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta corrida, el valor medio efectivo fue <b>{float(g_eff_stats.get('mean', g)):.2f}</b> y el del receptor crítico <b>{float(g_eff_stats.get('critical', g)):.2f}</b>.</p>
-                    <p><b>Capa usada:</b> {landuse_layer_name or 'sin nombre'}.</p>
+                    <p><b>Important:</b> le <b>G global</b> affiché dans le rapport est uniquement une valeur de secours. Lorsqu’une couche d’occupation du sol est disponible, le calcul utilise réellement <b>G_eff</b> par trajet. Dans ce calcul, la valeur effective moyenne était <b>{float(g_eff_stats.get('mean', g)):.2f}</b> et celle du récepteur critique <b>{float(g_eff_stats.get('critical', g)):.2f}</b>.</p>
+                    <p><b>Couche utilisée:</b> {landuse_layer_name or 'sans nom'}.</p>
                 </div>
                 """
             else:
                 ground_expl_html = f"""
                 <div class='card'>
-                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>
-                    <p>En esta corrida el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>
+                    <h3>🌱 Physique de l’occupation du sol et calcul de G</h3>
+                    <p>Dans ce calcul, l’effet de sol a été calculé avec un <b>G manuel unique</b> pour tout le trajet:</p>
                     <div class='formula'>G = {g:.2f}</div>
-                    <p>Ese valor se aplica en el término de suelo del modelo. No se ha derivado un G_eff desde capa de uso del suelo.</p>
+                    <p>Cette valeur est appliquée dans le terme de sol du modèle. Aucun G_eff n’a été dérivé depuis une couche d’occupation du sol.</p>
                 </div>
                 """
 
             equations_detail_html = f"""
             <div class='card'>
-                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>
-                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>
-                <p><b>Escenario operativo de esta corrida:</b> {acoustic_txt}.</p>
-                <p><b>Ecuación general por banda:</b></p>
+                <h3>📘 Développement physique détaillé du moteur ISO-aligned</h3>
+                <p>Ce moteur travaille en <b>8 bandes d’octave</b> (63–8000 Hz). Les bandes ne sont pas un résultat du calcul, mais la <b>grille fréquentielle de la méthode</b>. Pour appliquer la propagation par bandes, le calcul a besoin d’une <b>entrée acoustique par bande</b> de la source <code>Lw,b</code>. Cette entrée peut provenir d’un spectre mesuré/importé ou d’un gabarit/fallback ajusté au niveau global opérationnel.</p>
+                <p><b>Scénario opérationnel de ce calcul:</b> {acoustic_txt}.</p>
+                <p><b>Équation générale par bande:</b></p>
                 <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>
-                <p><b>Suma A-ponderada final:</b></p>
+                <p><b>Sommation finale pondérée A:</b></p>
                 <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>
-                <h4>0. Inputs realmente usados en esta corrida</h4>
+                <h4>0. Entrées réellement utilisées dans ce calcul</h4>
                 <ul>
-                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>
-                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>
-                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>
-                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>
-                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>
-                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>
+                    <li><b>Source acoustique :</b> <code>Lw,b</code> par bandes d’octave. S’il existe un spectre spécifique du groupe source, c’est l’entrée utilisée. Sinon, le plugin utilise une bibliothèque/un gabarit/un fallback et l’ajuste au niveau global opérationnel.</li>
+                    <li><b>Niveau opérationnel global:</b> il provient d’un <b>LwA fixe</b> ou d’une <b>courbe acoustique LwA(ws)</b> selon le scénario sélectionné. Ce niveau global ne remplace pas les bandes : il fixe l’état opérationnel et le spectre fournit la répartition fréquentielle.</li>
+                    <li><b>Géométrie :</b> coordonnées de source et de récepteur, hauteur du récepteur, hauteur effective de source et distance 3D.</li>
+                    <li><b>Atmosphère:</b> température <b>T</b>, humidité relative <b>HR</b> et pression <b>P</b>.</li>
+                    <li><b>Sol:</b> un <b>G global manuel</b> ou un <b>G_eff</b> dérivé depuis la couche d’occupation du sol.</li>
+                    <li><b>Topographie:</b> MDT/DSM optionnel. Il n’affecte que le calcul de <b>Abar,b</b>.</li>
                 </ul>
-                <h4>1. De dónde sale cada término de la ecuación</h4>
+                <h4>1. Origine de chaque terme de l’équation</h4>
                 <table>
-                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>
-                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>
-                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>
-                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>
-                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>
-                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>
+                    <tr><th>Terme</th><th>Comment il est obtenu dans ce plugin</th></tr>
+                    <tr><td><b>Lw,b</b></td><td>Entrée acoustique par bandes. Elle provient du spectre du groupe source (CSV, bibliothèque, gabarit ou fallback ajusté au niveau global). La courbe acoustique LwA(ws) ou le LwA fixe définit le niveau global opérationnel de l’éolienne, et le spectre par bandes répartit ce niveau entre les 8 bandes.</td></tr>
+                    <tr><td><b>Adiv</b></td><td>Calculé à partir de la distance 3D source–récepteur.</td></tr>
+                    <tr><td><b>Aatm,b</b></td><td>Calculé par bande avec une table de base d’absorption <code>α_ref(f)</code> et des corrections simplifiées de température, humidité relative et pression. L’implémentation actuelle utilise la formulation exacte du plugin : <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>
+                    <tr><td><b>Agr,b</b></td><td>Calculé comme effet de sol par régions. Le paramètre de sol utilisé est un <b>G unique par trajet</b> : manuel/global ou <b>G_eff</b> dérivé de la couche d’occupation du sol.</td></tr>
+                    <tr><td><b>Abar,b</b></td><td>N’intervient que s’il existe un MDT/DSM et si un écran topographique est détecté. En l’absence de MDT ou d’obstacle pertinent, <b>Abar,b = 0</b>.</td></tr>
                 </table>
-                <h4>2. Input acústico de fuente y bandas</h4>
-                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>
-                <p>El plugin combina dos piezas:</p>
+                <h4>2. Entrée acoustique de la source et bandes</h4>
+                <p>Dans ce moteur, le terme <code>Lw,b</code> est une <b>donnée d’entrée par bande</b>. Les <b>bandes d’octave</b> (63–8000 Hz) ne sont pas un résultat ISO ni un tableau calculé par le plugin : ce sont la <b>grille fréquentielle</b> sur laquelle la propagation est résolue.</p>
+                <p>Le plugin combine deux éléments:</p>
                 <ul>
-                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>
-                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>
+                    <li><b>Courbe acoustique globale LwA(ws)</b>: fixe le <b>niveau opérationnel global</b> de l’éolienne pour la vitesse de vent ou le cas le plus défavorable sélectionné.</li>
+                    <li><b>Spectre par bandes Lw,b</b>: répartit ce niveau global entre les 8 bandes et constitue l’entrée réelle utilisée dans l’équation par bandes.</li>
                 </ul>
-                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>
-                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>
+                <p>Ce spectre peut provenir d’un fichier spécifique du fabricant/de l’utilisateur ou d’un gabarit de référence. Si seule une courbe globale <code>LwA(ws)</code> est disponible, le plugin fixe d’abord le niveau global opérationnel <code>LwA_cible</code>, puis construit un spectre absolu par bandes à partir d’une forme spectrale de référence <code>S_b^ref</code>.</p>
+                <p><b>Reconstruction mathématique des bandes lorsqu’il n’existe que LwA(ws):</b></p>
                 <div class='formula'>Lw,b = S_b^ref + Δ</div>
-                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>
-                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>
+                <div class='formula'>Δ = LwA_cible - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>
+                <p>Autrement dit : la courbe acoustique fournit le <b>niveau global opérationnel</b> et le gabarit/la bibliothèque fournit la <b>forme spectrale</b>. Le décalage <b>Δ</b> est calculé de façon à ce que, après pondération A et sommation énergétique des 8 bandes, le spectre reconstruit reproduise exactement le <code>LwA_cible</code> de la courbe importée.</p>
                 {spectrum_detail_html}
-                <h4>3. Divergencia geométrica</h4>
+                <h4>3. Divergence géométrique</h4>
                 <div class='formula'>Adiv = 20·log10(d) + 11</div>
-                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor. Aquí <b>d</b> sale de las coordenadas de turbina y receptor junto con sus alturas de evaluación.</p>
-                <h4>4. Absorción atmosférica simplificada</h4>
+                <p>Représente la dispersion géométrique de l’onde sonore avec la distance 3D source–récepteur. Ici, <b>d</b> provient des coordonnées de l’éolienne et du récepteur avec leurs hauteurs d’évaluation.</p>
+                <h4>4. Absorption atmosphérique simplifiée</h4>
                 <div class='formula'>Aatm,b = α(f, T, HR, P) · d</div>
-                <p>La absorción atmosférica se calcula por banda a partir de un coeficiente base de referencia y tres factores correctores. La dependencia física con temperatura, humedad relativa y presión <b>sí se representa</b>, pero mediante una <b>aproximación simplificada del plugin</b>, no mediante la formulación analítica completa de ISO 9613-1.</p>
+                <p>L’absorption atmosphérique est calculée par bande à partir d’un coefficient de référence et de trois facteurs correcteurs. La dépendance physique à la température, l’humidité relative et la pression <b>est bien représentée</b>, mais au moyen d’une <b>approximation simplifiée du plugin</b>, et non de la formulation analytique complète de l’ISO 9613-1.</p>
                 <div class='formula'>α(f, T, HR, P) = α_ref(f) · corr_T · corr_HR · corr_P</div>
                 <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_HR = 1 + 0.003·|HR - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>
-                <p><b>Interpretación de las correcciones:</b> <b>T</b> se introduce en °C respecto a una referencia de 15 °C; <b>HR</b> se compara con una humedad óptima de referencia del 50% y la corrección crece al alejarse de ese valor; y <b>P</b> se introduce en kPa respecto a una referencia de 101.325 kPa con una corrección inversa. Estos factores modifican únicamente el bloque atmosférico <b>Aatm,b</b>: no alteran ni la emisión de la turbina, ni el efecto del suelo, ni el término de MDT/apantallamiento.</p>
+                <p><b>Interprétation des corrections:</b> <b>T</b> est introduit en °C par rapport à une référence de 15 °C ; <b>HR</b> est comparée à une humidité optimale de référence de 50 % et la correction augmente lorsque l’on s’en éloigne ; <b>P</b> est introduite en kPa par rapport à une référence de 101,325 kPa avec une correction inverse. Ces facteurs ne modifient que le bloc atmosphérique <b>Aatm,b</b> : ils ne modifient ni l’émission de l’éolienne, ni l’effet de sol, ni le terme MDT/écran.</p>
                 <table>
-                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>
+                    <tr><th>Bande [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>
                     {atm_rows}
                 </table>
-                <h4>5. Efecto suelo por regiones</h4>
+                <h4>5. Effet de sol par régions</h4>
                 <div class='formula'>Agr,b = As + Am + Ar</div>
-                <p>El término de suelo se descompone en <b>As</b> (región de fuente), <b>Am</b> (región media) y <b>Ar</b> (región de receptor). En esta implementación no se usan tres parámetros de suelo independientes <code>Gs/Gm/Gr</code>, sino un <b>único G por trayecto</b>. Matemáticamente, el plugin aplica:</p>
+                <p>Le terme de sol se décompose en <b>As</b> (région de source), <b>Am</b> (région intermédiaire) et <b>Ar</b> (région du récepteur). Dans cette implémentation, trois paramètres de sol indépendants <code>Gs/Gm/Gr</code> ne sont pas utilisés ; un <b>G unique par trajet</b> est utilisé. Mathématiquement, le plugin applique :</p>
                 <div class='formula'>As = G_eff·A_ground(h_s)</div>
                 <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_medio)</div>
                 <div class='formula'>Ar = G_eff·A_ground(h_r)</div>
-                <p>donde <b>h_s</b> es la altura característica de la fuente, <b>h_r</b> la del receptor, <b>h_medio</b> la altura media del trayecto y <b>G_m≈0</b> en la aproximación actual para condiciones favorables de propagación. Ese valor único de suelo puede ser:</p>
+                <p>où <b>h_s</b> est la hauteur caractéristique de la source, <b>h_r</b> celle du récepteur, <b>h_moy</b> la hauteur moyenne du trajet et <b>G_m≈0</b> dans l’approximation actuelle pour des conditions favorables de propagation. Cette valeur unique de sol peut être :</p>
                 <ul>
-                    <li><b>G manual/global</b>, si el usuario fija un único valor.</li>
-                    <li><b>G_eff</b>, si existe capa de uso del suelo y se calcula una media ponderada por longitud del trayecto.</li>
+                    <li><b>G manuel/global</b>, si l’utilisateur fixe une valeur unique.</li>
+                    <li><b>G_eff</b>, si une couche d’occupation du sol existe et si une moyenne pondérée par la longueur du trajet est calculée.</li>
                 </ul>
                 <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>
-                <p><b>Significado físico de G:</b> representa el carácter acústico del terreno y controla cómo influye el suelo en la propagación. <b>G≈0</b> indica suelo duro (urbano, asfalto, roca), <b>G≈1</b> suelo blando/poroso (agrícola, pradera, forestal) y valores intermedios representan terreno mixto.</p>
-                <p><b>Qué significa “desde capa”:</b> el plugin corta el trayecto fuente–receptor contra la capa de uso del suelo, asigna un valor <b>G_i</b> a cada polígono interceptado y calcula un único <b>G_eff</b> para ese trayecto. Ese es el valor que entra realmente en <b>Agr,b</b>; el <b>G global</b> mostrado en el informe queda solo como respaldo.</p>
-                <p><b>Convención del informe:</b> <b>Agr,b</b> se muestra aquí como una <b>magnitud positiva de atenuación</b>. En la ecuación principal se resta al nivel de fuente igual que Adiv, Aatm y Abar.</p>
+                <p><b>Signification physique de G:</b> représente le caractère acoustique du terrain et contrôle l’influence du sol sur la propagation. <b>G≈0</b> indique un sol dur (urbain, asphalte, roche), <b>G≈1</b> un sol meuble/poreux (agricole, prairie, forestier) et les valeurs intermédiaires représentent un terrain mixte.</p>
+                <p><b>Ce que signifie « depuis couche » :</b> le plugin intersecte le trajet source–récepteur avec la couche d’occupation du sol, attribue une valeur <b>G_i</b> à chaque polygone intercepté et calcule un <b>G_eff</b> unique pour ce trajet. C’est cette valeur qui entre réellement dans <b>Agr,b</b> ; le <b>G global</b> affiché dans le rapport reste uniquement une valeur de secours.</p>
+                <p><b>Convention du rapport :</b> <b>Agr,b</b> est affiché ici comme une <b>amplitude positive d’atténuation</b>. Dans l’équation principale, il est soustrait au niveau de source comme Adiv, Aatm et Abar.</p>
                 <table>
-                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>Término base A_ground(h)</th></tr>
+                    <tr><th>Bande [Hz]</th><th style='text-align:right;'>Terme base A_ground(h)</th></tr>
                     {ground_rows}
                 </table>
-                <h4>6. Apantallamiento topográfico con MDT</h4>
-                <p>El MDT <b>no cambia la emisión</b> de la turbina ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto</b> y alimentar el término <b>Abar,b</b>.</p>
+                <h4>6. Écran topographique avec MDT</h4>
+                <p>Le MDT <b>ne modifie pas l’émission</b> de l’éolienne ni l’absorption atmosphérique. Sa fonction est de décrire la <b>géométrie réelle du trajet</b> et d’alimenter le terme <b>Abar,b</b>.</p>
                 <ol>
-                    <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con muestreo adaptativo.</li>
-                    <li><b>Línea de visión:</b> se construye la recta entre la altura efectiva de fuente y la altura del receptor. Si el terreno queda siempre por debajo, entonces <b>Abar,b = 0</b>.</li>
-                    <li><b>Obstáculo dominante:</b> si una loma o cresta sobresale, se calcula la altura sobre la línea de visión:</li>
+                    <li><b>Profil du terrain :</b> le profil source–récepteur est extrait du MDT avec un échantillonnage adaptatif.</li>
+                    <li><b>Ligne de visée:</b> la droite entre la hauteur effective de source et la hauteur du récepteur est construite. Si le terrain reste toujours en dessous, alors <b>Abar,b = 0</b>.</li>
+                    <li><b>Obstacle dominant:</b> si une colline ou une crête dépasse, la hauteur au-dessus de la ligne de visée est calculée :</li>
                 </ol>
-                <div class='formula'>h_obs = z_terreno - z_LOS</div>
-                <p>Cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>
+                <div class='formula'>h_obs = z_terrain - z_LOS</div>
+                <p>Lorsque <b>h_obs &gt; 0</b>, le relief coupe la vision directe et une atténuation supplémentaire par diffraction peut apparaître.</p>
                 <ol start='4'>
-                    <li><b>Geometría real del obstáculo:</b> el plugin usa la posición real del obstáculo dominante y calcula <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor).</li>
-                    <li><b>Activación conservadora:</b> no se activa <b>Abar</b> por pequeñas irregularidades del MDT; se exige un umbral mínimo ligado a la resolución del raster.</li>
-                    <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos y un número de Fresnel:</li>
+                    <li><b>Géométrie réelle de l’obstacle :</b> le plugin utilise la position réelle de l’obstacle dominant et calcule <b>d1</b> (source → obstacle) et <b>d2</b> (obstacle → récepteur).</li>
+                    <li><b>Activation conservatrice:</b> <b>Abar</b> n’est pas activé pour de petites irrégularités du MDT ; un seuil minimal lié à la résolution du raster est exigé.</li>
+                    <li><b>Diffraction de type Fresnel:</b> avec cette géométrie, une différence de chemins et un nombre de Fresnel sont estimés :</li>
                 </ol>
                 <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>
-                <p>Ese número se transforma después en una atenuación <b>Abar,b</b> dependiente de la frecuencia mediante la aproximación actual del plugin:</p>
+                <p>Ce nombre est ensuite transformé en une atténuation <b>Abar,b</b> dépendante de la fréquence au moyen de l’approximation actuelle du plugin :</p>
                 <div class='formula'>si C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>
                 <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>
-                <p>En la implementación actual, <b>Abar</b> se limita además a valores razonables (capado superior) para evitar sobreatenuaciones espurias. Si no hay MDT o no hay obstáculo relevante, entonces <b>Abar,b = 0</b>.</p>
-                <h4>7. Ponderación A usada al final</h4>
+                <p>Dans l’implémentation actuelle, <b>Abar</b> est également limité à des valeurs raisonnables (plafonnement supérieur) afin d’éviter des suratténuations parasites. En l’absence de MDT ou d’obstacle pertinent, alors <b>Abar,b = 0</b>.</p>
+                <h4>7. Pondération A utilisée à la fin</h4>
                 <table>
-                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>
+                    <tr><th>Bande [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>
                     {octave_rows}
                 </table>
-                <p><b>Lectura del receptor crítico:</b> la tabla del apartado de receptor crítico muestra magnitudes de atenuación para trazabilidad. El <b>nivel resultante</b> no debe interpretarse como una resta directa de una sola turbina: se obtiene mediante suma energética por bandas y suma de las fuentes contribuyentes dentro del radio de cálculo.</p>
+                <p><b>Lecture du récepteur critique:</b> le tableau de la section du récepteur critique affiche des amplitudes d’atténuation pour la traçabilité. Le <b>niveau résultant</b> ne doit pas être interprété comme une soustraction directe depuis une seule éolienne : il est obtenu par sommation énergétique par bandes et par sommation des sources contributrices dans le rayon de calcul.</p>
             </div>
             {ground_expl_html}
             {mdt_expl_html}
@@ -1013,60 +1493,60 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         else:
             if ground_mode == 'landuse':
                 fast_ground_html = f"""
-                <h4>3. Efecto suelo simplificado con uso del suelo</h4>
-                <p>En el motor rápido el término <b>Aground</b> sigue siendo empírico, pero el parámetro de suelo puede venir de la capa de uso del suelo como un <b>G_eff</b> por trayecto:</p>
+                <h4>3. Effet de sol simplifié avec occupation du sol</h4>
+                <p>Dans le moteur rapide, le terme <b>Aground</b> reste empirique, mais le paramètre de sol peut provenir de la couche d’occupation du sol sous forme de <b>G_eff</b> par trajet :</p>
                 <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>
                 <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>
-                <p>Ese <b>G_eff</b> se usa después dentro de la corrección simplificada de terreno del motor rápido. El valor global <b>G = {g:.2f}</b> queda solo como respaldo si la capa no aporta información válida.</p>
-                <p><b>Capa usada:</b> {landuse_layer_name or 'sin nombre'} · <b>G_eff medio:</b> {float(g_eff_stats.get('mean', g)):.2f} · <b>G_eff receptor crítico:</b> {float(g_eff_stats.get('critical', g)):.2f}</p>
+                <p>Ce <b>G_eff</b> est ensuite utilisé dans la correction simplifiée du terrain du moteur rapide. La valeur globale <b>G = {g:.2f}</b> reste uniquement une valeur de secours si la couche ne fournit pas d’information valide.</p>
+                <p><b>Couche utilisée:</b> {landuse_layer_name or 'sans nom'} · <b>G_eff moyen:</b> {float(g_eff_stats.get('mean', g)):.2f} · <b>G_eff du récepteur critique:</b> {float(g_eff_stats.get('critical', g)):.2f}</p>
                 """
             else:
                 fast_ground_html = f"""
-                <h4>3. Efecto suelo simplificado</h4>
-                <p>El término <b>Aground</b> es una corrección empírica del terreno controlada por un único parámetro manual:</p>
+                <h4>3. Effet de sol simplifié</h4>
+                <p>Le terme <b>Aground</b> est une correction empirique du terrain contrôlée par un seul paramètre manuel :</p>
                 <div class='formula'>G = {g:.2f}</div>
                 <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>
-                <p>En esta corrida no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>
+                <p>Dans ce calcul, aucun G_eff n’a été dérivé depuis une couche d’occupation du sol. Ici, <b>d_xy</b> est la distance horizontale, <b>h_s</b> la hauteur de source et <b>h_r</b> la hauteur du récepteur.</p>
                 """
 
             fast_mdt_html = """
-                <h4>4. MDT / topografía</h4>
-                <p>En el motor rápido el MDT no introduce un término explícito de apantallamiento topográfico. Aunque exista una capa de relieve en el proyecto, este modo no calcula <b>Abar</b>, no extrae línea de visión ni aplica difracción; por tanto la física se basa únicamente en <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> y la corrección empírica de terreno <b>Aground</b>.</p>
+                <h4>4. MDT / topographie</h4>
+                <p>Dans le moteur rapide, le MDT n’introduit pas de terme explicite d’écran topographique. Même si une couche de relief existe dans le projet, ce mode ne calcule pas <b>Abar</b>, n’extrait pas de ligne de visée et n’applique pas de diffraction ; la physique se base donc uniquement sur <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> et la correction empirique de terrain <b>Aground</b>.</p>
             """
 
             equations_detail_html = f"""
             <div class='card'>
-                <h3>📘 Desarrollo físico detallado del motor rápido</h3>
+                <h3>📘 Développement physique détaillé du moteur rapide</h3>
                 <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>
-                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>
-                <p><b>Escenario operativo de esta corrida:</b> {acoustic_txt}.</p>
-                <h4>0. Inputs realmente usados en esta corrida</h4>
+                <p>Le moteur rapide travaille avec un seul niveau global <b>LwA</b> par groupe source. Il est conçu pour le criblage, les cartes rapides et les comparaisons rapides, en sacrifiant le détail spectral au profit de la vitesse. Dans ce mode, il n’y a <b>pas de propagation par bandes</b> ni de terme explicite d’écran topographique.</p>
+                <p><b>Scénario opérationnel de ce calcul:</b> {acoustic_txt}.</p>
+                <h4>0. Entrées réellement utilisées dans ce calcul</h4>
                 <ul>
-                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>
-                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>
-                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>
-                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>
-                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>
-                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>
+                    <li><b>Source acoustique :</b> un seul niveau global <b>LwA</b> par groupe source.</li>
+                    <li><b>Niveau opérationnel global:</b> provient d’un <b>LwA fixe</b> ou d’une <b>courbe acoustique LwA(ws)</b> pour la vitesse ou le cas le plus défavorable sélectionnés.</li>
+                    <li><b>Géométrie :</b> coordonnées de source et de récepteur, hauteur du récepteur, hauteur effective de source et distance 3D.</li>
+                    <li><b>Atmosphère:</b> dans ce mode, T/HR/P ne sont pas utilisés ; l’absorption est résumée par un coefficient unique <b>α</b>.</li>
+                    <li><b>Sol:</b> un <b>G global manuel</b> ou un <b>G_eff</b> dérivé depuis la couche d’occupation du sol.</li>
+                    <li><b>Topographie :</b> le MDT n’entre pas comme écran explicite dans ce mode.</li>
                 </ul>
-                <h4>1. De dónde sale cada término de la ecuación</h4>
+                <h4>1. Origine de chaque terme de l’équation</h4>
                 <table>
-                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>
-                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>
-                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>
-                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>
-                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>
+                    <tr><th>Terme</th><th>Comment il est obtenu dans ce plugin</th></tr>
+                    <tr><td><b>LwA</b></td><td>Entrée globale de la source. Elle provient d’une valeur fixe par groupe ou d’une courbe acoustique <code>LwA(ws)</code> pour la vitesse/le pire cas sélectionné.</td></tr>
+                    <tr><td><b>Adiv</b></td><td>Calculé à partir de la distance 3D source–récepteur.</td></tr>
+                    <tr><td><b>Aatm</b></td><td>Calculé avec un coefficient constant unique <code>α</code> multiplié par la distance.</td></tr>
+                    <tr><td><b>Aground</b></td><td>Correction empirique de l’effet de sol. Le paramètre de sol peut être un <b>G global manuel</b> ou un <b>G_eff</b> dérivé de la couche d’occupation du sol.</td></tr>
                 </table>
-                <h4>2. Divergencia geométrica</h4>
+                <h4>2. Divergence géométrique</h4>
                 <div class='formula'>Adiv = 20·log10(d) + 11</div>
-                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>
-                <h4>3. Absorción atmosférica simplificada</h4>
+                <p>Représente la dispersion géométrique de l’onde sonore avec la distance 3D source–récepteur.</p>
+                <h4>3. Absorption atmosphérique simplifiée</h4>
                 <div class='formula'>Aatm = α · d</div>
-                <p>En esta corrida se ha usado <b>α = {alpha:.4f} dB/m</b>. En el motor rápido, la absorción atmosférica se resume en un único coeficiente constante, por lo que <b>T</b>, <b>HR</b> y <b>P</b> <b>no entran explícitamente</b> en el cálculo. Esa es una de las simplificaciones clave frente al modo ISO-aligned.</p>
+                <p>Dans ce calcul, <b>α = {alpha:.4f} dB/m</b> a été utilisé. Dans le moteur rapide, l’absorption atmosphérique est résumée par un seul coefficient constant ; <b>T</b>, <b>HR</b> et <b>P</b> <b>n’entrent donc pas explicitement</b> dans le calcul. C’est l’une des simplifications clés par rapport au mode ISO-aligned.</p>
                 {fast_ground_html}
                 {fast_mdt_html}
-                <h4>5. Qué no hace este modo</h4>
-                <p>El motor rápido no trabaja por bandas, no calcula <b>Lw,b</b>, no introduce <b>Abar</b> y no extrae línea de visión ni difracción desde MDT. Por tanto, es apropiado para screening y comparativas rápidas, pero no para análisis espectral detallado.</p>
+                <h4>5. Ce que ce mode ne fait pas</h4>
+                <p>Le moteur rapide ne travaille pas par bandes, ne calcule pas <b>Lw,b</b>, n’introduit pas <b>Abar</b> et n’extrait ni ligne de visée ni diffraction depuis le MDT. Il est donc adapté au criblage et aux comparaisons rapides, mais pas à l’analyse spectrale détaillée.</p>
             </div>
             """
 
@@ -1079,61 +1559,61 @@ class NoiseResultsDialog(QtWidgets.QDialog):
 
         # === BANNER DE ALCANCE (lo primero que se lee, antes de cualquier cifra) ===
         if engine == 'iso_aligned':
-            scope_what_is = "una evaluación acústica preliminar alineada con la metodología ISO 9613-2, pensada para diseño, comparación de alternativas y cribado de receptores sensibles."
-            scope_what_not = "no es un informe acústico certificado ni sustituye a un estudio regulatorio definitivo realizado con software comercial validado."
+            scope_what_is = "une évaluation acoustique préliminaire alignée sur la méthodologie ISO 9613-2, destinée à la conception, à la comparaison d’alternatives et au criblage des récepteurs sensibles."
+            scope_what_not = "ce n’est pas un rapport acoustique certifié et ne remplace pas une étude réglementaire définitive réalisée avec un logiciel commercial validé."
             scope_simpl_items = [
-                "Absorción atmosférica Aatm mediante tabla de referencia con correcciones simplificadas de temperatura, humedad y presión, no la formulación analítica completa de ISO 9613-1.",
-                "Sin corrección meteorológica de largo plazo Cmet.",
-                "Difracción topográfica de un único obstáculo dominante: sin difracción lateral ni pantallas múltiples.",
-                "Resolución espectral en 8 bandas de octava de 63 a 8000 Hz, no en tercios de octava.",
-                "Directividad de fuente Dc asumida 0 dB.",
+                "Absorption atmosphérique Aatm via une table de référence avec corrections simplifiées de température, humidité et pression, et non la formulation analytique complète de l’ISO 9613-1.",
+                "Sans correction météorologique de long terme Cmet.",
+                "Diffraction topographique d’un obstacle dominant unique : sans diffraction latérale ni écrans multiples.",
+                "Résolution spectrale en 8 bandes d’octave de 63 à 8000 Hz, pas en tiers d’octave.",
+                "Directivité de source Dc supposée égale à 0 dB.",
             ]
         else:
-            scope_what_is = "una estimación rápida de cribado (screening) para mapas ágiles y comparación de alternativas de implantación."
-            scope_what_not = "no es un cálculo espectral detallado ni un informe regulatorio; para receptores cercanos al límite conviene recalcular en modo ISO-aligned."
+            scope_what_is = "une estimation rapide de criblage pour des cartes agiles et la comparaison d’alternatives d’implantation."
+            scope_what_not = "ce n’est ni un calcul spectral détaillé ni un rapport réglementaire ; pour les récepteurs proches de la limite, il convient de recalculer en mode ISO-aligned."
             scope_simpl_items = [
-                "Sin propagación por bandas de octava.",
-                "Absorción atmosférica resumida en un único coeficiente alfa constante.",
-                "Sin apantallamiento topográfico Abar desde el MDT.",
-                "Efecto suelo mediante corrección empírica simplificada.",
+                "Sans propagation par bandes d’octave.",
+                "Absorption atmosphérique résumée par un seul coefficient alpha constant.",
+                "Sans écran topographique Abar depuis le MDT.",
+                "Effet de sol via une correction empirique simplifiée.",
             ]
-        scope_reco = "Para decisiones regulatorias críticas, valida los resultados con mediciones de campo o software comercial certificado."
+        scope_reco = "Pour les décisions réglementaires critiques, validez les résultats avec des mesures de terrain ou un logiciel commercial certifié."
         scope_items_html = ''.join(f"<li>{it}</li>" for it in scope_simpl_items)
         scope_banner_html = f"""
         <div style='background:#fff8e1;border:2px solid #f0ad4e;border-left:8px solid #f0ad4e;border-radius:8px;padding:18px 22px;margin:0 0 26px 0;'>
-            <h3 style='margin:0 0 10px 0;color:#7a5b00;'>⚠️ Alcance de este informe — léelo antes de usar los resultados</h3>
-            <p style='margin:6px 0;'><b>Qué es:</b> {scope_what_is}</p>
-            <p style='margin:6px 0;'><b>Qué no es:</b> {scope_what_not}</p>
-            <p style='margin:10px 0 4px 0;'><b>Simplificaciones aplicadas en este modo:</b></p>
+            <h3 style='margin:0 0 10px 0;color:#7a5b00;'>⚠️ Portée de ce rapport — à lire avant d’utiliser les résultats</h3>
+            <p style='margin:6px 0;'><b>Ce que c’est :</b> {scope_what_is}</p>
+            <p style='margin:6px 0;'><b>Ce que ce n’est pas :</b> {scope_what_not}</p>
+            <p style='margin:10px 0 4px 0;'><b>Simplifications appliquées dans ce mode :</b></p>
             <ul style='margin:4px 0 10px 0;'>{scope_items_html}</ul>
-            <p style='margin:6px 0 0 0;'><b>Recomendación:</b> {scope_reco}</p>
+            <p style='margin:6px 0 0 0;'><b>Recommandation :</b> {scope_reco}</p>
         </div>
         """
 
         # === GLOSARIO DE SÍMBOLOS (decodifica fórmulas y tablas en un solo sitio) ===
         glossary_rows = [
-            ("LwA", "Nivel de potencia sonora A-ponderado de la fuente, en dB(A)."),
-            ("Lw,b", "Potencia sonora de la fuente por banda de octava, en dB."),
-            ("S_b^ref", "Forma espectral de referencia por banda usada como plantilla, en dB."),
-            ("A_weight,b", "Ponderación A aplicada a cada banda de octava, en dB."),
-            ("Δ", "Desplazamiento global aplicado a la plantilla espectral para reproducir el LwA objetivo, en dB."),
-            ("LpA", "Nivel de presión sonora A-ponderado resultante en el receptor, en dB(A)."),
-            ("Adiv", "Atenuación por divergencia geométrica con la distancia, en dB."),
-            ("Aatm", "Atenuación por absorción atmosférica del aire, en dB."),
-            ("Agr", "Atenuación por efecto del suelo, en dB."),
-            ("Abar", "Atenuación por apantallamiento topográfico, solo en modo ISO con MDT, en dB."),
-            ("d", "Distancia tridimensional entre fuente y receptor, en metros."),
-            ("G / G_eff", "Factor de suelo de 0 (duro) a 1 (blando) y su valor efectivo por trayecto."),
-            ("Cmet", "Corrección meteorológica de largo plazo, no aplicada en este plugin."),
-            ("Dc", "Corrección por directividad de la fuente, asumida 0 dB."),
+            ("LwA", "Niveau de puissance acoustique pondéré A de la source, en dB(A)."),
+            ("Lw,b", "Puissance acoustique de la source par bande d’octave, en dB."),
+            ("S_b^ref", "Forme spectrale de référence par bande utilisée comme gabarit, en dB."),
+            ("A_weight,b", "Pondération A appliquée à chaque bande d’octave, en dB."),
+            ("Δ", "Décalage global appliqué au gabarit spectral pour reproduire le LwA cible, en dB."),
+            ("LpA", "Niveau de pression acoustique pondéré A résultant au récepteur, en dB(A)."),
+            ("Adiv", "Atténuation par divergence géométrique avec la distance, en dB."),
+            ("Aatm", "Atténuation due à l’absorption atmosphérique de l’air, en dB."),
+            ("Agr", "Atténuation due à l’effet de sol, en dB."),
+            ("Abar", "Atténuation due à l’écran topographique, uniquement en mode ISO avec MDT, en dB."),
+            ("d", "Distance tridimensionnelle entre source et récepteur, en mètres."),
+            ("G / G_eff", "Facteur de sol de 0 (dur) à 1 (meuble) et sa valeur effective par trajet."),
+            ("Cmet", "Correction météorologique de long terme, non appliquée dans ce plugin."),
+            ("Dc", "Correction de directivité de la source, supposée égale à 0 dB."),
         ]
         glossary_rows_html = ''.join(f"<tr><td><b>{sym}</b></td><td>{desc}</td></tr>" for sym, desc in glossary_rows)
         glossary_html = f"""
         <div class='card card-info'>
-            <h3>📖 Glosario de símbolos</h3>
-            <p>Definición compacta de los símbolos que aparecen en las fórmulas y tablas de este informe.</p>
+            <h3>📖 Glossaire des symboles</h3>
+            <p>Définition compacte des symboles qui apparaissent dans les formules et tableaux de ce rapport.</p>
             <table>
-                <tr><th>Símbolo</th><th>Significado</th></tr>
+                <tr><th>Symbole</th><th>Signification</th></tr>
                 {glossary_rows_html}
             </table>
         </div>
@@ -1275,145 +1755,149 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         </style>
         
         <div style='background: linear-gradient(135deg, #1e3a5f 0%, #2c5f8d 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px;'>
-            <h1 style='color: white; margin: 0 0 8px 0; font-size: 32px;'>📊 INFORME TÉCNICO DE IMPACTO ACÚSTICO</h1>
-            <p style='font-size: 16px; opacity: 0.9; margin: 0;'>Evaluación de ruido generado por aerogeneradores</p>
+            <h1 style='color: white; margin: 0 0 8px 0; font-size: 32px;'>📊 RAPPORT TECHNIQUE D’IMPACT ACOUSTIQUE</h1>
+            <p style='font-size: 16px; opacity: 0.9; margin: 0;'>Évaluation du bruit généré par les éoliennes</p>
             <p style='font-size: 14px; opacity: 0.85; margin-top: 12px;'>📅 {now.strftime('%d/%m/%Y - %H:%M:%S')}</p>
         </div>
         
         {scope_banner_html}
         
-        <h2>1. RESUMEN EJECUTIVO</h2>
+        <h2>1. RÉSUMÉ EXÉCUTIF</h2>
         
         <div class='metrics-grid'>
             <div class='metric'>
                 <div class='metric-value'>{n_sources}</div>
-                <div class='metric-label'>Aerogeneradores</div>
+                <div class='metric-label'>Éoliennes</div>
             </div>
             <div class='metric'>
                 <div class='metric-value'>{n_receivers}</div>
-                <div class='metric-label'>Receptores Evaluados</div>
+                <div class='metric-label'>Récepteurs évalués</div>
             </div>
             <div class='metric'>
                 <div class='metric-value'>{max_noise:.1f}</div>
-                <div class='metric-label'>Nivel Máximo (dB(A))</div>
+                <div class='metric-label'>Niveau maximal (dB(A))</div>
             </div>
         </div>
         
         <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>
             <div class='card card-{'success' if coverage_rate > 80 else 'info'}'>
-                <h3>📍 Cobertura de Análisis</h3>
-                <p><strong>{n_with} receptores</strong> dentro del radio<br>
-                <strong>{coverage_rate:.1f}%</strong> de cobertura<br>
-                {n_without} receptores fuera de radio</p>
+                <h3>📍 Couverture de l’analyse</h3>
+                <p><strong>{n_with} récepteurs</strong> dans le rayon<br>
+                <strong>{coverage_rate:.1f}%</strong> de couverture<br>
+                {n_without} récepteurs hors rayon</p>
             </div>
             
             <div class='card card-{'success' if comply_rate > 90 else 'danger' if comply_rate < 50 else 'info'}'>
-                <h3>✓ Cumplimiento Normativo</h3>
-                <p><strong>{n_exceed} receptores</strong> superan límites<br>
-                <strong>{comply_rate:.1f}%</strong> de cumplimiento sobre receptores cubiertos<br>
-                Límite: {float(limit_stats.get('min',45)):.1f}–{float(limit_stats.get('max',45)):.1f} dB(A)</p>
+                <h3>✓ Conformité réglementaire</h3>
+                <p><strong>{n_exceed} récepteurs</strong> dépassent les limites<br>
+                <strong>{comply_rate:.1f}%</strong> de conformité sur les récepteurs couverts<br>
+                Limite : {float(limit_stats.get('min',45)):.1f}–{float(limit_stats.get('max',45)):.1f} dB(A)</p>
             </div>
         </div>
         
         <div class='card card-info'>
-            <h3>🎯 Metodología de Cálculo</h3>
-            <p><b>Motor utilizado:</b> {engine_label}</p>
-            <p><b>Grupos fuente acústicos:</b> {n_models} modelo(s) de aerogenerador</p>
-            <p><b>Método:</b> {'Propagación por bandas de octava según metodología ISO-aligned' if engine == 'iso_aligned' else 'Cálculo acústico simplificado para screening'}</p>
-            <p><b>Mapa raster:</b> {grid_txt}</p>
+            <h3>🎯 Méthodologie de calcul</h3>
+            <p><b>Moteur utilisé :</b> {engine_label}</p>
+            <p><b>Groupes source acoustiques :</b> {n_models} modèle(s) d’éolienne</p>
+            <p><b>Méthode :</b> {'Propagation par bandes d’octave selon la méthodologie ISO-aligned' if engine == 'iso_aligned' else 'Calcul acoustique simplifié pour le criblage'}</p>
+            <p><b>Carte raster :</b> {grid_txt}</p>
         </div>
 
-        <h2>2. CÓMO SE HA GENERADO EL RESULTADO</h2>
+        <h2>2. COMMENT LE RÉSULTAT A ÉTÉ GÉNÉRÉ</h2>
         {methodology_flow_html}
         
-        <h2>3. RECEPTOR CRÍTICO</h2>
+        <h2>3. RÉCEPTEUR CRITIQUE</h2>
         {crit_html}
         
         <div class='card'>
-            <h3>📊 Estadísticos de Atenuaciones (Receptores Cubiertos)</h3>
-        <p style='margin: 6px 0 10px 0; color:#495057;'><i>Se muestran magnitudes brutas de atenuación (no el signo algebraico dentro de la ecuación). Para Abar se usa el máximo entre las turbinas contribuyentes de cada receptor, no solo la trayectoria dominante.</i></p>
+            <h3>📊 Statistiques des atténuations (récepteurs couverts)</h3>
+        <p style='margin: 6px 0 10px 0; color:#495057;'><i>Les amplitudes brutes d’atténuation sont affichées (et non le signe algébrique dans l’équation). Pour Abar, le maximum parmi les éoliennes contributrices de chaque récepteur est utilisé, pas uniquement le trajet dominant.</i></p>
             <table>
                 <tr>
-                    <th>Término</th>
-                    <th style='text-align: right;'>Media [dB]</th>
-                    <th style='text-align: right;'>Máximo [dB]</th>
+                    <th>Terme</th>
+                    <th style='text-align: right;'>Moyenne [dB]</th>
+                    <th style='text-align: right;'>Maximum [dB]</th>
                 </tr>
                 <tr>
-                    <td><b>Adiv</b> (divergencia geométrica)</td>
+                    <td><b>Adiv</b> (divergence géométrique)</td>
                     <td style='text-align: right;'>{float(adiv_stats.get('mean',0.0)):.2f}</td>
                     <td style='text-align: right;'>{float(adiv_stats.get('max',0.0)):.2f}</td>
                 </tr>
                 <tr>
-                    <td><b>Aatm</b> (absorción atmosférica)</td>
+                    <td><b>Aatm</b> (absorption atmosphérique)</td>
                     <td style='text-align: right;'>{float(aatm_stats.get('mean',0.0)):.2f}</td>
                     <td style='text-align: right;'>{float(aatm_stats.get('max',0.0)):.2f}</td>
                 </tr>
                 <tr>
-                    <td><b>Agr/Aground</b> (efecto suelo)</td>
+                    <td><b>Agr/Aground</b> (effet de sol)</td>
                     <td style='text-align: right;'>{float(aground_stats.get('mean',0.0)):.2f}</td>
                     <td style='text-align: right;'>{float(aground_stats.get('max',0.0)):.2f}</td>
                 </tr>
                 <tr>
-                    <td><b>Abar</b> (máximo entre contribuyentes)</td>
+                    <td><b>Abar</b> (maximum parmi les contributeurs)</td>
                     <td style='text-align: right;'>{float(abar_stats.get('mean',0.0)):.2f}</td>
                     <td style='text-align: right;'>{float(abar_stats.get('max',0.0)):.2f}</td>
                 </tr>
             </table>
         </div>
         
-        <h2>4. CONFIGURACIÓN Y PARÁMETROS</h2>
+        <h2>4. CONFIGURATION ET PARAMÈTRES</h2>
         
         <div class='card'>
-            <h3>⚙️ Ecuación Utilizada</h3>
+            <h3>⚙️ Équation utilisée</h3>
             <div class='formula'>{equation}</div>
             <p><em>{interpretation}</em></p>
         </div>
         
         <div class='card'>
-            <h3>📋 Parámetros del Cálculo</h3>
+            <h3>📋 Paramètres du calcul</h3>
             <ul>{''.join(param_lines)}</ul>
             {pressure_warning_html}
-            <p><b>Trayectos con G distinto del global:</b> {int(ground_diag.get('from_landuse_count',0))} ({float(ground_diag.get('from_landuse_pct',0.0)):.1f}%)</p>
+            <p><b>Trajets avec G différent du global :</b> {int(ground_diag.get('from_landuse_count',0))} ({float(ground_diag.get('from_landuse_pct',0.0)):.1f}%)</p>
         </div>
         
         <div class='card'>
-            <h3>✓ Términos Activos</h3>
+            <h3>✓ Termes actifs</h3>
             <ul>{''.join(term_lines)}</ul>
         </div>
         
-        <h2>5. FÍSICA DETALLADA Y TRAZABILIDAD DEL CÁLCULO</h2>
+        <h2>5. PHYSIQUE DÉTAILLÉE ET TRAÇABILITÉ DU CALCUL</h2>
         {glossary_html}
         {equations_detail_html}
         
-        <h2>6. GRUPOS FUENTE ACÚSTICOS</h2>
+        <h2>6. GROUPES SOURCE ACOUSTIQUES</h2>
         <div class='card'>
-            <h3>⚡ LwA Efectivo por Grupo</h3>
-            <ul>{''.join(eff_lines) if eff_lines else '<li>No disponible</li>'}</ul>
+            <h3>⚡ LwA effectif par groupe</h3>
+            <ul>{''.join(eff_lines) if eff_lines else '<li>Non disponible</li>'}</ul>
         </div>
         
-        <h2>7. DISTRIBUCIÓN POR TIPO DE RECEPTOR</h2>
+        <h2>7. DISTRIBUTION PAR TYPE DE RÉCEPTEUR</h2>
         <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>
             <div class='card'>
-                <h3>📍 Receptores por Categoría</h3>
-                <ul>{rec_types_html if rec_types_html else '<li>No disponible</li>'}</ul>
+                <h3>📍 Récepteurs par catégorie</h3>
+                <ul>{rec_types_html if rec_types_html else '<li>Non disponible</li>'}</ul>
             </div>
             <div class='card'>
-                <h3>✓ Cumplimiento por Categoría</h3>
-                <ul>{compliance_html if compliance_html else '<li>No disponible</li>'}</ul>
+                <h3>✓ Conformité par catégorie</h3>
+                <ul>{compliance_html if compliance_html else '<li>Non disponible</li>'}</ul>
             </div>
         </div>
         
         <div class='disclaimer'>
-            <strong>⚠️ Limitaciones y recomendaciones</strong>
-            <p><b>Motor Rápido:</b> Apropiado para screening preliminar y mapas ágiles.</p>
-            <p><b>Motor ISO-aligned:</b> Apropiado para estudios técnicos preliminares, comparativas e iteración de diseño.</p>
-            <p><b>Simplificaciones conocidas:</b> Aatm simplificado (tablas + correcciones); Agr y Abar con aproximaciones básicas; directividad Dc asumida 0 dB; Cmet/corrección meteorológica de largo plazo no aplicada.</p>
-            <p><b>Modelos múltiples:</b> soportados mediante capas/grupos fuente independientes. Mezclar varios modelos dentro de una sola capa por atributos no está habilitado en esta versión experimental.</p>
-            <p><b>Raster ISO + MDT:</b> usa la misma lógica de apantallamiento topográfico que los receptores puntuales, pero puede ser costoso en mapas grandes.</p>
-            <p><b>Recomendación:</b> Para estudios regulatorios críticos, validar con mediciones o software comercial certificado.</p>
+            <strong>⚠️ Limites et recommandations</strong>
+            <p><b>Moteur rapide :</b> Adapté au criblage préliminaire et aux cartes agiles.</p>
+            <p><b>Moteur ISO-aligned :</b> Adapté aux études techniques préliminaires, aux comparaisons et à l’itération de conception.</p>
+            <p><b>Simplifications connues :</b> Aatm simplifié (tables + corrections) ; Agr et Abar avec approximations de base ; directivité Dc supposée égale à 0 dB ; Cmet/correction météorologique de long terme non appliquée.</p>
+            <p><b>Modèles multiples :</b> pris en charge au moyen de couches/groupes source indépendants. Mélanger plusieurs modèles dans une seule couche via attributs n’est pas activé dans cette version expérimentale.</p>
+            <p><b>Raster ISO + MDT :</b> utilise la même logique d’écran topographique que les récepteurs ponctuels, mais peut être coûteux sur de grandes cartes.</p>
+            <p><b>Recommandation :</b> Pour les études réglementaires critiques, valider avec des mesures ou un logiciel commercial certifié.</p>
         </div>
         """
-        self.page_summary.setHtml(translate_html(html))
+        if current_language() != "fr":
+            html = translate_html(html)
+            if str(current_language()).lower().startswith("de"):
+                html = _cleanup_german_noise_html(html)
+        self.page_summary.document().setHtml(html)
 
     def _fill_models(self):
         model_diag = self._res.get("model_diag", {}) or {}
@@ -1423,9 +1907,9 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             hh = d.get("hub_height")
             mode = str(d.get('acoustic_mode') or 'fixed').lower()
             if mode == 'curve' and str(d.get('curve_path') or '').strip():
-                note = str(d.get('curve_note') or 'Acoustic curve activa')
+                note = str(d.get('curve_note') or 'Courbe acoustique active')
             else:
-                note = 'LwA fijo por grupo fuente acústico'
+                note = 'LwA fixe par groupe de source acoustique'
             rows.append((str(name), int(d.get("count", 0)), float(d.get("lwa", 0.0)), hh, dia, note))
         self.tbl_models.setRowCount(len(rows))
         for r, row in enumerate(rows):
@@ -1505,7 +1989,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
 
 
     def _fill_mdt_screening(self):
-        """Fill a DEM/MDT audit table sorted by screening, not by noise level."""
+        """Fill a DEM/MDT audit table sorted by criblage, not by noise level."""
         rows = [dict(r) for r in self._payload_receiver_rows() if isinstance(r, dict)]
 
         def _f(d, key, default=0.0):
@@ -1564,10 +2048,10 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             return ""
         if key == "exceeds":
             try:
-                return "sí" if int(float(val or 0)) == 1 else "no"
+                return "oui" if int(float(val or 0)) == 1 else "non"
             except Exception:
                 txt = str(val or "").strip().lower()
-                return "sí" if txt in ("true", "yes", "sí", "si", "1") else "no"
+                return "oui" if txt in ("true", "yes", "sí", "si", "oui", "1") else "non"
         if val is None:
             return "N/A"
         txt = str(val).strip()
@@ -1735,7 +2219,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             pass
 
     def _export_summary(self):
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar resumen', os.path.expanduser('~/ruido_resumen.html'), 'HTML (*.html);;Texto (*.txt)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, ('Zusammenfassung exportieren' if str(current_language()).lower().startswith('de') else 'Exporter le résumé'), os.path.expanduser('~/schall_zusammenfassung.html' if str(current_language()).lower().startswith('de') else '~/bruit_resume.html'), ('HTML (*.html);;Text (*.txt)' if str(current_language()).lower().startswith('de') else 'HTML (*.html);;Texte (*.txt)'))
         if not path:
             return
         try:
@@ -1748,14 +2232,14 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 with open(path, 'w', encoding='utf-8') as fh:
                     fh.write(self.page_summary.toHtml())
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar resumen', f'No se pudo exportar el resumen:\n{e}')
+            QtWidgets.QMessageBox.warning(self, ('Zusammenfassung exportieren' if str(current_language()).lower().startswith('de') else 'Exporter le résumé'), (f'Die Zusammenfassung konnte nicht exportiert werden:\n{e}' if str(current_language()).lower().startswith('de') else f'Impossible d’exporter le résumé :\n{e}'))
 
     def _export_receivers_csv(self):
         rows = self._receiver_rows_for_export()
         if not rows:
-            QtWidgets.QMessageBox.information(self, 'Exportar receptores', 'No hay filas de receptores para exportar.')
+            QtWidgets.QMessageBox.information(self, 'Exporter les récepteurs', 'Aucune ligne de récepteurs à exporter.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar receptores CSV', os.path.expanduser('~/ruido_receptores.csv'), 'CSV (*.csv)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter les récepteurs CSV', os.path.expanduser('~/bruit_recepteurs.csv'), 'CSV (*.csv)')
         if not path:
             return
         try:
@@ -1763,7 +2247,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.csv'
             self._write_rows_csv(rows, path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar receptores', f'No se pudo exportar el CSV:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter les récepteurs', f'Impossible d’exporter le CSV :\n{e}')
 
     def _write_dict_rows_csv(self, rows, path: str):
         # Deterministic CSV for dictionaries. Keeps debug exports independent
@@ -1785,9 +2269,9 @@ class NoiseResultsDialog(QtWidgets.QDialog):
     def _export_path_diagnostics_csv(self):
         rows = self._res.get('path_diagnostics') or []
         if not rows:
-            QtWidgets.QMessageBox.information(self, 'Exportar diagnóstico MDT', 'No hay diagnóstico por pares fuente-receptor disponible. Recalcula con motor ISO-aligned y fuentes dentro del radio. Este CSV es el que permite auditar cada turbina contra cada receptor.')
+            QtWidgets.QMessageBox.information(self, 'Exporter le diagnostic MDT', 'Aucun diagnostic par paires source-récepteur n’est disponible. Recalculez avec le moteur ISO-aligned et des sources dans le rayon. Ce CSV permet d’auditer chaque éolienne par rapport à chaque récepteur.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar diagnóstico MDT por pares CSV', os.path.expanduser('~/ruido_mdt_pair_diagnostics.csv'), 'CSV (*.csv)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter le diagnostic MDT par paires CSV', os.path.expanduser('~/bruit_diagnostic_mdt_paires.csv'), 'CSV (*.csv)')
         if not path:
             return
         try:
@@ -1795,14 +2279,14 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.csv'
             self._write_dict_rows_csv(rows, path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar diagnóstico MDT', f'No se pudo exportar el CSV de diagnóstico MDT:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter le diagnostic MDT', f'Impossible d’exporter le CSV de diagnostic MDT :\n{e}')
 
 
     def _export_top_receivers_csv(self):
         if self.tbl_top.rowCount() <= 0:
-            QtWidgets.QMessageBox.information(self, 'Exportar Top receivers', 'No hay filas de Top receivers para exportar.')
+            QtWidgets.QMessageBox.information(self, 'Exporter le principaux récepteurs', 'Aucune ligne de principaux récepteurs à exporter.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar Top receivers CSV', os.path.expanduser('~/ruido_top_receivers.csv'), 'CSV (*.csv)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter le principaux récepteurs CSV', os.path.expanduser('~/bruit_top_recepteurs.csv'), 'CSV (*.csv)')
         if not path:
             return
         try:
@@ -1810,13 +2294,13 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.csv'
             self._write_table_csv(self.tbl_top, path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar Top receivers', f'No se pudo exportar el CSV de Top receivers:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter le principaux récepteurs', f'Impossible d’exporter le CSV du principaux récepteurs :\n{e}')
 
     def _export_mdt_screening_csv(self):
         if self.tbl_mdt.rowCount() <= 0:
-            QtWidgets.QMessageBox.information(self, 'Exportar screening MDT', 'No hay filas de screening MDT para exportar.')
+            QtWidgets.QMessageBox.information(self, 'Exporter le criblage MDT', 'Aucune ligne de criblage MDT à exporter.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar screening MDT CSV', os.path.expanduser('~/ruido_mdt_screening_receivers.csv'), 'CSV (*.csv)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter le criblage MDT CSV', os.path.expanduser('~/bruit_criblage_mdt_recepteurs.csv'), 'CSV (*.csv)')
         if not path:
             return
         try:
@@ -1824,15 +2308,15 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.csv'
             self._write_table_csv(self.tbl_mdt, path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar screening MDT', f'No se pudo exportar el CSV de screening MDT:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter le criblage MDT', f'Impossible d’exporter le CSV de criblage MDT :\n{e}')
 
 
     def _export_sources_csv(self):
         layer = self._res.get('sources_layer')
         if not isinstance(layer, QgsVectorLayer):
-            QtWidgets.QMessageBox.information(self, 'Exportar grupos fuente', 'No hay capa de fuentes para exportar.')
+            QtWidgets.QMessageBox.information(self, 'Exporter les groupes source', 'Aucune couche de sources à exporter.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar grupos fuente CSV', os.path.expanduser('~/ruido_fuentes.csv'), 'CSV (*.csv)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter les groupes source CSV', os.path.expanduser('~/bruit_sources.csv'), 'CSV (*.csv)')
         if not path:
             return
         try:
@@ -1840,14 +2324,14 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.csv'
             self._write_layer_csv(layer, path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar grupos fuente', f'No se pudo exportar el CSV:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter les groupes source', f'Impossible d’exporter le CSV :\n{e}')
 
     def _export_exceedances_csv(self):
         rows = self._collect_exceedance_rows()
         if not rows:
-            QtWidgets.QMessageBox.information(self, 'Exportar excedencias', 'No hay receptores que superen el límite en este cálculo.')
+            QtWidgets.QMessageBox.information(self, 'Exporter les dépassements', 'Aucun récepteur ne dépasse la limite dans ce calcul.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar excedencias CSV', os.path.expanduser('~/ruido_excedencias.csv'), 'CSV (*.csv)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter les dépassements CSV', os.path.expanduser('~/bruit_depassements.csv'), 'CSV (*.csv)')
         if not path:
             return
         try:
@@ -1855,13 +2339,13 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.csv'
             self._write_rows_csv(rows, path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar excedencias', f'No se pudo exportar el CSV:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter les dépassements', f'Impossible d’exporter le CSV :\n{e}')
 
     def _export_package_xlsx(self):
         if Workbook is None:
-            QtWidgets.QMessageBox.information(self, 'Exportar paquete XLSX', 'openpyxl no está disponible en este entorno de QGIS. Usa las exportaciones CSV o instala openpyxl.')
+            QtWidgets.QMessageBox.information(self, 'Exporter le paquet XLSX', 'openpyxl n’est pas disponible dans cet environnement QGIS. Utilisez les exportations CSV ou installez openpyxl.')
             return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exportar paquete XLSX', os.path.expanduser('~/ruido_paquete.xlsx'), 'Excel (*.xlsx)')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Exporter le paquet XLSX', os.path.expanduser('~/bruit_paquet.xlsx'), 'Excel (*.xlsx)')
         if not path:
             return
         try:
@@ -1869,30 +2353,30 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 path += '.xlsx'
             wb = Workbook()
             ws0 = wb.active
-            ws0.title = 'Resumen'
+            ws0.title = 'Résumé'
             plain = self.page_summary.toPlainText().splitlines()
             for line in plain:
                 ws0.append([line])
-            self._append_table_sheet(wb, 'Modelos', self.tbl_models)
-            self._append_sheet(wb, 'Receptores', self._receiver_rows_for_export())
+            self._append_table_sheet(wb, 'Modèles', self.tbl_models)
+            self._append_sheet(wb, 'Récepteurs', self._receiver_rows_for_export())
             self._append_sheet(wb, 'Excedencias', self._collect_exceedance_rows())
-            self._append_table_sheet(wb, 'Capas_creadas', self.tbl_layers)
+            self._append_table_sheet(wb, 'Couches_créées', self.tbl_layers)
             wb.save(path)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, 'Exportar paquete XLSX', f'No se pudo exportar el XLSX:\n{e}')
+            QtWidgets.QMessageBox.warning(self, 'Exporter le paquet XLSX', f'Impossible d’exporter le XLSX :\n{e}')
 
     def _fill_layers(self):
         entries = [
-            ("Noise · Receivers", self._res.get("result_layer") is not None),
-            ("Noise · Sources", self._res.get("sources_layer") is not None),
-            ("Noise · Dominant links", self._res.get("links_layer") is not None),
-            ("Noise · Receivers outside radius", self._res.get("uncovered_layer") is not None),
-            ("Noise · Mapa", self._res.get("grid_layer") is not None),
-            ("Noise · Isophones", self._res.get("iso_layer") is not None),
+            ("Bruit · Récepteurs", self._res.get("result_layer") is not None),
+            ("Bruit · Sources", self._res.get("sources_layer") is not None),
+            ("Bruit · Liaisons dominantes", self._res.get("links_layer") is not None),
+            ("Bruit · Récepteurs hors rayon", self._res.get("uncovered_layer") is not None),
+            ("Bruit · Carte", self._res.get("grid_layer") is not None),
+            ("Bruit · Isophones", self._res.get("iso_layer") is not None),
         ]
         self.tbl_layers.setRowCount(len(entries))
         for r, (name, ok) in enumerate(entries):
-            for c, v in enumerate([name, "creada" if ok else "no creada"]):
+            for c, v in enumerate([name, "créée" if ok else "non créée"]):
                 it = QtWidgets.QTableWidgetItem(v)
                 it.setFlags(it.flags() & ~QtCore.Qt.ItemIsEditable)
                 self.tbl_layers.setItem(r, c, it)

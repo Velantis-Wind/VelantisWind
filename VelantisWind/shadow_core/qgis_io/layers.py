@@ -19,6 +19,23 @@ from qgis.core import (
 from ..shadow_calculator import ShadowFlickerResult
 
 
+def _is_de() -> bool:
+    try:
+        from ...i18n import current_language  # type: ignore
+    except Exception:
+        try:
+            from ..i18n import current_language  # type: ignore
+        except Exception:
+            try:
+                from i18n import current_language  # type: ignore
+            except Exception:
+                return False
+    try:
+        return str(current_language()).lower().startswith("de")
+    except Exception:
+        return False
+
+
 def create_results_layer_for_page(self, results: List[ShadowFlickerResult], receiver_layer: QgsVectorLayer, 
                           turbines: List[dict], calculator):
     """Create shadow flicker output layer."""
@@ -43,7 +60,7 @@ def create_results_layer_for_page(self, results: List[ShadowFlickerResult], rece
         fields.append(QgsField(f"h_{month_name}", QtCore.QVariant.Double))
 
     # Create layer
-    layer_name = f"Shadow_Flicker_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    layer_name = f"Schattenwurf_{datetime.now().strftime('%Y%m%d_%H%M%S')}" if _is_de() else f"Ombres_scintillement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     result_layer = QgsVectorLayer(
         f"Point?crs={receiver_layer.crs().authid()}",
         layer_name,
@@ -68,28 +85,28 @@ def create_results_layer_for_page(self, results: List[ShadowFlickerResult], rece
         # Classify by severity
         h = result.hours_per_year_astronomical
         if h >= 30:
-            category = "CRITICAL"
+            category = "CRITIQUE"
             severity = 4
-            exceeds_30h = "Yes"
+            exceeds_30h = "Oui"
         elif h >= 20:
-            category = "HIGH"
+            category = "ÉLEVÉ"
             severity = 3
-            exceeds_30h = "No"
+            exceeds_30h = "Non"
         elif h >= 10:
-            category = "MEDIUM"
+            category = "MOYEN"
             severity = 2
-            exceeds_30h = "No"
+            exceeds_30h = "Non"
         elif h >= 5:
-            category = "LOW"
+            category = "FAIBLE"
             severity = 1
-            exceeds_30h = "No"
+            exceeds_30h = "Non"
         else:
-            category = "VERY LOW"
+            category = "TRÈS FAIBLE"
             severity = 0
-            exceeds_30h = "No"
+            exceeds_30h = "Non"
 
         feat.setAttribute("exceeds_30h", exceeds_30h)
-        feat.setAttribute("exceeds_30m", "Yes" if result.max_minutes_per_day > 30 else "No")
+        feat.setAttribute("exceeds_30m", "Oui" if result.max_minutes_per_day > 30 else "Non")
         feat.setAttribute("category", category)
         feat.setAttribute("severity", severity)
 
@@ -125,11 +142,11 @@ def apply_result_symbology_for_page(self, layer: QgsVectorLayer):
 
     # Shadow ranges with more distinctive colors
     ranges = [
-        (0, 5, "VERY LOW (< 5 h/year)", "#90EE90"),      # Light green
-        (5, 10, "LOW (5-10 h/year)", "#ADFF2F"),        # Lime green
-        (10, 20, "MEDIUM (10-20 h/year)", "#FFFF00"),     # Yellow
-        (20, 30, "HIGH (20-30 h/year)", "#FFA500"),      # Orange
-        (30, 999, "CRITICAL (> 30 h/year)", "#FF0000"),   # Red
+        (0, 5, "TRÈS FAIBLE (< 5 h/an)", "#90EE90"),      # Light green
+        (5, 10, "FAIBLE (5-10 h/an)", "#ADFF2F"),        # Lime green
+        (10, 20, "MOYEN (10-20 h/an)", "#FFFF00"),     # Yellow
+        (20, 30, "ÉLEVÉ (20-30 h/an)", "#FFA500"),      # Orange
+        (30, 999, "CRITIQUE (> 30 h/an)", "#FF0000"),   # Red
     ]
 
     range_list = []
@@ -172,8 +189,8 @@ def apply_labels_for_page(self, layer: QgsVectorLayer):
     label_settings = QgsPalLayerSettings()
     label_settings.setFormat(text_format)
 
-    # Display: "Receiver: XX.X h/year"
-    label_settings.fieldName = "concat(receiver, ': ', round(hours_year, 1), ' h/year')"
+    # Display: "Récepteur : XX.X h/an"
+    label_settings.fieldName = "concat(receiver, ': ', round(hours_year, 1), ' h/an')"
     label_settings.isExpression = True
 
     # Position above point - use correct enum for QGIS 3.x

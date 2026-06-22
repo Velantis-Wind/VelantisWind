@@ -14,6 +14,11 @@ from __future__ import annotations
 from dataclasses import replace
 
 from qgis.PyQt import QtWidgets
+try:
+    from ..i18n import current_language
+except Exception:
+    def current_language():
+        return "es"
 
 from .dialog_state import build_config_from_dialog
 from .result_status import append_result_status as _append_result_status
@@ -107,7 +112,15 @@ def run_noise_from_dialog(dialog) -> None:
         dlg = NoiseResultsDialog(dialog, res)
         dlg.exec_()
     except Exception as exc:
-        QtWidgets.QMessageBox.warning(dialog, "Noise", f"No se pudo mostrar el resumen visual de ruido:\n{exc}")
+        _lang = str(current_language()).lower()
+        if _lang.startswith("de"):
+            QtWidgets.QMessageBox.warning(dialog, "Schall", f"Die visuelle Schallübersicht konnte nicht angezeigt werden:\n{exc}")
+        elif _lang.startswith("fr"):
+            QtWidgets.QMessageBox.warning(dialog, "Bruit", f"Impossible d’afficher le résumé visuel du bruit :\n{exc}")
+        elif _lang.startswith("en"):
+            QtWidgets.QMessageBox.warning(dialog, "Noise", f"Could not display the visual noise summary:\n{exc}")
+        else:
+            QtWidgets.QMessageBox.warning(dialog, "Ruido", f"No se pudo mostrar el resumen visual de ruido:\n{exc}")
 
     QtWidgets.QMessageBox.information(
         dialog,

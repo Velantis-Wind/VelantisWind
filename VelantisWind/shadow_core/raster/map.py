@@ -14,6 +14,23 @@ from qgis.core import QgsApplication, QgsRasterLayer, QgsProject
 from .task import ShadowRasterTask
 
 
+def _is_de() -> bool:
+    try:
+        from ...i18n import current_language  # type: ignore
+    except Exception:
+        try:
+            from ..i18n import current_language  # type: ignore
+        except Exception:
+            try:
+                from i18n import current_language  # type: ignore
+            except Exception:
+                return False
+    try:
+        return str(current_language()).lower().startswith("de")
+    except Exception:
+        return False
+
+
 def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem_layer=None):
     """Create shadow flicker raster map using a background QgsTask.
 
@@ -29,7 +46,7 @@ def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem
 
     # Crear task
     task = ShadowRasterTask(
-        "Generating shadow flicker raster map",
+        ("Schattenwurf-Rasterkarte wird erzeugt" if _is_de() else "Génération de la carte raster d’ombres et scintillement"),
         turbines,
         calculator,
         turbine_layer,
@@ -48,13 +65,13 @@ def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem
 
     QtWidgets.QMessageBox.information(
         self,
-        "Raster in progress",
-        f"The raster map is being generated in the background.\n\n"
-        f"Resolution: {resolution} m\n"
-        f"Time step: {raster_timestep} min\n"
-        f"Max shadow distance: {max_distance:.0f} m\n"
-        f"You can continue working in QGIS.\n\n"
-        f"You will be notified when it finishes."
+        "Raster en cours",
+        f"La carte raster est générée en arrière-plan.\n\n"
+        f"Résolution : {resolution} m\n"
+        f"Pas temporel : {raster_timestep} min\n"
+        f"Distance maximale d’ombre : {max_distance:.0f} m\n"
+        f"Vous pouvez continuer à travailler dans QGIS.\n\n"
+        f"Vous serez averti à la fin."
     )
 
 def on_raster_completed_for_page(self, task):
@@ -66,7 +83,7 @@ def on_raster_completed_for_page(self, task):
         from qgis.core import QgsRasterLayer, QgsProject
         raster_layer = QgsRasterLayer(
             task.raster_path, 
-            f"Shadow_Map_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            f"Carte_ombres_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
 
         if raster_layer.isValid():
@@ -87,25 +104,25 @@ def on_raster_completed_for_page(self, task):
 
             QtWidgets.QMessageBox.information(
                 self,
-                "Raster completed",
-                f"Raster map created successfully.\n\n"
-                f"Calculated points: {task.points_calculated}\n"
-                f"Elapsed time: {task.elapsed_time:.1f} seconds\n"
-                f"File: {task.raster_path}\n\n"
-                f"💡 You can now regenerate TIFs filtered by month/hour\n"
-                f"   without recalculating (using the filter combos)."
+                "Raster terminé",
+                f"Carte raster créée avec succès.\n\n"
+                f"Points calculés : {task.points_calculated}\n"
+                f"Temps écoulé : {task.elapsed_time:.1f} secondes\n"
+                f"Fichier : {task.raster_path}\n\n"
+                f"💡 Vous pouvez maintenant régénérer des TIF filtrés par mois/heure\n"
+                f"   sans recalculer (avec les listes de filtre)."
             )
         else:
             QtWidgets.QMessageBox.critical(
                 self,
-                "Error",
-                "The raster was created but could not be loaded in QGIS."
+                "Erreur",
+                ("Das Raster wurde erstellt, konnte aber nicht in QGIS geladen werden." if _is_de() else "Le raster a été créé mais n’a pas pu être chargé dans QGIS.")
             )
     else:
         QtWidgets.QMessageBox.critical(
             self,
-            "Error",
-            "Could not create the raster file."
+            "Erreur",
+            "Impossible de créer le fichier raster."
         )
 
 def regenerate_filtered_raster_for_page(self):
@@ -115,8 +132,8 @@ def regenerate_filtered_raster_for_page(self):
     if not self._last_npz_path or not os.path.exists(self._last_npz_path):
         QtWidgets.QMessageBox.warning(
             self,
-            "No data",
-            "No raster data are available. Generate a raster first."
+            "Aucune donnée",
+            "Aucune donnée raster n’est disponible. Générez d’abord un raster."
         )
         return
 
@@ -146,22 +163,22 @@ def regenerate_filtered_raster_for_page(self):
             # Todo (suma completa) - igual que el raster original
             filtered = raster_12x24.sum(axis=(2, 3))  # (height, width)
             filter_name = "all"
-            filter_label = "All months, All hours"
+            filter_label = "Tous les mois, toutes les heures"
         elif month_idx != -1 and hour_idx == -1:
             # Only un mes
             filtered = raster_12x24[:, :, month_idx, :].sum(axis=2)
             filter_name = f"month{month_idx+1:02d}"
-            filter_label = f"Only {self.cb_filter_month.currentText()}"
+            filter_label = f"Seulement {self.cb_filter_month.currentText()}"
         elif month_idx == -1 and hour_idx != -1:
             # Only una hora
             filtered = raster_12x24[:, :, :, hour_idx].sum(axis=2)
             filter_name = f"hour{hour_idx:02d}"
-            filter_label = f"Only a las {hour_idx:02d}:00"
+            filter_label = f"Seulement à {hour_idx:02d}:00"
         else:
             # Specific month + hour
             filtered = raster_12x24[:, :, month_idx, hour_idx]
             filter_name = f"month{month_idx+1:02d}_hour{hour_idx:02d}"
-            filter_label = f"{self.cb_filter_month.currentText()} at {hour_idx:02d}:00"
+            filter_label = f"{self.cb_filter_month.currentText()} à {hour_idx:02d}:00"
 
         # Convert minutes to hours
         filtered_hours = filtered.astype(np.float32) / 60.0
@@ -205,7 +222,7 @@ def regenerate_filtered_raster_for_page(self):
 
         # Cargar en QGIS
         from qgis.core import QgsRasterLayer, QgsProject
-        layer_name = f"Shadow_{filter_name}_{datetime.now().strftime('%H%M%S')}"
+        layer_name = f"Schattenwurf_{filter_name}_{datetime.now().strftime('%H%M%S')}" if _is_de() else f"Ombres_{filter_name}_{datetime.now().strftime('%H%M%S')}"
         raster_layer = QgsRasterLayer(filtered_path, layer_name)
 
         if raster_layer.isValid():
@@ -223,27 +240,27 @@ def regenerate_filtered_raster_for_page(self):
 
             QtWidgets.QMessageBox.information(
                 self,
-                "Filtered raster generated",
-                f"Applied filter: {filter_label}\n\n"
-                f"Maximum: {max_val:.2f} h\n"
-                f"Mean: {mean_val:.2f} h\n\n"
-                f"File: {filtered_path}"
+                "Raster filtré généré",
+                f"Filtre appliqué : {filter_label}\n\n"
+                f"Maximum : {max_val:.2f} h\n"
+                f"Moyenne : {mean_val:.2f} h\n\n"
+                f"Fichier : {filtered_path}"
             )
         else:
-            QtWidgets.QMessageBox.warning(self, "Error", "Could not load the filtered TIF")
+            QtWidgets.QMessageBox.warning(self, "Erreur", "Impossible de charger le TIF filtré")
 
     except Exception as e:
         import traceback
         debug_print(f"[Shadow Filter] ❌ Error: {e}")
         traceback.print_exc()
-        QtWidgets.QMessageBox.critical(self, "Error", f"Error regenerating raster:\n\n{e}")
+        QtWidgets.QMessageBox.critical(self, "Erreur", f"Erreur lors de la régénération du raster :\n\n{e}")
 
 def on_raster_terminated_for_page(self):
     """Callback when raster generation is cancelled."""
     QtWidgets.QMessageBox.warning(
         self,
-        "Cancelled",
-        "Raster generation was cancelled."
+        "Annulé",
+        "La génération du raster a été annulée."
     )
 
 def apply_raster_symbology_for_page(self, layer):
@@ -263,12 +280,12 @@ def apply_raster_symbology_for_page(self, layer):
     shader.setColorRampType(QgsColorRampShader.Interpolated)
 
     color_ramp_items = [
-        QgsColorRampShader.ColorRampItem(0, QtGui.QColor(0, 0, 255), "0 h/year"),           # Azul
-        QgsColorRampShader.ColorRampItem(5, QtGui.QColor(0, 255, 255), "5 h/year"),        # Cyan
-        QgsColorRampShader.ColorRampItem(10, QtGui.QColor(0, 255, 0), "10 h/year"),        # Verde
-        QgsColorRampShader.ColorRampItem(20, QtGui.QColor(255, 255, 0), "20 h/year"),      # Yellow
-        QgsColorRampShader.ColorRampItem(30, QtGui.QColor(255, 165, 0), "30 h/year"),      # Orange
-        QgsColorRampShader.ColorRampItem(max_val, QtGui.QColor(255, 0, 0), f"{max_val:.0f} h/year"),  # Red
+        QgsColorRampShader.ColorRampItem(0, QtGui.QColor(0, 0, 255), "0 h/an"),           # Azul
+        QgsColorRampShader.ColorRampItem(5, QtGui.QColor(0, 255, 255), "5 h/an"),        # Cyan
+        QgsColorRampShader.ColorRampItem(10, QtGui.QColor(0, 255, 0), "10 h/an"),        # Verde
+        QgsColorRampShader.ColorRampItem(20, QtGui.QColor(255, 255, 0), "20 h/an"),      # Yellow
+        QgsColorRampShader.ColorRampItem(30, QtGui.QColor(255, 165, 0), "30 h/an"),      # Orange
+        QgsColorRampShader.ColorRampItem(max_val, QtGui.QColor(255, 0, 0), f"{max_val:.0f} h/an"),  # Red
     ]
     shader.setColorRampItemList(color_ramp_items)
 

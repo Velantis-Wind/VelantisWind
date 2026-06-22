@@ -551,6 +551,47 @@ def _format_turbine_geometry_for_export(turbines: Optional[List[Dict[str, object
     return f"{min(values):.2f}-{max(values):.2f} {unit} ({len(unique_values)} unique values)"
 
 
+
+def _shadow_export_lang_labels():
+    try:
+        from ..i18n import current_language
+        lang = str(current_language()).lower()
+    except Exception:
+        lang = "es"
+    if lang.startswith("de"):
+        return {
+            "months": ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+            "title": "Schattenwurfstunden nach Monat und Tagesstunde",
+            "config": "BERECHNUNGSKONFIGURATION",
+            "year": "Jahr", "timezone": "Zeitzone", "time_step": "Zeitschritt", "availability": "Verfügbarkeit",
+            "max_dist": "Maximaler Schattenabstand", "solar_limits": "Grenzwerte der Sonnenhöhe",
+            "n_turbines": "Anzahl Windturbinen", "hub": "Verwendete Nabenhöhe", "diam": "Verwendeter Rotordurchmesser",
+            "receiver": "Rezeptor", "hour": "Stunde", "summary": "ZUSAMMENFASSUNG",
+            "total": "Gesamt h/Jahr", "max_min": "Max. Minuten/Tag", "max_date": "Datum des stärksten Schattenwurfs", "days": "Betroffene Tage",
+        }
+    if lang.startswith("fr"):
+        return {
+            "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
+            "title": "Heures d’ombres et scintillement par mois et heure de la journée",
+            "config": "CONFIGURATION DU CALCUL",
+            "year": "Année", "timezone": "Fuseau horaire", "time_step": "Pas temporel", "availability": "Disponibilité",
+            "max_dist": "Distance maximale d’ombre", "solar_limits": "Limites d’élévation solaire",
+            "n_turbines": "Nombre d’éoliennes", "hub": "Hauteur de moyeu utilisée", "diam": "Diamètre du rotor utilisé",
+            "receiver": "Récepteur", "hour": "Heure", "summary": "RÉSUMÉ",
+            "total": "Total h/an", "max_min": "Max minutes/jour", "max_date": "Date d’ombre max.", "days": "Jours affectés",
+        }
+    return {
+        "months": ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+        "title": "Horas de sombra y parpadeo por mes y hora del día",
+        "config": "CONFIGURACIÓN DEL CÁLCULO",
+        "year": "Año", "timezone": "Zona horaria", "time_step": "Paso temporal", "availability": "Disponibilidad",
+        "max_dist": "Distancia máxima de sombra", "solar_limits": "Límites de elevación solar",
+        "n_turbines": "Número de aerogeneradores", "hub": "Altura de buje utilizada", "diam": "Diámetro de rotor utilizado",
+        "receiver": "Receptor", "hour": "Hora", "summary": "RESUMEN",
+        "total": "Total h/año", "max_min": "Máx. minutos/día", "max_date": "Fecha de sombra máxima", "days": "Días afectados",
+    }
+
+
 def export_shadow_12x24_csv(
     results: List[ShadowFlickerResult],
     filepath: str,
@@ -579,40 +620,40 @@ def export_shadow_12x24_csv(
         except Exception:
             _t = lambda s: s  # type: ignore
 
-    months = [_t(m) for m in ['January', 'February', 'March', 'April', 'May', 'June',
-              'July', 'August', 'September', 'October', 'November', 'December']]
+    labels = _shadow_export_lang_labels()
+    months = labels["months"]
 
     with open(filepath, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
 
         # Header
-        writer.writerow([_t('Shadow Flicker Hours by Month and Hour of Day')])
+        writer.writerow([labels['title']])
         writer.writerow([])  # Línea vacía
 
         # Calculation metadata / exported summary context
-        writer.writerow([_t('CALCULATION CONFIGURATION')])
+        writer.writerow([labels['config']])
         if calculator is not None:
-            writer.writerow([_t('Latitude'), f"{getattr(calculator, 'latitude', 0.0):.5f}"])
-            writer.writerow([_t('Longitude'), f"{getattr(calculator, 'longitude', 0.0):.5f}"])
-            writer.writerow([_t('Year'), getattr(calculator, 'year', 'N/A')])
+            writer.writerow(['Latitude', f"{getattr(calculator, 'latitude', 0.0):.5f}"])
+            writer.writerow(['Longitude', f"{getattr(calculator, 'longitude', 0.0):.5f}"])
+            writer.writerow([labels['year'], getattr(calculator, 'year', 'N/A')])
             writer.writerow([
-                _t('Timezone'),
+                labels['timezone'],
                 timezone_label(
                     getattr(calculator, 'timezone_mode', 'fixed'),
                     getattr(calculator, 'timezone_name', None),
                     getattr(calculator, 'timezone_offset', 0),
                 ),
             ])
-            writer.writerow([_t('Time step'), f"{getattr(calculator, 'time_step_minutes', 'N/A')} min"])
-            writer.writerow([_t('Availability'), f"{getattr(calculator, 'turbine_availability', 'N/A')}"])
-            writer.writerow([_t('Max shadow distance'), f"{getattr(calculator, 'max_shadow_distance_m', 'N/A')} m"])
+            writer.writerow([labels['time_step'], f"{getattr(calculator, 'time_step_minutes', 'N/A')} min"])
+            writer.writerow([labels['availability'], f"{getattr(calculator, 'turbine_availability', 'N/A')}"])
+            writer.writerow([labels['max_dist'], f"{getattr(calculator, 'max_shadow_distance_m', 'N/A')} m"])
             writer.writerow([
-                _t('Solar elevation limits'),
-                f"{getattr(calculator, 'min_sun_elevation', 'N/A')}° to {getattr(calculator, 'max_sun_elevation', 'N/A')}°",
+                labels['solar_limits'],
+                f"{getattr(calculator, 'min_sun_elevation', 'N/A')}° à {getattr(calculator, 'max_sun_elevation', 'N/A')}°",
             ])
-        writer.writerow([_t('Number of turbines'), len(turbines or [])])
-        writer.writerow([_t('Hub height used'), _format_turbine_geometry_for_export(turbines, 'hub_height')])
-        writer.writerow([_t('Rotor diameter used'), _format_turbine_geometry_for_export(turbines, 'rotor_diameter')])
+        writer.writerow([labels['n_turbines'], len(turbines or [])])
+        writer.writerow([labels['hub'], _format_turbine_geometry_for_export(turbines, 'hub_height')])
+        writer.writerow([labels['diam'], _format_turbine_geometry_for_export(turbines, 'rotor_diameter')])
         writer.writerow([])  # Línea vacía
 
         for result in results:
@@ -620,8 +661,8 @@ def export_shadow_12x24_csv(
                 continue
 
             # Header del receptor
-            writer.writerow([f"{_t('Receiver:')} {result.receptor_name}"])
-            writer.writerow([_t('Hour')] + months)
+            writer.writerow([f"{labels['receiver']} : {result.receptor_name}"])
+            writer.writerow([labels['hour']] + months)
 
             # 24 filas (una por hora)
             for hour in range(24):
@@ -635,8 +676,8 @@ def export_shadow_12x24_csv(
             writer.writerow([])  # Separador entre receptores
 
         # Resumen al final
-        writer.writerow([_t('SUMMARY')])
-        writer.writerow([_t('Receptor'), _t('Total h/year'), _t('Max minutes/day'), _t('Max shadow date'), _t('Days affected')])
+        writer.writerow([labels['summary']])
+        writer.writerow([labels['receiver'], labels['total'], labels['max_min'], labels['max_date'], labels['days']])
         for result in results:
             max_date = result.max_shadow_date.strftime('%Y-%m-%d') if result.max_shadow_date else 'N/A'
             writer.writerow([

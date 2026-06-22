@@ -5,7 +5,7 @@
                                  A QGIS plugin
  Wind farm pre-assessment: Energy / AEP, Noise and Shadow Flicker
                               -------------------
-        version              : 0.1.13
+        version              : 0.1.14
         copyright            : (C) 2026 by VelantisWind contributors
         email                : info@velantiswind.com
  ***************************************************************************/

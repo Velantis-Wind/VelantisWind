@@ -166,7 +166,7 @@ class ShadowRasterTask(QgsTask):
                 from ..solar_geometry import get_sun_positions_vectorized
                 debug_print("[Shadow Raster Task] ✅ Import get_sun_positions_vectorized OK")
             except ImportError as e:
-                self.exception = f"Error importando funciones vectorizadas: {e}"
+                self.exception = f"Erreur lors de l’import des fonctions vectorisées : {e}"
                 debug_print(f"[Shadow Raster Task] ❌ ImportError: {e}")
                 return False
 

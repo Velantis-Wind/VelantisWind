@@ -21,6 +21,13 @@ from ..terrain.dem import make_dem_sampler, resolve_dem_layer
 from ..turbines.collector import collect_shadow_turbines, log_turbine_dem_summary
 from ..receptors.collector import collect_shadow_receptors, log_receptor_dem_summary
 from .executor import execute_shadow_receptor_calculations
+try:
+    from ...i18n import current_language
+except Exception:
+    def current_language(): return "fr"
+
+def _is_de():
+    return str(current_language()).lower().startswith("de")
 
 
 def run_shadow_point_calculation_for_page(self):
@@ -36,12 +43,12 @@ def run_shadow_point_calculation_for_page(self):
             # Get turbine layer
             turbine_layer_id = self.cb_turbines.currentData(QtCore.Qt.UserRole)
             if not turbine_layer_id:
-                QtWidgets.QMessageBox.warning(self, "No turbines", "Select a turbine layer.")
+                QtWidgets.QMessageBox.warning(self, "Keine Windturbine" if _is_de() else "Aucune éolienne", "Wählen Sie einen Windturbinen-Layer aus." if _is_de() else "Sélectionnez une couche d’éoliennes.")
                 return
 
             turbine_layer = prj.mapLayer(turbine_layer_id)
             if not turbine_layer:
-                QtWidgets.QMessageBox.critical(self, "Error", "Turbine layer not found.")
+                QtWidgets.QMessageBox.critical(self, "Fehler" if _is_de() else "Erreur", "Windturbinen-Layer nicht gefunden." if _is_de() else "Couche d’éoliennes introuvable.")
                 return
 
             # Detailed diagnostics
@@ -75,21 +82,23 @@ def run_shadow_point_calculation_for_page(self):
             # Get receivers
             receiver_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
             if not receiver_id:
-                QtWidgets.QMessageBox.warning(self, "No receivers", "Select a receiver layer.")
+                QtWidgets.QMessageBox.warning(self, "Kein Rezeptor" if _is_de() else "Aucun récepteur", "Wählen Sie einen Rezeptor-Layer aus." if _is_de() else "Sélectionnez une couche de récepteurs.")
                 return
 
             receiver_layer = prj.mapLayer(receiver_id)
             if not receiver_layer:
-                QtWidgets.QMessageBox.critical(self, "Error", "Receiver layer not found.")
+                QtWidgets.QMessageBox.critical(self, "Fehler" if _is_de() else "Erreur", "Rezeptor-Layer nicht gefunden." if _is_de() else "Couche de récepteurs introuvable.")
                 return
 
             # Obtener configuración del modelo desde la tabla
             if self.tbl_models.rowCount() == 0:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Missing configuration",
-                    "No model configuration is available.\n\n"
-                    "Please fill Hub Height and Rotor Diameter in the table."
+                    ("Fehlende Konfiguration" if _is_de() else "Configuration manquante"),
+                    ("Es ist keine Modellkonfiguration verfügbar.\n\n"
+                     "Bitte tragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein." if _is_de() else
+                     "Aucune configuration de modèle n’est disponible.\n\n"
+                     "Veuillez renseigner la hauteur de moyeu et le diamètre du rotor dans le tableau.")
                 )
                 return
 
@@ -99,8 +108,8 @@ def run_shadow_point_calculation_for_page(self):
             except (ValueError, AttributeError):
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Invalid configuration",
-                    "Hub Height and Rotor Diameter must be valid numbers."
+                    ("Ungültige Konfiguration" if _is_de() else "Configuration non valide"),
+                    ("Nabenhöhe und Rotordurchmesser müssen gültige Zahlen sein." if _is_de() else "La hauteur de moyeu et le diamètre du rotor doivent être des nombres valides.")
                 )
                 return
 
@@ -125,12 +134,17 @@ def run_shadow_point_calculation_for_page(self):
             if not turbines:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "No turbines",
-                    "No valid turbines were found with the model configuration.\n\n"
-                    "Check that:\n"
-                    "1. Turbine layers are selected\n"
-                    "2. The model table has Hub Height and Rotor Diameter configured\n"
-                    "3. Model names match the layers"
+                    "Keine Windturbine" if _is_de() else "Aucune éolienne",
+                    ("Mit der Modellkonfiguration wurde keine gültige Windturbine gefunden.\n\n"
+                     "Prüfen Sie, dass:\n"
+                     "1. Windturbinen-Layer ausgewählt sind\n"
+                     "2. die Modelltabelle Nabenhöhe und Rotordurchmesser enthält\n"
+                     "3. die Modellnamen zu den Layern passen" if _is_de() else
+                     "Aucune éolienne valide n’a été trouvée avec la configuration du modèle.\n\n"
+                     "Vérifiez que :\n"
+                     "1. les couches d’éoliennes sont sélectionnées\n"
+                     "2. le tableau des modèles contient la hauteur de moyeu et le diamètre du rotor\n"
+                     "3. les noms de modèle correspondent aux couches")
                 )
                 return
 
@@ -187,13 +201,13 @@ def run_shadow_point_calculation_for_page(self):
 
             # Crear diálogo de progreso
             progress_dialog = QtWidgets.QProgressDialog(
-                "Calculando shadow flicker...",
-                "Cancelar",
+                ("Schattenwurfberechnung…" if _is_de() else "Calcul des ombres et du scintillement…"),
+                ("Abbrechen" if _is_de() else "Annuler"),
                 0,
                 100,
                 self
             )
-            progress_dialog.setWindowTitle("Calculation in progress")
+            progress_dialog.setWindowTitle("Berechnung läuft" if _is_de() else "Calcul en cours")
             progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
             progress_dialog.setMinimumDuration(0)
             progress_dialog.setValue(0)
@@ -222,7 +236,7 @@ def run_shadow_point_calculation_for_page(self):
             )
 
             if not receptors:
-                QtWidgets.QMessageBox.warning(self, "No receivers", "The receiver layer is empty.")
+                QtWidgets.QMessageBox.warning(self, "Kein Rezeptor" if _is_de() else "Aucun récepteur", "Der Rezeptor-Layer ist leer." if _is_de() else "La couche de récepteurs est vide.")
                 return
 
             if dem_provider is not None:
@@ -350,12 +364,12 @@ def run_shadow_point_calculation_for_page(self):
                     traceback.print_exc()
                     QtWidgets.QMessageBox.warning(
                         self, 
-                        "Raster error", 
-                        f"Could not create raster map:\n\n{e}\n\nThe point layer was created successfully."
+                        "Erreur raster", 
+                        (f"Rasterkarte konnte nicht erstellt werden:\n\n{e}\n\nDer Punkt-Layer wurde erfolgreich erstellt." if _is_de() else f"Impossible de créer la carte raster :\n\n{e}\n\nLa couche de points a été créée avec succès.")
                     )
 
             # Mostrar resumen completo (formato resumen)
             self._show_summary_dialog(results, turbines, calculator)
 
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Error during calculation:\n\n{e}")
+            QtWidgets.QMessageBox.critical(self, "Erreur", f"Erreur pendant le calcul :\n\n{e}")

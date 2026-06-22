@@ -169,15 +169,15 @@ def _get_bundled_zoneinfo(tz_name: str):
     try:
         from zoneinfo import ZoneInfo  # type: ignore
     except Exception as e:
-        raise ValueError("Python zoneinfo no está disponible en este entorno: {}".format(e))
+        raise ValueError("Python zoneinfo n’est pas disponible dans cet environnement : {}".format(e))
 
     safe_name = (tz_name or _DEFAULT_TZ).strip().replace("\\", "/")
     if safe_name.startswith("/") or ".." in safe_name.split("/"):
-        raise ValueError("Nombre de zona horaria inválido: '{}'".format(tz_name))
+        raise ValueError("Nom de fuseau horaire invalide : '{}'".format(tz_name))
 
     path = os.path.join(bundled_zoneinfo_dir_path(), *safe_name.split("/"))
     if not os.path.isfile(path):
-        raise ValueError("La zona '{}' no existe en la base IANA incluida.".format(tz_name))
+        raise ValueError("La zone '{}' n’existe pas dans la base IANA incluse.".format(tz_name))
 
     with open(path, "rb") as f:
         return ZoneInfo.from_file(f, key=safe_name)
@@ -224,7 +224,7 @@ def get_tzinfo(tz_name: Optional[str]):
         "No se pudo cargar la zona horaria IANA '{}'. "
         "La repo incluye una base IANA local, pero esa zona no se encontró o no pudo abrirse. "
         "Prueba con una zona como 'Europe/Madrid' o usa el modo UTC offset fijo. "
-        "Error zoneinfo: {}; error base incluida: {}".format(name, zoneinfo_error, bundled_error)
+        "Erreur zoneinfo : {}; erreur de la base incluse : {}".format(name, zoneinfo_error, bundled_error)
     )
 
 

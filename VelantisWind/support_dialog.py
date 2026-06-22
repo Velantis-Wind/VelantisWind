@@ -82,7 +82,7 @@ _TEXTS = {
         ),
         "btn_sponsor": "Patrocinar / donar",
         "btn_support": CONTACT_EMAIL,
-                "btn_support_doc": "Ver SUPPORT.md",
+        "btn_support_doc": "Ver SUPPORT.md",
         "btn_supporters": "Supporters",
         "btn_close": "Cerrar",
     },
@@ -142,19 +142,140 @@ _TEXTS = {
         ),
         "btn_sponsor": "Sponsor / donate",
         "btn_support": CONTACT_EMAIL,
-                "btn_support_doc": "View SUPPORT.md",
+        "btn_support_doc": "View SUPPORT.md",
         "btn_supporters": "Supporters",
         "btn_close": "Close",
+    },
+    "fr": {
+        "title": "Soutenir VelantisWind",
+        "hero": "Des workflows éoliens open source, directement dans QGIS.",
+        "subtitle": (
+            "VelantisWind est un plugin QGIS gratuit et open source destiné à l’analyse préliminaire "
+            "des parcs éoliens, aux workflows de validation et aux tâches de préévaluation géospatiale. "
+            "Votre soutien aide à en faire un outil plus robuste, mieux documenté et mieux validé pour des workflows réels."
+        ),
+        "why_title": "Que permet de financer votre soutien ?",
+        "why_items": [
+            "Maintenance du plugin, stabilité et compatibilité avec QGIS.",
+            "Documentation, tutoriels, exemples et traductions.",
+            "Validation avec des cas réels de parcs éoliens.",
+            "Améliorations des modules AEP, sillages, bruit et ombres portées.",
+            "Support pour les bêta-testeurs, les premiers utilisateurs et les partenaires techniques.",
+            "Nouvelles fonctionnalités demandées par les utilisateurs, bureaux d’études, universités et partenaires.",
+        ],
+        "company_title": "Validation et soutien de la communauté",
+        "company_text": (
+            "Le soutien des utilisateurs, bureaux d’études, universités et bêta-testeurs aide à améliorer la documentation, "
+            "la stabilité, la validation avec des cas réels et les futures fonctionnalités open source."
+        ),
+        "academic_title": "Collaboration académique et recherche",
+        "academic_text": (
+            "VelantisWind est ouvert aux universités et aux groupes de recherche. Des projets de fin d’études, mémoires "
+            "ou travaux appliqués peuvent aider à valider, documenter ou étendre le plugin avec de nouveaux modules, "
+            "à condition qu’ils soient techniquement alignés avec le projet open source."
+        ),
+        "tiers_title": "Options de soutien",
+        "tiers": [
+            ("Open Supporter", "à partir de 1 €", "Soutien ponctuel avec reconnaissance optionnelle."),
+            ("Project Supporter", "25 €", "Nom optionnel dans la liste des supporters."),
+            ("Professional Backer", "100 €", "Nom et lien optionnels."),
+            ("Organization Backer", "500 €", "Petit logo ou mention de l’organisation."),
+            ("Major Backer", "2 500 €", "Reconnaissance mise en avant et échange technique optionnel."),
+            ("Community Sponsor", "5 €/mois", "Nom optionnel dans la liste des supporters."),
+            ("Professional Sponsor", "25 €/mois", "Nom et lien optionnels."),
+            ("Workflow Sponsor", "100 €/mois", "Petit logo ou mention de l’organisation."),
+            ("Validation Sponsor", "250 €/mois", "Logo et mention comme sponsor de validation."),
+            ("Partner Sponsor", "500 €/mois", "Logo mis en avant sur GitHub, dans la documentation ou la section About/Sponsors."),
+        ],
+        "partnerships_title": "Autres formes de collaboration",
+        "partnerships": [
+            "Bêta-test et feedback technique.",
+            "Validation sur des projets réels ou des workflows internes.",
+            "Contributions techniques, documentation ou exemples.",
+            "Cas d’usage, exemples de validation et retours sur la documentation.",
+            "Collaboration académique via projets de fin d’études, recherche appliquée ou matériel pédagogique.",
+        ],
+        "disclaimer": (
+            "VelantisWind restera gratuit et open source. Le soutien est optionnel et n’implique ni propriété, ni exclusivité, "
+            "ni contrôle sur la feuille de route. La reconnaissance publique est optionnelle et peut être omise si le supporter souhaite rester anonyme. "
+            f"Contact : {CONTACT_EMAIL}"
+        ),
+        "btn_sponsor": "Sponsoriser / faire un don",
+        "btn_support": CONTACT_EMAIL,
+        "btn_support_doc": "Voir SUPPORT.md",
+        "btn_supporters": "Supporters",
+        "btn_close": "Fermer",
+    },
+    "de": {
+        "title": "VelantisWind unterstützen",
+        "hero": "Open-Source-Workflows für Windenergie, direkt in QGIS.",
+        "subtitle": (
+            "VelantisWind ist ein kostenloses Open-Source-QGIS-Plugin für die frühe Analyse von Windparks, "
+            "Validierungsworkflows und georäumliche Vorbewertungen. Deine Unterstützung hilft dabei, daraus "
+            "ein robusteres, besser dokumentiertes und besser validiertes Werkzeug für praktische Windenergie-Workflows zu machen."
+        ),
+        "why_title": "Was hilft deine Unterstützung zu finanzieren?",
+        "why_items": [
+            "Wartung des Plugins, Stabilität und QGIS-Kompatibilität.",
+            "Dokumentation, Tutorials, Beispiele und Übersetzungen.",
+            "Validierung mit realen Windpark-Fällen.",
+            "Verbesserungen an den Modulen AEP, Nachlauf, Schall und Schattenwurf.",
+            "Support für Beta-Tester, frühe Anwender und technische Partner.",
+            "Neue Funktionen, die von Nutzern, Beratungsunternehmen, Universitäten und Partnern angefragt werden.",
+        ],
+        "company_title": "Validierung und Unterstützung durch die Community",
+        "company_text": (
+            "Die Unterstützung von Nutzern, Beratungsunternehmen, Universitäten und Beta-Testern hilft, Dokumentation, "
+            "Stabilität, Validierung mit realen Fällen und zukünftige Open-Source-Funktionen zu verbessern."
+        ),
+        "academic_title": "Akademische Zusammenarbeit und Forschung",
+        "academic_text": (
+            "VelantisWind ist offen für Universitäten und Forschungsgruppen. Bachelor- und Masterarbeiten oder angewandte "
+            "Forschungsprojekte können helfen, das Plugin zu validieren, zu dokumentieren oder mit neuen Modulen zu erweitern, "
+            "sofern sie technisch zum Open-Source-Projekt passen."
+        ),
+        "tiers_title": "Unterstützungsoptionen",
+        "tiers": [
+            ("Open Supporter", "ab 1 €", "Einmalige Unterstützung mit optionaler Erwähnung."),
+            ("Project Supporter", "25 €", "Optionaler Name in der Supporter-Liste."),
+            ("Professional Backer", "100 €", "Name und optionaler Link."),
+            ("Organization Backer", "500 €", "Kleines Logo oder Erwähnung der Organisation."),
+            ("Major Backer", "2.500 €", "Hervorgehobene Anerkennung und optionales technisches Gespräch."),
+            ("Community Sponsor", "5 €/Monat", "Optionaler Name in der Supporter-Liste."),
+            ("Professional Sponsor", "25 €/Monat", "Name und optionaler Link."),
+            ("Workflow Sponsor", "100 €/Monat", "Kleines Logo oder Erwähnung der Organisation."),
+            ("Validation Sponsor", "250 €/Monat", "Logo und Erwähnung als Validierungssponsor."),
+            ("Partner Sponsor", "500 €/Monat", "Hervorgehobenes Logo auf GitHub, in der Dokumentation oder im About/Sponsors-Bereich."),
+        ],
+        "partnerships_title": "Weitere Möglichkeiten zur Zusammenarbeit",
+        "partnerships": [
+            "Beta-Testing und technisches Feedback.",
+            "Validierung anhand realer Projekte oder interner Workflows.",
+            "Technische Beiträge, Dokumentation oder Beispiele.",
+            "Anwendungsfälle, Validierungsbeispiele und Feedback zur Dokumentation.",
+            "Akademische Zusammenarbeit über Abschlussarbeiten, angewandte Forschung oder Lehrmaterial.",
+        ],
+        "disclaimer": (
+            "VelantisWind bleibt kostenlos und open source. Unterstützung ist optional und bedeutet weder Eigentum, Exklusivität "
+            "noch Kontrolle über die Roadmap. Öffentliche Anerkennung ist optional und kann entfallen, wenn der Supporter anonym bleiben möchte. "
+            f"Kontakt: {CONTACT_EMAIL}"
+        ),
+        "btn_sponsor": "Sponsern / spenden",
+        "btn_support": CONTACT_EMAIL,
+        "btn_support_doc": "SUPPORT.md ansehen",
+        "btn_supporters": "Unterstützer",
+        "btn_close": "Schließen",
     },
 }
 
 
 def _lang() -> str:
     try:
-        lang = current_language()
+        lang = str(current_language() or "es").lower().strip()
     except Exception:
         lang = "es"
-    return "en" if str(lang).lower().startswith("en") else "es"
+    short = lang.replace("-", "_").split("_", 1)[0]
+    return short if short in _TEXTS else "es"
 
 
 def _open_url(url: str) -> None:

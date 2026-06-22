@@ -19,10 +19,13 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
 from .noise_page import NoisePage
 from .shadow_page import ShadowPage
 from .i18n import apply_i18n, current_language, install_runtime_i18n_patches, set_language, tr_text as _tr
+from .i18n import SUPPORTED_LANGUAGES, language_label
 from .support_dialog import show_support_dialog
 from .ui_core.responsive import fit_to_screen, configure_scroll_area
 
 _GROUP_NAME = "AEP · Coordenadas por modelo"
+_CONTACT_EMAIL = "info@velantiswind.com"
+_WHITE_PAPER_URL = "https://www.velantiswind.com/"
 
 
 class _ClickableLabel(QtWidgets.QLabel):
@@ -119,8 +122,8 @@ class VelantisHubDialog(QtWidgets.QDialog):
         lang_lay.setSpacing(8)
         lang_lay.addWidget(QtWidgets.QLabel(_tr("Idioma del plugin:")))
         self.cb_language = QtWidgets.QComboBox(self)
-        self.cb_language.addItem("Español", "es")
-        self.cb_language.addItem("English", "en")
+        for _code in SUPPORTED_LANGUAGES:
+            self.cb_language.addItem(language_label(_code), _code)
         idx_lang = self.cb_language.findData(current_language())
         self.cb_language.setCurrentIndex(idx_lang if idx_lang >= 0 else 0)
         self.cb_language.currentIndexChanged.connect(self._on_language_changed)
@@ -148,6 +151,84 @@ class VelantisHubDialog(QtWidgets.QDialog):
         cards.addWidget(self.btn_flicker)
         cards.addStretch(1)
         v.addLayout(cards)
+
+        optimization_wrap = QtWidgets.QFrame(self)
+        optimization_wrap.setObjectName("layoutOptimizationWrap")
+        optimization_wrap.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        optimization_lay = QtWidgets.QVBoxLayout(optimization_wrap)
+        optimization_lay.setContentsMargins(14, 10, 14, 10)
+        optimization_lay.setSpacing(8)
+
+        optimization_row = QtWidgets.QHBoxLayout()
+        optimization_row.setContentsMargins(0, 0, 0, 0)
+        optimization_row.setSpacing(8)
+        self.lbl_layout_optimization_hint = QtWidgets.QLabel(_tr("Optimización de layout desde recurso y restricciones"), self)
+        self.lbl_layout_optimization_hint.setObjectName("layoutOptimizationHint")
+        self.lbl_layout_optimization_hint.setWordWrap(True)
+        self.lbl_layout_optimization_hint.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        optimization_row.addWidget(self.lbl_layout_optimization_hint, 1, QtCore.Qt.AlignVCenter)
+
+        self.btn_layout_optimization_info = QtWidgets.QPushButton(_tr("Optimización de layout"), self)
+        self.btn_layout_optimization_info.setObjectName("layoutOptimizationLinkButton")
+        self.btn_layout_optimization_info.setCursor(QtCore.Qt.PointingHandCursor)
+        self.btn_layout_optimization_info.setToolTip(_tr("Muestra información de contacto y el white paper de optimización."))
+        self.btn_layout_optimization_info.clicked.connect(self._toggle_layout_optimization_info)
+        optimization_row.addWidget(self.btn_layout_optimization_info, 0, QtCore.Qt.AlignRight)
+        optimization_lay.addLayout(optimization_row)
+
+        self.layout_optimization_panel = QtWidgets.QFrame(self)
+        self.layout_optimization_panel.setObjectName("layoutOptimizationPanel")
+        panel_lay = QtWidgets.QVBoxLayout(self.layout_optimization_panel)
+        panel_lay.setContentsMargins(12, 10, 12, 10)
+        panel_lay.setSpacing(7)
+
+        self.lbl_layout_optimization_title = QtWidgets.QLabel(_tr("Optimización de layout bajo demanda"), self)
+        self.lbl_layout_optimization_title.setObjectName("layoutOptimizationTitle")
+        self.lbl_layout_optimization_title.setWordWrap(True)
+        panel_lay.addWidget(self.lbl_layout_optimization_title)
+
+        self.lbl_layout_optimization_text = QtWidgets.QLabel(
+            _tr(
+                "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. "
+                "No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela."
+            ),
+            self,
+        )
+        self.lbl_layout_optimization_text.setObjectName("layoutOptimizationText")
+        self.lbl_layout_optimization_text.setWordWrap(True)
+        panel_lay.addWidget(self.lbl_layout_optimization_text)
+
+        self.lbl_layout_optimization_contact = QtWidgets.QLabel(
+            _tr("Contacto: info@velantiswind.com · White paper disponible en velantiswind.com"),
+            self,
+        )
+        self.lbl_layout_optimization_contact.setObjectName("layoutOptimizationContact")
+        self.lbl_layout_optimization_contact.setWordWrap(True)
+        panel_lay.addWidget(self.lbl_layout_optimization_contact)
+
+        panel_buttons = QtWidgets.QHBoxLayout()
+        panel_buttons.setContentsMargins(0, 0, 0, 0)
+        panel_buttons.setSpacing(8)
+        panel_buttons.addStretch(1)
+
+        self.btn_copy_optimization_contact = QtWidgets.QPushButton(_tr("Copiar contacto"), self)
+        self.btn_copy_optimization_contact.setObjectName("layoutOptimizationSecondaryButton")
+        self.btn_copy_optimization_contact.setCursor(QtCore.Qt.PointingHandCursor)
+        self.btn_copy_optimization_contact.setToolTip(_tr("Copia el email de contacto al portapapeles."))
+        self.btn_copy_optimization_contact.clicked.connect(self._copy_optimization_contact)
+        panel_buttons.addWidget(self.btn_copy_optimization_contact)
+
+        self.btn_open_white_paper = QtWidgets.QPushButton(_tr("Ver white paper"), self)
+        self.btn_open_white_paper.setObjectName("layoutOptimizationPrimaryButton")
+        self.btn_open_white_paper.setCursor(QtCore.Qt.PointingHandCursor)
+        self.btn_open_white_paper.setToolTip(_tr("Abre la web de VelantisWind, donde está disponible el white paper."))
+        self.btn_open_white_paper.clicked.connect(self._open_white_paper)
+        panel_buttons.addWidget(self.btn_open_white_paper)
+        panel_lay.addLayout(panel_buttons)
+
+        self.layout_optimization_panel.setVisible(False)
+        optimization_lay.addWidget(self.layout_optimization_panel)
+
 
         logo_wrap = QtWidgets.QWidget(self)
         logo_lay = QtWidgets.QVBoxLayout(logo_wrap)
@@ -184,6 +265,10 @@ class VelantisHubDialog(QtWidgets.QDialog):
         logo_lay.addWidget(info)
         v.addWidget(logo_wrap, 0)
 
+        # Keep the optimization entry visible but not intrusive: it sits close to
+        # the project context, just before the project summary.
+        v.addWidget(optimization_wrap)
+
         grp = QtWidgets.QGroupBox("Resumen del proyecto")
         form = QtWidgets.QFormLayout(grp)
         form.setContentsMargins(10, 10, 10, 10)
@@ -203,6 +288,8 @@ class VelantisHubDialog(QtWidgets.QDialog):
         form.addRow("TI WRG:", self.lbl_ti)
         form.addRow("Estado módulos:", self.lbl_status)
         v.addWidget(grp)
+
+
         v.addStretch(1)
 
         scroll.setWidget(content)
@@ -272,6 +359,79 @@ class VelantisHubDialog(QtWidgets.QDialog):
                 border-color: #1f7dc2;
                 color: #0d345c;
             }
+            QFrame#layoutOptimizationWrap {
+                background: #ffffff;
+                border: 1.2px solid #c9ddea;
+                border-radius: 12px;
+            }
+            QLabel#layoutOptimizationHint {
+                font-size: 12.5px;
+                font-weight: 700;
+                color: #103b67;
+            }
+            QPushButton#layoutOptimizationLinkButton {
+                background: #f8fbfd;
+                border: 1.2px solid #9bb9cf;
+                border-radius: 10px;
+                color: #103b67;
+                font-size: 12px;
+                font-weight: 700;
+                padding: 6px 14px;
+                min-height: 28px;
+            }
+            QPushButton#layoutOptimizationLinkButton:hover {
+                background: #eaf3fb;
+                border-color: #1f7dc2;
+                color: #0d345c;
+            }
+            QFrame#layoutOptimizationPanel {
+                background: #f8fbfd;
+                border: 1px solid #d4dde5;
+                border-radius: 10px;
+            }
+            QLabel#layoutOptimizationTitle {
+                font-size: 12px;
+                font-weight: 700;
+                color: #103b67;
+            }
+            QLabel#layoutOptimizationText {
+                font-size: 11.5px;
+                color: #4f5d6b;
+                line-height: 145%;
+            }
+            QLabel#layoutOptimizationContact {
+                font-size: 11px;
+                font-weight: 600;
+                color: #103b67;
+            }
+            QPushButton#layoutOptimizationPrimaryButton {
+                background: #103b67;
+                border: 1.5px solid #103b67;
+                border-radius: 9px;
+                color: white;
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 6px 12px;
+                min-height: 26px;
+            }
+            QPushButton#layoutOptimizationPrimaryButton:hover {
+                background: #1f7dc2;
+                border-color: #1f7dc2;
+            }
+            QPushButton#layoutOptimizationSecondaryButton {
+                background: #ffffff;
+                border: 1px solid #b8cad8;
+                border-radius: 9px;
+                color: #103b67;
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 6px 12px;
+                min-height: 26px;
+            }
+            QPushButton#layoutOptimizationSecondaryButton:hover {
+                background: #eaf3fb;
+                border-color: #1f7dc2;
+            }
             QGroupBox {
                 border: 1px solid #cbd4dc;
                 border-radius: 10px;
@@ -287,6 +447,42 @@ class VelantisHubDialog(QtWidgets.QDialog):
             }
             """
         )
+
+    def _toggle_layout_optimization_info(self):
+        try:
+            visible = not self.layout_optimization_panel.isVisible()
+            self.layout_optimization_panel.setVisible(visible)
+            self.btn_layout_optimization_info.setText(_tr("Ocultar información") if visible else _tr("Optimización de layout"))
+        except Exception:
+            pass
+
+    def _copy_optimization_contact(self):
+        try:
+            cb = QtWidgets.QApplication.clipboard()
+            cb.setText(_CONTACT_EMAIL)
+            QtWidgets.QMessageBox.information(
+                self,
+                _tr("Optimización de layout"),
+                _tr("Email copiado al portapapeles:") + f"\n{_CONTACT_EMAIL}",
+            )
+        except Exception:
+            QtWidgets.QMessageBox.information(
+                self,
+                _tr("Optimización de layout"),
+                _tr("Puedes contactar en:") + f"\n{_CONTACT_EMAIL}",
+            )
+
+    def _open_white_paper(self):
+        try:
+            opened = QtGui.QDesktopServices.openUrl(QtCore.QUrl(_WHITE_PAPER_URL))
+        except Exception:
+            opened = False
+        if not opened:
+            QtWidgets.QMessageBox.information(
+                self,
+                _tr("Ver white paper técnico"),
+                _WHITE_PAPER_URL,
+            )
 
     def _open_support_dialog(self):
         try:
@@ -308,6 +504,13 @@ class VelantisHubDialog(QtWidgets.QDialog):
                 except Exception:
                     pass
             self._refresh_summary()
+            try:
+                if hasattr(self, "layout_optimization_panel"):
+                    self.btn_layout_optimization_info.setText(
+                        _tr("Ocultar información") if self.layout_optimization_panel.isVisible() else _tr("Optimización de layout")
+                    )
+            except Exception:
+                pass
             apply_i18n(self)
         except Exception:
             pass

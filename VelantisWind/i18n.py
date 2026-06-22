@@ -20,7 +20,21 @@ _PATCHED = False
 
 LANG_ES = "es"
 LANG_EN = "en"
-SUPPORTED_LANGUAGES = (LANG_ES, LANG_EN)
+LANG_FR = "fr"
+LANG_DE = "de"
+
+# The UI is authored in Spanish, so Spanish is the canonical *source* language
+# that every other language is pivoted through.  Adding a new language means
+# registering a Spanish->X map (see register_language) — nothing else changes.
+_SOURCE_LANG = LANG_ES
+SUPPORTED_LANGUAGES = (LANG_ES, LANG_EN, LANG_FR, LANG_DE)
+
+_LANGUAGE_LABELS = {
+    LANG_ES: "Español",
+    LANG_EN: "English",
+    LANG_FR: "Français",
+    LANG_DE: "Deutsch",
+}
 
 
 def _settings() -> QtCore.QSettings:
@@ -28,19 +42,31 @@ def _settings() -> QtCore.QSettings:
 
 
 def current_language() -> str:
-    lang = str(_settings().value(_KEY, LANG_ES) or LANG_ES).lower().strip()
-    return lang if lang in SUPPORTED_LANGUAGES else LANG_ES
+    lang = str(_settings().value(_KEY, _SOURCE_LANG) or _SOURCE_LANG).lower().strip()
+    # Accept locale-style values such as "fr_FR" or "en-US".
+    short = lang.replace("-", "_").split("_", 1)[0]
+    if lang in SUPPORTED_LANGUAGES:
+        return lang
+    if short in SUPPORTED_LANGUAGES:
+        return short
+    return _SOURCE_LANG
 
 
 def set_language(lang: str) -> None:
-    lang = str(lang or LANG_ES).lower().strip()
+    lang = str(lang or _SOURCE_LANG).lower().strip()
+    short = lang.replace("-", "_").split("_", 1)[0]
     if lang not in SUPPORTED_LANGUAGES:
-        lang = LANG_ES
+        lang = short if short in SUPPORTED_LANGUAGES else _SOURCE_LANG
     _settings().setValue(_KEY, lang)
 
 
 def is_spanish() -> bool:
     return current_language() == LANG_ES
+
+
+def is_source_language() -> bool:
+    """True when the active language is the canonical source (Spanish)."""
+    return current_language() == _SOURCE_LANG
 
 
 # Exact/fragment translations.  The layer translates both directions because a
@@ -475,7 +501,6 @@ _FRAGMENT_TO_ES.update({
     "hours/year": "horas/año",
     "h/year": "h/año",
 })
-
 
 
 # ---------------------------------------------------------------------------
@@ -1130,40 +1155,304 @@ _EXTRA3_REVERSE = {v: k for k, v in _I18N_EXTRA3_TO_EN.items() if v != k}
 _TO_ES.update(_EXTRA3_REVERSE)
 _FRAGMENT_TO_ES.update(_EXTRA3_REVERSE)
 
-def _map_for_target() -> Dict[str, str]:
-    return _TO_ES if is_spanish() else _TO_EN
+# ---------------------------------------------------------------------------
+# Translation engine (multi-language, Spanish-pivot, resilient).
+#
+# Design notes:
+#   * Spanish is the canonical *source* language. Every translation is stored
+#     as Spanish -> X.  Going from any language A to any language B is done by
+#     pivoting A -> Spanish -> B, so switching e.g. English -> French works
+#     even though no direct EN->FR map exists.
+#   * Lookups tolerate cosmetic differences (collapsed whitespace, non-breaking
+#     spaces, surrounding blanks) via a normalized index, so a stray space no
+#     longer leaves a string untranslated.
+#   * Missing translations fall back to the source text instead of breaking,
+#     and `find_untranslated()` lists what is still pending for a language.
+# ---------------------------------------------------------------------------
+
+# lang -> {"full": {es: tgt}, "frag": {es: tgt}}.  English is folded in from the
+# legacy module-level dicts on first build; other languages register themselves.
+_REGISTERED: Dict[str, Dict[str, Dict[str, str]]] = {}
+_STATE: Dict[str, object] = {}
+_BUILT = False
+_CACHE: Dict = {}
+
+_WS_RE = re.compile(r"\s+")
 
 
-def _fragment_map_for_target() -> Dict[str, str]:
-    return _FRAGMENT_TO_ES if is_spanish() else _FRAGMENT_TO_EN
+def _norm_key(s: str) -> str:
+    """Whitespace/NBSP-insensitive key used as a resilient lookup fallback."""
+    return _WS_RE.sub(" ", str(s).replace("\u00a0", " ")).strip()
 
 
-def tr_text(text) -> str:
+def register_language(lang, full_map=None, fragment_map=None, label=None) -> None:
+    """Register (or extend) a Spanish->`lang` translation table.
+
+    `full_map` matches whole strings; `fragment_map` is used for substring
+    replacement inside larger blobs (HTML, multi-line text).  If only
+    `full_map` is given it is reused for fragments, mirroring the original
+    behaviour.
+    """
+    lang = str(lang or "").lower().strip()
+    if not lang:
+        return
+    entry = _REGISTERED.setdefault(lang, {"full": {}, "frag": {}})
+    if full_map:
+        entry["full"].update(full_map)
+    if fragment_map is not None:
+        entry["frag"].update(fragment_map)
+    elif full_map:
+        entry["frag"].update(full_map)
+    if lang not in SUPPORTED_LANGUAGES and lang != _SOURCE_LANG:
+        globals()["SUPPORTED_LANGUAGES"] = tuple(SUPPORTED_LANGUAGES) + (lang,)
+    if label:
+        _LANGUAGE_LABELS[lang] = label
+    _invalidate()
+
+
+def _invalidate() -> None:
+    global _BUILT
+    _BUILT = False
+    _CACHE.clear()
+
+
+def _build() -> None:
+    global _BUILT
+    # English historically lives in the legacy module-level dicts; fold it in.
+    if LANG_EN not in _REGISTERED:
+        _REGISTERED[LANG_EN] = {"full": dict(_TO_EN), "frag": dict(_FRAGMENT_TO_EN)}
+
+    full = {_SOURCE_LANG: {}}
+    frag = {_SOURCE_LANG: {}}
+    for lang, data in _REGISTERED.items():
+        full[lang] = dict(data.get("full") or {})
+        frag[lang] = dict(data.get("frag") or {})
+
+    # Reverse maps: any translated text -> canonical Spanish (the pivot step).
+    # Do not reverse a target fragment if that same text is also a known Spanish
+    # source fragment.  Otherwise Spanish source strings such as "Raster(s) TI"
+    # can be damaged during normalization before being translated to FR/DE.
+    source_full_keys = set()
+    for _m in full.values():
+        source_full_keys.update((_m or {}).keys())
+    source_frag_keys = set()
+    for _m in frag.values():
+        source_frag_keys.update((_m or {}).keys())
+
+    reverse_fragment_blocklist = {"Raster"}
+
+    src_full: Dict[str, str] = {}
+    src_frag = []
+    for lang, m in full.items():
+        if lang == _SOURCE_LANG:
+            continue
+        for es, tgt in m.items():
+            if tgt and tgt != es and tgt not in source_full_keys:
+                src_full.setdefault(tgt, es)
+    src_frag_map: Dict[str, str] = {}
+    for lang, m in frag.items():
+        if lang == _SOURCE_LANG:
+            continue
+        for es, tgt in m.items():
+            if tgt and tgt != es and tgt not in source_frag_keys and tgt not in reverse_fragment_blocklist:
+                src_frag_map.setdefault(tgt, es)
+
+    _STATE.clear()
+    _STATE.update(
+        full=full,
+        frag=frag,
+        full_norm={lang: {_norm_key(es): tgt for es, tgt in m.items()} for lang, m in full.items()},
+        src_full=src_full,
+        src_full_norm={_norm_key(k): v for k, v in src_full.items()},
+        frag_sorted={lang: sorted(m.items(), key=lambda kv: len(kv[0]), reverse=True) for lang, m in frag.items()},
+        src_frag_sorted=sorted(src_frag_map.items(), key=lambda kv: len(kv[0]), reverse=True),
+    )
+    _BUILT = True
+
+
+def _ensure() -> None:
+    if not _BUILT:
+        _build()
+
+
+def _to_source(s: str):
+    """Map a possibly-translated string back to canonical Spanish, or None."""
+    src_full = _STATE["src_full"]  # type: ignore[index]
+    if s in src_full:
+        return src_full[s]
+    n = _norm_key(s)
+    src_norm = _STATE["src_full_norm"]  # type: ignore[index]
+    return src_norm.get(n)
+
+
+_DYNAMIC_FRAGMENT_MARKERS = (
+    "turbine(s)", "receiver(s)", "WT model(s)", "model(s)",
+    "Model ", "Modelo ", "Modelo:", "Model:", "modelo(s)",
+    "turbina(s)", "receptor(es)", "capa(s)", "capas/modelos",
+    "No se pudo", "No se puede", "No hay", "Selecciona", "Revisa",
+    "Raster(s) TI", "Perímetro", "Malla:", "WRG con distinta", "CRS destino",
+    "Layout detectado", "Acoustic sources", "Grupos fuente",
+    "No turbine", "Turbine layer", "Receiver layer", "Analysis year",
+    "Solar elevation", "Max shadow distance", "Valid configuration",
+    "Incomplete configuration", "Hub Height=", "Rotor Diameter=",
+    # French dynamic fragments left by the FR pass and used in Shadow/Noise summaries.
+    "éolienne(s)", "récepteur(s)", "modèle(s)", "couche", "Couche",
+    "Importé", "Aucun layout", "Fuseau horaire", "Ombres", "Bruit",
+    "•", "✓", "⚠️", "✅", "❌", " · ",
+)
+
+
+def _should_fragment_short_text(s: str) -> bool:
+    try:
+        return any(m in s for m in _DYNAMIC_FRAGMENT_MARKERS)
+    except Exception:
+        return False
+
+def tr_text(text):
+    """Translate a whole UI string into the active language."""
     if text is None:
         return text
     s = str(text)
-    if not s:
+    if not s.strip():
         return s
-    m = _map_for_target()
-    if s in m:
-        return m[s]
-    return translate_fragment(s)
+    lang = current_language()
+    key = (lang, s)
+    if key in _CACHE:
+        return _CACHE[key]
+    _ensure()
+
+    # Normalize the incoming text to the Spanish pivot first (it may already be
+    # in English or French because setters get re-applied on language switch).
+    base = _to_source(s)
+    base = base if base is not None else s
+
+    if lang == _SOURCE_LANG:
+        result = base
+    else:
+        fmap = _STATE["full"][lang]  # type: ignore[index]
+        if base in fmap:
+            result = fmap[base]
+        else:
+            nmap = _STATE["full_norm"][lang]  # type: ignore[index]
+            hit = nmap.get(_norm_key(base))
+            if hit is not None:
+                result = hit
+            else:
+                # Whole-string miss.  For rich or long text (HTML, multi-line,
+                # long paragraphs) fragment replacement still helps; for short
+                # plain labels it would yield a half-translated result, so we
+                # keep the clean Spanish source instead.
+                if ("<" in base) or ("\n" in base) or (len(base) > 60) or _should_fragment_short_text(base):
+                    result = _fragment_impl(base, lang)
+                else:
+                    result = base
+    _CACHE[key] = result
+    return result
 
 
-def translate_fragment(text) -> str:
-    if text is None:
-        return text
+def _apply_fragments(s: str, pairs) -> str:
+    """Apply fragment replacements without re-processing inserted text.
+
+    Earlier builds used sequential ``str.replace`` calls. That can cascade when
+    a target word contains another source word, e.g. ``Modelo`` -> ``Modell``
+    followed by ``Model`` -> ``Modell`` could create malformed German labels.
+
+    We also avoid matching a short alphabetic key inside a longer word during
+    the normalization pass, e.g. English ``Model`` must not match the Spanish
+    source word ``Modelo``. Longest-first precedence is still preserved.
+    """
+    replacements = []
+    for src, dst in pairs:
+        if not src:
+            continue
+        token = f"\uE000VW_I18N_{len(replacements)}\uE000"
+        # Single word keys must be whole words.  This prevents reverse maps such
+        # as Model->Modelo from touching the Spanish source word Modelo.
+        if all((ch.isalnum() or ch == "_") for ch in src):
+            pattern = re.compile(r"(?<!\w)" + re.escape(src) + r"(?!\w)")
+            s, n = pattern.subn(token, s)
+            if n:
+                replacements.append((token, dst))
+        elif src in s:
+            s = s.replace(src, token)
+            replacements.append((token, dst))
+    for token, dst in replacements:
+        s = s.replace(token, dst)
+    return s
+
+def _fragment_impl(text: str, lang: str) -> str:
+    _ensure()
     s = str(text)
-    if not s:
-        return s
-    for src, dst in sorted(_fragment_map_for_target().items(), key=lambda kv: len(kv[0]), reverse=True):
-        if src and src in s:
-            s = s.replace(src, dst)
+    # Step 1: normalize any English/French fragments back to Spanish.
+    s = _apply_fragments(s, _STATE["src_frag_sorted"])  # type: ignore[index]
+    # Step 2: Spanish -> target.
+    if lang != _SOURCE_LANG:
+        s = _apply_fragments(s, _STATE["frag_sorted"][lang])  # type: ignore[index]
     return s
 
 
-def translate_html(html) -> str:
+def translate_fragment(text):
+    if text is None:
+        return text
+    s = str(text)
+    if not s:
+        return s
+    lang = current_language()
+    _ensure()
+
+    # Important for long help dialogs: try an exact/normalized whole-string
+    # translation first.  If we go directly to fragment replacement, a missed
+    # long paragraph may become a mixed Spanish/French text because short words
+    # such as "sí" -> "oui" are still replaced.
+    base = _to_source(s)
+    base = base if base is not None else s
+    if lang == _SOURCE_LANG:
+        return base
+
+    fmap = _STATE["full"].get(lang, {})  # type: ignore[index,union-attr]
+    if base in fmap:
+        return fmap[base]
+    nmap = _STATE["full_norm"].get(lang, {})  # type: ignore[index,union-attr]
+    hit = nmap.get(_norm_key(base))
+    if hit is not None:
+        return hit
+
+    return _fragment_impl(base, lang)
+
+
+def translate_html(html):
     return translate_fragment(html)
+
+
+def find_untranslated(lang) -> list:
+    """Return the Spanish source strings that have no entry for `lang`.
+
+    Handy during development: `i18n.find_untranslated("fr")` lists exactly
+    what is still pending so coverage can be completed incrementally.
+    """
+    lang = str(lang or "").lower().strip()
+    _ensure()
+    if lang in (_SOURCE_LANG, ""):
+        return []
+    target = _STATE["full"].get(lang, {})  # type: ignore[union-attr]
+    # The full set of known source strings = union of every language's keys.
+    sources = set()
+    for m in _STATE["full"].values():  # type: ignore[union-attr]
+        sources.update(m.keys())
+    return sorted(s for s in sources if s and s not in target)
+
+
+# Backward-compatible shims (kept in case external code referenced them).
+def _map_for_target() -> Dict[str, str]:
+    _ensure()
+    lang = current_language()
+    return {} if lang == _SOURCE_LANG else _STATE["full"][lang]  # type: ignore[index]
+
+
+def _fragment_map_for_target() -> Dict[str, str]:
+    _ensure()
+    lang = current_language()
+    return {} if lang == _SOURCE_LANG else _STATE["frag"][lang]  # type: ignore[index]
 
 
 def _safe_call(fn, *args, **kwargs):
@@ -1331,7 +1620,6 @@ def install_runtime_i18n_patches() -> None:
         pass
 
 
-
     # Remaining dynamic Qt methods used heavily by forms/combos/tabs.
     try:
         orig_combo_add_item = getattr(QtWidgets.QComboBox, "addItem", None)
@@ -1390,6 +1678,16 @@ def install_runtime_i18n_patches() -> None:
     except Exception:
         pass
 
+    # QMessageBox instance setters are used by the clickable help icons in
+    # Noise/Shadow modules (QMessageBox(self); setText(...); exec_()).
+    # Static information/warning wrappers below do not cover those calls.
+    try:
+        patch_method(QtWidgets.QMessageBox, "setText", tr_text)
+        patch_method(QtWidgets.QMessageBox, "setInformativeText", tr_text)
+        patch_method(QtWidgets.QMessageBox, "setDetailedText", tr_text)
+    except Exception:
+        pass
+
     # QMessageBox static methods: information / warning / critical / question
     for name in ("information", "warning", "critical", "question"):
         original = getattr(QtWidgets.QMessageBox, name, None)
@@ -1397,10 +1695,39 @@ def install_runtime_i18n_patches() -> None:
             continue
         def make_wrapper(orig):
             def wrapped(parent, title, text, *args, **kwargs):
-                return orig(parent, tr_text(title), translate_fragment(text), *args, **kwargs)
+                return orig(parent, tr_text(title), tr_text(text), *args, **kwargs)
             wrapped._velantis_i18n = True  # type: ignore[attr-defined]
             return wrapped
         setattr(QtWidgets.QMessageBox, name, make_wrapper(original))
+
+    # QFileDialog static helpers: translate captions used by export/import dialogs.
+    try:
+        _orig_get_save = getattr(QtWidgets.QFileDialog, "getSaveFileName", None)
+        if _orig_get_save is not None and not getattr(_orig_get_save, "_velantis_i18n", False):
+            def _vw_qfiledialog_get_save_name(parent=None, caption="", directory="", filter="", *args, **kwargs):
+                return _orig_get_save(parent, tr_text(caption), directory, translate_fragment(filter), *args, **kwargs)
+            _vw_qfiledialog_get_save_name._velantis_i18n = True  # type: ignore[attr-defined]
+            QtWidgets.QFileDialog.getSaveFileName = _vw_qfiledialog_get_save_name
+        _orig_get_open = getattr(QtWidgets.QFileDialog, "getOpenFileName", None)
+        if _orig_get_open is not None and not getattr(_orig_get_open, "_velantis_i18n", False):
+            def _vw_qfiledialog_get_open_name(parent=None, caption="", directory="", filter="", *args, **kwargs):
+                return _orig_get_open(parent, tr_text(caption), directory, translate_fragment(filter), *args, **kwargs)
+            _vw_qfiledialog_get_open_name._velantis_i18n = True  # type: ignore[attr-defined]
+            QtWidgets.QFileDialog.getOpenFileName = _vw_qfiledialog_get_open_name
+        _orig_get_open_names = getattr(QtWidgets.QFileDialog, "getOpenFileNames", None)
+        if _orig_get_open_names is not None and not getattr(_orig_get_open_names, "_velantis_i18n", False):
+            def _vw_qfiledialog_get_open_names(parent=None, caption="", directory="", filter="", *args, **kwargs):
+                return _orig_get_open_names(parent, tr_text(caption), directory, translate_fragment(filter), *args, **kwargs)
+            _vw_qfiledialog_get_open_names._velantis_i18n = True  # type: ignore[attr-defined]
+            QtWidgets.QFileDialog.getOpenFileNames = _vw_qfiledialog_get_open_names
+        _orig_get_dir = getattr(QtWidgets.QFileDialog, "getExistingDirectory", None)
+        if _orig_get_dir is not None and not getattr(_orig_get_dir, "_velantis_i18n", False):
+            def _vw_qfiledialog_get_existing_dir(parent=None, caption="", directory="", *args, **kwargs):
+                return _orig_get_dir(parent, tr_text(caption), directory, *args, **kwargs)
+            _vw_qfiledialog_get_existing_dir._velantis_i18n = True  # type: ignore[attr-defined]
+            QtWidgets.QFileDialog.getExistingDirectory = _vw_qfiledialog_get_existing_dir
+    except Exception:
+        pass
 
     # Visible confirmation in the QGIS log that this i18n build is the one loaded.
     try:
@@ -1416,7 +1743,7 @@ def install_runtime_i18n_patches() -> None:
 
 def language_label(lang: str | None = None) -> str:
     lang = (lang or current_language()).lower()
-    return "Español" if lang == LANG_ES else "English"
+    return _LANGUAGE_LABELS.get(lang, _LANGUAGE_LABELS.get(_SOURCE_LANG, lang))
 
 # ---------------------------------------------------------------------------
 # Iteration 4: noise report coverage and critical-receiver wording.
@@ -6195,7 +6522,7 @@ for _k, _v in _I18N_ITER12_TO_ES.items():
         _TO_EN[_v] = _k; _FRAGMENT_TO_EN[_v] = _k
 
 # Build marker so it is easy to confirm which i18n build QGIS actually loaded.
-I18N_BUILD = "2026-06-03b"
+
 
 # ---------------------------------------------------------------------------
 # Iteration 13: Energy module grey helper/status labels under paths and model
@@ -6238,7 +6565,7 @@ _TO_ES.update(_I18N_ITER13_ENERGY_GREY_TO_ES)
 _FRAGMENT_TO_ES.update(_I18N_ITER13_ENERGY_GREY_TO_ES)
 
 # Build marker so it is easy to confirm which i18n build QGIS actually loaded.
-I18N_BUILD = "2026-06-08-energy-grey-help"
+
 
 # ---------------------------------------------------------------------------
 # Final public-release polish: Noise module UI/status/help strings.
@@ -6627,7 +6954,6 @@ _FRAGMENT_TO_EN.update(_I18N_ITER14_NOISE_HELP_TO_EN)
 _TO_ES.update(_I18N_ITER14_NOISE_HELP_TO_ES)
 _FRAGMENT_TO_ES.update(_I18N_ITER14_NOISE_HELP_TO_ES)
 
-I18N_BUILD = "2026-06-08-noise-help-icons"
 
 # ---------------------------------------------------------------------------
 # Iteration 15: Noise source-group fixed LwA editable directly in table.
@@ -6649,7 +6975,6 @@ _FRAGMENT_TO_EN.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_EN)
 _TO_ES.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_ES)
 _FRAGMENT_TO_ES.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_ES)
 
-I18N_BUILD = "2026-06-08-noise-lwa-table-edit"
 
 # ---------------------------------------------------------------------------
 # Iteration 16: Noise summary clarity — scope banner + symbol glossary (ES/EN).
@@ -6703,4 +7028,77 @@ _I18N_ITER16_NOISE_SUMMARY_TO_ES = {v: k for k, v in _I18N_ITER16_NOISE_SUMMARY_
 _TO_ES.update(_I18N_ITER16_NOISE_SUMMARY_TO_ES)
 _FRAGMENT_TO_ES.update(_I18N_ITER16_NOISE_SUMMARY_TO_ES)
 
-I18N_BUILD = "2026-06-08-noise-summary-scope-glossary"
+
+# ---------------------------------------------------------------------------
+# French language pack.
+#
+# Translation DATA lives in the separate module ``i18n_fr`` (Spanish->French),
+# keeping this engine file free of another large dictionary and making the
+# French strings easy to review and extend.  Anything not yet present there
+# falls back to the Spanish source automatically.
+# ---------------------------------------------------------------------------
+try:
+    try:
+        from . import i18n_fr as _i18n_fr  # type: ignore
+    except Exception:  # running as a flat module (dev / tests)
+        import i18n_fr as _i18n_fr  # type: ignore
+    register_language(
+        LANG_FR,
+        getattr(_i18n_fr, "TO_FR", {}) or {},
+        getattr(_i18n_fr, "FRAGMENT_TO_FR", None),
+        label=getattr(_i18n_fr, "LABEL", "Français"),
+    )
+except Exception:
+    # French pack missing or malformed: the plugin still works, French simply
+    # falls back to Spanish until the pack is available.
+    pass
+
+# Multilingual engine + French pack.
+
+
+# ---------------------------------------------------------------------------
+# German language pack.
+# ---------------------------------------------------------------------------
+try:
+    try:
+        from . import i18n_de as _i18n_de  # type: ignore
+    except Exception:
+        import i18n_de as _i18n_de  # type: ignore
+    register_language(
+        LANG_DE,
+        getattr(_i18n_de, "TO_DE", {}) or {},
+        getattr(_i18n_de, "FRAGMENT_TO_DE", None),
+        label=getattr(_i18n_de, "LABEL", "Deutsch"),
+    )
+except Exception:
+    # German pack missing or malformed: the plugin still works and falls back to Spanish.
+    pass
+
+# ---------------------------------------------------------------------------
+# Layout-optimization hub strings for the public release.
+# ---------------------------------------------------------------------------
+_LAYOUT_OPTIMIZATION_HUB_TO_EN = {
+    "Optimización de layout desde recurso y restricciones": "Layout optimization from resource and constraints",
+    "Optimización de layout": "Layout optimization",
+    "Muestra información de contacto y el white paper de optimización.": "Shows contact information and the optimization white paper.",
+    "Optimización de layout bajo demanda": "On-demand layout optimization",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need a previous layout: we can work from the wind resource, constraints and project objectives to look for higher production and lower wake losses.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact: info@velantiswind.com · White paper available at velantiswind.com",
+    "Copiar contacto": "Copy contact",
+    "Copia el email de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+    "Ver white paper": "Read white paper",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Opens the VelantisWind website, where the white paper is available.",
+    "Ocultar información": "Hide information",
+    "Email copiado al portapapeles:": "Email copied to clipboard:",
+    "Puedes contactar en:": "You can contact us at:",
+}
+_TO_EN.update(_LAYOUT_OPTIMIZATION_HUB_TO_EN)
+_FRAGMENT_TO_EN.update(_LAYOUT_OPTIMIZATION_HUB_TO_EN)
+_TO_ES.update({v: k for k, v in _LAYOUT_OPTIMIZATION_HUB_TO_EN.items() if v != k})
+_FRAGMENT_TO_ES.update({v: k for k, v in _LAYOUT_OPTIMIZATION_HUB_TO_EN.items() if v != k})
+try:
+    register_language(LANG_EN, _TO_EN, _FRAGMENT_TO_EN, label="English")
+except Exception:
+    pass
+I18N_BUILD = "2026-06-22-0.1.14"
+

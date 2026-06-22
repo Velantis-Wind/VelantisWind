@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Runner del módulo de energía.
 
-Este servicio concentra la llamada al motor histórico ``ag_core``. Así la UI no
-necesita importar directamente el cálculo PyWake y queda preparada para mover el
-motor a una arquitectura más limpia en iteraciones posteriores.
+Este servicio concentra la llamada al motor ``ag_core``. Así la UI no necesita
+importar directamente el cálculo PyWake y mantiene separada la lógica de
+ejecución del módulo.
 """
 
 from __future__ import annotations
