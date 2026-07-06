@@ -143,67 +143,145 @@ def get_template_for_model(model_name: str, rated_power_mw: Optional[float] = No
 # CARGA DESDE CSV
 # ============================================================================
 
+def _a_weight_at(freq_hz: float) -> float:
+    """A-weighting at an arbitrary frequency, log-interpolated from the
+    standard octave-band table and clamped at the extremes."""
+    freqs = sorted(A_WEIGHTING.keys())
+    f = float(freq_hz)
+    if f <= freqs[0]:
+        return float(A_WEIGHTING[freqs[0]])
+    if f >= freqs[-1]:
+        return float(A_WEIGHTING[freqs[-1]])
+    if int(f) in A_WEIGHTING:
+        return float(A_WEIGHTING[int(f)])
+    for i in range(len(freqs) - 1):
+        f1, f2 = freqs[i], freqs[i + 1]
+        if f1 < f < f2:
+            ratio = math.log(f / f1) / math.log(f2 / f1)
+            return float(A_WEIGHTING[f1] + ratio * (A_WEIGHTING[f2] - A_WEIGHTING[f1]))
+    return 0.0
+
+
+# Column-name candidates, matched case-insensitively after stripping
+# spaces/underscores. Priority when several value columns coexist:
+# unweighted Lw > A-weighted LwA > relative shape.
+_FREQ_COLS = ('freq_hz', 'frequency', 'freq', 'hz', 'f', 'band', 'band_hz')
+_LW_COLS = ('lw_db', 'lw', 'level', 'db', 'lw_band', 'lw_db_band')
+_LWA_COLS = ('lwa_db', 'lwa', 'dba', 'db(a)', 'lwa_band', 'lwa_db_band', 'lw_dba')
+_REL_COLS = ('lw_db_rel', 'lw_rel', 'relative', 'rel', 's_b', 'shape')
+
+
+def _norm_header(name: str) -> str:
+    return str(name or '').strip().lower().replace(' ', '').replace('_', '').replace('-', '')
+
+
+def _resolve_spectrum_columns(fieldnames):
+    """Return (freq_col, value_col, kind) where kind in {'lw','lwa','rel'}."""
+    normalized = {_norm_header(n): n for n in (fieldnames or []) if n}
+    freq_col = None
+    for cand in _FREQ_COLS:
+        key = _norm_header(cand)
+        if key in normalized:
+            freq_col = normalized[key]
+            break
+    value_col, kind = None, None
+    for cands, k in ((_LW_COLS, 'lw'), (_LWA_COLS, 'lwa'), (_REL_COLS, 'rel')):
+        for cand in cands:
+            key = _norm_header(cand)
+            if key in normalized:
+                value_col, kind = normalized[key], k
+                break
+        if value_col:
+            break
+    return freq_col, value_col, kind
+
+
 def load_spectrum_from_csv(
     filepath: str,
     lwa_global: Optional[float] = None
 ) -> Tuple[Dict[int, float], Dict[str, object]]:
     """
     Carga espectro desde CSV.
-    
-    Formatos:
-    1. Absoluto: freq_hz, Lw_dB
-    2. Relativo: freq_hz, Lw_dB_rel (requiere lwa_global)
+
+    Formatos aceptados (cabeceras insensibles a mayúsculas/espacios):
+    1. Absoluto no ponderado: freq_hz, Lw_dB
+    2. Absoluto ponderado A:  freq_hz, LwA_dB / dBA / dB(A)
+       → se convierte internamente a Lw,b = LwA,b - A_b para evitar
+         aplicar la ponderación A dos veces en el motor.
+    3. Relativo (forma):      freq_hz, Lw_dB_rel (requiere lwa_global)
     """
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
-    
+
     rows: List[Tuple[int, float]] = []
+    weighted_input = False
+    forced_relative = False
     with open(filepath, 'r', encoding='utf-8-sig') as f:
         sample = f.read(1024)
         f.seek(0)
-        
+
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=',;\t')
             delim = dialect.delimiter
         except:
             delim = ',' if ',' in sample else ';'
-        
+
         reader = csv.DictReader(f, delimiter=delim)
-        
+        freq_col, value_col, kind = _resolve_spectrum_columns(reader.fieldnames)
+        if not freq_col or not value_col:
+            raise ValueError(
+                f"No se reconocen las columnas de {os.path.basename(filepath)}. "
+                "Cabeceras aceptadas: freq_hz + Lw_dB (absoluto), LwA_dB/dBA/dB(A) "
+                "(ponderado A) o Lw_dB_rel (forma relativa)."
+            )
+        weighted_input = (kind == 'lwa')
+        forced_relative = (kind == 'rel')
+
+        raw_values: List[float] = []
         for row in reader:
             try:
-                freq = None
-                lw = None
-                
-                for key in ['freq_hz', 'frequency', 'freq', 'Hz']:
-                    if key in row and row[key]:
-                        freq = int(float(row[key]))
-                        break
-                
-                for key in ['Lw_dB', 'lw', 'Lw', 'level', 'dB', 'Lw_rel', 'Lw_dB_rel', 'relative']:
-                    if key in row and row[key]:
-                        lw = float(row[key])
-                        break
-                
-                if freq and lw is not None:
-                    rows.append((freq, lw))
-            except:
+                freq = int(float(row.get(freq_col) or ''))
+                lw = float(row.get(value_col) or '')
+            except Exception:
                 continue
-    
+            if freq <= 0:
+                continue
+            raw_values.append(lw)
+            if weighted_input:
+                # Convert A-weighted band level to unweighted Lw,b so the
+                # engine's final A-weighting is not applied twice.
+                lw = lw - _a_weight_at(freq)
+            rows.append((freq, lw))
+
     if not rows:
         raise ValueError(f"No se pudieron leer datos válidos de {filepath}")
-    
+
     # Detectar si es absoluto o relativo
     values = [lw for _, lw in rows]
     max_val = max(values)
     min_val = min(values)
-    
-    is_relative = max_val < 20.0 or (min_val < 0 and max_val < 50.0)
+
+    if forced_relative:
+        is_relative = True
+    elif weighted_input:
+        # A-weighted columns are absolute band levels by definition. A shape
+        # in dB(A) would be ambiguous, so reject it before conversion masks
+        # it: the check uses the RAW typed values, not the converted ones.
+        if max(raw_values) < 20.0:
+            raise ValueError(
+                "La columna ponderada A contiene valores pequeños que parecen una "
+                "forma relativa. Para formas relativas usa la cabecera Lw_dB_rel."
+            )
+        is_relative = False
+    else:
+        is_relative = max_val < 20.0 or (min_val < 0 and max_val < 50.0)
+
     
     metadata = {
         'filepath': filepath,
         'n_bands': len(rows),
         'format': 'relative' if is_relative else 'absolute',
+        'weighted_input': bool(weighted_input),
     }
     
     # Construir espectro
@@ -297,7 +375,12 @@ class SpectrumLibrary:
         if custom_csv and os.path.exists(custom_csv):
             try:
                 spectrum, meta = load_spectrum_from_csv(custom_csv, lwa_global)
-                return spectrum, f"CSV: {os.path.basename(custom_csv)}"
+                src = f"CSV: {os.path.basename(custom_csv)}"
+                if meta.get('weighted_input'):
+                    src += " · convertido desde LwA por banda"
+                if str(meta.get('format')) == 'relative':
+                    src += " · forma relativa normalizada a LwA"
+                return spectrum, src
             except Exception as e:
                 log(f"[SPECTRUM][WARN] Error cargando CSV: {e}")
         

@@ -28,6 +28,8 @@ import os
 from datetime import timedelta, timezone
 from typing import List, Optional, Tuple
 
+from .i18n_local import tr4 as _ml, timezone_label_local
+
 _DEFAULT_TZ = "UTC"
 
 
@@ -169,15 +171,30 @@ def _get_bundled_zoneinfo(tz_name: str):
     try:
         from zoneinfo import ZoneInfo  # type: ignore
     except Exception as e:
-        raise ValueError("Python zoneinfo n’est pas disponible dans cet environnement : {}".format(e))
+        raise ValueError(_ml(
+            "Python zoneinfo no está disponible en este entorno: {}",
+            "Python zoneinfo is not available in this environment: {}",
+            "Python zoneinfo n’est pas disponible dans cet environnement : {}",
+            "Python zoneinfo ist in dieser Umgebung nicht verfügbar: {}",
+        ).format(e))
 
     safe_name = (tz_name or _DEFAULT_TZ).strip().replace("\\", "/")
     if safe_name.startswith("/") or ".." in safe_name.split("/"):
-        raise ValueError("Nom de fuseau horaire invalide : '{}'".format(tz_name))
+        raise ValueError(_ml(
+            "Nombre de zona horaria no válido: '{}'",
+            "Invalid timezone name: '{}'",
+            "Nom de fuseau horaire invalide : '{}'",
+            "Ungültiger Zeitzonenname: '{}'",
+        ).format(tz_name))
 
     path = os.path.join(bundled_zoneinfo_dir_path(), *safe_name.split("/"))
     if not os.path.isfile(path):
-        raise ValueError("La zone '{}' n’existe pas dans la base IANA incluse.".format(tz_name))
+        raise ValueError(_ml(
+            "La zona '{}' no existe en la base IANA incluida.",
+            "Zone '{}' does not exist in the bundled IANA database.",
+            "La zone '{}' n’existe pas dans la base IANA incluse.",
+            "Die Zone '{}' ist in der mitgelieferten IANA-Datenbank nicht vorhanden.",
+        ).format(tz_name))
 
     with open(path, "rb") as f:
         return ZoneInfo.from_file(f, key=safe_name)
@@ -220,12 +237,12 @@ def get_tzinfo(tz_name: Optional[str]):
     except Exception:
         pass
 
-    raise ValueError(
-        "No se pudo cargar la zona horaria IANA '{}'. "
-        "La repo incluye una base IANA local, pero esa zona no se encontró o no pudo abrirse. "
-        "Prueba con una zona como 'Europe/Madrid' o usa el modo UTC offset fijo. "
-        "Erreur zoneinfo : {}; erreur de la base incluse : {}".format(name, zoneinfo_error, bundled_error)
-    )
+    raise ValueError(_ml(
+        "No se pudo cargar la zona horaria IANA '{}'. La repo incluye una base IANA local, pero esa zona no se encontró o no pudo abrirse. Prueba con una zona como 'Europe/Madrid' o usa el modo UTC offset fijo. Error zoneinfo: {}; error de la base incluida: {}",
+        "Could not load IANA timezone '{}'. The plugin includes a local IANA database, but this zone was not found or could not be opened. Try a zone such as 'Europe/Madrid' or use fixed UTC-offset mode. zoneinfo error: {}; bundled database error: {}",
+        "Impossible de charger le fuseau horaire IANA '{}'. Le plugin inclut une base IANA locale, mais cette zone est introuvable ou n’a pas pu être ouverte. Essayez une zone comme 'Europe/Madrid' ou utilisez le mode décalage UTC fixe. Erreur zoneinfo : {}; erreur de la base incluse : {}",
+        "Die IANA-Zeitzone '{}' konnte nicht geladen werden. Das Plugin enthält eine lokale IANA-Datenbank, aber diese Zone wurde nicht gefunden oder konnte nicht geöffnet werden. Versuchen Sie eine Zone wie 'Europe/Madrid' oder verwenden Sie den festen UTC-Offset-Modus. zoneinfo-Fehler: {}; Fehler der mitgelieferten Datenbank: {}",
+    ).format(name, zoneinfo_error, bundled_error))
 
 
 def fixed_offset_tz(offset_hours: float):
@@ -234,10 +251,7 @@ def fixed_offset_tz(offset_hours: float):
 
 
 def timezone_label(timezone_mode: str, timezone_name: Optional[str], utc_offset: float) -> str:
-    mode = (timezone_mode or "fixed").lower()
-    if mode == "iana":
-        return f"{timezone_name or 'UTC'} · local civil time with DST"
-    return f"UTC{utc_offset:+.1f} · fixed offset / fixed-offset"
+    return timezone_label_local(timezone_mode, timezone_name, utc_offset)
 
 
 def offset_to_etc_timezone(offset_hours: float) -> str:
@@ -259,7 +273,12 @@ def _in(lat: float, lon: float, lat_min: float, lat_max: float, lon_min: float, 
 
 
 def _approx_warning(extra: str = "") -> str:
-    msg = "Autodetección aproximada sin polígonos mundiales; verifica la zona horaria en el desplegable IANA."
+    msg = _ml(
+        "Autodetección aproximada sin polígonos mundiales; verifica la zona horaria en el desplegable IANA.",
+        "Approximate autodetection without worldwide polygons; verify the timezone in the IANA dropdown.",
+        "Autodétection approximative sans polygones mondiaux ; vérifiez le fuseau horaire dans la liste IANA.",
+        "Ungefähre automatische Erkennung ohne weltweite Polygone; prüfen Sie die Zeitzone in der IANA-Auswahlliste.",
+    )
     if extra:
         msg += " " + extra
     return msg
@@ -323,7 +342,7 @@ def detect_timezone_name(latitude: float, longitude: float) -> Tuple[Optional[st
     if _in(lat, lon, -55.5, -21.0, -73.5, -53.5):
         return "America/Argentina/Buenos_Aires", "bundled approximate bbox", _approx_warning()
     if _in(lat, lon, -35.5, 5.5, -74.0, -34.0):
-        return "America/Sao_Paulo", "bundled approximate bbox", _approx_warning("Brasil tiene varias zonas; selecciona manualmente si aplica.")
+        return "America/Sao_Paulo", "bundled approximate bbox", _approx_warning(_ml("Brasil tiene varias zonas; selecciona manualmente si aplica.", "Brazil has multiple timezones; select manually if applicable.", "Le Brésil a plusieurs fuseaux horaires ; sélectionnez manuellement si nécessaire.", "Brasilien hat mehrere Zeitzonen; wählen Sie bei Bedarf manuell aus."))
     if _in(lat, lon, -19.0, 13.0, -82.0, -66.0):
         return "America/Lima", "bundled approximate bbox", _approx_warning()
     if _in(lat, lon, -5.0, 13.5, -79.5, -59.0):
@@ -339,22 +358,22 @@ def detect_timezone_name(latitude: float, longitude: float) -> Tuple[Optional[st
             return "America/Chicago", "bundled approximate longitude", _approx_warning()
         return "America/New_York", "bundled approximate longitude", _approx_warning()
     if _in(lat, lon, 14.0, 33.5, -118.0, -86.0):
-        return "America/Mexico_City", "bundled approximate bbox", _approx_warning("México tiene varias zonas; verifica manualmente.")
+        return "America/Mexico_City", "bundled approximate bbox", _approx_warning(_ml("México tiene varias zonas; verifica manualmente.", "Mexico has multiple timezones; verify manually.", "Le Mexique a plusieurs fuseaux horaires ; vérifiez manuellement.", "Mexiko hat mehrere Zeitzonen; bitte manuell prüfen."))
     if _in(lat, lon, 42.0, 71.5, -141.5, -52.0):
         # Canada: approximate by longitude. Manual verification recommended.
         if lon < -123:
-            return "America/Vancouver", "bundled approximate longitude", _approx_warning("Canadá tiene varias zonas; verifica manualmente.")
+            return "America/Vancouver", "bundled approximate longitude", _approx_warning(_ml("Canadá tiene varias zonas; verifica manualmente.", "Canada has multiple timezones; verify manually.", "Le Canada a plusieurs fuseaux horaires ; vérifiez manuellement.", "Kanada hat mehrere Zeitzonen; bitte manuell prüfen."))
         if lon < -102:
-            return "America/Edmonton", "bundled approximate longitude", _approx_warning("Canadá tiene varias zonas; verifica manualmente.")
+            return "America/Edmonton", "bundled approximate longitude", _approx_warning(_ml("Canadá tiene varias zonas; verifica manualmente.", "Canada has multiple timezones; verify manually.", "Le Canada a plusieurs fuseaux horaires ; vérifiez manuellement.", "Kanada hat mehrere Zeitzonen; bitte manuell prüfen."))
         if lon < -88:
-            return "America/Winnipeg", "bundled approximate longitude", _approx_warning("Canadá tiene varias zonas; verifica manualmente.")
-        return "America/Toronto", "bundled approximate longitude", _approx_warning("Canadá tiene varias zonas; verifica manualmente.")
+            return "America/Winnipeg", "bundled approximate longitude", _approx_warning(_ml("Canadá tiene varias zonas; verifica manualmente.", "Canada has multiple timezones; verify manually.", "Le Canada a plusieurs fuseaux horaires ; vérifiez manuellement.", "Kanada hat mehrere Zeitzonen; bitte manuell prüfen."))
+        return "America/Toronto", "bundled approximate longitude", _approx_warning(_ml("Canadá tiene varias zonas; verifica manualmente.", "Canada has multiple timezones; verify manually.", "Le Canada a plusieurs fuseaux horaires ; vérifiez manuellement.", "Kanada hat mehrere Zeitzonen; bitte manuell prüfen."))
 
     # Asia-Pacific
     if _in(lat, lon, 6.0, 38.0, 68.0, 98.0):
         return "Asia/Kolkata", "bundled approximate bbox", _approx_warning()
     if _in(lat, lon, 18.0, 54.0, 73.0, 135.0):
-        return "Asia/Shanghai", "bundled approximate bbox", _approx_warning("China usa una zona oficial; verifica si el proyecto usa otra referencia.")
+        return "Asia/Shanghai", "bundled approximate bbox", _approx_warning(_ml("China usa una zona oficial; verifica si el proyecto usa otra referencia.", "China uses one official timezone; verify whether the project uses another reference.", "La Chine utilise un fuseau officiel unique ; vérifiez si le projet utilise une autre référence.", "China verwendet eine offizielle Zeitzone; prüfen Sie, ob das Projekt eine andere Referenz nutzt."))
     if _in(lat, lon, 30.0, 46.0, 129.0, 146.0):
         return "Asia/Tokyo", "bundled approximate bbox", _approx_warning()
     if _in(lat, lon, 33.0, 39.5, 124.0, 132.0):
@@ -362,17 +381,19 @@ def detect_timezone_name(latitude: float, longitude: float) -> Tuple[Optional[st
     if _in(lat, lon, 5.0, 21.0, 97.0, 106.5):
         return "Asia/Bangkok", "bundled approximate bbox", _approx_warning()
     if _in(lat, lon, -11.0, 6.5, 95.0, 142.0):
-        return "Asia/Jakarta", "bundled approximate bbox", _approx_warning("Indonesia tiene varias zonas; verifica manualmente.")
+        return "Asia/Jakarta", "bundled approximate bbox", _approx_warning(_ml("Indonesia tiene varias zonas; verifica manualmente.", "Indonesia has multiple timezones; verify manually.", "L’Indonésie a plusieurs fuseaux horaires ; vérifiez manuellement.", "Indonesien hat mehrere Zeitzonen; bitte manuell prüfen."))
     if _in(lat, lon, -44.0, -10.0, 112.0, 154.0):
         if lon < 129:
-            return "Australia/Perth", "bundled approximate longitude", _approx_warning("Australia tiene varias zonas; verifica manualmente.")
+            return "Australia/Perth", "bundled approximate longitude", _approx_warning(_ml("Australia tiene varias zonas; verifica manualmente.", "Australia has multiple timezones; verify manually.", "L’Australie a plusieurs fuseaux horaires ; vérifiez manuellement.", "Australien hat mehrere Zeitzonen; bitte manuell prüfen."))
         if lon < 141:
-            return "Australia/Adelaide", "bundled approximate longitude", _approx_warning("Australia tiene varias zonas; verifica manualmente.")
-        return "Australia/Sydney", "bundled approximate longitude", _approx_warning("Australia tiene varias zonas; verifica manualmente.")
+            return "Australia/Adelaide", "bundled approximate longitude", _approx_warning(_ml("Australia tiene varias zonas; verifica manualmente.", "Australia has multiple timezones; verify manually.", "L’Australie a plusieurs fuseaux horaires ; vérifiez manuellement.", "Australien hat mehrere Zeitzonen; bitte manuell prüfen."))
+        return "Australia/Sydney", "bundled approximate longitude", _approx_warning(_ml("Australia tiene varias zonas; verifica manualmente.", "Australia has multiple timezones; verify manually.", "L’Australie a plusieurs fuseaux horaires ; vérifiez manuellement.", "Australien hat mehrere Zeitzonen; bitte manuell prüfen."))
     if _in(lat, lon, -48.0, -33.0, 165.0, 179.9):
         return "Pacific/Auckland", "bundled approximate bbox", _approx_warning()
 
-    return None, "manual required", (
-        "No se pudo detectar una zona horaria fiable sin una base mundial de polígonos. "
-        "Selecciona manualmente la zona IANA en el desplegable; la repo incluye un catálogo amplio y una base TZif con reglas DST."
+    return None, "manual required", _ml(
+        "No se pudo detectar una zona horaria fiable sin una base mundial de polígonos. Selecciona manualmente la zona IANA en el desplegable; la repo incluye un catálogo amplio y una base TZif con reglas DST.",
+        "A reliable timezone could not be detected without a worldwide polygon database. Select the IANA zone manually in the dropdown; the plugin includes a broad catalogue and a TZif database with DST rules.",
+        "Impossible de détecter un fuseau horaire fiable sans base mondiale de polygones. Sélectionnez manuellement la zone IANA dans la liste ; le plugin inclut un vaste catalogue et une base TZif avec règles DST.",
+        "Ohne weltweite Polygondatenbank konnte keine zuverlässige Zeitzone erkannt werden. Wählen Sie die IANA-Zone manuell in der Auswahlliste; das Plugin enthält einen breiten Katalog und eine TZif-Datenbank mit DST-Regeln.",
     )

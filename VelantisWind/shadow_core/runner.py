@@ -1,22 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Runner façade for shadow-flicker calculations.
-
-The runner preserves the current point-receptor physics implementation while
-giving the module the same UI -> controller -> runner shape used by Energy and
-Noise.
-"""
+"""Runner façade for shadow-flicker calculations."""
 
 from __future__ import annotations
 
-try:
-    from ..i18n import current_language
-except Exception:
-    def current_language(): return "fr"
-
-def _is_de():
-    return str(current_language()).lower().startswith("de")
-
 from .domain import ShadowRunConfig
+from .i18n_local import tr4 as _ml
 
 
 class ShadowRunner:
@@ -25,5 +13,10 @@ class ShadowRunner:
     def run_from_dialog(self, dialog, config: ShadowRunConfig):
         point_runner = getattr(dialog, "_run_shadow_point_calculation", None)
         if point_runner is None:
-            raise RuntimeError("Der Einstiegspunkt der Rezeptorberechnung im Schattenwurfmodul fehlt." if _is_de() else "Le point d’entrée du calcul par récepteurs du module d’ombres est manquant.")
+            raise RuntimeError(_ml(
+                "Falta el punto de entrada del cálculo por receptores del módulo de sombras.",
+                "The receiver-calculation entry point is missing in the shadow module.",
+                "Le point d’entrée du calcul par récepteurs du module d’ombres est manquant.",
+                "Der Einstiegspunkt der Rezeptorberechnung im Schattenwurfmodul fehlt.",
+            ))
         return point_runner()

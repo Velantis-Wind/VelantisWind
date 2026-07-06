@@ -548,29 +548,49 @@ def _format_turbine_geometry_for_export(turbines: Optional[List[Dict[str, object
     if len(unique_values) == 1:
         return f"{unique_values[0]:.2f} {unit}"
 
-    return f"{min(values):.2f}-{max(values):.2f} {unit} ({len(unique_values)} unique values)"
+    
+    try:
+        from .i18n_local import tr4 as _ml
+        unique_label = _ml("valores únicos", "unique values", "valeurs uniques", "einzigartige Werte")
+    except Exception:
+        unique_label = "unique values"
+    return f"{min(values):.2f}-{max(values):.2f} {unit} ({len(unique_values)} {unique_label})"
 
 
 
 def _shadow_export_lang_labels():
     try:
-        from ..i18n import current_language
-        lang = str(current_language()).lower()
+        from .i18n_local import lang_code
+        lang = lang_code()
     except Exception:
-        lang = "es"
-    if lang.startswith("de"):
-        return {
-            "months": ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
-            "title": "Schattenwurfstunden nach Monat und Tagesstunde",
-            "config": "BERECHNUNGSKONFIGURATION",
-            "year": "Jahr", "timezone": "Zeitzone", "time_step": "Zeitschritt", "availability": "Verfügbarkeit",
-            "max_dist": "Maximaler Schattenabstand", "solar_limits": "Grenzwerte der Sonnenhöhe",
-            "n_turbines": "Anzahl Windturbinen", "hub": "Verwendete Nabenhöhe", "diam": "Verwendeter Rotordurchmesser",
-            "receiver": "Rezeptor", "hour": "Stunde", "summary": "ZUSAMMENFASSUNG",
-            "total": "Gesamt h/Jahr", "max_min": "Max. Minuten/Tag", "max_date": "Datum des stärksten Schattenwurfs", "days": "Betroffene Tage",
-        }
-    if lang.startswith("fr"):
-        return {
+        try:
+            from ..i18n import current_language
+            lang = str(current_language()).lower().replace("-", "_").split("_", 1)[0]
+        except Exception:
+            lang = "es"
+
+    labels_by_lang = {
+        "es": {
+            "months": ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+            "title": "Horas de sombra y parpadeo por mes y hora del día",
+            "config": "CONFIGURACIÓN DEL CÁLCULO",
+            "year": "Año", "timezone": "Zona horaria", "time_step": "Paso temporal", "availability": "Disponibilidad",
+            "max_dist": "Distancia máxima de sombra", "solar_limits": "Límites de elevación solar",
+            "n_turbines": "Número de aerogeneradores", "hub": "Altura de buje utilizada", "diam": "Diámetro de rotor utilizado",
+            "receiver": "Receptor", "hour": "Hora", "summary": "RESUMEN",
+            "total": "Total h/año", "max_min": "Máx. minutos/día", "max_date": "Fecha de sombra máxima", "days": "Días afectados",
+        },
+        "en": {
+            "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+            "title": "Shadow-flicker hours by month and time of day",
+            "config": "CALCULATION CONFIGURATION",
+            "year": "Year", "timezone": "Timezone", "time_step": "Time step", "availability": "Availability",
+            "max_dist": "Maximum shadow distance", "solar_limits": "Solar elevation limits",
+            "n_turbines": "Number of wind turbines", "hub": "Hub height used", "diam": "Rotor diameter used",
+            "receiver": "Receiver", "hour": "Hour", "summary": "SUMMARY",
+            "total": "Total h/year", "max_min": "Max minutes/day", "max_date": "Date of maximum shadow", "days": "Affected days",
+        },
+        "fr": {
             "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
             "title": "Heures d’ombres et scintillement par mois et heure de la journée",
             "config": "CONFIGURATION DU CALCUL",
@@ -579,18 +599,19 @@ def _shadow_export_lang_labels():
             "n_turbines": "Nombre d’éoliennes", "hub": "Hauteur de moyeu utilisée", "diam": "Diamètre du rotor utilisé",
             "receiver": "Récepteur", "hour": "Heure", "summary": "RÉSUMÉ",
             "total": "Total h/an", "max_min": "Max minutes/jour", "max_date": "Date d’ombre max.", "days": "Jours affectés",
-        }
-    return {
-        "months": ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
-        "title": "Horas de sombra y parpadeo por mes y hora del día",
-        "config": "CONFIGURACIÓN DEL CÁLCULO",
-        "year": "Año", "timezone": "Zona horaria", "time_step": "Paso temporal", "availability": "Disponibilidad",
-        "max_dist": "Distancia máxima de sombra", "solar_limits": "Límites de elevación solar",
-        "n_turbines": "Número de aerogeneradores", "hub": "Altura de buje utilizada", "diam": "Diámetro de rotor utilizado",
-        "receiver": "Receptor", "hour": "Hora", "summary": "RESUMEN",
-        "total": "Total h/año", "max_min": "Máx. minutos/día", "max_date": "Fecha de sombra máxima", "days": "Días afectados",
+        },
+        "de": {
+            "months": ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+            "title": "Schattenwurfstunden nach Monat und Tagesstunde",
+            "config": "BERECHNUNGSKONFIGURATION",
+            "year": "Jahr", "timezone": "Zeitzone", "time_step": "Zeitschritt", "availability": "Verfügbarkeit",
+            "max_dist": "Maximaler Schattenabstand", "solar_limits": "Grenzwerte der Sonnenhöhe",
+            "n_turbines": "Anzahl Windturbinen", "hub": "Verwendete Nabenhöhe", "diam": "Verwendeter Rotordurchmesser",
+            "receiver": "Rezeptor", "hour": "Stunde", "summary": "ZUSAMMENFASSUNG",
+            "total": "Gesamt h/Jahr", "max_min": "Max. Minuten/Tag", "max_date": "Datum des stärksten Schattenwurfs", "days": "Betroffene Tage",
+        },
     }
-
+    return labels_by_lang.get(lang, labels_by_lang["es"])
 
 def export_shadow_12x24_csv(
     results: List[ShadowFlickerResult],
@@ -649,7 +670,7 @@ def export_shadow_12x24_csv(
             writer.writerow([labels['max_dist'], f"{getattr(calculator, 'max_shadow_distance_m', 'N/A')} m"])
             writer.writerow([
                 labels['solar_limits'],
-                f"{getattr(calculator, 'min_sun_elevation', 'N/A')}° à {getattr(calculator, 'max_sun_elevation', 'N/A')}°",
+                f"{getattr(calculator, 'min_sun_elevation', 'N/A')}° – {getattr(calculator, 'max_sun_elevation', 'N/A')}°",
             ])
         writer.writerow([labels['n_turbines'], len(turbines or [])])
         writer.writerow([labels['hub'], _format_turbine_geometry_for_export(turbines, 'hub_height')])

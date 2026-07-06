@@ -3816,7 +3816,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 "(WRG/raster TI o valor manual), pero no suma la turbulencia creada por las estelas. "
                 "Esto es válido para modelos poco sensibles a TI; si usas Niayifar, Zong, TurboGaussian o TurboNOJ, la turbulencia añadida puede afectar más al AEP."
             )
-            self.lbl_turbulence_note.setText(msg)
+            self.lbl_turbulence_note.setText(_tr(msg))
             return
 
         descr = {
@@ -3832,7 +3832,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             "<br>La TI ambiente siempre viene del recurso/raster o del valor manual. Este selector añade turbulencia generada por estelas. "
             "Su impacto en AEP será mayor si el wake model usa TI de forma explícita, como Niayifar, Zong, TurboGaussian o TurboNOJ."
         )
-        self.lbl_turbulence_note.setText(msg)
+        self.lbl_turbulence_note.setText(_tr(msg))
 
     def _update_wake_turb_note(self) -> None:
         if not hasattr(self, 'lbl_wake_turb_note'):
@@ -3981,27 +3981,27 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
             # Encabezado
             top = QtWidgets.QHBoxLayout()
-            name_lbl = QtWidgets.QLabel(f"Modelo {i+1}: <i>(sin definir)</i>")
+            name_lbl = QtWidgets.QLabel(_tr(f"Modelo {i+1}: <i>(sin definir)</i>"))
             name_lbl.setMinimumWidth(180)
             name_lbl.setWordWrap(True)
             # Badge: «(editado, sin guardar)» — solo visible cuando la capa de este
             # modelo se ha modificado en el mapa interactivo y no se ha exportado.
-            dirty_badge = QtWidgets.QLabel("● editado en mapa, sin guardar")
+            dirty_badge = QtWidgets.QLabel(_tr("● editado en mapa, sin guardar"))
             dirty_badge.setStyleSheet("color: #b8860b; font-style: italic;")
-            dirty_badge.setToolTip(
+            dirty_badge.setToolTip(_tr(
                 "Has movido/añadido/borrado turbinas en el mapa interactivo.\n"
                 "El cálculo de AEP usa esas coordenadas vivas (no el CSV original).\n"
                 "Pulsa «Exportar layout editado…» si quieres persistirlas a CSV."
-            )
+            ))
             dirty_badge.setVisible(False)
-            btn_define = QtWidgets.QPushButton("Definir…")
-            btn_define.setToolTip("Abrir diálogo para cargar curva de potencia")
+            btn_define = QtWidgets.QPushButton(_tr("Definir…"))
+            btn_define.setToolTip(_tr("Abrir diálogo para cargar curva de potencia"))
             btn_define.clicked.connect(lambda _, idx=i: self._define_model(idx))
-            btn_view_curve = QtWidgets.QPushButton("Ver curva")
-            btn_view_curve.setToolTip(
+            btn_view_curve = QtWidgets.QPushButton(_tr("Ver curva"))
+            btn_view_curve.setToolTip(_tr(
                 "Ver la curva de potencia (y Ct si está disponible) de la turbina definida.\n"
                 "Útil para detectar errores de carga (kW vs W, columnas invertidas, etc.)."
-            )
+            ))
             btn_view_curve.setEnabled(False)  # se habilita tras Definir
             btn_view_curve.clicked.connect(lambda _, idx=i: self._show_curve_for_model(idx))
             top.addWidget(name_lbl, 1)
@@ -4011,14 +4011,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
             # CSV de coordenadas
             bot = QtWidgets.QHBoxLayout()
-            lbl_csv = QtWidgets.QLabel("Coordenadas (CSV X,Y):")
+            lbl_csv = QtWidgets.QLabel(_tr("Coordenadas (CSV X,Y):"))
             ed_csv = QtWidgets.QLineEdit()
-            ed_csv.setPlaceholderText("Selecciona CSV con columnas X,Y para este modelo")
-            btn_csv = QtWidgets.QPushButton("Coords CSV…")
+            ed_csv.setPlaceholderText(_tr("Selecciona CSV con columnas X,Y para este modelo"))
+            btn_csv = QtWidgets.QPushButton(_tr("Coords CSV…"))
             btn_csv.clicked.connect(lambda _, idx=i, le=ed_csv: self._pick_coords_csv(idx, le))
 
-            btn_make_layer = QtWidgets.QPushButton("Cargar capa")
-            btn_make_layer.setToolTip("Crear/actualizar la capa de puntos para este modelo")
+            btn_make_layer = QtWidgets.QPushButton(_tr("Cargar capa"))
+            btn_make_layer.setToolTip(_tr("Crear/actualizar la capa de puntos para este modelo"))
             btn_make_layer.clicked.connect(lambda _, idx=i: self._generate_point_layer_one(idx, force_reload_csv=True, activate_interactive=False))
 
             bot.addWidget(lbl_csv)
@@ -4074,7 +4074,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if not name:
             try:
                 if name_lbl is not None:
-                    name_lbl.setText(f"Modelo {idx+1}: <i>(sin definir)</i>")
+                    name_lbl.setText(_tr(f"Modelo {idx+1}: <i>(sin definir)</i>"))
             except Exception:
                 pass
             try:
@@ -4100,7 +4100,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             extra_txt = ""
         try:
             if name_lbl is not None:
-                name_lbl.setText(f"Modelo {idx+1}: <b>{name}</b>{extra_txt}")
+                name_lbl.setText(_tr(f"Modelo {idx+1}: <b>{name}</b>{extra_txt}"))
         except Exception:
             pass
         try:
@@ -4211,9 +4211,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
         ct = meta.get("ct")
         if not ws or not pw_kw:
             QtWidgets.QMessageBox.information(
-                self, "Curva de potencia",
-                "Esta turbina no tiene la curva guardada en metadatos. "
-                "Vuelve a pulsar «Definir…» para regenerarla."
+                self, _tr("Curva de potencia"),
+                _tr("Esta turbina no tiene la curva guardada en metadatos. "
+                    "Vuelve a pulsar «Definir…» para regenerarla.")
             )
             return
         try:
@@ -4224,7 +4224,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             )
         except Exception as e:
             QtWidgets.QMessageBox.warning(
-                self, "Curva de potencia", f"No se pudo dibujar la curva:\n{e}"
+                self, _tr("Curva de potencia"), _tr("No se pudo dibujar la curva:") + f"\n{e}"
             )
 
     def _open_curve_dialog(self, *, title: str, ws, pw_kw, ct, meta: Dict[str, Any]) -> None:
@@ -4240,13 +4240,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
             from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
         except Exception as e:
             QtWidgets.QMessageBox.warning(
-                self, "Curva de potencia",
-                f"matplotlib no disponible en este QGIS:\n{e}"
+                self, _tr("Curva de potencia"),
+                _tr("matplotlib no disponible en este QGIS:") + f"\n{e}"
             )
             return
 
         dlg = QtWidgets.QDialog(self)
-        dlg.setWindowTitle(f"Curva de potencia · {title}")
+        dlg.setWindowTitle(f"{_tr('Curva de potencia')} · {title}")
         dlg.setMinimumSize(640, 460)
         v = QtWidgets.QVBoxLayout(dlg)
 
@@ -4261,7 +4261,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             bits.append(f"Hub = {float(h_val):.1f} m")
         if p_val:
             bits.append(f"P_nom = {float(p_val)/1000:.2f} MW")
-        bits.append(f"{len(ws)} puntos")
+        bits.append(f"{len(ws)} {_tr('puntos')}")
         header.setText("  ·  ".join(bits))
         header.setStyleSheet("color: #4f5d6b;")
         v.addWidget(header)
@@ -4271,9 +4271,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
         v.addWidget(canvas, 1)
 
         ax1 = fig.add_subplot(111)
-        ax1.plot(ws, pw_kw, "-o", color="#103b67", markersize=3, linewidth=1.5, label="Potencia (kW)")
-        ax1.set_xlabel("Velocidad de viento (m/s)")
-        ax1.set_ylabel("Potencia (kW)", color="#103b67")
+        ax1.plot(ws, pw_kw, "-o", color="#103b67", markersize=3, linewidth=1.5, label=_tr("Potencia (kW)"))
+        ax1.set_xlabel(_tr("Velocidad de viento (m/s)"))
+        ax1.set_ylabel(_tr("Potencia (kW)"), color="#103b67")
         ax1.tick_params(axis="y", labelcolor="#103b67")
         ax1.grid(True, alpha=0.3)
         ax1.set_xlim(0, max(float(ws[-1]), 25))
@@ -4289,10 +4289,11 @@ class AEPSetupDialog(QtWidgets.QDialog):
         fig.tight_layout()
         canvas.draw()
 
-        # Botón cerrar
-        btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
-        btns.rejected.connect(dlg.reject)
-        btns.accepted.connect(dlg.accept)
+        # Close button: do not use Qt standard text here, because QGIS/Qt may
+        # localize it independently from the VelantisWind language selector.
+        btns = QtWidgets.QDialogButtonBox()
+        btn_close = btns.addButton(_tr("Cerrar"), QtWidgets.QDialogButtonBox.RejectRole)
+        btn_close.clicked.connect(dlg.reject)
         v.addWidget(btns)
         dlg.exec_()
 

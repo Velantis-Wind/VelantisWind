@@ -3,9 +3,9 @@
 /***************************************************************************
  Velantis Wind
                                  A QGIS plugin
- Wind farm pre-assessment: Energy / AEP, Noise and Shadow Flicker
+ Wind farm pre-assessment: Energy/AEP, Noise and Shadow Flicker
                               -------------------
-        version              : 0.1.14
+        version              : 0.1.15
         copyright            : (C) 2026 by VelantisWind contributors
         email                : info@velantiswind.com
  ***************************************************************************/
@@ -203,7 +203,8 @@ class VelantisWindPlugin:
             self.first_start = False
             self.dlg = VelantisHubDialog(
                 parent=self.iface.mainWindow(),
-                energy_dialog_factory=lambda parent=None: AEPSetupDialog(parent=parent or self.iface.mainWindow())
+                energy_dialog_factory=lambda parent=None: AEPSetupDialog(parent=parent or self.iface.mainWindow()),
+                iface=self.iface
             )
             # Apply the plugin icon here as well for environments that ignore dialog defaults.
             try:

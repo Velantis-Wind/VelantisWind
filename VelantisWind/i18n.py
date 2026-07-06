@@ -504,7 +504,7 @@ _FRAGMENT_TO_ES.update({
 
 
 # ---------------------------------------------------------------------------
-# Iteration 2: broader runtime vocabulary for the remaining UI, reports,
+# Coverage pass 2: broader runtime vocabulary for the remaining UI, reports,
 # message-bar warnings, tooltips and generated summaries.
 # ---------------------------------------------------------------------------
 _I18N_EXTRA_TO_EN = {
@@ -832,6 +832,35 @@ _I18N_EXTRA2_TO_EN = {
     "Configuración de grupos fuente acústicos": "Acoustic source-group configuration",
     "Cada fila representa un grupo fuente acústico. Puedes renombrar grupo y parque para que el resumen y las exportaciones sean más legibles.": "Each row represents an acoustic source group. You can rename the group and wind farm to make summaries and exports easier to read.",
     "Importar curva acústica para el grupo fuente seleccionado…": "Import acoustic curve for the selected source group…",
+    "Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…": "Import OEM spectrum (octave-band CSV) for the selected source group…",
+    "Los valores introducidos están ponderados A (dB(A) por banda)": "The entered values are A-weighted (dB(A) per band)",
+    "Si el fabricante da los niveles por banda ya en dB(A), marca esta casilla: se convertirán internamente a Lw por banda (Lw,b = LwA,b − A_b) para que el motor no aplique la ponderación A dos veces.": "If the manufacturer provides the band levels already in dB(A), check this box: they will be internally converted to per-band Lw (Lw,b = LwA,b − A_b) so the engine does not apply the A-weighting twice.",
+    "Columna ponderada A detectada; convertida internamente a Lw por banda para evitar doble ponderación.": "A-weighted column detected; internally converted to per-band Lw to avoid double weighting.",
+    "Atención: la normalización está activada; el total del fabricante será sustituido por el LwA del grupo.": "Warning: normalization is enabled; the manufacturer total will be replaced by the group LwA.",
+    "También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A.": "Also accepts LwA_dB / dBA / dB(A) per band; it is converted internally to avoid double A-weighting.",
+    "También puedes importar el espectro OEM por bandas de octava del fabricante (CSV) o introducirlo a mano con el editor; el motor ISO propagará cada banda de ese espectro y el ruido total se calculará a partir de él.": "You can also import the manufacturer OEM octave-band spectrum (CSV) or type it manually with the editor; the ISO engine will propagate each band of that spectrum and the total noise will be calculated from it.",
+    "Editar espectro del grupo seleccionado…": "Edit spectrum of the selected source group…",
+    "Limpiar espectro del grupo seleccionado": "Clear spectrum of the selected source group",
+    "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Normalize the spectrum to the group LwA (use shape only)",
+    "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV with columns freq_hz and Lw_dB (absolute) or Lw_dB_rel (relative shape). Comma, semicolon or tab separators are accepted.",
+    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Disabled: the absolute OEM spectrum is used as-is and the group operational LwA becomes the A-weighted sum of the spectrum (recommended to compare against other software). Enabled: the spectrum is used as a shape only and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+    "Ruido · Espectro OEM por bandas de octava": "Noise · OEM octave-band spectrum",
+    "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Enter the sound power level Lw per octave band (absolute manufacturer values in dB). If you enter a relative shape (all values below 20 dB), it will be treated as a shape and normalized to the group LwA.",
+    "Banda [Hz]": "Band [Hz]",
+    "Precargar plantilla ajustada al LwA del grupo": "Preload template fitted to the group LwA",
+    "Forma relativa detectada · se normalizará al LwA del grupo": "Relative shape detected · it will be normalized to the group LwA",
+    "espectro manual (forma relativa)": "manual spectrum (relative shape)",
+    "espectro manual": "manual spectrum",
+    "normalizado a LwA": "normalized to LwA",
+    "espectro OEM": "OEM spectrum",
+    "forma relativa": "relative shape",
+    "inválido": "invalid",
+    "Espectro OEM por bandas de octava": "OEM octave-band spectrum",
+    "Ruido · Espectro OEM": "Noise · OEM spectrum",
+    "No se pudo leer el espectro:": "Could not read the spectrum:",
+    "Espectro cargado correctamente.": "Spectrum loaded successfully.",
+    "Formato": "Format",
+    "El LwA operativo del grupo se tomará de este espectro para que el ruido total se calcule a partir de él.": "The group operational LwA will be taken from this spectrum so the total noise is calculated from it.",
     "Puedes usar un LwA fijo por grupo fuente acústico o una curva acústica ws/LwA por grupo.": "You can use a fixed LwA by acoustic source group or a ws/LwA acoustic curve per group.",
     "Preparación del cálculo": "Calculation preparation",
     "Comprobar configuración": "Check configuration",
@@ -952,7 +981,7 @@ _FRAGMENT_TO_ES.update(_EXTRA2_REVERSE)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 3: remaining Energy explanatory notes, information dialogs and
+# Coverage pass 3: remaining Energy explanatory notes, information dialogs and
 # turbine-parameter dialog strings.
 # ---------------------------------------------------------------------------
 _I18N_EXTRA3_TO_EN = {
@@ -1308,6 +1337,90 @@ def _should_fragment_short_text(s: str) -> bool:
     except Exception:
         return False
 
+
+def _final_language_cleanup(text: str, lang: str) -> str:
+    """Last-resort cleanup for visible strings after runtime translation.
+
+    The plugin historically received some translations already authored in a
+    mixed language (especially long HTML help/report blocks).  Exact native
+    report renderers fix the main noise reports, but this conservative cleanup
+    prevents common Spanish/French/English/German fragments from leaking into
+    the four supported UI languages in dynamic labels, tooltips and HTML notes.
+    """
+    try:
+        s = str(text)
+    except Exception:
+        return text
+    l = str(lang or _SOURCE_LANG).lower()[:2]
+    if not s:
+        return s
+    maps = {
+        LANG_ES: [
+            ('What it is', 'Qué es'), ('What it is not', 'Qué no es'),
+            ('Recommendation', 'Recomendación'), ('Fast engine', 'Motor rápido'),
+            ('ISO-aligned engine', 'Motor ISO-aligned'), ('Receiver', 'Receptor'),
+            ('Receivers', 'Receptores'), ('Source', 'Fuente'), ('Sources', 'Fuentes'),
+            ('Plantilla:', 'Plantilla:'), ('Template:', 'Plantilla:'), ('Gabarit :', 'Plantilla:'), ('Vorlage:', 'Plantilla:'),
+        ],
+        LANG_EN: [
+            ('Evaluación', 'Assessment'), ('aerogeneradores', 'wind turbines'), ('Aerogeneradores', 'Wind turbines'),
+            ('receptores', 'receivers'), ('Receptores', 'Receivers'), ('fuente', 'source'), ('Fuente', 'Source'),
+            ('fuentes', 'sources'), ('Fuentes', 'Sources'), ('dentro del radio', 'within the radius'),
+            ('fuera del radio', 'outside the radius'), ('contribuyentes', 'contributing'), ('cumplimiento', 'compliance'),
+            ('Cumplimiento', 'Compliance'), ('Límite', 'Limit'), ('límite', 'limit'), ('margen', 'margin'),
+            ('Margen', 'Margin'), ('capa', 'layer'), ('Capa', 'Layer'), ('categoría', 'category'),
+            ('Categoría', 'Category'), ('Origen del espectro', 'Spectrum source'), ('Origen', 'Source'),
+            ('Plantilla:', 'Template:'), ('Gabarit :', 'Template:'), ('Vorlage:', 'Template:'),
+            ('genérica curve', 'generic curve'), ('curva genérica', 'generic curve'),
+            ('no generado', 'not generated'), ('sí', 'yes'), ('oui', 'yes'), ('ja', 'yes'), ('non', 'no'), ('nein', 'no'),
+            ('Motor rápido', 'Fast engine'), ('Motor ISO-aligned', 'ISO-aligned engine'),
+            ('grupos fuente', 'source groups'), ('Grupos fuente', 'Source groups'),
+        ],
+        LANG_FR: [
+            ('Evaluación', 'Évaluation'), ('aerogeneradores', 'éoliennes'), ('Aerogeneradores', 'Éoliennes'),
+            ('receptores', 'récepteurs'), ('Receptores', 'Récepteurs'), ('Wind turbines', 'Éoliennes'),
+            ('Receivers', 'Récepteurs'), ('Source groups', 'Groupes source'), ('fuente', 'source'), ('Fuente', 'Source'),
+            ('dentro del radio', 'dans le rayon'), ('fuera del radio', 'hors rayon'),
+            ('Plantilla:', 'Gabarit :'), ('Template:', 'Gabarit :'), ('Vorlage:', 'Gabarit :'),
+            ('generic curve', 'courbe générique'), ('curva genérica', 'courbe générique'),
+            ('no generado', 'non générée'), ('not generated', 'non générée'), ('ja', 'oui'), ('yes', 'oui'), ('nein', 'non'),
+        ],
+        LANG_DE: [
+            ('Fast engine', 'Schneller Rechenkern'), ('ISO-aligned engine', 'ISO-orientierter Rechenkern'),
+            ('Uses a simplified source-receiver approach with global LwA, geometrical divergence, linear absorption and ground correction. It is fast and useful for screening.', 'Verwendet einen vereinfachten Quelle-Rezeptor-Ansatz mit globalem LwA, geometrischer Ausbreitungsdämpfung, linearer Luftabsorption und Bodenkorrektur. Er ist schnell und für Screening-Berechnungen geeignet.'),
+            ('Uses a simplified Quelle-Rezeptor approach with global LwA, geometrical divergence, linear absorption and Boden correction. It is fast and useful for screening.', 'Verwendet einen vereinfachten Quelle-Rezeptor-Ansatz mit globalem LwA, geometrischer Ausbreitungsdämpfung, linearer Luftabsorption und Bodenkorrektur. Er ist schnell und für Screening-Berechnungen geeignet.'),
+            ('Works by octave bands and approximates the ISO 9613-2 structure with Adiv, Aatm and Agr. It needs more information, such as atmospheric conditions and acoustic spectra when available.', 'Arbeitet mit Oktavbändern und nähert die Struktur der ISO 9613-2 mit Adiv, Aatm und Agr an. Er benötigt zusätzliche Angaben wie atmosphärische Bedingungen und, falls verfügbar, akustische Spektren.'),
+            ('Use the fast engine to iterate and the ISO-aligned engine to review receivers close to the limit or to prepare a more serious technical comparison.', 'Nutzen Sie den schnellen Rechenkern für Iterationen und den ISO-orientierten Rechenkern zur Prüfung von Rezeptoren nahe am Grenzwert oder für belastbarere technische Vergleiche.'),
+            ('Recommendation', 'Empfehlung'), ('What receivers are', 'Was Rezeptoren sind'),
+            ('Receivers are the points or polygons where the sound level is evaluated', 'Rezeptoren sind Punkte oder Polygone, an denen der Schallpegel bewertet wird'),
+            ('Simple mode', 'Einfacher Modus'), ('Category mode', 'Kategorie-Modus'), ('Limit criterion', 'Grenzwertkriterium'),
+            ('Time basis', 'Zeitbasis'), ('Local civil time', 'Lokale Zeit'), ('Fixed UTC offset', 'Fester UTC-Offset'),
+            ('What each row represents', 'Was jede Zeile darstellt'), ('Key fields', 'Wichtige Felder'), ('Why it matters', 'Warum das wichtig ist'),
+            ('What you select here', 'Was hier ausgewählt wird'), ('How to use it', 'Verwendung'),
+            ('Receiver', 'Rezeptor'), ('Receivers', 'Rezeptoren'), ('Source', 'Quelle'), ('Sources', 'Quellen'),
+            ('Wind turbines', 'Windenergieanlagen'), ('wind turbines', 'Windenergieanlagen'),
+            ('Evaluación', 'Bewertung'), ('aerogeneradores', 'Windenergieanlagen'), ('Aerogeneradores', 'Windenergieanlagen'),
+            ('receptores', 'Rezeptoren'), ('Receptores', 'Rezeptoren'), ('fuente', 'Quelle'), ('Fuente', 'Quelle'),
+            ('cálculo', 'Berechnung'), ('Cálculo', 'Berechnung'), ('capa', 'Layer'), ('Capa', 'Layer'),
+            ('dentro del radio', 'innerhalb des Radius'), ('fuera del radio', 'außerhalb des Radius'),
+            ('contribuyentes', 'beitragend'), ('cumplimiento', 'Konformität'), ('Cumplimiento', 'Konformität'),
+            ('Límite', 'Grenzwert'), ('límite', 'Grenzwert'), ('Margen', 'Abstand zum Grenzwert'), ('margen', 'Abstand zum Grenzwert'),
+            ('Plantilla:', 'Vorlage:'), ('Template:', 'Vorlage:'), ('Gabarit :', 'Vorlage:'),
+            ('generic curve', 'generische Kennlinie'), ('genérica curve', 'generische Kennlinie'), ('curva genérica', 'generische Kennlinie'), ('courbe générique', 'generische Kennlinie'),
+            ('no generado', 'nicht erzeugt'), ('not generated', 'nicht erzeugt'), ('non générée', 'nicht erzeugt'),
+            ('sí', 'ja'), ('oui', 'ja'), ('yes', 'ja'), ('non', 'nein'),
+            ('MDT/DSM', 'DGM/DOM'), ('DEM/DSM', 'DGM/DOM'), ('DTM/DSM', 'DGM/DOM'),
+            ('Open Supporter', 'Offener Unterstützer'), ('Support options', 'Unterstützungsoptionen'),
+        ],
+    }.get(l, [])
+    for a, b in maps:
+        if a in s:
+            s = s.replace(a, b)
+    # Avoid over-correcting established technical compounds.
+    if l == LANG_DE:
+        s = s.replace('Open-Quelle', 'Open-Source').replace('Open source', 'Open Source').replace('Open-Source', 'Open-Source')
+    return s
+
 def tr_text(text):
     """Translate a whole UI string into the active language."""
     if text is None:
@@ -1346,6 +1459,7 @@ def tr_text(text):
                     result = _fragment_impl(base, lang)
                 else:
                     result = base
+    result = _final_language_cleanup(result, lang)
     _CACHE[key] = result
     return result
 
@@ -1407,17 +1521,17 @@ def translate_fragment(text):
     base = _to_source(s)
     base = base if base is not None else s
     if lang == _SOURCE_LANG:
-        return base
+        return _final_language_cleanup(base, lang)
 
     fmap = _STATE["full"].get(lang, {})  # type: ignore[index,union-attr]
     if base in fmap:
-        return fmap[base]
+        return _final_language_cleanup(fmap[base], lang)
     nmap = _STATE["full_norm"].get(lang, {})  # type: ignore[index,union-attr]
     hit = nmap.get(_norm_key(base))
     if hit is not None:
-        return hit
+        return _final_language_cleanup(hit, lang)
 
-    return _fragment_impl(base, lang)
+    return _final_language_cleanup(_fragment_impl(base, lang), lang)
 
 
 def translate_html(html):
@@ -1510,6 +1624,15 @@ def apply_i18n(widget: QtWidgets.QWidget) -> None:
                     if txt:
                         w.setTabText(i, tr_text(txt))
             elif isinstance(w, QtWidgets.QComboBox):
+                # Language names are deliberately shown in their native form
+                # (Español, English, Français, Deutsch). Do not translate these
+                # items through the generic runtime translator, otherwise the
+                # selector can look stale or mixed after repeated language changes.
+                try:
+                    if hasattr(w, "objectName") and w.objectName() == "languageSelector":
+                        continue
+                except Exception:
+                    pass
                 for i in range(w.count()):
                     txt = w.itemText(i)
                     if txt:
@@ -1544,201 +1667,21 @@ def apply_i18n(widget: QtWidgets.QWidget) -> None:
 
 
 def install_runtime_i18n_patches() -> None:
-    """Patch common Qt setters so dynamic alerts and summaries follow language."""
+    """Compatibility-safe placeholder.
+
+    Older VelantisWind builds monkey-patched Qt/PyQt class methods globally
+    (for example QLabel.setText, QComboBox.setItemText, QTabWidget.addTab,
+    QMessageBox.setText and QFileDialog helpers) to translate dynamic UI text.
+
+    In QGIS all plugins share the same Python process, so changing Qt classes at
+    runtime affects other plugins too. This function is intentionally a no-op:
+    translations must be applied only to VelantisWind widgets through
+    apply_i18n(widget) after uic.loadUi()/UI construction, or later through
+    explicit calls to tr_text()/translate_fragment() on VelantisWind-owned text.
+    """
     global _PATCHED
-    if _PATCHED:
-        return
     _PATCHED = True
-
-    def patch_method(cls, name, translator):
-        original = getattr(cls, name, None)
-        if original is None or getattr(original, "_velantis_i18n", False):
-            return
-        def wrapped(self, text, *args, **kwargs):
-            return original(self, translator(text), *args, **kwargs)
-        wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-        setattr(cls, name, wrapped)
-
-    patch_method(QtWidgets.QLabel, "setText", tr_text)
-    patch_method(QtWidgets.QPushButton, "setText", tr_text)
-    patch_method(QtWidgets.QCheckBox, "setText", tr_text)
-    patch_method(QtWidgets.QRadioButton, "setText", tr_text)
-    patch_method(QtWidgets.QGroupBox, "setTitle", tr_text)
-    patch_method(QtWidgets.QWidget, "setWindowTitle", tr_text)
-    patch_method(QtWidgets.QWidget, "setToolTip", translate_fragment)
-    patch_method(QtWidgets.QLineEdit, "setPlaceholderText", translate_fragment)
-    patch_method(QtWidgets.QTextBrowser, "setHtml", translate_html)
-    try:
-        patch_method(QtWidgets.QTextEdit, "setPlainText", translate_fragment)
-        patch_method(QtWidgets.QTextEdit, "setText", translate_fragment)
-        patch_method(QtWidgets.QTextEdit, "append", translate_fragment)
-    except Exception:
-        pass
-    try:
-        patch_method(QtWidgets.QPlainTextEdit, "setPlainText", translate_fragment)
-        patch_method(QtWidgets.QPlainTextEdit, "appendPlainText", translate_fragment)
-    except Exception:
-        pass
-    try:
-        patch_method(QtWidgets.QProgressDialog, "setLabelText", translate_fragment)
-    except Exception:
-        pass
-
-    # QTableWidget headers are often set after construction.
-    try:
-        original_headers = getattr(QtWidgets.QTableWidget, "setHorizontalHeaderLabels", None)
-        if original_headers is not None and not getattr(original_headers, "_velantis_i18n", False):
-            def headers_wrapped(self, labels, *args, **kwargs):
-                try:
-                    labels = [tr_text(x) for x in labels]
-                except Exception:
-                    pass
-                return original_headers(self, labels, *args, **kwargs)
-            headers_wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QTableWidget.setHorizontalHeaderLabels = headers_wrapped
-    except Exception:
-        pass
-
-    # QGIS message bar: translate main title/text in pushMessage/createMessage.
-    try:
-        from qgis.gui import QgsMessageBar
-        for meth in ("pushMessage", "createMessage"):
-            original = getattr(QgsMessageBar, meth, None)
-            if original is None or getattr(original, "_velantis_i18n", False):
-                continue
-            def make_bar_wrapper(orig):
-                def wrapped(self, *args, **kwargs):
-                    args = list(args)
-                    for i in range(min(2, len(args))):
-                        if isinstance(args[i], str):
-                            args[i] = translate_fragment(args[i])
-                    return orig(self, *args, **kwargs)
-                wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-                return wrapped
-            setattr(QgsMessageBar, meth, make_bar_wrapper(original))
-    except Exception:
-        pass
-
-
-    # Remaining dynamic Qt methods used heavily by forms/combos/tabs.
-    try:
-        orig_combo_add_item = getattr(QtWidgets.QComboBox, "addItem", None)
-        if orig_combo_add_item is not None and not getattr(orig_combo_add_item, "_velantis_i18n", False):
-            def combo_add_item_wrapped(self, *args, **kwargs):
-                args = list(args)
-                # Supports both addItem(text, userData) and addItem(icon, text, userData).
-                if args and isinstance(args[0], str):
-                    args[0] = tr_text(args[0])
-                elif len(args) >= 2 and isinstance(args[1], str):
-                    args[1] = tr_text(args[1])
-                return orig_combo_add_item(self, *args, **kwargs)
-            combo_add_item_wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QComboBox.addItem = combo_add_item_wrapped
-    except Exception:
-        pass
-    try:
-        orig_combo_add_items = getattr(QtWidgets.QComboBox, "addItems", None)
-        if orig_combo_add_items is not None and not getattr(orig_combo_add_items, "_velantis_i18n", False):
-            def combo_add_items_wrapped(self, texts, *args, **kwargs):
-                try:
-                    texts = [tr_text(t) for t in texts]
-                except Exception:
-                    pass
-                return orig_combo_add_items(self, texts, *args, **kwargs)
-            combo_add_items_wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QComboBox.addItems = combo_add_items_wrapped
-    except Exception:
-        pass
-    try:
-        patch_method(QtWidgets.QComboBox, "setItemText", tr_text)
-    except Exception:
-        pass
-    try:
-        orig_tab_add = getattr(QtWidgets.QTabWidget, "addTab", None)
-        if orig_tab_add is not None and not getattr(orig_tab_add, "_velantis_i18n", False):
-            def tab_add_wrapped(self, widget, *args, **kwargs):
-                args = list(args)
-                if args and isinstance(args[-1], str):
-                    args[-1] = tr_text(args[-1])
-                return orig_tab_add(self, widget, *args, **kwargs)
-            tab_add_wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QTabWidget.addTab = tab_add_wrapped
-    except Exception:
-        pass
-    try:
-        orig_form_add = getattr(QtWidgets.QFormLayout, "addRow", None)
-        if orig_form_add is not None and not getattr(orig_form_add, "_velantis_i18n", False):
-            def form_add_wrapped(self, *args, **kwargs):
-                args = list(args)
-                if args and isinstance(args[0], str):
-                    args[0] = tr_text(args[0])
-                return orig_form_add(self, *args, **kwargs)
-            form_add_wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QFormLayout.addRow = form_add_wrapped
-    except Exception:
-        pass
-
-    # QMessageBox instance setters are used by the clickable help icons in
-    # Noise/Shadow modules (QMessageBox(self); setText(...); exec_()).
-    # Static information/warning wrappers below do not cover those calls.
-    try:
-        patch_method(QtWidgets.QMessageBox, "setText", tr_text)
-        patch_method(QtWidgets.QMessageBox, "setInformativeText", tr_text)
-        patch_method(QtWidgets.QMessageBox, "setDetailedText", tr_text)
-    except Exception:
-        pass
-
-    # QMessageBox static methods: information / warning / critical / question
-    for name in ("information", "warning", "critical", "question"):
-        original = getattr(QtWidgets.QMessageBox, name, None)
-        if original is None or getattr(original, "_velantis_i18n", False):
-            continue
-        def make_wrapper(orig):
-            def wrapped(parent, title, text, *args, **kwargs):
-                return orig(parent, tr_text(title), tr_text(text), *args, **kwargs)
-            wrapped._velantis_i18n = True  # type: ignore[attr-defined]
-            return wrapped
-        setattr(QtWidgets.QMessageBox, name, make_wrapper(original))
-
-    # QFileDialog static helpers: translate captions used by export/import dialogs.
-    try:
-        _orig_get_save = getattr(QtWidgets.QFileDialog, "getSaveFileName", None)
-        if _orig_get_save is not None and not getattr(_orig_get_save, "_velantis_i18n", False):
-            def _vw_qfiledialog_get_save_name(parent=None, caption="", directory="", filter="", *args, **kwargs):
-                return _orig_get_save(parent, tr_text(caption), directory, translate_fragment(filter), *args, **kwargs)
-            _vw_qfiledialog_get_save_name._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QFileDialog.getSaveFileName = _vw_qfiledialog_get_save_name
-        _orig_get_open = getattr(QtWidgets.QFileDialog, "getOpenFileName", None)
-        if _orig_get_open is not None and not getattr(_orig_get_open, "_velantis_i18n", False):
-            def _vw_qfiledialog_get_open_name(parent=None, caption="", directory="", filter="", *args, **kwargs):
-                return _orig_get_open(parent, tr_text(caption), directory, translate_fragment(filter), *args, **kwargs)
-            _vw_qfiledialog_get_open_name._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QFileDialog.getOpenFileName = _vw_qfiledialog_get_open_name
-        _orig_get_open_names = getattr(QtWidgets.QFileDialog, "getOpenFileNames", None)
-        if _orig_get_open_names is not None and not getattr(_orig_get_open_names, "_velantis_i18n", False):
-            def _vw_qfiledialog_get_open_names(parent=None, caption="", directory="", filter="", *args, **kwargs):
-                return _orig_get_open_names(parent, tr_text(caption), directory, translate_fragment(filter), *args, **kwargs)
-            _vw_qfiledialog_get_open_names._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QFileDialog.getOpenFileNames = _vw_qfiledialog_get_open_names
-        _orig_get_dir = getattr(QtWidgets.QFileDialog, "getExistingDirectory", None)
-        if _orig_get_dir is not None and not getattr(_orig_get_dir, "_velantis_i18n", False):
-            def _vw_qfiledialog_get_existing_dir(parent=None, caption="", directory="", *args, **kwargs):
-                return _orig_get_dir(parent, tr_text(caption), directory, *args, **kwargs)
-            _vw_qfiledialog_get_existing_dir._velantis_i18n = True  # type: ignore[attr-defined]
-            QtWidgets.QFileDialog.getExistingDirectory = _vw_qfiledialog_get_existing_dir
-    except Exception:
-        pass
-
-    # Visible confirmation in the QGIS log that this i18n build is the one loaded.
-    try:
-        from qgis.core import QgsMessageLog, Qgis  # type: ignore
-        QgsMessageLog.logMessage(
-            "Velantis i18n runtime patches active (build %s)" % globals().get("I18N_BUILD", "?"),
-            "Velantis Wind",
-            Qgis.Info,
-        )
-    except Exception:
-        pass
+    return
 
 
 def language_label(lang: str | None = None) -> str:
@@ -1746,10 +1689,10 @@ def language_label(lang: str | None = None) -> str:
     return _LANGUAGE_LABELS.get(lang, _LANGUAGE_LABELS.get(_SOURCE_LANG, lang))
 
 # ---------------------------------------------------------------------------
-# Iteration 4: noise report coverage and critical-receiver wording.
+# Coverage pass 4: noise report coverage and critical-receiver wording.
 # Added after function definitions on purpose: dictionaries are read at runtime.
 # ---------------------------------------------------------------------------
-_I18N_ITER4_NOISE_TO_EN = {
+_I18N_COVERAGE4_NOISE_TO_EN = {
     # Noise summary tabs/buttons/headers that can still appear in Spanish/English mix
     "Descripción": "Description",
     "Capa": "Layer",
@@ -1879,11 +1822,11 @@ _I18N_ITER4_NOISE_TO_EN = {
     "No se pudo exportar el XLSX": "Could not export the XLSX",
 }
 
-_TO_EN.update(_I18N_ITER4_NOISE_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER4_NOISE_TO_EN)
+_TO_EN.update(_I18N_COVERAGE4_NOISE_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE4_NOISE_TO_EN)
 
-_I18N_ITER4_NOISE_TO_ES = {v: k for k, v in _I18N_ITER4_NOISE_TO_EN.items() if v != k}
-_I18N_ITER4_NOISE_TO_ES.update({
+_I18N_COVERAGE4_NOISE_TO_ES = {v: k for k, v in _I18N_COVERAGE4_NOISE_TO_EN.items() if v != k}
+_I18N_COVERAGE4_NOISE_TO_ES.update({
     "Critical receiver (highest sound level)": "Receptor crítico (mayor nivel sonoro)",
     "Receiver ID": "ID receptor",
     "Total level": "Nivel total",
@@ -1926,13 +1869,13 @@ _I18N_ITER4_NOISE_TO_ES.update({
     "created": "creada",
     "not created": "no creada",
 })
-_TO_ES.update(_I18N_ITER4_NOISE_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER4_NOISE_TO_ES)
+_TO_ES.update(_I18N_COVERAGE4_NOISE_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE4_NOISE_TO_ES)
 
 # ---------------------------------------------------------------------------
-# Iteration 5: noise report wording/physics traceability fixes.
+# Coverage pass 5: noise report wording/physics traceability fixes.
 # ---------------------------------------------------------------------------
-_I18N_ITER5_NOISE_TO_EN = {
+_I18N_COVERAGE5_NOISE_TO_EN = {
     "Receptor crítico (mayor nivel sonoro)": "Critical receiver (highest sound level)",
     "RECEPTOR CRÍTICO": "CRITICAL RECEIVER",
     "Turbinas contribuyentes dentro del radio": "Contributing turbines within radius",
@@ -1956,10 +1899,10 @@ _I18N_ITER5_NOISE_TO_EN = {
     "Presión atmosférica": "Atmospheric pressure",
     "Trayectos con G distinto del global": "Paths with G different from global",
 }
-_TO_EN.update(_I18N_ITER5_NOISE_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER5_NOISE_TO_EN)
-_I18N_ITER5_NOISE_TO_ES = {v: k for k, v in _I18N_ITER5_NOISE_TO_EN.items() if v != k}
-_I18N_ITER5_NOISE_TO_ES.update({
+_TO_EN.update(_I18N_COVERAGE5_NOISE_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE5_NOISE_TO_EN)
+_I18N_COVERAGE5_NOISE_TO_ES = {v: k for k, v in _I18N_COVERAGE5_NOISE_TO_EN.items() if v != k}
+_I18N_COVERAGE5_NOISE_TO_ES.update({
     "Critical Receiver (Highest Sound Level)": "Receptor crítico (mayor nivel sonoro)",
     "CRITICAL RECEIVER": "RECEPTOR CRÍTICO",
     "Critical receiver unavailable.": "Receptor crítico no disponible.",
@@ -1975,19 +1918,19 @@ _I18N_ITER5_NOISE_TO_ES.update({
     "Limitations and recommendations": "Limitaciones y recomendaciones",
     "Recommended review": "Revisión recomendada",
 })
-_TO_ES.update(_I18N_ITER5_NOISE_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER5_NOISE_TO_ES)
+_TO_ES.update(_I18N_COVERAGE5_NOISE_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE5_NOISE_TO_ES)
 
-# Iteration 5b: atmospheric-pressure UI help.
-_I18N_ITER5B_TO_EN = {
+# Coverage pass 5b: atmospheric-pressure UI help.
+_I18N_COVERAGE5B_TO_EN = {
     "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible.": "Local atmospheric pressure in kPa. Usual reference value at sea level: 101.325 kPa. Use a measured or altitude-adjusted value if available.",
     "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.": "💡 Use typical site conditions. If you do not have measured pressure, 101.325 kPa is a standard sea-level reference; at altitude it is usually lower.",
 }
-_TO_EN.update(_I18N_ITER5B_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER5B_TO_EN)
-_I18N_ITER5B_TO_ES = {v: k for k, v in _I18N_ITER5B_TO_EN.items()}
-_TO_ES.update(_I18N_ITER5B_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER5B_TO_ES)
+_TO_EN.update(_I18N_COVERAGE5B_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE5B_TO_EN)
+_I18N_COVERAGE5B_TO_ES = {v: k for k, v in _I18N_COVERAGE5B_TO_EN.items()}
+_TO_ES.update(_I18N_COVERAGE5B_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE5B_TO_ES)
 
 
 # ---------------------------------------------------------------------------
@@ -2449,10 +2392,10 @@ _FRAGMENT_TO_ES.update(_I18N_ENERGY_HELP_NOTES_TO_ES)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 6: remaining UI strings (Energy help/tooltips/messages, Noise
+# Coverage pass 6: remaining UI strings (Energy help/tooltips/messages, Noise
 # page+validation+results, resource-boundary feature, deps). ES<->EN.
 # ---------------------------------------------------------------------------
-_I18N_ITER6_TO_EN = {
+_I18N_COVERAGE6_TO_EN = {
     '<b>Qué es</b><br><br>Una turbina no ve exactamente el mismo viento en todo el rotor. La parte alta, baja, izquierda o derecha del disco puede recibir velocidades distintas, sobre todo si una estela solo atraviesa una parte del rotor.<br><br><b>Qué hace esta opción</b><br>• <b>Sin promedio / RotorCenter</b>: usa solo el centro del rotor. Es rápido, pero más simplificado.<br>• <b>CGIRotorAvg(7)</b>: calcula varios puntos dentro del disco. Aporta más realismo con un coste moderado.<br>• <b>CGIRotorAvg(9/21)</b>: usa más puntos. Puede aportar más fidelidad, pero aumenta el tiempo de cálculo.<br><br><b>Idea sencilla</b><br>Si una estela corta solo media turbina, mirar únicamente el centro puede ser demasiado simplificado. Promediar el rotor ayuda a representar mejor ese efecto.': '<b>What it is</b><br><br>A turbine does not see exactly the same wind across the whole rotor. The top, bottom, left or right of the disk can receive different wind speeds, especially when a wake crosses only part of the rotor.<br><br><b>What this option does</b><br>• <b>No averaging / RotorCenter</b>: uses only the rotor centre. It is fast, but more simplified.<br>• <b>CGIRotorAvg(7)</b>: calculates several points inside the disk. It adds more realism at a moderate cost.<br>• <b>CGIRotorAvg(9/21)</b>: uses more points. It can add more fidelity, but increases computation time.<br><br><b>Simple idea</b><br>If a wake cuts only half the turbine, looking only at the centre can be too simplified. Averaging the rotor helps to represent that effect better.',
     '<b>Qué problema resuelve</b><br><br>Una turbina puede recibir la estela de varias turbinas al mismo tiempo. La superposición decide cómo se combinan esas pérdidas de velocidad antes de calcular la potencia.<br><br>• <b>Automático</b>: el plugin escoge una opción segura según la combinación de modelos.<br>• <b>LinearSum</b>: suma directa. Puede acumular muchas pérdidas en parques densos.<br>• <b>SquaredSum</b>: suma cuadrática. Suele ser una opción equilibrada cuando varias estelas se solapan.<br>• <b>MaxSum</b>: usa solo la estela más fuerte. Útil para diagnóstico, pero puede infravalorar pérdidas acumuladas.<br>• <b>WeightedSum</b>: opción avanzada para modelos gaussianos compatibles.<br><br><b>Idea sencilla</b><br>Si dos turbinas frenan el viento antes de llegar a una tercera, hay que decidir si esas pérdidas se suman mucho, poco o solo domina una de ellas.': '<b>What problem it solves</b><br><br>A turbine can receive the wake of several turbines at the same time. Superposition decides how those wind-speed losses are combined before calculating power.<br><br>• <b>Automatic</b>: the plugin chooses a safe option based on the model combination.<br>• <b>LinearSum</b>: direct sum. It can accumulate large losses in dense wind farms.<br>• <b>SquaredSum</b>: quadratic sum. It is usually a balanced option when several wakes overlap.<br>• <b>MaxSum</b>: uses only the strongest wake. Useful for diagnostics, but it can underestimate accumulated losses.<br>• <b>WeightedSum</b>: advanced option for compatible Gaussian models.<br><br><b>Simple idea</b><br>If two turbines slow the wind before it reaches a third one, you must decide whether those losses add up strongly, weakly, or whether only one of them dominates.',
     'Explica qué cambia cada parámetro sin asumir conocimiento previo': 'Explains what each parameter changes, without assuming prior knowledge',
@@ -2502,7 +2445,7 @@ _I18N_ITER6_TO_EN = {
     'WRG: se ha usado un único raster de TI ambiente; si mezclas varios hub heights, esa TI se replica/interpela como aproximación vertical.': 'WRG: a single ambient TI raster was used; if you mix several hub heights, that TI is replicated/interpolated as a vertical approximation.',
     'ZongGaussianDeficit requiere un modelo de turbulencia añadida; se ha forzado STF2017.': 'ZongGaussianDeficit requires an added-turbulence model; STF2017 was forced.',
     'como modelo alternativo de acoplamiento más débil con la TI efectiva. Esto preserva la partida de pérdidas por bloqueo manteniendo intactos wake, rotor-average y modelo de turbulencia.': 'as an alternative model with weaker coupling to the effective TI. This preserves the blockage-loss component while keeping wake, rotor-average and the turbulence model intact.',
-    'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando': 'did not converge in PyWake (the iteration between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using',
+    'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando': 'did not converge in PyWake (the coverage pass between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using',
     'puede ser sensible a la TI, pero se ha ejecutado sin modelo de turbulencia añadida; la sensibilidad queda limitada a la TI ambiente disponible.': 'can be sensitive to TI, but it ran without an added-turbulence model; the sensitivity is limited to the available ambient TI.',
     'puede usar la TI ambiente/efectiva para abrir la estela; el modelo de turbulencia activo (': 'can use ambient/effective TI to open the wake; the active turbulence model (',
     'raster(s) de TI ambiente para reconstruir TI por altura cuando es posible.': 'ambient TI raster(s) to reconstruct TI by height when possible.',
@@ -2636,15 +2579,15 @@ _I18N_ITER6_TO_EN = {
     '- Módulo:': '- Module:',
     'Instálalas en el entorno de Python de QGIS y vuelve a intentarlo.': 'Install them in the QGIS Python environment and try again.',
 }
-_TO_EN.update(_I18N_ITER6_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER6_TO_EN)
-_I18N_ITER6_TO_ES = {v: k for k, v in _I18N_ITER6_TO_EN.items() if v != k}
-_TO_ES.update(_I18N_ITER6_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER6_TO_ES)
+_TO_EN.update(_I18N_COVERAGE6_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE6_TO_EN)
+_I18N_COVERAGE6_TO_ES = {v: k for k, v in _I18N_COVERAGE6_TO_EN.items() if v != k}
+_TO_ES.update(_I18N_COVERAGE6_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE6_TO_ES)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 7: EN->ES coverage (Shadow module authored in English, plus a
+# Coverage pass 7: EN->ES coverage (Shadow module authored in English, plus a
 # few Noise/Energy/Results strings). Fixes mis-directed Logroño keys too.
 # ---------------------------------------------------------------------------
 # Remove English keys that were wrongly mapped to Spanish inside _TO_EN
@@ -2656,7 +2599,7 @@ for _bad in (
     _TO_EN.pop(_bad, None)
     _FRAGMENT_TO_EN.pop(_bad, None)
 
-_I18N_ITER7_TO_ES = {
+_I18N_COVERAGE7_TO_ES = {
     'Calculation in progress': 'Cálculo en curso',
     'Could not create raster map:': 'No se pudo crear el mapa raster:',
     'Hub Height and Rotor Diameter must be valid numbers.': 'Hub Height y Rotor Diameter deben ser números válidos.',
@@ -2740,20 +2683,20 @@ _I18N_ITER7_TO_ES = {
     'Site latitude (e.g. 42.465 for Logroño)': 'Latitud del emplazamiento (ej. 42.465 para Logroño)',
     'Site longitude (e.g. -2.445 for Logroño)': 'Longitud del emplazamiento (ej. -2.445 para Logroño)',
 }
-_TO_ES.update(_I18N_ITER7_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER7_TO_ES)
+_TO_ES.update(_I18N_COVERAGE7_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE7_TO_ES)
 # Reverse so switching back to English also works (skip identity).
-_I18N_ITER7_TO_EN = {v: k for k, v in _I18N_ITER7_TO_ES.items() if v != k}
-_TO_EN.update(_I18N_ITER7_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER7_TO_EN)
+_I18N_COVERAGE7_TO_EN = {v: k for k, v in _I18N_COVERAGE7_TO_ES.items() if v != k}
+_TO_EN.update(_I18N_COVERAGE7_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE7_TO_EN)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 8: thorough second pass. Energy model-help HTML, parameter
+# Coverage pass 8: thorough second pass. Energy model-help HTML, parameter
 # tooltips, status/progress messages, surfaced exceptions, support dialog,
 # shadow page remainders. ES<->EN both directions.
 # ---------------------------------------------------------------------------
-_I18N_ITER8_TO_EN = {
+_I18N_COVERAGE8_TO_EN = {
     '<i>(valor editado por usuario)</i>': '<i>(value edited by user)</i>',
     'A expansión TurbOPark': 'A TurbOPark expansion',
     'A expansión TurboNOJ': 'A TurboNOJ expansion',
@@ -2991,12 +2934,12 @@ _I18N_ITER8_TO_EN = {
     '<b>TurboNOJDeficit</b><br><br>Variante TI-sensible del Jensen: la pendiente k se calcula a partir de la <b>turbulencia efectiva</b> en cada turbina.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI se exponen como ajuste avanzado y solo se pasan si tu PyWake los acepta.': '<b>TurboNOJDeficit</b><br><br>TI-sensitive variant of the Jensen model: the slope k is computed from the <b>effective turbulence</b> at each turbine.<br><br>To move AEP, adjust the <b>ambient TI</b> or the <b>added-turbulence model</b>. The A/cTI coefficients are exposed as an advanced adjustment and are only passed if your PyWake accepts them.',
     '<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.': '<b>ZongGaussianDeficit</b><br><br>Advanced Gaussian model (Zong &amp; Porté-Agel 2020) with explicit near wake and a slope k dependent on local TI.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>δw/D, ε coeff, λ and B</b> — advanced near-wake parameters. The plugin forces STF2017 if you leave it as None.',
 }
-_TO_EN.update(_I18N_ITER8_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER8_TO_EN)
-_I18N_ITER8_TO_ES = {v: k for k, v in _I18N_ITER8_TO_EN.items() if v != k}
-_TO_ES.update(_I18N_ITER8_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER8_TO_ES)
-_I18N_ITER8_EN2ES = {
+_TO_EN.update(_I18N_COVERAGE8_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE8_TO_EN)
+_I18N_COVERAGE8_TO_ES = {v: k for k, v in _I18N_COVERAGE8_TO_EN.items() if v != k}
+_TO_ES.update(_I18N_COVERAGE8_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE8_TO_ES)
+_I18N_COVERAGE8_EN2ES = {
     'Max shadow distance [m]:': 'Distancia máxima de sombra [m]:',
     'Shadow flicker calculation module for wind turbines. Connected to the project layout, with point-receiver calculation and QGIS output layers with detailed results by receiver.': 'Módulo de cálculo de shadow flicker para aerogeneradores. Conectado al layout del proyecto, con cálculo por receptores puntuales y capas de salida QGIS con resultados detallados por receptor.',
     'Time step [min]:': 'Paso temporal [min]:',
@@ -3030,21 +2973,21 @@ _I18N_ITER8_EN2ES = {
     'Optional acknowledgement on GitHub or the GitHub supporters page.': 'Agradecimiento opcional en GitHub o en la página de supporters de GitHub.',
     'Sponsorship does not grant ownership or exclusive control over the roadmap. Final technical decisions remain with the maintainer to preserve the quality and open-source direction of the project.': 'El patrocinio no otorga propiedad ni control exclusivo sobre el roadmap. Las decisiones técnicas finales se mantienen en el mantenedor para preservar la calidad y la dirección open source del proyecto.',
 }
-for _k in list(_I18N_ITER8_EN2ES.keys()):
+for _k in list(_I18N_COVERAGE8_EN2ES.keys()):
     if _k in _TO_EN and _TO_EN.get(_k) != _k:
         _TO_EN.pop(_k, None); _FRAGMENT_TO_EN.pop(_k, None)
-_TO_ES.update(_I18N_ITER8_EN2ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER8_EN2ES)
-_I18N_ITER8_EN2ES_REV = {v: k for k, v in _I18N_ITER8_EN2ES.items() if v != k}
-_TO_EN.update(_I18N_ITER8_EN2ES_REV)
-_FRAGMENT_TO_EN.update(_I18N_ITER8_EN2ES_REV)
+_TO_ES.update(_I18N_COVERAGE8_EN2ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE8_EN2ES)
+_I18N_COVERAGE8_EN2ES_REV = {v: k for k, v in _I18N_COVERAGE8_EN2ES.items() if v != k}
+_TO_EN.update(_I18N_COVERAGE8_EN2ES_REV)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE8_EN2ES_REV)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 8: report bodies & remaining UI built indirectly (Noise technical
+# Coverage pass 8: report bodies & remaining UI built indirectly (Noise technical
 # report, Energy results/help, validation msgs). ES<->EN both directions.
 # ---------------------------------------------------------------------------
-_I18N_ITER8_TO_EN = {
+_I18N_COVERAGE8_TO_EN = {
     '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Slope of σ growth. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = wake that widens and recovers earlier; decreasing it = narrower, more persistent wake.<br><br><b>cεps</b> — Initial wake size near the rotor (σ₀/D). PyWake default = 0.2. It is rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
     '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Initial size σ₀/D. PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
     '<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.': '<b>ZongGaussianDeficit</b><br><br>Advanced Gaussian model (Zong &amp; Porté-Agel 2020) with an explicit near wake and a slope k that depends on local TI.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>δw/D, ε coeff, λ and B</b> — advanced near-wake parameters. The plugin forces STF2017 if you leave it as None.',
@@ -3160,14 +3103,14 @@ _I18N_ITER8_TO_EN = {
     'Además de patrocinar el proyecto, VelantisWind puede adaptarse a flujos de trabajo existentes: formatos internos de datos, plantillas de informe, procesos de validación, instalación en equipos, formación, automatización o funcionalidades específicas para proyectos eólicos.': 'Beyond sponsoring the project, VelantisWind can be adapted to existing workflows: internal data formats, reporting templates, validation processes, team deployment, training, automation or specific features for wind-energy projects.',
     'VelantisWind es un plugin open source para QGIS orientado a la evaluación preliminar de parques eólicos. Si la herramienta te ahorra tiempo o aporta valor a tu flujo de trabajo, puedes apoyar su mantenimiento o solicitar soporte profesional.': 'VelantisWind is an open-source QGIS plugin for early-stage wind farm assessment. If the tool saves you time or adds value to your workflow, you can support its maintenance or request professional support.',
 }
-_TO_EN.update(_I18N_ITER8_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER8_TO_EN)
-_I18N_ITER8_TO_ES = {v: k for k, v in _I18N_ITER8_TO_EN.items() if v != k}
-_TO_ES.update(_I18N_ITER8_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER8_TO_ES)
+_TO_EN.update(_I18N_COVERAGE8_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE8_TO_EN)
+_I18N_COVERAGE8_TO_ES = {v: k for k, v in _I18N_COVERAGE8_TO_EN.items() if v != k}
+_TO_ES.update(_I18N_COVERAGE8_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE8_TO_ES)
 
-# Iteration 9: EN-authored strings (Shadow + a few Noise/Energy) -> Spanish.
-_I18N_ITER9_TO_ES = {
+# Coverage pass 9: EN-authored strings (Shadow + a few Noise/Energy) -> Spanish.
+_I18N_COVERAGE9_TO_ES = {
     'Velantis Wind · Noise calculation': 'Velantis Wind · Cálculo de ruido',
     'Noise · Calculation summary': 'Ruido · Resumen del cálculo',
     'Variantes: wake-only / wake+TI / wake+bloqueo…': 'Variantes: solo estela / estela+TI / estela+bloqueo…',
@@ -3186,17 +3129,17 @@ _I18N_ITER9_TO_ES = {
     'Beyond sponsoring the project, VelantisWind can be adapted to existing workflows: internal data formats, reporting templates, validation processes, team deployment, training, automation or specific features for wind-energy projects.': 'Además de patrocinar el proyecto, VelantisWind puede adaptarse a flujos de trabajo existentes: formatos internos de datos, plantillas de informe, procesos de validación, instalación en equipos, formación, automatización o funcionalidades específicas para proyectos eólicos.',
     'VelantisWind is an open-source QGIS plugin for early-stage wind farm assessment. If the tool saves you time or adds value to your workflow, you can support its maintenance or request professional support.': 'VelantisWind es un plugin open source para QGIS orientado a la evaluación preliminar de parques eólicos. Si la herramienta te ahorra tiempo o aporta valor a tu flujo de trabajo, puedes apoyar su mantenimiento o solicitar soporte profesional.',
 }
-for _k in list(_I18N_ITER9_TO_ES.keys()):
+for _k in list(_I18N_COVERAGE9_TO_ES.keys()):
     _TO_EN.pop(_k, None); _FRAGMENT_TO_EN.pop(_k, None)
-_TO_ES.update(_I18N_ITER9_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER9_TO_ES)
-_I18N_ITER9_TO_EN = {v: k for k, v in _I18N_ITER9_TO_ES.items() if v != k}
-_TO_EN.update(_I18N_ITER9_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER9_TO_EN)
+_TO_ES.update(_I18N_COVERAGE9_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE9_TO_ES)
+_I18N_COVERAGE9_TO_EN = {v: k for k, v in _I18N_COVERAGE9_TO_ES.items() if v != k}
+_TO_EN.update(_I18N_COVERAGE9_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE9_TO_EN)
 
 
 # ===========================================================================
-# Iteration 10 (DIRECTION NORMALIZATION): make _TO_EN strictly ES->EN and
+# Coverage pass 10 (DIRECTION NORMALIZATION): make _TO_EN strictly ES->EN and
 # _TO_ES strictly EN->ES. Fixes mixed-language UI where English labels were
 # wrongly stored in the EN map (and vice-versa). Authoritative final pass.
 # ===========================================================================
@@ -3834,6 +3777,35 @@ _CANON_TO_EN = {
     'Impacto TI/turbulencia': 'TI/turbulence impact',
     'Impacto TI/turbulencia:': 'TI/turbulence impact:',
     'Importar curva acústica para el grupo fuente seleccionado…': 'Import acoustic curve for the selected source group…',
+    "Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…": "Import OEM spectrum (octave-band CSV) for the selected source group…",
+    "Los valores introducidos están ponderados A (dB(A) por banda)": "The entered values are A-weighted (dB(A) per band)",
+    "Si el fabricante da los niveles por banda ya en dB(A), marca esta casilla: se convertirán internamente a Lw por banda (Lw,b = LwA,b − A_b) para que el motor no aplique la ponderación A dos veces.": "If the manufacturer provides the band levels already in dB(A), check this box: they will be internally converted to per-band Lw (Lw,b = LwA,b − A_b) so the engine does not apply the A-weighting twice.",
+    "Columna ponderada A detectada; convertida internamente a Lw por banda para evitar doble ponderación.": "A-weighted column detected; internally converted to per-band Lw to avoid double weighting.",
+    "Atención: la normalización está activada; el total del fabricante será sustituido por el LwA del grupo.": "Warning: normalization is enabled; the manufacturer total will be replaced by the group LwA.",
+    "También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A.": "Also accepts LwA_dB / dBA / dB(A) per band; it is converted internally to avoid double A-weighting.",
+    "También puedes importar el espectro OEM por bandas de octava del fabricante (CSV) o introducirlo a mano con el editor; el motor ISO propagará cada banda de ese espectro y el ruido total se calculará a partir de él.": "You can also import the manufacturer OEM octave-band spectrum (CSV) or type it manually with the editor; the ISO engine will propagate each band of that spectrum and the total noise will be calculated from it.",
+    "Editar espectro del grupo seleccionado…": "Edit spectrum of the selected source group…",
+    "Limpiar espectro del grupo seleccionado": "Clear spectrum of the selected source group",
+    "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Normalize the spectrum to the group LwA (use shape only)",
+    "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV with columns freq_hz and Lw_dB (absolute) or Lw_dB_rel (relative shape). Comma, semicolon or tab separators are accepted.",
+    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Disabled: the absolute OEM spectrum is used as-is and the group operational LwA becomes the A-weighted sum of the spectrum (recommended to compare against other software). Enabled: the spectrum is used as a shape only and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+    "Ruido · Espectro OEM por bandas de octava": "Noise · OEM octave-band spectrum",
+    "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Enter the sound power level Lw per octave band (absolute manufacturer values in dB). If you enter a relative shape (all values below 20 dB), it will be treated as a shape and normalized to the group LwA.",
+    "Banda [Hz]": "Band [Hz]",
+    "Precargar plantilla ajustada al LwA del grupo": "Preload template fitted to the group LwA",
+    "Forma relativa detectada · se normalizará al LwA del grupo": "Relative shape detected · it will be normalized to the group LwA",
+    "espectro manual (forma relativa)": "manual spectrum (relative shape)",
+    "espectro manual": "manual spectrum",
+    "normalizado a LwA": "normalized to LwA",
+    "espectro OEM": "OEM spectrum",
+    "forma relativa": "relative shape",
+    "inválido": "invalid",
+    "Espectro OEM por bandas de octava": "OEM octave-band spectrum",
+    "Ruido · Espectro OEM": "Noise · OEM spectrum",
+    "No se pudo leer el espectro:": "Could not read the spectrum:",
+    "Espectro cargado correctamente.": "Spectrum loaded successfully.",
+    "Formato": "Format",
+    "El LwA operativo del grupo se tomará de este espectro para que el ruido total se calcule a partir de él.": "The group operational LwA will be taken from this spectrum so the total noise is calculated from it.",
     'Incluir columna CT': 'Include CT column',
     'Informe': 'Report',
     'Informe AEP exportado correctamente:': 'AEP report exported successfully:',
@@ -4634,7 +4606,7 @@ _CANON_TO_EN = {
     'más)</span>': 'more)</span>',
     'nivel total dB(A)': 'total level dB(A)',
     'no activo': 'inactive',
-    'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando': 'did not converge in PyWake (the iteration between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using',
+    'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando': 'did not converge in PyWake (the coverage pass between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using',
     'no creada': 'not created',
     'no generado': 'not generated',
     'no había MDT disponible en este trayecto': 'no DTM was available on this path',
@@ -6226,7 +6198,7 @@ _CANON_TO_ES = {
     'deficit_cls is None (a valid deficit model could not be imported).': 'deficit_cls es None (no se pudo importar un deficit model válido).',
     'describes the': 'describe la',
     'detect it in the file name': 'detectarla en el nombre del archivo',
-    'did not converge in PyWake (the iteration between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using': 'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando',
+    'did not converge in PyWake (the coverage pass between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using': 'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando',
     'different hub heights': 'alturas de buje distintas',
     'dipole-type potential-flow solution': 'solución potencial tipo dipolo',
     'does NOT calculate blockage': 'NO calcula bloqueo',
@@ -6479,11 +6451,11 @@ _TO_ES.update(_CANON_TO_ES); _FRAGMENT_TO_ES.update(_CANON_TO_ES)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 11: labels used by file EXPORTS (e.g. shadow 12x24 CSV) so exported
+# Coverage pass 11: labels used by file EXPORTS (e.g. shadow 12x24 CSV) so exported
 # files follow the selected language. EXACT keys only (NOT fragment maps) to
 # avoid substring collisions like 'Latitud' inside 'Latitude'.
 # ---------------------------------------------------------------------------
-_I18N_ITER11_TO_ES = {
+_I18N_COVERAGE11_TO_ES = {
     "Latitude": "Latitud",
     "Longitude": "Longitud",
     "Year": "Año",
@@ -6503,21 +6475,21 @@ _I18N_ITER11_TO_ES = {
     "Receiver:": "Receptor:",
 }
 # Exact maps only (tr_text checks these before falling back to fragments).
-_TO_ES.update(_I18N_ITER11_TO_ES)
-for _k, _v in _I18N_ITER11_TO_ES.items():
+_TO_ES.update(_I18N_COVERAGE11_TO_ES)
+for _k, _v in _I18N_COVERAGE11_TO_ES.items():
     if _v != _k:
         _TO_EN[_v] = _k
 
 
 # ---------------------------------------------------------------------------
-# Iteration 12: small leftover UI strings + visible build marker.
+# Coverage pass 12: small leftover UI strings + visible build marker.
 # ---------------------------------------------------------------------------
-_I18N_ITER12_TO_ES = {
+_I18N_COVERAGE12_TO_ES = {
     "Sun too low → ignore (typical: 3°)": "Sol demasiado bajo → ignorar (típico: 3°)",
     "Detected WT models:": "Modelos WT detectados:",
 }
-_TO_ES.update(_I18N_ITER12_TO_ES); _FRAGMENT_TO_ES.update(_I18N_ITER12_TO_ES)
-for _k, _v in _I18N_ITER12_TO_ES.items():
+_TO_ES.update(_I18N_COVERAGE12_TO_ES); _FRAGMENT_TO_ES.update(_I18N_COVERAGE12_TO_ES)
+for _k, _v in _I18N_COVERAGE12_TO_ES.items():
     if _v != _k:
         _TO_EN[_v] = _k; _FRAGMENT_TO_EN[_v] = _k
 
@@ -6525,11 +6497,11 @@ for _k, _v in _I18N_ITER12_TO_ES.items():
 
 
 # ---------------------------------------------------------------------------
-# Iteration 13: Energy module grey helper/status labels under paths and model
+# Coverage pass 13: Energy module grey helper/status labels under paths and model
 # options.  These are often generated dynamically, so we keep exact fragments
 # short and conservative to avoid touching file paths or layer names.
 # ---------------------------------------------------------------------------
-_I18N_ITER13_ENERGY_GREY_TO_EN = {
+_I18N_COVERAGE13_ENERGY_GREY_TO_EN = {
     # Wind-resource metadata below selected paths
     "Malla:": "Grid:",
     "sectores=": "sectors=",
@@ -6558,11 +6530,11 @@ _I18N_ITER13_ENERGY_GREY_TO_EN = {
     "Perímetro del recurso no disponible en esta instalación.": "Resource boundary not available in this installation.",
     "No se pudo limpiar el perímetro del recurso:": "Could not clear the resource boundary:",
 }
-_TO_EN.update(_I18N_ITER13_ENERGY_GREY_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER13_ENERGY_GREY_TO_EN)
-_I18N_ITER13_ENERGY_GREY_TO_ES = {v: k for k, v in _I18N_ITER13_ENERGY_GREY_TO_EN.items() if v != k}
-_TO_ES.update(_I18N_ITER13_ENERGY_GREY_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER13_ENERGY_GREY_TO_ES)
+_TO_EN.update(_I18N_COVERAGE13_ENERGY_GREY_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE13_ENERGY_GREY_TO_EN)
+_I18N_COVERAGE13_ENERGY_GREY_TO_ES = {v: k for k, v in _I18N_COVERAGE13_ENERGY_GREY_TO_EN.items() if v != k}
+_TO_ES.update(_I18N_COVERAGE13_ENERGY_GREY_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE13_ENERGY_GREY_TO_ES)
 
 # Build marker so it is easy to confirm which i18n build QGIS actually loaded.
 
@@ -6649,6 +6621,35 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "Notas": "Notes",
     "Cada fila representa un grupo fuente acústico. Puedes renombrar grupo y parque para que el resumen y las exportaciones sean más legibles.": "Each row represents an acoustic source group. You can rename the group and wind farm to make summaries and exports easier to read.",
     "Importar curva acústica para el grupo fuente seleccionado…": "Import acoustic curve for selected source group…",
+    "Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…": "Import OEM spectrum (octave-band CSV) for the selected source group…",
+    "Los valores introducidos están ponderados A (dB(A) por banda)": "The entered values are A-weighted (dB(A) per band)",
+    "Si el fabricante da los niveles por banda ya en dB(A), marca esta casilla: se convertirán internamente a Lw por banda (Lw,b = LwA,b − A_b) para que el motor no aplique la ponderación A dos veces.": "If the manufacturer provides the band levels already in dB(A), check this box: they will be internally converted to per-band Lw (Lw,b = LwA,b − A_b) so the engine does not apply the A-weighting twice.",
+    "Columna ponderada A detectada; convertida internamente a Lw por banda para evitar doble ponderación.": "A-weighted column detected; internally converted to per-band Lw to avoid double weighting.",
+    "Atención: la normalización está activada; el total del fabricante será sustituido por el LwA del grupo.": "Warning: normalization is enabled; the manufacturer total will be replaced by the group LwA.",
+    "También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A.": "Also accepts LwA_dB / dBA / dB(A) per band; it is converted internally to avoid double A-weighting.",
+    "También puedes importar el espectro OEM por bandas de octava del fabricante (CSV) o introducirlo a mano con el editor; el motor ISO propagará cada banda de ese espectro y el ruido total se calculará a partir de él.": "You can also import the manufacturer OEM octave-band spectrum (CSV) or type it manually with the editor; the ISO engine will propagate each band of that spectrum and the total noise will be calculated from it.",
+    "Editar espectro del grupo seleccionado…": "Edit spectrum of the selected source group…",
+    "Limpiar espectro del grupo seleccionado": "Clear spectrum of the selected source group",
+    "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Normalize the spectrum to the group LwA (use shape only)",
+    "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV with columns freq_hz and Lw_dB (absolute) or Lw_dB_rel (relative shape). Comma, semicolon or tab separators are accepted.",
+    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Disabled: the absolute OEM spectrum is used as-is and the group operational LwA becomes the A-weighted sum of the spectrum (recommended to compare against other software). Enabled: the spectrum is used as a shape only and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+    "Ruido · Espectro OEM por bandas de octava": "Noise · OEM octave-band spectrum",
+    "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Enter the sound power level Lw per octave band (absolute manufacturer values in dB). If you enter a relative shape (all values below 20 dB), it will be treated as a shape and normalized to the group LwA.",
+    "Banda [Hz]": "Band [Hz]",
+    "Precargar plantilla ajustada al LwA del grupo": "Preload template fitted to the group LwA",
+    "Forma relativa detectada · se normalizará al LwA del grupo": "Relative shape detected · it will be normalized to the group LwA",
+    "espectro manual (forma relativa)": "manual spectrum (relative shape)",
+    "espectro manual": "manual spectrum",
+    "normalizado a LwA": "normalized to LwA",
+    "espectro OEM": "OEM spectrum",
+    "forma relativa": "relative shape",
+    "inválido": "invalid",
+    "Espectro OEM por bandas de octava": "OEM octave-band spectrum",
+    "Ruido · Espectro OEM": "Noise · OEM spectrum",
+    "No se pudo leer el espectro:": "Could not read the spectrum:",
+    "Espectro cargado correctamente.": "Spectrum loaded successfully.",
+    "Formato": "Format",
+    "El LwA operativo del grupo se tomará de este espectro para que el ruido total se calcule a partir de él.": "The group operational LwA will be taken from this spectrum so the total noise is calculated from it.",
     "Limpiar curva del grupo fuente seleccionado": "Clear curve from selected source group",
     "Puedes usar un LwA fijo por grupo fuente acústico o una curva acústica ws/LwA por grupo. Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso.": "You can use a fixed LwA by acoustic source group or a ws/LwA acoustic curve by group. If curve mode is enabled, the plugin evaluates emission at a specific speed or in worst case.",
     "Preparación del cálculo": "Calculation preparation",
@@ -6917,9 +6918,9 @@ _TO_ES.update(_I18N_NOISE_PRERELEASE_TO_ES)
 _FRAGMENT_TO_ES.update(_I18N_NOISE_PRERELEASE_TO_ES)
 
 # ---------------------------------------------------------------------------
-# Iteration 14: Noise module clickable help icons and helper labels.
+# Coverage pass 14: Noise module clickable help icons and helper labels.
 # ---------------------------------------------------------------------------
-_I18N_ITER14_NOISE_HELP_TO_EN = {
+_I18N_COVERAGE14_NOISE_HELP_TO_EN = {
     "Fuentes / layout acústico:": "Sources / acoustic layout:",
     "Temperature, humidity and pressure used by the ISO-aligned engine.": "Temperature, humidity and pressure used by the ISO-aligned engine.",
     "Review the acoustic emission assigned to each source group before running the calculation.": "Review the acoustic emission assigned to each source group before running the calculation.",
@@ -6934,7 +6935,7 @@ _I18N_ITER14_NOISE_HELP_TO_EN = {
     "Explain fixed LwA, acoustic curves and worst-case mode": "Explain fixed LwA, acoustic curves and worst-case mode",
     "Explain the acoustic source-group table": "Explain the acoustic source-group table",
 }
-_I18N_ITER14_NOISE_HELP_TO_ES = {
+_I18N_COVERAGE14_NOISE_HELP_TO_ES = {
     "Sources / acoustic layout:": "Fuentes / layout acústico:",
     "Temperature, humidity and pressure used by the ISO-aligned engine.": "Temperatura, humedad y presión usadas por el motor ISO-aligned.",
     "Review the acoustic emission assigned to each source group before running the calculation.": "Revisa la emisión acústica asignada a cada grupo fuente antes de lanzar el cálculo.",
@@ -6949,37 +6950,37 @@ _I18N_ITER14_NOISE_HELP_TO_ES = {
     "Explain fixed LwA, acoustic curves and worst-case mode": "Explica LwA fijo, curvas acústicas y modo peor caso",
     "Explain the acoustic source-group table": "Explica la tabla de grupos fuente acústicos",
 }
-_TO_EN.update(_I18N_ITER14_NOISE_HELP_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER14_NOISE_HELP_TO_EN)
-_TO_ES.update(_I18N_ITER14_NOISE_HELP_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER14_NOISE_HELP_TO_ES)
+_TO_EN.update(_I18N_COVERAGE14_NOISE_HELP_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE14_NOISE_HELP_TO_EN)
+_TO_ES.update(_I18N_COVERAGE14_NOISE_HELP_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE14_NOISE_HELP_TO_ES)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 15: Noise source-group fixed LwA editable directly in table.
+# Coverage pass 15: Noise source-group fixed LwA editable directly in table.
 # ---------------------------------------------------------------------------
-_I18N_ITER15_NOISE_LWA_TABLE_TO_EN = {
+_I18N_COVERAGE15_NOISE_LWA_TABLE_TO_EN = {
     "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso.": "You can edit the fixed LwA directly in the acoustic source-group table or import a ws/LwA acoustic curve per group. If you enable curve mode, the plugin will evaluate the emission at a specific wind speed or in the worst case.",
     "Edit the fixed LwA for this acoustic source group.": "Edit the fixed LwA for this acoustic source group.",
     "Fixed acoustic emission level for this source group. Edit it here before running the calculation.": "Fixed acoustic emission level for this source group. Edit it here before running the calculation.",
     "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table.": "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table.",
 }
-_I18N_ITER15_NOISE_LWA_TABLE_TO_ES = {
+_I18N_COVERAGE15_NOISE_LWA_TABLE_TO_ES = {
     "You can edit the fixed LwA directly in the acoustic source-group table or import a ws/LwA acoustic curve per group. If you enable curve mode, the plugin will evaluate the emission at a specific wind speed or in the worst case.": "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso.",
     "Edit the fixed LwA for this acoustic source group.": "Edita el LwA fijo de este grupo fuente acústico.",
     "Fixed acoustic emission level for this source group. Edit it here before running the calculation.": "Nivel de emisión acústica fija de este grupo fuente. Edítalo aquí antes de lanzar el cálculo.",
     "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table.": "Cada fila representa un grupo fuente acústico. Puedes renombrar el grupo/parque y editar su LwA fijo directamente en la tabla.",
 }
-_TO_EN.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_EN)
-_TO_ES.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER15_NOISE_LWA_TABLE_TO_ES)
+_TO_EN.update(_I18N_COVERAGE15_NOISE_LWA_TABLE_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE15_NOISE_LWA_TABLE_TO_EN)
+_TO_ES.update(_I18N_COVERAGE15_NOISE_LWA_TABLE_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE15_NOISE_LWA_TABLE_TO_ES)
 
 
 # ---------------------------------------------------------------------------
-# Iteration 16: Noise summary clarity — scope banner + symbol glossary (ES/EN).
+# Coverage pass 16: Noise summary clarity — scope banner + symbol glossary (ES/EN).
 # ---------------------------------------------------------------------------
-_I18N_ITER16_NOISE_SUMMARY_TO_EN = {
+_I18N_COVERAGE16_NOISE_SUMMARY_TO_EN = {
     # Scope banner — labels
     "⚠️ Alcance de este informe — léelo antes de usar los resultados": "⚠️ Scope of this report — read before using the results",
     "Qué es:": "What it is:",
@@ -7022,11 +7023,11 @@ _I18N_ITER16_NOISE_SUMMARY_TO_EN = {
     "Corrección meteorológica de largo plazo, no aplicada en este plugin.": "Long-term meteorological correction, not applied in this plugin.",
     "Corrección por directividad de la fuente, asumida 0 dB.": "Source directivity correction, assumed to be 0 dB.",
 }
-_TO_EN.update(_I18N_ITER16_NOISE_SUMMARY_TO_EN)
-_FRAGMENT_TO_EN.update(_I18N_ITER16_NOISE_SUMMARY_TO_EN)
-_I18N_ITER16_NOISE_SUMMARY_TO_ES = {v: k for k, v in _I18N_ITER16_NOISE_SUMMARY_TO_EN.items() if v != k}
-_TO_ES.update(_I18N_ITER16_NOISE_SUMMARY_TO_ES)
-_FRAGMENT_TO_ES.update(_I18N_ITER16_NOISE_SUMMARY_TO_ES)
+_TO_EN.update(_I18N_COVERAGE16_NOISE_SUMMARY_TO_EN)
+_FRAGMENT_TO_EN.update(_I18N_COVERAGE16_NOISE_SUMMARY_TO_EN)
+_I18N_COVERAGE16_NOISE_SUMMARY_TO_ES = {v: k for k, v in _I18N_COVERAGE16_NOISE_SUMMARY_TO_EN.items() if v != k}
+_TO_ES.update(_I18N_COVERAGE16_NOISE_SUMMARY_TO_ES)
+_FRAGMENT_TO_ES.update(_I18N_COVERAGE16_NOISE_SUMMARY_TO_ES)
 
 
 # ---------------------------------------------------------------------------
@@ -7102,3 +7103,580 @@ except Exception:
     pass
 I18N_BUILD = "2026-06-22-0.1.14"
 
+
+
+# ---------------------------------------------------------------------------
+# Release polish 0.1.15c: power-curve dialog translations.
+# The curve popup is built dynamically with matplotlib, so apply_i18n(widget)
+# cannot reach axis labels or the Qt standard Close button reliably.
+# ---------------------------------------------------------------------------
+_I18N_POWER_CURVE_DIALOG_TO_EN = {
+    "Curva de potencia": "Power curve",
+    "Esta turbina no tiene la curva guardada en metadatos. Vuelve a pulsar «Definir…» para regenerarla.": "This turbine has no curve stored in its metadata. Press “Define…” again to regenerate it.",
+    "No se pudo dibujar la curva:": "Could not draw the curve:",
+    "matplotlib no disponible en este QGIS:": "matplotlib is not available in this QGIS:",
+    "puntos": "points",
+    "Potencia (kW)": "Power (kW)",
+    "Velocidad de viento (m/s)": "Wind speed (m/s)",
+    "Cerrar": "Close",
+}
+_I18N_POWER_CURVE_DIALOG_TO_FR = {
+    "Curva de potencia": "Courbe de puissance",
+    "Esta turbina no tiene la curva guardada en metadatos. Vuelve a pulsar «Definir…» para regenerarla.": "Cette éolienne n’a pas de courbe enregistrée dans ses métadonnées. Cliquez à nouveau sur « Définir… » pour la régénérer.",
+    "No se pudo dibujar la curva:": "Impossible de tracer la courbe :",
+    "matplotlib no disponible en este QGIS:": "matplotlib n’est pas disponible dans ce QGIS :",
+    "puntos": "points",
+    "Potencia (kW)": "Puissance (kW)",
+    "Velocidad de viento (m/s)": "Vitesse du vent (m/s)",
+    "Cerrar": "Fermer",
+}
+_I18N_POWER_CURVE_DIALOG_TO_DE = {
+    "Curva de potencia": "Leistungskurve",
+    "Esta turbina no tiene la curva guardada en metadatos. Vuelve a pulsar «Definir…» para regenerarla.": "Für diese Windturbine ist keine Kurve in den Metadaten gespeichert. Klicken Sie erneut auf „Definieren…“, um sie neu zu erzeugen.",
+    "No se pudo dibujar la curva:": "Die Kurve konnte nicht gezeichnet werden:",
+    "matplotlib no disponible en este QGIS:": "matplotlib ist in diesem QGIS nicht verfügbar:",
+    "puntos": "Punkte",
+    "Potencia (kW)": "Leistung (kW)",
+    "Velocidad de viento (m/s)": "Windgeschwindigkeit (m/s)",
+    "Cerrar": "Schließen",
+}
+try:
+    register_language(LANG_EN, _I18N_POWER_CURVE_DIALOG_TO_EN, _I18N_POWER_CURVE_DIALOG_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_POWER_CURVE_DIALOG_TO_FR, _I18N_POWER_CURVE_DIALOG_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_POWER_CURVE_DIALOG_TO_DE, _I18N_POWER_CURVE_DIALOG_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
+# Release polish 0.1.15d: clean Hub + Shadow/Flicker UI strings.
+# Keeps the Shadow module authored from Spanish and prevents FR/DE text leaking
+# into Spanish or English when the page is opened from the hub.
+# ---------------------------------------------------------------------------
+_I18N_HUB_SHADOW_CLEAN_TO_EN = {
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow Flicker.",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energy: ready · Noise: ready · Shadow flicker: ready",
+    "Sombras y parpadeo": "Shadow flicker",
+    "Módulo de sombras y parpadeo para aerogeneradores. Conectado al layout del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Shadow flicker module for wind turbines. Connected to the project layout, it calculates point receivers and generates detailed QGIS output layers per receiver.",
+    "Configuración del emplazamiento": "Site configuration",
+    "Latitud [°]": "Latitude [°]",
+    "Latitud [°]": "Latitude [°]",
+    "Latitud [°]": "Latitude [°]",
+    "Latitud [°]:": "Latitude [°]:",
+    "Longitud [°]:": "Longitude [°]:",
+    "Latitud/longitud y año de análisis": "Latitude/longitude and analysis year",
+    "Latitud del emplazamiento (ej. 42.465 para Logroño)": "Site latitude (e.g. 42.465 for Logroño)",
+    "Longitud del emplazamiento (ej. -2.445 para Logroño)": "Site longitude (e.g. -2.445 for Logroño)",
+    "Año de análisis:": "Analysis year:",
+    "Base temporal:": "Time basis:",
+    "Modo de zona horaria y gestión de la hora civil": "Time-zone mode and civil-time handling",
+    "Hora civil local (IANA/DST)": "Local civil time (IANA/DST)",
+    "Desfase UTC fijo": "Fixed UTC offset",
+    "IANA/DST: la tabla usa la hora civil local real del emplazamiento.\nDesfase UTC fijo: usa el mismo desfase UTC durante todo el año.": "IANA/DST: the table uses the site's real local civil time.\nFixed UTC offset: uses the same UTC offset throughout the year.",
+    "Zona horaria IANA:": "IANA time zone:",
+    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "IANA time zone, for example Europe/Madrid, America/Santiago or Asia/Tokyo.\nThe plugin includes an extended IANA catalogue and a local TZif database to apply daylight saving time without timezonefinder.",
+    "Desfase UTC fijo:": "Fixed UTC offset:",
+    "Desfase fijo para el modo UTC fijo. No se aplica horario de verano.": "Fixed offset for the fixed-UTC mode. Daylight saving time is not applied.",
+    "Detectar automáticamente coordenadas y zona horaria": "Auto-detect coordinates and time zone",
+    "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA": "Calculates latitude/longitude from the layout centroid and tries to detect the IANA zone",
+    "Capa de aerogeneradores:": "Wind-turbine layer:",
+    "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Select or import the wind-turbine coordinate layer",
+    "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Select a VelantisWind wind-turbine coordinate layer, or import one directly from this module",
+    "Importar layout de aerogeneradores desde CSV…": "Import wind-turbine layout from CSV…",
+    "Capa de receptores:": "Receiver layer:",
+    "Seleccionar la capa de puntos que contiene los receptores": "Select the point layer containing the receivers",
+    "Selecciona la capa de puntos que contiene los receptores": "Select the point layer containing the receivers",
+    "Raster MDT/DEM (opcional):": "DEM/DTM raster (optional):",
+    "Raster de elevación opcional para geometría con terreno": "Optional elevation raster for terrain-aware geometry",
+    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Optional digital elevation model (DTM/DEM).\nIf provided, ground elevation is sampled below each wind turbine and each receiver.\nIt allows elev_diff = (hub + turbine terrain) - (observer + receiver terrain) to be calculated.\nIf left empty, flat terrain is assumed (z=0).",
+    "Altura del observador [m]:": "Observer height [m]:",
+    "Altura del observador, paso temporal, elevación solar, disponibilidad y distancia": "Observer height, time step, solar elevation, availability and distance",
+    "Altura del punto de observación (ventana típica: 2 m)": "Observation-point height (typical window: 2 m)",
+    "Paso temporal [min]:": "Time step [min]:",
+    "Resolución temporal del cálculo\n5 min = buen equilibrio velocidad/precisión\n1 min = precisión máxima (muy lento)": "Calculation time resolution\n5 min = good speed/accuracy balance\n1 min = maximum accuracy (very slow)",
+    "Elevación solar mín. [°]:": "Min. solar elevation [°]:",
+    "Sol demasiado bajo → ignorado (típico: 3°)": "Sun too low → ignored (typical: 3°)",
+    "Elevación solar máx. [°]:": "Max. solar elevation [°]:",
+    "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Maximum solar elevation to include (90° = no high-sun filtering; lower values are an optional screening assumption)",
+    "Disponibilidad de los aerogeneradores:": "Wind-turbine availability:",
+    "Disponibilidad y distancia máxima de influencia": "Availability and maximum influence distance",
+    "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)": "Fraction of time the wind turbine is operating (0.97 = 97%)",
+    "Distancia máxima de sombra [m]:": "Maximum shadow distance [m]:",
+    "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\nSe usa para filtrar receptores y para la extensión/máscara del raster.": "Maximum distance from a wind turbine for considering shadow flicker.\nDefault value: 2000 m, consistent with a conservative Continuum-type screening distance.\nUsed to filter receivers and define the raster extent/mask.",
+    "Configuración de los modelos de aerogenerador": "Wind-turbine model configuration",
+    "Comprueba la altura de buje y el diámetro del rotor para cada modelo de aerogenerador detectado.": "Check hub height and rotor diameter for each detected wind-turbine model.",
+    "Altura de buje, diámetro del rotor y notas del modelo": "Hub height, rotor diameter and model notes",
+    "Aerogeneradores": "Wind turbines",
+    "Altura de buje [m]": "Hub height [m]",
+    "Diámetro del rotor [m]": "Rotor diameter [m]",
+    "Notas": "Notes",
+    "Configura los parámetros geométricos de cada modelo de aerogenerador.\nAltura de buje: altura sobre el terreno [m]\nDiámetro del rotor: diámetro del rotor [m]": "Configure the geometric parameters of each wind-turbine model.\nHub height: height above ground [m]\nRotor diameter: rotor diameter [m]",
+    "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Configure hub height and rotor diameter for each detected model. These parameters are required for the shadow flicker calculation.",
+    "Preparación del cálculo": "Calculation preparation",
+    "Crear mapa raster de sombras y parpadeo": "Create shadow flicker raster map",
+    "Genera un mapa raster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Generates a continuous raster map of shadow flicker hours\nDisplays a colour gradient over the whole analysis area\nWARNING: this can take several minutes depending on the area",
+    "Mapa raster, resolución y paso temporal del raster": "Raster map, resolution and raster time step",
+    "Resolución [m]:": "Resolution [m]:",
+    "Tamaño de celda del raster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Raster cell size\n100 m = fast, less detail\n50 m = intermediate\n25 m = slow, maximum detail",
+    "Paso temporal SOLO para el raster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Time step ONLY for the raster (independent from receivers).\n1 min = maximum accuracy, VERY slow\n5 min = recommended (accuracy >98%, 5× faster)\n10 min = very fast, ~95% accuracy\n20 min = ultra-fast for previewing",
+    "Filtrar raster por mes/hora (después de generarlo)": "Filter raster by month/hour (after generation)",
+    "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Once the raster has been generated, you can regenerate TIFs filtered by month and/or hour\nwithout recalculating the full annual geometry.",
+    "Filtrar el raster generado por mes y/u hora": "Filter the generated raster by month and/or hour",
+    "Mes:": "Month:", "Hora:": "Hour:", "Todos": "All", "Todas": "All",
+    "Enero": "January", "Febrero": "February", "Marzo": "March", "Abril": "April", "Mayo": "May", "Junio": "June", "Julio": "July", "Agosto": "August", "Septiembre": "September", "Octubre": "October", "Noviembre": "November", "Diciembre": "December",
+    "📊 Regenerar TIF filtrado": "📊 Regenerate filtered TIF",
+    "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Creates a new TIF with the selected month/hour filter",
+    "Comprobar configuración": "Check configuration",
+    "Calcular sombras y parpadeo": "Calculate shadow flicker",
+    "No se ha detectado ningún layout": "No layout detected",
+    "— Seleccionar capa de aerogeneradores —": "— Select wind-turbine layer —",
+    "— Seleccionar capa de receptores —": "— Select receiver layer —",
+    "— Sin DEM/MDT (terreno plano) —": "— No DEM/DTM (flat terrain) —",
+}
+
+_I18N_HUB_SHADOW_CLEAN_TO_FR = {
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Sélectionnez le module de travail. Les modules disponibles sont : Énergie (AEP et sillages), Bruit, Ombres et scintillement.",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres : opérationnel",
+    "Sombras y parpadeo": "Ombres et scintillement",
+    "Módulo de sombras y parpadeo para aerogeneradores. Conectado al layout del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Module de calcul des ombres et du scintillement pour les éoliennes. Connecté à l’implantation du projet, il calcule les récepteurs ponctuels et génère des couches QGIS de sortie détaillées par récepteur.",
+    "Configuración del emplazamiento": "Configuration du site",
+    "Latitud [°]:": "Latitude [°] :", "Longitud [°]:": "Longitude [°] :",
+    "Latitud/longitud y año de análisis": "Latitude/longitude et année d’analyse",
+    "Latitud del emplazamiento (ej. 42.465 para Logroño)": "Latitude du site (ex. 42.465 pour Logroño)",
+    "Longitud del emplazamiento (ej. -2.445 para Logroño)": "Longitude du site (ex. -2.445 pour Logroño)",
+    "Año de análisis:": "Année d’analyse :", "Base temporal:": "Base temporelle :",
+    "Modo de zona horaria y gestión de la hora civil": "Mode de fuseau horaire et gestion de l’heure civile",
+    "Hora civil local (IANA/DST)": "Heure civile locale (IANA/DST)", "Desfase UTC fijo": "Décalage UTC fixe",
+    "IANA/DST: la tabla usa la hora civil local real del emplazamiento.\nDesfase UTC fijo: usa el mismo desfase UTC durante todo el año.": "IANA/DST : le tableau utilise l’heure civile locale réelle du site.\nDécalage UTC fixe : utilise le même décalage UTC pendant toute l’année.",
+    "Zona horaria IANA:": "Fuseau horaire IANA :",
+    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "Fuseau horaire IANA, par exemple Europe/Madrid, America/Santiago ou Asia/Tokyo.\nLe plugin inclut un catalogue IANA étendu et une base TZif locale pour appliquer l’heure d’été sans timezonefinder.",
+    "Desfase UTC fijo:": "Décalage UTC fixe :", "Desfase fijo para el modo UTC fijo. No se aplica horario de verano.": "Décalage fixe pour le mode à décalage UTC fixe. L’heure d’été n’est pas appliquée.",
+    "Detectar automáticamente coordenadas y zona horaria": "Détecter automatiquement les coordonnées et le fuseau horaire",
+    "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA": "Calcule la latitude/longitude depuis le centroïde de l’implantation et tente de détecter le fuseau IANA",
+    "Capa de aerogeneradores:": "Couche d’éoliennes :", "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Sélectionner ou importer la couche de coordonnées d’éoliennes",
+    "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Sélectionnez une couche de coordonnées d’éoliennes VelantisWind, ou importez-en une directement depuis ce module",
+    "Importar layout de aerogeneradores desde CSV…": "Importer un layout d’éoliennes depuis CSV…",
+    "Capa de receptores:": "Couche de récepteurs :", "Seleccionar la capa de puntos que contiene los receptores": "Sélectionner la couche de points contenant les récepteurs", "Selecciona la capa de puntos que contiene los receptores": "Sélectionnez la couche de points contenant les récepteurs",
+    "Raster MDT/DEM (opcional):": "Raster MDT/DEM (optionnel) :", "Raster de elevación opcional para geometría con terreno": "Raster d’élévation optionnel pour une géométrie tenant compte du terrain",
+    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Modèle numérique d’élévation (MDT/DEM) optionnel.\nS’il est fourni, l’altitude du terrain sous chaque éolienne et chaque récepteur est échantillonnée.\nIl permet de calculer elev_diff = (moyeu + terrain éolienne) - (observateur + terrain récepteur).\nSi ce champ reste vide, un terrain plat (z=0) est supposé.",
+    "Altura del observador [m]:": "Hauteur de l’observateur [m] :", "Altura del observador, paso temporal, elevación solar, disponibilidad y distancia": "Hauteur de l’observateur, pas temporel, élévation solaire, disponibilité et distance", "Altura del punto de observación (ventana típica: 2 m)": "Hauteur du point d’observation (fenêtre typique : 2 m)",
+    "Paso temporal [min]:": "Pas temporel [min] :", "Resolución temporal del cálculo\n5 min = buen equilibrio velocidad/precisión\n1 min = precisión máxima (muy lento)": "Résolution temporelle du calcul\n5 min = bon équilibre vitesse/précision\n1 min = précision maximale (très lent)",
+    "Elevación solar mín. [°]:": "Élévation solaire min. [°] :", "Sol demasiado bajo → ignorado (típico: 3°)": "Soleil trop bas → ignoré (typique : 3°)", "Elevación solar máx. [°]:": "Élévation solaire max. [°] :", "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Élévation solaire maximale à inclure (90° = aucun filtrage du soleil haut ; des valeurs plus basses sont une hypothèse optionnelle de criblage)",
+    "Disponibilidad de los aerogeneradores:": "Disponibilité des éoliennes :", "Disponibilidad y distancia máxima de influencia": "Disponibilité et distance maximale d’influence", "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)": "Fraction du temps pendant laquelle l’éolienne est en fonctionnement (0.97 = 97 %)",
+    "Distancia máxima de sombra [m]:": "Distance maximale d’ombre [m] :", "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\nSe usa para filtrar receptores y para la extensión/máscara del raster.": "Distance maximale depuis une éolienne pour considérer les ombres et le scintillement.\nValeur par défaut : 2000 m, cohérente avec une distance de criblage conservatrice de type Continuum.\nCette valeur est utilisée pour filtrer les récepteurs et pour l’emprise/le masque du raster.",
+    "Configuración de los modelos de aerogenerador": "Configuration des modèles d’éolienne", "Comprueba la altura de buje y el diámetro del rotor para cada modelo de aerogenerador detectado.": "Vérifiez la hauteur de moyeu et le diamètre du rotor pour chaque modèle d’éolienne détecté.", "Altura de buje, diámetro del rotor y notas del modelo": "Hauteur de moyeu, diamètre du rotor et notes du modèle",
+    "Aerogeneradores": "Éoliennes", "Altura de buje [m]": "Hauteur de moyeu [m]", "Diámetro del rotor [m]": "Diamètre du rotor [m]", "Notas": "Notes",
+    "Configura los parámetros geométricos de cada modelo de aerogenerador.\nAltura de buje: altura sobre el terreno [m]\nDiámetro del rotor: diámetro del rotor [m]": "Configurez les paramètres géométriques de chaque modèle d’éolienne.\nHauteur de moyeu : hauteur au-dessus du sol [m]\nDiamètre du rotor : diamètre du rotor [m]",
+    "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Configurez la hauteur de moyeu et le diamètre du rotor pour chaque modèle détecté. Ces paramètres sont nécessaires au calcul des ombres et du scintillement.",
+    "Preparación del cálculo": "Préparation du calcul", "Crear mapa raster de sombras y parpadeo": "Créer une carte raster d’ombres et scintillement",
+    "Genera un mapa raster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Génère une carte raster continue des heures d’ombres et de scintillement\nAffiche un dégradé de couleurs sur toute la zone d’analyse\nATTENTION : cela peut prendre plusieurs minutes selon la zone",
+    "Mapa raster, resolución y paso temporal del raster": "Carte raster, résolution et pas temporel du raster", "Resolución [m]:": "Résolution [m] :", "Tamaño de celda del raster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Taille de cellule du raster\n100 m = rapide, moins de détail\n50 m = intermédiaire\n25 m = lent, détail maximal",
+    "Paso temporal SOLO para el raster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Pas temporel UNIQUEMENT pour le raster (indépendant des récepteurs).\n1 min = précision maximale, TRÈS lent\n5 min = recommandé (précision >98 %, 5× plus rapide)\n10 min = très rapide, précision ~95 %\n20 min = ultra-rapide pour prévisualiser",
+    "Filtrar raster por mes/hora (después de generarlo)": "Filtrer le raster par mois/heure (après génération)", "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Une fois le raster généré, vous pouvez régénérer des TIF filtrés par mois et/ou par heure\nsans recalculer toute la géométrie annuelle.",
+    "Filtrar el raster generado por mes y/u hora": "Filtrer le raster généré par mois et/ou par heure", "Mes:": "Mois :", "Hora:": "Heure :", "Todos": "Tous", "Todas": "Toutes",
+    "Enero": "Janvier", "Febrero": "Février", "Marzo": "Mars", "Abril": "Avril", "Mayo": "Mai", "Junio": "Juin", "Julio": "Juillet", "Agosto": "Août", "Septiembre": "Septembre", "Octubre": "Octobre", "Noviembre": "Novembre", "Diciembre": "Décembre",
+    "📊 Regenerar TIF filtrado": "📊 Régénérer le TIF filtré", "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Crée un nouveau TIF avec le filtre mois/heure sélectionné", "Comprobar configuración": "Vérifier la configuration", "Calcular sombras y parpadeo": "Calculer les ombres et scintillement",
+    "No se ha detectado ningún layout": "Aucun layout détecté", "— Seleccionar capa de aerogeneradores —": "— Sélectionner une couche d’éoliennes —", "— Seleccionar capa de receptores —": "— Sélectionner une couche de récepteurs —", "— Sin DEM/MDT (terreno plano) —": "— Aucun DEM/MDT (terrain plat) —",
+}
+
+_I18N_HUB_SHADOW_CLEAN_TO_DE = {
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energie: einsatzbereit · Schall: einsatzbereit · Schattenwurf: einsatzbereit",
+    "Sombras y parpadeo": "Schattenwurf",
+    "Módulo de sombras y parpadeo para aerogeneradores. Conectado al layout del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Schattenwurfmodul für Windturbinen. Es ist mit dem Projektlayout verbunden, berechnet punktuelle Rezeptoren und erzeugt detaillierte QGIS-Ausgabelayer pro Rezeptor.",
+    "Configuración del emplazamiento": "Standortkonfiguration", "Latitud [°]:": "Breitengrad [°]:", "Longitud [°]:": "Längengrad [°]:", "Latitud/longitud y año de análisis": "Breiten-/Längengrad und Analysejahr", "Latitud del emplazamiento (ej. 42.465 para Logroño)": "Breitengrad des Standorts (z. B. 42.465 für Logroño)", "Longitud del emplazamiento (ej. -2.445 para Logroño)": "Längengrad des Standorts (z. B. -2.445 für Logroño)", "Año de análisis:": "Analysejahr:", "Base temporal:": "Zeitbasis:", "Modo de zona horaria y gestión de la hora civil": "Zeitzonenmodus und lokale Uhrzeit", "Hora civil local (IANA/DST)": "Lokale Uhrzeit (IANA/DST)", "Desfase UTC fijo": "Fester UTC-Offset", "Zona horaria IANA:": "IANA-Zeitzone:", "Desfase UTC fijo:": "Fester UTC-Offset:",
+    "IANA/DST: la tabla usa la hora civil local real del emplazamiento.\nDesfase UTC fijo: usa el mismo desfase UTC durante todo el año.": "IANA/DST: Die Tabelle verwendet die reale lokale Uhrzeit des Standorts.\nFester UTC-Offset: verwendet das ganze Jahr denselben UTC-Offset.",
+    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "IANA-Zeitzone, zum Beispiel Europe/Madrid, America/Santiago oder Asia/Tokyo.\nDas Plugin enthält einen erweiterten IANA-Katalog und eine lokale TZif-Datenbank zur Anwendung der Sommerzeit ohne timezonefinder.",
+    "Desfase fijo para el modo UTC fijo. No se aplica horario de verano.": "Fester Offset für den UTC-Offset-Modus. Sommerzeit wird nicht angewendet.",
+    "Detectar automáticamente coordenadas y zona horaria": "Koordinaten und Zeitzone automatisch erkennen", "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA": "Berechnet Breiten-/Längengrad aus dem Schwerpunkt des Layouts und versucht, die IANA-Zeitzone zu erkennen",
+    "Capa de aerogeneradores:": "Windturbinen-Layer:", "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Koordinaten-Layer der Windturbinen auswählen oder importieren", "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Wählen Sie einen VelantisWind-Koordinaten-Layer der Windturbinen aus oder importieren Sie direkt in diesem Modul einen Layer", "Importar layout de aerogeneradores desde CSV…": "Windturbinen-Layout aus CSV importieren…",
+    "Capa de receptores:": "Rezeptor-Layer:", "Seleccionar la capa de puntos que contiene los receptores": "Punkt-Layer mit Rezeptoren auswählen", "Selecciona la capa de puntos que contiene los receptores": "Wählen Sie den Punkt-Layer mit den Rezeptoren aus",
+    "Raster MDT/DEM (opcional):": "DGM/DEM-Raster (optional):", "Raster de elevación opcional para geometría con terreno": "Optionales Höhenraster für geländeberücksichtigende Geometrie",
+    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Optionales digitales Höhenmodell (DGM/DEM).\nFalls angegeben, wird die Geländehöhe unter jeder Windturbine und jedem Rezeptor abgetastet.\nDamit wird elev_diff = (Nabe + Turbinengelände) - (Beobachter + Rezeptorgelände) berechnet.\nWenn leer, wird ebenes Gelände angenommen (z=0).",
+    "Altura del observador [m]:": "Beobachterhöhe [m]:", "Altura del observador, paso temporal, elevación solar, disponibilidad y distancia": "Beobachterhöhe, Zeitschritt, Sonnenhöhe, Verfügbarkeit und Entfernung", "Altura del punto de observación (ventana típica: 2 m)": "Höhe des Beobachtungspunkts (typisches Fenster: 2 m)",
+    "Paso temporal [min]:": "Zeitschritt [min]:", "Resolución temporal del cálculo\n5 min = buen equilibrio velocidad/precisión\n1 min = precisión máxima (muy lento)": "Zeitliche Auflösung der Berechnung\n5 min = guter Kompromiss zwischen Geschwindigkeit und Genauigkeit\n1 min = maximale Genauigkeit (sehr langsam)", "Elevación solar mín. [°]:": "Min. Sonnenhöhe [°]:", "Sol demasiado bajo → ignorado (típico: 3°)": "Sonne zu niedrig → ignoriert (typisch: 3°)", "Elevación solar máx. [°]:": "Max. Sonnenhöhe [°]:", "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Maximale einzubeziehende Sonnenhöhe (90° = keine Filterung hoher Sonnenstände; niedrigere Werte sind eine optionale Screening-Annahme)",
+    "Disponibilidad de los aerogeneradores:": "Verfügbarkeit der Windturbinen:", "Disponibilidad y distancia máxima de influencia": "Verfügbarkeit und maximale Einflussentfernung", "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)": "Anteil der Zeit, in der die Windturbine in Betrieb ist (0,97 = 97 %)",
+    "Distancia máxima de sombra [m]:": "Maximale Schattenentfernung [m]:", "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\nSe usa para filtrar receptores y para la extensión/máscara del raster.": "Maximale Entfernung von einer Windturbine zur Berücksichtigung von Schattenwurf.\nStandardwert: 2000 m, konsistent mit einer konservativen Continuum-Screening-Distanz.\nWird zum Filtern der Rezeptoren und für Ausdehnung/Maske des Rasters verwendet.",
+    "Configuración de los modelos de aerogenerador": "Konfiguration der Windturbinenmodelle", "Comprueba la altura de buje y el diámetro del rotor para cada modelo de aerogenerador detectado.": "Prüfen Sie Nabenhöhe und Rotordurchmesser für jedes erkannte Windturbinenmodell.", "Altura de buje, diámetro del rotor y notas del modelo": "Nabenhöhe, Rotordurchmesser und Modellnotizen", "Aerogeneradores": "Windturbinen", "Altura de buje [m]": "Nabenhöhe [m]", "Diámetro del rotor [m]": "Rotordurchmesser [m]", "Notas": "Notizen",
+    "Configura los parámetros geométricos de cada modelo de aerogenerador.\nAltura de buje: altura sobre el terreno [m]\nDiámetro del rotor: diámetro del rotor [m]": "Konfigurieren Sie die geometrischen Parameter jedes Windturbinenmodells.\nNabenhöhe: Höhe über Gelände [m]\nRotordurchmesser: Rotordurchmesser [m]",
+    "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Konfigurieren Sie Nabenhöhe und Rotordurchmesser für jedes erkannte Modell. Diese Parameter sind für die Schattenwurfberechnung erforderlich.",
+    "Preparación del cálculo": "Berechnungsvorbereitung", "Crear mapa raster de sombras y parpadeo": "Schattenwurf-Rasterkarte erstellen", "Genera un mapa raster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Erzeugt eine kontinuierliche Rasterkarte der Schattenwurfdauer\nZeigt einen Farbverlauf über das gesamte Analysegebiet\nACHTUNG: je nach Gebiet kann dies mehrere Minuten dauern", "Mapa raster, resolución y paso temporal del raster": "Rasterkarte, Auflösung und Raster-Zeitschritt", "Resolución [m]:": "Auflösung [m]:", "Tamaño de celda del raster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Rasterzellgröße\n100 m = schnell, weniger Detail\n50 m = mittel\n25 m = langsam, maximale Detailtiefe",
+    "Paso temporal SOLO para el raster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Zeitschritt NUR für das Raster (unabhängig von den Rezeptoren).\n1 min = maximale Genauigkeit, SEHR langsam\n5 min = empfohlen (Genauigkeit >98 %, 5× schneller)\n10 min = sehr schnell, Genauigkeit ~95 %\n20 min = ultraschnell für Vorschau", "Filtrar raster por mes/hora (después de generarlo)": "Raster nach Monat/Stunde filtern (nach der Erzeugung)", "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Nach der Rastererzeugung können Sie nach Monat und/oder Stunde gefilterte TIFs neu erzeugen,\nohne die gesamte Jahresgeometrie neu zu berechnen.", "Filtrar el raster generado por mes y/u hora": "Erzeugtes Raster nach Monat und/oder Stunde filtern", "Mes:": "Monat:", "Hora:": "Stunde:", "Todos": "Alle", "Todas": "Alle",
+    "Enero": "Januar", "Febrero": "Februar", "Marzo": "März", "Abril": "April", "Mayo": "Mai", "Junio": "Juni", "Julio": "Juli", "Agosto": "August", "Septiembre": "September", "Octubre": "Oktober", "Noviembre": "November", "Diciembre": "Dezember", "📊 Regenerar TIF filtrado": "📊 Gefiltertes TIF neu erzeugen", "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Erstellt ein neues TIF mit dem ausgewählten Monat-/Stunde-Filter", "Comprobar configuración": "Konfiguration prüfen", "Calcular sombras y parpadeo": "Schattenwurf berechnen", "No se ha detectado ningún layout": "Kein Layout erkannt", "— Seleccionar capa de aerogeneradores —": "— Windturbinen-Layer auswählen —", "— Seleccionar capa de receptores —": "— Rezeptor-Layer auswählen —", "— Sin DEM/MDT (terreno plano) —": "— Kein DGM/DEM (ebenes Gelände) —",
+}
+try:
+    register_language(LANG_EN, _I18N_HUB_SHADOW_CLEAN_TO_EN, _I18N_HUB_SHADOW_CLEAN_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_HUB_SHADOW_CLEAN_TO_FR, _I18N_HUB_SHADOW_CLEAN_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_HUB_SHADOW_CLEAN_TO_DE, _I18N_HUB_SHADOW_CLEAN_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
+# Release polish 0.1.15e: final hub/layout optimization strings in EN/FR/DE.
+# ---------------------------------------------------------------------------
+_I18N_HUB_LAYOUT_STRONG_TO_EN = {
+    "CRS:": "CRS:",
+    "Ver white paper técnico": "Read technical white paper",
+    "Optimización de layout desde recurso y restricciones": "Layout optimization from resource and constraints",
+    "Optimización de layout": "Layout optimization",
+    "Muestra información de contacto y el white paper de optimización.": "Shows contact information and the optimization white paper.",
+    "Optimización de layout bajo demanda": "On-demand layout optimization",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need a previous layout: we can work from the wind resource, constraints and project objectives to look for higher production and lower wake losses.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact: info@velantiswind.com · White paper available at velantiswind.com",
+    "Copiar contacto": "Copy contact",
+    "Copia el email de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+    "Ver white paper": "Read white paper",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Opens the VelantisWind website, where the white paper is available.",
+    "Ocultar información": "Hide information",
+    "Email copiado al portapapeles:": "Email copied to clipboard:",
+    "Puedes contactar en:": "You can contact us at:",
+    "No se pudo abrir el módulo de energía.": "Could not open the energy module.",
+}
+_I18N_HUB_LAYOUT_STRONG_TO_FR = {
+    "CRS:": "SCR :",
+    "Ver white paper técnico": "Voir le livre blanc technique",
+    "Optimización de layout desde recurso y restricciones": "Optimisation de l’implantation à partir de la ressource et des contraintes",
+    "Optimización de layout": "Optimisation de l’implantation",
+    "Muestra información de contacto y el white paper de optimización.": "Affiche les informations de contact et le livre blanc sur l’optimisation.",
+    "Optimización de layout bajo demanda": "Optimisation d’implantation à la demande",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Nous pouvons vous aider à générer ou améliorer des variantes d’implantation avec le moteur avancé de VelantisWind. Aucun layout préalable n’est nécessaire : nous pouvons partir de la ressource éolienne, des contraintes et des objectifs du projet pour rechercher plus de production et moins de pertes de sillage.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact : info@velantiswind.com · Livre blanc disponible sur velantiswind.com",
+    "Copiar contacto": "Copier le contact",
+    "Copia el email de contacto al portapapeles.": "Copie l’adresse e-mail de contact dans le presse-papiers.",
+    "Ver white paper": "Voir le livre blanc",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Ouvre le site web de VelantisWind, où le livre blanc est disponible.",
+    "Ocultar información": "Masquer les informations",
+    "Email copiado al portapapeles:": "E-mail copié dans le presse-papiers :",
+    "Puedes contactar en:": "Vous pouvez nous contacter à :",
+    "No se pudo abrir el módulo de energía.": "Impossible d’ouvrir le module d’énergie.",
+}
+_I18N_HUB_LAYOUT_STRONG_TO_DE = {
+    "CRS:": "KBS:",
+    "Ver white paper técnico": "Technisches Whitepaper öffnen",
+    "Optimización de layout desde recurso y restricciones": "Layout-Optimierung aus Ressource und Einschränkungen",
+    "Optimización de layout": "Layout-Optimierung",
+    "Muestra información de contacto y el white paper de optimización.": "Zeigt Kontaktinformationen und das Whitepaper zur Optimierung.",
+    "Optimización de layout bajo demanda": "Layout-Optimierung auf Anfrage",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Wir können helfen, Layout-Alternativen mit dem erweiterten VelantisWind-Motor zu erzeugen oder zu verbessern. Ein vorhandenes Layout ist nicht erforderlich: Wir können aus Windressource, Einschränkungen und Projektzielen arbeiten, um höhere Produktion und geringere Nachlaufverluste zu suchen.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Kontakt: info@velantiswind.com · Whitepaper verfügbar auf velantiswind.com",
+    "Copiar contacto": "Kontakt kopieren",
+    "Copia el email de contacto al portapapeles.": "Kopiert die Kontakt-E-Mail in die Zwischenablage.",
+    "Ver white paper": "Whitepaper öffnen",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Öffnet die VelantisWind-Website, auf der das Whitepaper verfügbar ist.",
+    "Ocultar información": "Informationen ausblenden",
+    "Email copiado al portapapeles:": "E-Mail in die Zwischenablage kopiert:",
+    "Puedes contactar en:": "Kontakt über:",
+    "No se pudo abrir el módulo de energía.": "Das Energiemodul konnte nicht geöffnet werden.",
+}
+try:
+    register_language(LANG_EN, _I18N_HUB_LAYOUT_STRONG_TO_EN, _I18N_HUB_LAYOUT_STRONG_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_HUB_LAYOUT_STRONG_TO_FR, _I18N_HUB_LAYOUT_STRONG_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_HUB_LAYOUT_STRONG_TO_DE, _I18N_HUB_LAYOUT_STRONG_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Release polish 0.1.15f: second strong pass for hub/shadow runtime strings.
+# Covers small labels missed by exact runtime i18n and keeps dynamic hub counts
+# out of the generic fragment translator.
+# ---------------------------------------------------------------------------
+_I18N_HUB_SHADOW_COVERAGE2_TO_EN = {
+    "Actualizar": "Refresh",
+    "Modelos WT detectados:": "Detected WT models:",
+}
+_I18N_HUB_SHADOW_COVERAGE2_TO_FR = {
+    "Actualizar": "Actualiser",
+    "Modelos WT detectados:": "Modèles WT détectés :",
+}
+_I18N_HUB_SHADOW_COVERAGE2_TO_DE = {
+    "Actualizar": "Aktualisieren",
+    "Modelos WT detectados:": "Erkannte WT-Modelle:",
+}
+try:
+    register_language(LANG_EN, _I18N_HUB_SHADOW_COVERAGE2_TO_EN, _I18N_HUB_SHADOW_COVERAGE2_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_HUB_SHADOW_COVERAGE2_TO_FR, _I18N_HUB_SHADOW_COVERAGE2_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_HUB_SHADOW_COVERAGE2_TO_DE, _I18N_HUB_SHADOW_COVERAGE2_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
+# Release translation polish: hub, language selector and project-summary labels.
+# These exact entries intentionally sit last so they override older draft maps.
+# ---------------------------------------------------------------------------
+_RELEASE_HUB_TO_EN = {
+    "Velantis Wind · Hub principal": "Velantis Wind · Main hub",
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow Flicker.",
+    "Idioma": "Language",
+    "Idioma del plugin:": "Plugin language:",
+    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "The selected language will be applied to the hub, modules, warnings and generated summaries.",
+    "Energía\nAEP y wakes": "Energy\nAEP and wakes",
+    "Ruido": "Noise",
+    "Sombras y\nparpadeo": "Shadow\nflicker",
+    "Inicio": "Home",
+    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Click the logo to return home from the modules.",
+    "Resumen del proyecto": "Project summary",
+    "Proyecto:": "Project:",
+    "CRS:": "CRS:",
+    "Layout activo:": "Active layout:",
+    "Recurso:": "Resource:",
+    "TI WRG:": "WRG TI:",
+    "Estado módulos:": "Module status:",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energy: ready · Noise: ready · Shadow flicker: ready",
+    "Proyecto sin nombre": "Unnamed project",
+    "CRS no disponible": "CRS unavailable",
+    "Sin capas de coordenadas generadas todavía": "No coordinate layers generated yet",
+    "Sin recurso seleccionado todavía": "No resource selected yet",
+    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Not selected (fallback to TI=10% in WRG workflow)",
+    "♡ Apoyar VelantisWind": "♡ Support VelantisWind",
+    "Apoyar VelantisWind": "Support VelantisWind",
+    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Support maintenance, documentation, testing and future open-source development.",
+    "Optimización de layout desde recurso y restricciones": "Layout optimization from resource and constraints",
+    "Optimización de layout": "Layout optimization",
+    "Muestra información de contacto y el white paper de optimización.": "Shows contact information and the optimization white paper.",
+    "Optimización de layout bajo demanda": "On-demand layout optimization",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need an existing layout: we can work from the wind resource, constraints and project objectives to seek higher production and lower wake losses.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact: info@velantiswind.com · White paper available at velantiswind.com",
+    "Copiar contacto": "Copy contact",
+    "Copia el email de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+    "Ver white paper": "Read white paper",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Opens the VelantisWind website, where the white paper is available.",
+    "Ocultar información": "Hide information",
+    "Email copiado al portapapeles:": "Email copied to the clipboard:",
+    "Puedes contactar en:": "You can contact us at:",
+    "Ver white paper técnico": "Read technical white paper",
+    "Energía": "Energy",
+    "No se ha encontrado la factoría del módulo de energía.": "The energy module factory was not found.",
+    "No se pudo abrir el módulo de energía.": "Could not open the energy module.",
+    "WAsP grids:": "WAsP grids:",
+    "WRG:": "WRG:",
+}
+_RELEASE_HUB_TO_FR = {
+    "Velantis Wind · Hub principal": "Velantis Wind · Centre principal",
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Sélectionnez le module de travail. Les modules disponibles sont : Énergie (AEP et sillages), Bruit, Ombres et scintillement.",
+    "Idioma": "Langue",
+    "Idioma del plugin:": "Langue de l’extension :",
+    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "La langue sélectionnée s’appliquera au hub, aux modules, aux avertissements et aux résumés générés.",
+    "Energía\nAEP y wakes": "Énergie\nAEP et sillages",
+    "Ruido": "Bruit",
+    "Sombras y\nparpadeo": "Ombres et\nscintillement",
+    "Inicio": "Accueil",
+    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Cliquez sur le logo pour revenir à l’accueil depuis les modules.",
+    "Resumen del proyecto": "Résumé du projet",
+    "Proyecto:": "Projet :",
+    "CRS:": "SCR :",
+    "Layout activo:": "Implantation active :",
+    "Recurso:": "Ressource :",
+    "TI WRG:": "TI WRG :",
+    "Estado módulos:": "État des modules :",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres : opérationnel",
+    "Proyecto sin nombre": "Projet sans nom",
+    "CRS no disponible": "SCR indisponible",
+    "Sin capas de coordenadas generadas todavía": "Aucune couche de coordonnées générée pour l’instant",
+    "Sin recurso seleccionado todavía": "Aucune ressource sélectionnée pour l’instant",
+    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Non sélectionné (repli prévu à TI=10 % dans le flux WRG)",
+    "♡ Apoyar VelantisWind": "♡ Soutenir VelantisWind",
+    "Apoyar VelantisWind": "Soutenir VelantisWind",
+    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Soutenez la maintenance, la documentation, les tests et le futur développement open source.",
+    "Optimización de layout desde recurso y restricciones": "Optimisation de l’implantation à partir de la ressource et des contraintes",
+    "Optimización de layout": "Optimisation de l’implantation",
+    "Muestra información de contacto y el white paper de optimización.": "Affiche les informations de contact et le livre blanc sur l’optimisation.",
+    "Optimización de layout bajo demanda": "Optimisation d’implantation à la demande",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Nous pouvons vous aider à générer ou améliorer des variantes d’implantation avec le moteur avancé de VelantisWind. Aucun layout préalable n’est nécessaire : nous pouvons partir de la ressource éolienne, des contraintes et des objectifs du projet pour rechercher plus de production et moins de pertes de sillage.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact : info@velantiswind.com · Livre blanc disponible sur velantiswind.com",
+    "Copiar contacto": "Copier le contact",
+    "Copia el email de contacto al portapapeles.": "Copie l’adresse e-mail de contact dans le presse-papiers.",
+    "Ver white paper": "Voir le livre blanc",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Ouvre le site web de VelantisWind, où le livre blanc est disponible.",
+    "Ocultar información": "Masquer les informations",
+    "Email copiado al portapapeles:": "E-mail copié dans le presse-papiers :",
+    "Puedes contactar en:": "Vous pouvez nous contacter à :",
+    "Ver white paper técnico": "Voir le livre blanc technique",
+    "Energía": "Énergie",
+    "No se ha encontrado la factoría del módulo de energía.": "La fabrique du module Énergie est introuvable.",
+    "No se pudo abrir el módulo de energía.": "Impossible d’ouvrir le module Énergie.",
+    "WAsP grids:": "Grilles WAsP :",
+    "WRG:": "WRG :",
+}
+_RELEASE_HUB_TO_DE = {
+    "Velantis Wind · Hub principal": "Velantis Wind · Haupthub",
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+    "Idioma": "Sprache",
+    "Idioma del plugin:": "Plugin-Sprache:",
+    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "Die ausgewählte Sprache wird auf Hub, Module, Warnungen und erzeugte Zusammenfassungen angewendet.",
+    "Energía\nAEP y wakes": "Energie\nAEP und Nachlauf",
+    "Ruido": "Schall",
+    "Sombras y\nparpadeo": "Schattenwurf",
+    "Inicio": "Startseite",
+    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Klicken Sie auf das Logo, um aus den Modulen zur Startseite zurückzukehren.",
+    "Resumen del proyecto": "Projektübersicht",
+    "Proyecto:": "Projekt:",
+    "CRS:": "KBS:",
+    "Layout activo:": "Aktives Layout:",
+    "Recurso:": "Ressource:",
+    "TI WRG:": "WRG-TI:",
+    "Estado módulos:": "Modulstatus:",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energie: einsatzbereit · Schall: einsatzbereit · Schattenwurf: einsatzbereit",
+    "Proyecto sin nombre": "Unbenanntes Projekt",
+    "CRS no disponible": "KBS nicht verfügbar",
+    "Sin capas de coordenadas generadas todavía": "Noch keine Koordinaten-Layer erzeugt",
+    "Sin recurso seleccionado todavía": "Noch keine Ressource ausgewählt",
+    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Nicht ausgewählt (Fallback auf TI=10 % im WRG-Ablauf vorgesehen)",
+    "♡ Apoyar VelantisWind": "♡ VelantisWind unterstützen",
+    "Apoyar VelantisWind": "VelantisWind unterstützen",
+    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Unterstützt Wartung, Dokumentation, Tests und die zukünftige Open-Source-Entwicklung.",
+    "Optimización de layout desde recurso y restricciones": "Layout-Optimierung aus Ressource und Einschränkungen",
+    "Optimización de layout": "Layout-Optimierung",
+    "Muestra información de contacto y el white paper de optimización.": "Zeigt Kontaktinformationen und das Whitepaper zur Optimierung.",
+    "Optimización de layout bajo demanda": "Layout-Optimierung auf Anfrage",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Wir können helfen, Layout-Alternativen mit dem erweiterten VelantisWind-Motor zu erzeugen oder zu verbessern. Ein vorhandenes Layout ist nicht erforderlich: Wir können mit Windressource, Einschränkungen und Projektzielen arbeiten, um höhere Produktion und geringere Nachlaufverluste zu erzielen.",
+    "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Kontakt: info@velantiswind.com · Whitepaper verfügbar auf velantiswind.com",
+    "Copiar contacto": "Kontakt kopieren",
+    "Copia el email de contacto al portapapeles.": "Kopiert die Kontakt-E-Mail in die Zwischenablage.",
+    "Ver white paper": "Whitepaper öffnen",
+    "Abre la web de VelantisWind, donde está disponible el white paper.": "Öffnet die VelantisWind-Website, auf der das Whitepaper verfügbar ist.",
+    "Ocultar información": "Informationen ausblenden",
+    "Email copiado al portapapeles:": "E-Mail in die Zwischenablage kopiert:",
+    "Puedes contactar en:": "Kontakt über:",
+    "Ver white paper técnico": "Technisches Whitepaper öffnen",
+    "Energía": "Energie",
+    "No se ha encontrado la factoría del módulo de energía.": "Die Factory des Energiemoduls wurde nicht gefunden.",
+    "No se pudo abrir el módulo de energía.": "Das Energiemodul konnte nicht geöffnet werden.",
+    "WAsP grids:": "WAsP-Grids:",
+    "WRG:": "WRG:",
+}
+try:
+    register_language(LANG_EN, _RELEASE_HUB_TO_EN, _RELEASE_HUB_TO_EN, label="English")
+    register_language(LANG_FR, _RELEASE_HUB_TO_FR, _RELEASE_HUB_TO_FR, label="Français")
+    register_language(LANG_DE, _RELEASE_HUB_TO_DE, _RELEASE_HUB_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# Release cleanup for German mixed-language leftovers.
+_RELEASE_DE_CLEANUP = {'Aún no hay turbinas en esta capa:': 'In diesem Layer sind noch keine Turbinen vorhanden:', 'Cerrar esta ventana y volver al diálogo principal sin crear la capa.': 'Dieses Fenster schließen und zum Hauptdialog zurückkehren, ohne den Layer zu erstellen.', 'Cierra el módulo de energía y vuelve al hub principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.': 'Schließt das Energiemodul und kehrt zum Velantis-Wind-Hub zurück, ohne Layer oder geladene Projektergebnisse zu löschen.', 'Capa de resultados creada correctamente.': 'Ergebnis-Layer wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.': 'Rasterkarte wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.\n\nPuntos calculados:': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte:', 'Mapa raster creado correctamente.\n\nPuntos calculados: ': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte: ', 'CSV por turbina exportado correctamente:': 'CSV je Turbine erfolgreich exportiert:', 'Informe AEP exportado correctamente:': 'AEP-Bericht erfolgreich exportiert:', 'La capa de puntos se creó correctamente.': 'Der Punkt-Layer wurde erfolgreich erstellt.', 'Error creando turbina': 'Fehler beim Erstellen der Turbine', 'Definir turbina': 'Turbine definieren', 'Directividad de fuente Dc asumida 0 dB.': 'Quellenrichtwirkung Dc wird mit 0 dB angenommen.', 'Disponibilidad de turbina:': 'Turbinenverfügbarkeit:', 'Exportar layout editado': 'Bearbeitetes Layout exportieren', 'Exportar layout editado...': 'Bearbeitetes Layout exportieren...', 'Exportar grupos fuente': 'Quellgruppen exportieren', 'Grupo fuente': 'Quellgruppe', 'Grupo fuente:': 'Quellgruppe:', 'Grupos fuente acústicos': 'Akustische Quellgruppen', 'Grupos fuente acústicos:': 'Akustische Quellgruppen:', 'Grupos fuente acústicos: faltan': 'Akustische Quellgruppen: es fehlen', 'Grupos fuente acústicos: hay': 'Akustische Quellgruppen: vorhanden', 'Estado acústico de cada grupo fuente': 'Akustischer Zustand je Quellgruppe', 'Física del MDT y del apantallamiento topográfico': 'Physik des DGM und der topografischen Abschirmung', 'AVISO: todos los receptores han quedado fuera del radio máximo. Revisa radio, layout o ubicación de receptores.': 'HINWEIS: Alle Rezeptoren liegen außerhalb des maximalen Radius. Prüfen Sie Radius, Layout oder Rezeptorstandorte.', 'todos los receptores han quedado fuera del radio máximo': 'Alle Rezeptoren liegen außerhalb des maximalen Radius', 'Acoustic source group': 'Akustische Quellgruppe', 'Edit the fixed LwA for this acoustic source group.': 'Bearbeiten Sie den festen LwA dieser akustischen Quellgruppe.', 'Explain the acoustic source-group table': 'Erklärung der akustischen Quellgruppentabelle', 'Directorio WAsP inválido o no existente': 'Ungültiger oder nicht vorhandener WAsP-Ordner', 'Lector WRG no disponible; no se puede dibujar el perímetro WRG.': 'WRG-Leser nicht verfügbar; die WRG-Umgrenzung kann nicht gezeichnet werden.', 'Validación avanzada no disponible; se usa flujo de compatibilidad:': 'Erweiterte Validierung nicht verfügbar; Kompatibilitätsablauf wird verwendet:', 'El límite acústico no es válido.': 'Der akustische Grenzwert ist ungültig.', 'No hay configuración acústica de modelos.': 'Es ist keine akustische Modellkonfiguration vorhanden.', 'Cálculo acústico completado.': 'Schallberechnung abgeschlossen.', 'Resultado acústico:': 'Schallergebnis:'}
+try:
+    register_language(LANG_DE, _RELEASE_DE_CLEANUP, _RELEASE_DE_CLEANUP, label="Deutsch")
+except Exception:
+    pass
+
+
+# Release-level German cleanup for legacy fragment replacements that produced
+# malformed compounds in long dynamic labels and help text.
+def _release_polish_de_maps() -> None:
+    def clean(value):
+        if not isinstance(value, str):
+            return value
+        replacements = (
+            ("Windturbinicht", "Windturbine"), ("Turbinicht", "Turbine"), ("turbinicht", "Turbine"),
+            ("Zeitzonicht", "Zeitzone"), ("Enginicht", "Engine"),
+            ("Ohnicht", "Ohne"), ("ohnicht", "ohne"),
+            ("Keinicht", "Keine"), ("keinicht", "keine"),
+            ("Einicht", "Eine"), ("einicht", "eine"),
+            ("Empfohlenicht", "Empfohlene"), ("eigenicht", "eigene"), ("internicht", "interne"),
+            ("Betroffenicht", "Betroffene"), ("ausgewogenicht", "ausgewogene"),
+            ("allgemeinicht", "allgemeine"), ("deinicht", "deine"), ("seinicht", "seine"),
+            ("verschiedenicht", "verschiedene"), ("Kernicht", "Kerne"), ("kleinicht", "kleine"),
+            ("fortgeschrittenicht", "fortgeschrittene"), ("Domänicht", "Domäne"),
+            ("geladenicht", "geladene"), ("zugewiesenicht", "zugewiesene"),
+            ("Kleinicht", "Kleine"), ("Sonnicht", "Sonne"),
+            ("gültigs", "gültige"), ("existieren nichtte", "existiert nicht"),
+        )
+        for old, new in replacements:
+            value = value.replace(old, new)
+        return value
+    try:
+        entry = _REGISTERED.get(LANG_DE)
+        if not entry:
+            return
+        entry["full"] = {k: clean(v) for k, v in (entry.get("full") or {}).items()}
+        entry["frag"] = {k: clean(v) for k, v in (entry.get("frag") or {}).items()}
+        _invalidate()
+    except Exception:
+        pass
+
+_RELEASE_DE_CLEANUP_MORE = {
+    "La capa de receptores seleccionada no tiene elementos.": "Der ausgewählte Rezeptor-Layer enthält keine Elemente.",
+    "La capa de turbinas seleccionada no tiene elementos.": "Der ausgewählte Turbinen-Layer enthält keine Elemente.",
+    "No hay coordenadas válidas en las capas/CSV proporcionados.": "In den angegebenen Layern/CSV-Dateien wurden keine gültigen Koordinaten gefunden.",
+    "No hay turbina cerca del clic.": "In der Nähe des Klicks gibt es keine Turbine.",
+    "No se encontraron turbinas en el layout.": "Im Layout wurden keine Turbinen gefunden.",
+    "No se han detectado capas de coordenadas por modelo. Genera primero el layout desde Energía.": "Es wurden keine Koordinaten-Layer je Modell erkannt. Erzeugen Sie zuerst das Layout aus dem Energiemodul.",
+    "No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.": "Es wurden keine Koordinaten-Layer je Modell erkannt. Importieren Sie hier ein CSV-Layout oder verwenden Sie ein aus dem Energiemodul erzeugtes Layout.",
+    "Vuelve al diálogo principal de Velantis Wind sin perder la edición.": "Zum Hauptdialog von Velantis Wind zurückkehren, ohne die Bearbeitung zu verlieren.",
+    "Vuelve al diálogo principal sin salir del modo interactivo.": "Zum Hauptdialog zurückkehren, ohne den interaktiven Modus zu verlassen.",
+    "WRG sin puntos (sólo cabecera)": "WRG ohne Punkte (nur Kopfzeile)",
+    "sin valor": "ohne Wert", "sin nombre": "ohne Namen", "sin puntos válidos": "ohne gültige Punkte",
+    "ningún archivo": "keine Datei", "ningún archivo TI": "keine TI-Datei", "Sin plantilla": "Keine Vorlage",
+    "No help available for this item.": "Für dieses Element ist keine Hilfe verfügbar.",
+    "Aucune aide disponible pour cet élément.": "Für dieses Element ist keine Hilfe verfügbar.",
+    "No hay ayuda disponible para este elemento.": "Für dieses Element ist keine Hilfe verfügbar.",
+}
+try:
+    register_language(LANG_DE, _RELEASE_DE_CLEANUP_MORE, _RELEASE_DE_CLEANUP_MORE, label="Deutsch")
+    _release_polish_de_maps()
+except Exception:
+    pass
+
+_RELEASE_DE_CLEANUP_DYNAMIC = {': modo curva activo pero sin CSV de curva acústica.': ': Kurvenmodus aktiv, aber ohne CSV für die Schallkurve.', 'Calculando desglose por modelo / cluster…': 'Aufschlüsselung nach Modell / Cluster wird berechnet…', 'Calculando receptores y resumen…': 'Rezeptoren und Zusammenfassung werden berechnet…', 'Calculando ruido en segundo plano': 'Schallberechnung im Hintergrund', 'Calculando ruido en segundo plano…': 'Schallberechnung im Hintergrund…', 'Calculando ruido en segundo plano… 0%': 'Schallberechnung im Hintergrund… 0%', 'Calculando ruido y raster…': 'Schall und Raster werden berechnet…', 'Calculated receivers:': 'Berechnete Rezeptoren:', 'NO calcula bloqueo': 'Berechnet kein Blockage', 'No hay configuración de modelos disponible.\n\nRellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar.\n\nTragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay configuración de modelos disponible.  Rellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar. Tragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay wake deficit model disponible: ni BG ni NoWakeDeficit.': 'Kein Wake-Deficit-Modell verfügbar: weder BG noch NoWakeDeficit.'}
+try:
+    register_language(LANG_DE, _RELEASE_DE_CLEANUP_DYNAMIC, _RELEASE_DE_CLEANUP_DYNAMIC, label="Deutsch")
+    _release_polish_de_maps()
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
+# Release polish 0.1.15e: fixed three-module Hub layout.
+# The Hub has a stable geometry in ES/EN/FR/DE and only exposes public modules.
+# ---------------------------------------------------------------------------
+_I18N_HUB_3MODULES_TO_EN = {
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow Flicker.",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energy: ready · Noise: ready · Shadow flicker: ready",
+}
+_I18N_HUB_3MODULES_TO_FR = {
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Sélectionnez le module de travail. Les modules disponibles sont : Énergie (AEP et sillages), Bruit, Ombres et scintillement.",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres : opérationnel",
+}
+_I18N_HUB_3MODULES_TO_DE = {
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energie: einsatzbereit · Schall: einsatzbereit · Schattenwurf: einsatzbereit",
+}
+try:
+    register_language(LANG_EN, _I18N_HUB_3MODULES_TO_EN, _I18N_HUB_3MODULES_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_HUB_3MODULES_TO_FR, _I18N_HUB_3MODULES_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_HUB_3MODULES_TO_DE, _I18N_HUB_3MODULES_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Release polish 0.1.15f: stronger commercial CTA for layout + wake steering.
+# ---------------------------------------------------------------------------
+_RELEASE_LAYOUT_CTA_TO_EN = {
+    "Optimización avanzada de layout y wake steering para capturar más energía": "Advanced layout and wake-steering optimization to capture more energy",
+    "⚡ Optimizar layout": "⚡ Optimize layout",
+    "Ver propuesta comercial, contacto y white paper de optimización.": "View the commercial proposal, contact details and optimization white paper.",
+    "Motor avanzado de layout + wake steering": "Advanced layout + wake steering engine",
+    "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind can explore layouts from wind resource, constraints and project targets, and co-optimize wake steering together with the layout to reduce wake losses, lift net production and improve asset returns. Built to compare defensible alternatives and speed up design decisions.",
+    "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com": "Request a case review: info@velantiswind.com · White paper at velantiswind.com",
+}
+_RELEASE_LAYOUT_CTA_TO_FR = {
+    "Optimización avanzada de layout y wake steering para capturar más energía": "Optimisation avancée de l’implantation et du pilotage des sillages pour capter plus d’énergie",
+    "⚡ Optimizar layout": "⚡ Optimiser l’implantation",
+    "Ver propuesta comercial, contacto y white paper de optimización.": "Voir la proposition commerciale, le contact et le livre blanc d’optimisation.",
+    "Motor avanzado de layout + wake steering": "Moteur avancé implantation + pilotage des sillages",
+    "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind permet d’explorer des implantations à partir de la ressource éolienne, des contraintes et des objectifs du projet, et de cooptimiser le pilotage des sillages avec l’implantation afin de réduire les pertes de sillage, augmenter la production nette et améliorer le rendement de l’actif. Conçu pour comparer des variantes défendables et accélérer les décisions de conception.",
+    "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com": "Demander une revue du cas : info@velantiswind.com · Livre blanc sur velantiswind.com",
+}
+_RELEASE_LAYOUT_CTA_TO_DE = {
+    "Optimización avanzada de layout y wake steering para capturar más energía": "Erweiterte Layout- und Wake-Steering-Optimierung für mehr Energieertrag",
+    "⚡ Optimizar layout": "⚡ Layout optimieren",
+    "Ver propuesta comercial, contacto y white paper de optimización.": "Kommerzielle Kurzinfo, Kontakt und Optimierungs-Whitepaper anzeigen.",
+    "Motor avanzado de layout + wake steering": "Erweiterter Motor für Layout + Wake Steering",
+    "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind kann Layouts aus Windressource, Einschränkungen und Projektzielen entwickeln und Wake Steering gemeinsam mit dem Layout co-optimieren, um Nachlaufverluste zu reduzieren, die Nettoproduktion zu erhöhen und die Rendite des Assets zu verbessern. Entwickelt, um belastbare Alternativen zu vergleichen und Designentscheidungen zu beschleunigen.",
+    "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com": "Fallprüfung anfragen: info@velantiswind.com · Whitepaper auf velantiswind.com",
+}
+try:
+    register_language(LANG_EN, _RELEASE_LAYOUT_CTA_TO_EN, _RELEASE_LAYOUT_CTA_TO_EN, label="English")
+    register_language(LANG_FR, _RELEASE_LAYOUT_CTA_TO_FR, _RELEASE_LAYOUT_CTA_TO_FR, label="Français")
+    register_language(LANG_DE, _RELEASE_LAYOUT_CTA_TO_DE, _RELEASE_LAYOUT_CTA_TO_DE, label="Deutsch")
+except Exception:
+    pass

@@ -2,7 +2,7 @@
 """
 Página del módulo de Ruido.
 
-Iteración actual:
+Estado funcional:
 - Conexión al estado real del proyecto (layout, modelos WT, CRS, recurso).
 - Tabla de configuración por grupo fuente acústico.
 - Selección de receptores y MDT/DSM.
@@ -23,6 +23,8 @@ from qgis.PyQt import QtCore, QtWidgets, QtGui
 from qgis.PyQt.QtGui import QGuiApplication
 
 from .noise_core.noise_compute import compute_noise, load_acoustic_curve_csv, evaluate_acoustic_curve
+from .noise_core.noise_common import OCTAVE_BANDS, A_WEIGHTING, apply_a_weighting, global_lwa_to_octave_spectrum, db_sum
+from .noise_core.noise_spectrum import load_spectrum_from_csv
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from .noise_results_dialog import NoiseResultsDialog
 from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish, current_language
@@ -141,6 +143,106 @@ def _de_cleanup_noise_status(text: str) -> str:
     for a,b in repl:
         s=s.replace(a,b)
     return s
+
+class SpectrumEditorDialog(QtWidgets.QDialog):
+    """Manual editor for an OEM octave-band spectrum (63 Hz – 8 kHz).
+
+    The user types the sound power level per band. The dialog shows the
+    resulting A-weighted total live, so the values can be checked against
+    the manufacturer datasheet before accepting.
+    """
+
+    def __init__(self, parent=None, group_name: str = "", group_lwa: float = 105.0, initial: Optional[Dict[int, float]] = None):
+        super().__init__(parent)
+        self.setWindowTitle(_tr("Ruido · Espectro OEM por bandas de octava"))
+        self.setModal(True)
+        self._group_lwa = float(group_lwa)
+        lay = QtWidgets.QVBoxLayout(self)
+
+        title = QtWidgets.QLabel(f"<b>{_tr('Grupo fuente')}:</b> {group_name}")
+        lay.addWidget(title)
+        info = QtWidgets.QLabel(_tr(
+            "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). "
+            "Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo."
+        ))
+        info.setWordWrap(True)
+        lay.addWidget(info)
+
+        grid = QtWidgets.QGridLayout()
+        grid.addWidget(QtWidgets.QLabel(_tr("Banda [Hz]")), 0, 0)
+        grid.addWidget(QtWidgets.QLabel("Lw [dB]"), 1, 0)
+        self._spins: Dict[int, QtWidgets.QDoubleSpinBox] = {}
+        defaults = initial or global_lwa_to_octave_spectrum(self._group_lwa)
+        for col, freq in enumerate(OCTAVE_BANDS, start=1):
+            lbl = QtWidgets.QLabel(str(freq))
+            lbl.setAlignment(QtCore.Qt.AlignCenter)
+            grid.addWidget(lbl, 0, col)
+            sp = QtWidgets.QDoubleSpinBox(self)
+            sp.setDecimals(1)
+            sp.setRange(-50.0, 200.0)
+            sp.setSingleStep(0.5)
+            sp.setValue(float(defaults.get(freq, 0.0)))
+            sp.valueChanged.connect(self._update_lwa_label)
+            grid.addWidget(sp, 1, col)
+            self._spins[freq] = sp
+        lay.addLayout(grid)
+
+        self.chk_weighted = QtWidgets.QCheckBox(_tr("Los valores introducidos están ponderados A (dB(A) por banda)"))
+        self.chk_weighted.setToolTip(_tr("Si el fabricante da los niveles por banda ya en dB(A), marca esta casilla: se convertirán internamente a Lw por banda (Lw,b = LwA,b − A_b) para que el motor no aplique la ponderación A dos veces."))
+        self.chk_weighted.toggled.connect(self._update_lwa_label)
+        lay.addWidget(self.chk_weighted)
+
+        self.lbl_lwa = QtWidgets.QLabel("")
+        self.lbl_lwa.setStyleSheet("font-weight:bold;")
+        lay.addWidget(self.lbl_lwa)
+
+        btn_template = QtWidgets.QPushButton(_tr("Precargar plantilla ajustada al LwA del grupo"))
+        btn_template.clicked.connect(self._load_template)
+        lay.addWidget(btn_template)
+
+        btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, parent=self)
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        lay.addWidget(btns)
+        self._update_lwa_label()
+
+    def _load_template(self):
+        tpl = global_lwa_to_octave_spectrum(self._group_lwa)
+        for freq, sp in self._spins.items():
+            sp.blockSignals(True)
+            sp.setValue(float(tpl.get(freq, 0.0)))
+            sp.blockSignals(False)
+        self._update_lwa_label()
+
+    def _update_lwa_label(self, *_args):
+        raw = {int(freq): float(sp.value()) for freq, sp in self._spins.items()}
+        try:
+            weighted = bool(getattr(self, 'chk_weighted', None) and self.chk_weighted.isChecked())
+            if weighted:
+                # Typed values are already dB(A) per band: the total is their
+                # direct energy sum, and the conversion to Lw happens in values().
+                lwa = float(db_sum(list(raw.values())))
+                self.lbl_lwa.setText(f"LwA(A) = {lwa:.2f} dB(A)")
+                return
+            mx = max(raw.values())
+            mn = min(raw.values())
+            is_relative = (mx < 20.0) or (mn < 0.0 and mx < 50.0)
+            if is_relative:
+                self.lbl_lwa.setText(_tr("Forma relativa detectada · se normalizará al LwA del grupo") + f" ({self._group_lwa:.1f} dB(A))")
+            else:
+                lwa = float(apply_a_weighting(raw))
+                self.lbl_lwa.setText(f"LwA(A) = {lwa:.2f} dB(A)")
+        except Exception:
+            self.lbl_lwa.setText("LwA(A) = -")
+
+    def values(self) -> Dict[int, float]:
+        raw = {int(freq): float(sp.value()) for freq, sp in self._spins.items()}
+        if bool(getattr(self, 'chk_weighted', None) and self.chk_weighted.isChecked()):
+            # Store unweighted Lw,b so the whole downstream pipeline stays
+            # uniform and the engine's A-weighting is applied exactly once.
+            return {f: v - float(A_WEIGHTING.get(f, 0.0)) for f, v in raw.items()}
+        return raw
+
 
 class NoisePage(QtWidgets.QWidget):
     def __init__(self, parent=None, on_back: Optional[Callable[[], None]] = None):
@@ -1049,6 +1151,37 @@ class NoisePage(QtWidgets.QWidget):
         curve_btns.addStretch(1)
         em_lay.addLayout(curve_btns)
 
+        spec_btns = QtWidgets.QHBoxLayout()
+        self.btn_spectrum_load = QtWidgets.QPushButton("Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…")
+        self.btn_spectrum_load.clicked.connect(self._import_spectrum_for_selected_model)
+        self.btn_spectrum_load.setToolTip(_tr("CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.") + " " + _tr("También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A."))
+        self.btn_spectrum_edit = QtWidgets.QPushButton("Editar espectro del grupo seleccionado…")
+        self.btn_spectrum_edit.clicked.connect(self._edit_spectrum_for_selected_model)
+        self.btn_spectrum_clear = QtWidgets.QPushButton("Limpiar espectro del grupo seleccionado")
+        self.btn_spectrum_clear.clicked.connect(self._clear_spectrum_for_selected_model)
+        spec_btns.addWidget(self.btn_spectrum_load)
+        spec_btns.addWidget(self.btn_spectrum_edit)
+        spec_btns.addWidget(self.btn_spectrum_clear)
+        spec_btns.addStretch(1)
+        em_lay.addLayout(spec_btns)
+
+        self.chk_spectrum_normalize = QtWidgets.QCheckBox("Normalizar el espectro al LwA del grupo (usar solo la forma)")
+        self.chk_spectrum_normalize.setChecked(bool(self._qsettings.value("noise/spectrum_normalize", False, type=bool)))
+        self.chk_spectrum_normalize.toggled.connect(self._on_spectrum_normalize_toggled)
+        self.chk_spectrum_normalize.setToolTip(_tr(
+            "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). "
+            "Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma."
+        ))
+        em_lay.addWidget(self.chk_spectrum_normalize)
+
+        spec_help = QtWidgets.QLabel(
+            "También puedes importar el espectro OEM por bandas de octava del fabricante (CSV) o introducirlo a mano con el editor; "
+            "el motor ISO propagará cada banda de ese espectro y el ruido total se calculará a partir de él."
+        )
+        spec_help.setWordWrap(True)
+        spec_help.setObjectName("noiseMinor")
+        em_lay.addWidget(spec_help)
+
         help_lbl = QtWidgets.QLabel(
             "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. "
             "Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso."
@@ -1521,6 +1654,9 @@ class NoisePage(QtWidgets.QWidget):
                 note = (note + ' · ' + self._curve_preview_text(curve_path)).strip(' ·')
             elif acoustic_mode == 'curve':
                 note = (note + ' · no curve -> fixed LwA fallback').strip(' ·')
+            spec_note = self._spectrum_preview_text(cfg_key, group_lwa=lwa)
+            if spec_note:
+                note = (note + ' · ' + spec_note).strip(' ·')
             park_name = str(info.get("park_name") or "")
             model_name = str(info.get("model_name") or name)
             items = [
@@ -1836,6 +1972,162 @@ class NoisePage(QtWidgets.QWidget):
         self._populate_models_table()
         self._check_configuration()
 
+    # ------------------------------------------------------------------
+    # OEM octave-band spectrum per source group (UI input)
+    # ------------------------------------------------------------------
+    def _load_spectrum_settings(self) -> Dict[str, str]:
+        raw = self._qsettings.value("noise/source_group_spectrum_json", "", type=str)
+        try:
+            obj = json.loads(raw) if raw else {}
+        except Exception:
+            obj = {}
+        return {str(k): str(v) for k, v in obj.items() if str(v).strip()}
+
+    def _save_spectrum_settings(self, data: Dict[str, str]):
+        self._qsettings.setValue("noise/source_group_spectrum_json", json.dumps(data, ensure_ascii=False))
+
+    def _load_spectrum_values_settings(self) -> Dict[str, Dict[int, float]]:
+        raw = self._qsettings.value("noise/source_group_spectrum_values_json", "", type=str)
+        try:
+            obj = json.loads(raw) if raw else {}
+        except Exception:
+            obj = {}
+        out: Dict[str, Dict[int, float]] = {}
+        for k, spec in obj.items():
+            try:
+                vals = {int(float(f)): float(v) for f, v in dict(spec).items()}
+                if vals:
+                    out[str(k)] = vals
+            except Exception:
+                continue
+        return out
+
+    def _save_spectrum_values_settings(self, data: Dict[str, Dict[int, float]]):
+        self._qsettings.setValue("noise/source_group_spectrum_values_json", json.dumps(data, ensure_ascii=False))
+
+    def _on_spectrum_normalize_toggled(self, checked: bool):
+        self._qsettings.setValue("noise/spectrum_normalize", bool(checked))
+        self._populate_models_table()
+
+    def _selected_model_cfg_key(self) -> Optional[str]:
+        row = self._selected_model_row()
+        if row < 0:
+            return None
+        name_item = self.tbl_models.item(row, 0)
+        if not name_item:
+            return None
+        model_name = name_item.text().strip()
+        return str((self._model_rows[row].get("source_group_key") or self._model_rows[row].get("layer_id") or model_name))
+
+    def _spectrum_preview_text(self, cfg_key: str, group_lwa: float = 105.0) -> str:
+        values = self._load_spectrum_values_settings().get(cfg_key)
+        if values:
+            try:
+                mx = max(values.values())
+                mn = min(values.values())
+                if (mx < 20.0) or (mn < 0.0 and mx < 50.0):
+                    return _tr("espectro manual (forma relativa)")
+                lwa = float(apply_a_weighting(values))
+                if bool(getattr(self, 'chk_spectrum_normalize', None) and self.chk_spectrum_normalize.isChecked()):
+                    return _tr("espectro manual") + " · " + _tr("normalizado a LwA")
+                return _tr("espectro manual") + f" · LwA(A)={lwa:.1f} dB(A)"
+            except Exception:
+                return _tr("espectro manual")
+        path = self._load_spectrum_settings().get(cfg_key, "")
+        if path:
+            try:
+                spectrum, meta = load_spectrum_from_csv(path, lwa_global=float(group_lwa))
+                if str(meta.get("format")) == "relative":
+                    return _tr("espectro OEM") + f": {os.path.basename(path)} · " + _tr("forma relativa")
+                lwa = float(apply_a_weighting(spectrum))
+                if bool(getattr(self, 'chk_spectrum_normalize', None) and self.chk_spectrum_normalize.isChecked()):
+                    return _tr("espectro OEM") + f": {os.path.basename(path)} · " + _tr("normalizado a LwA")
+                return _tr("espectro OEM") + f": {os.path.basename(path)} · LwA(A)={lwa:.1f} dB(A)"
+            except Exception as e:
+                return _tr("espectro OEM") + f": {os.path.basename(path)} · " + _tr("inválido") + f" ({e})"
+        return ""
+
+    def _import_spectrum_for_selected_model(self):
+        cfg_key = self._selected_model_cfg_key()
+        if not cfg_key:
+            return
+        start = self._load_spectrum_settings().get(cfg_key, "")
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            _tr("Espectro OEM por bandas de octava"),
+            start,
+            "CSV/TXT (*.csv *.txt);;Todos (*.*)"
+        )
+        if not path:
+            return
+        row = self._selected_model_row()
+        try:
+            spectrum, meta = load_spectrum_from_csv(path, lwa_global=float(self._model_lwa_value(row)))
+            lwa_spec = float(apply_a_weighting(spectrum))
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, _tr("Ruido · Espectro OEM"), _tr("No se pudo leer el espectro:") + f"\n{e}")
+            return
+        data = self._load_spectrum_settings()
+        data[cfg_key] = path
+        self._save_spectrum_settings(data)
+        # Manual values take priority over the CSV; loading a CSV clears them.
+        vals = self._load_spectrum_values_settings()
+        if cfg_key in vals:
+            del vals[cfg_key]
+            self._save_spectrum_values_settings(vals)
+        fmt = str(meta.get("format") or "")
+        msg = _tr("Espectro cargado correctamente.") + f"\n{os.path.basename(path)}\n" + _tr("Formato") + f": {fmt} · LwA(A)={lwa_spec:.2f} dB(A)"
+        if meta.get("weighted_input"):
+            msg += "\n" + _tr("Columna ponderada A detectada; convertida internamente a Lw por banda para evitar doble ponderación.")
+        normalize_on = bool(getattr(self, 'chk_spectrum_normalize', None) and self.chk_spectrum_normalize.isChecked())
+        if fmt == "absolute" and not normalize_on:
+            msg += "\n" + _tr("El LwA operativo del grupo se tomará de este espectro para que el ruido total se calcule a partir de él.")
+        elif fmt == "absolute" and normalize_on:
+            msg += "\n" + _tr("Atención: la normalización está activada; el total del fabricante será sustituido por el LwA del grupo.")
+        QtWidgets.QMessageBox.information(self, _tr("Ruido · Espectro OEM"), msg)
+        self._populate_models_table()
+        self._check_configuration()
+
+    def _edit_spectrum_for_selected_model(self):
+        cfg_key = self._selected_model_cfg_key()
+        if not cfg_key:
+            return
+        row = self._selected_model_row()
+        name_item = self.tbl_models.item(row, 0)
+        group_name = name_item.text().strip() if name_item else cfg_key
+        group_lwa = float(self._model_lwa_value(row))
+        initial = self._load_spectrum_values_settings().get(cfg_key)
+        if initial is None:
+            csv_path = self._load_spectrum_settings().get(cfg_key, "")
+            if csv_path:
+                try:
+                    initial, _meta = load_spectrum_from_csv(csv_path, lwa_global=group_lwa)
+                except Exception:
+                    initial = None
+        dlg = SpectrumEditorDialog(self, group_name=group_name, group_lwa=group_lwa, initial=initial)
+        if dlg.exec_() != QtWidgets.QDialog.Accepted:
+            return
+        vals = self._load_spectrum_values_settings()
+        vals[cfg_key] = dlg.values()
+        self._save_spectrum_values_settings(vals)
+        self._populate_models_table()
+        self._check_configuration()
+
+    def _clear_spectrum_for_selected_model(self):
+        cfg_key = self._selected_model_cfg_key()
+        if not cfg_key:
+            return
+        data = self._load_spectrum_settings()
+        if cfg_key in data:
+            del data[cfg_key]
+            self._save_spectrum_settings(data)
+        vals = self._load_spectrum_values_settings()
+        if cfg_key in vals:
+            del vals[cfg_key]
+            self._save_spectrum_values_settings(vals)
+        self._populate_models_table()
+        self._check_configuration()
+
     def _current_acoustic_mode(self) -> str:
         """Return the acoustic mode robustly.
 
@@ -1891,6 +2183,8 @@ class NoisePage(QtWidgets.QWidget):
     def _collect_model_cfg(self) -> Dict[str, Dict[str, float]]:
         cfg: Dict[str, Dict[str, float]] = {}
         curve_settings = self._load_curve_settings()
+        spectrum_settings = self._load_spectrum_settings()
+        spectrum_values_settings = self._load_spectrum_values_settings()
         acoustic_mode = self._current_acoustic_mode()
         try:
             txt = (self.cb_acoustic_mode.currentText() or '').strip().lower()
@@ -1922,6 +2216,13 @@ class NoisePage(QtWidgets.QWidget):
             curve_path = str(curve_settings.get(cfg_key, '') or curve_settings.get(name, '') or '')
             if curve_path:
                 item['curve_path'] = curve_path
+            spectrum_values = spectrum_values_settings.get(cfg_key) or spectrum_values_settings.get(name)
+            if spectrum_values:
+                item['spectrum_values'] = {int(k): float(v) for k, v in spectrum_values.items()}
+            spectrum_path = str(spectrum_settings.get(cfg_key, '') or spectrum_settings.get(name, '') or '')
+            if spectrum_path:
+                item['spectrum_csv_path'] = spectrum_path
+            item['spectrum_normalize_to_lwa'] = bool(bool(getattr(self, 'chk_spectrum_normalize', None) and self.chk_spectrum_normalize.isChecked()))
             hh = info.get("hub_height")
             diam = info.get("diameter")
             if hh is not None:

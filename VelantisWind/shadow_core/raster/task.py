@@ -6,6 +6,7 @@ This module keeps the heavy raster task outside shadow_page.py.
 from __future__ import annotations
 
 from ..debug import debug_print
+from ..i18n_local import tr4 as _ml
 
 from qgis.core import QgsTask, QgsRasterLayer, QgsCoordinateTransform, QgsProject, QgsPointXY
 
@@ -166,7 +167,12 @@ class ShadowRasterTask(QgsTask):
                 from ..solar_geometry import get_sun_positions_vectorized
                 debug_print("[Shadow Raster Task] ✅ Import get_sun_positions_vectorized OK")
             except ImportError as e:
-                self.exception = f"Erreur lors de l’import des fonctions vectorisées : {e}"
+                self.exception = _ml(
+                    f"Error al importar las funciones vectorizadas: {e}",
+                    f"Error importing vectorized functions: {e}",
+                    f"Erreur lors de l’import des fonctions vectorisées : {e}",
+                    f"Fehler beim Import der vektorisierten Funktionen: {e}",
+                )
                 debug_print(f"[Shadow Raster Task] ❌ ImportError: {e}")
                 return False
 

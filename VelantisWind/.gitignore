@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local build / package outputs
+build/
+dist/
+*.egg-info/
+*.zip
+
+# QGIS local outputs / temporary exports
+*.qgz~
+*.gpkg-shm
+*.gpkg-wal

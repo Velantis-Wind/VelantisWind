@@ -17,31 +17,37 @@ from qgis.core import (
 )
 
 from ..shadow_calculator import ShadowFlickerResult
+from ..i18n_local import tr4 as _ml, lang_code, yes_no, hours_per_year_unit
 
 
-def _is_de() -> bool:
-    try:
-        from ...i18n import current_language  # type: ignore
-    except Exception:
-        try:
-            from ..i18n import current_language  # type: ignore
-        except Exception:
-            try:
-                from i18n import current_language  # type: ignore
-            except Exception:
-                return False
-    try:
-        return str(current_language()).lower().startswith("de")
-    except Exception:
-        return False
+def _result_layer_name() -> str:
+    prefix = {
+        "es": "Sombras_parpadeo",
+        "en": "Shadow_flicker",
+        "fr": "Ombres_scintillement",
+        "de": "Schattenwurf",
+    }.get(lang_code(), "Sombras_parpadeo")
+    return f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
-def create_results_layer_for_page(self, results: List[ShadowFlickerResult], receiver_layer: QgsVectorLayer, 
-                          turbines: List[dict], calculator):
+def _category(hours: float):
+    """Return localized category, severity and 30 h/year exceedance flag."""
+    if hours >= 30:
+        return _ml("CRÍTICO", "CRITICAL", "CRITIQUE", "KRITISCH"), 4, True
+    if hours >= 20:
+        return _ml("ALTO", "HIGH", "ÉLEVÉ", "HOCH"), 3, False
+    if hours >= 10:
+        return _ml("MEDIO", "MEDIUM", "MOYEN", "MITTEL"), 2, False
+    if hours >= 5:
+        return _ml("BAJO", "LOW", "FAIBLE", "NIEDRIG"), 1, False
+    return _ml("MUY BAJO", "VERY LOW", "TRÈS FAIBLE", "SEHR NIEDRIG"), 0, False
+
+
+def create_results_layer_for_page(self, results: List[ShadowFlickerResult], receiver_layer: QgsVectorLayer,
+                                  turbines: List[dict], calculator):
     """Create shadow flicker output layer."""
     prj = QgsProject.instance()
 
-    # Create fields
     fields = QgsFields()
     fields.append(QgsField("receiver", QtCore.QVariant.String))
     fields.append(QgsField("hours_year", QtCore.QVariant.Double))
@@ -51,26 +57,22 @@ def create_results_layer_for_page(self, results: List[ShadowFlickerResult], rece
     fields.append(QgsField("max_min_day", QtCore.QVariant.Int))
     fields.append(QgsField("exceeds_30h", QtCore.QVariant.String))
     fields.append(QgsField("exceeds_30m", QtCore.QVariant.String))
-    fields.append(QgsField("category", QtCore.QVariant.String))  # Visual category
-    fields.append(QgsField("severity", QtCore.QVariant.Int))  # 0-4 for sorting
+    fields.append(QgsField("category", QtCore.QVariant.String))
+    fields.append(QgsField("severity", QtCore.QVariant.Int))
 
-    # Monthly fields (monthly fields)
-    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    for i, month_name in enumerate(month_names, start=1):
+    month_names_short = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    for month_name in month_names_short:
         fields.append(QgsField(f"h_{month_name}", QtCore.QVariant.Double))
 
-    # Create layer
-    layer_name = f"Schattenwurf_{datetime.now().strftime('%Y%m%d_%H%M%S')}" if _is_de() else f"Ombres_scintillement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     result_layer = QgsVectorLayer(
         f"Point?crs={receiver_layer.crs().authid()}",
-        layer_name,
-        "memory"
+        _result_layer_name(),
+        "memory",
     )
     result_layer.dataProvider().addAttributes(fields)
     result_layer.updateFields()
     result_layer.setCustomProperty("velantis/shadow_output", True)
 
-    # Add features
     features = []
     for result in results:
         feat = QgsFeature(result_layer.fields())
@@ -82,125 +84,76 @@ def create_results_layer_for_page(self, results: List[ShadowFlickerResult], rece
         feat.setAttribute("days_affected", result.days_affected)
         feat.setAttribute("max_min_day", result.max_minutes_per_day)
 
-        # Classify by severity
-        h = result.hours_per_year_astronomical
-        if h >= 30:
-            category = "CRITIQUE"
-            severity = 4
-            exceeds_30h = "Oui"
-        elif h >= 20:
-            category = "ÉLEVÉ"
-            severity = 3
-            exceeds_30h = "Non"
-        elif h >= 10:
-            category = "MOYEN"
-            severity = 2
-            exceeds_30h = "Non"
-        elif h >= 5:
-            category = "FAIBLE"
-            severity = 1
-            exceeds_30h = "Non"
-        else:
-            category = "TRÈS FAIBLE"
-            severity = 0
-            exceeds_30h = "Non"
-
-        feat.setAttribute("exceeds_30h", exceeds_30h)
-        feat.setAttribute("exceeds_30m", "Oui" if result.max_minutes_per_day > 30 else "Non")
+        category, severity, exceeds_30h = _category(result.hours_per_year_astronomical)
+        feat.setAttribute("exceeds_30h", yes_no(exceeds_30h))
+        feat.setAttribute("exceeds_30m", yes_no(result.max_minutes_per_day > 30))
         feat.setAttribute("category", category)
         feat.setAttribute("severity", severity)
 
-        # Monthly breakdown (monthly fields)
         monthly = result.monthly_breakdown()
-        month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        for month_num, month_name in enumerate(month_names, start=1):
+        for month_num, month_name in enumerate(month_names_short, start=1):
             feat.setAttribute(f"h_{month_name}", monthly.get(month_num, 0.0))
 
         features.append(feat)
 
     result_layer.dataProvider().addFeatures(features)
     result_layer.updateExtents()
-
-    # Add to project
     prj.addMapLayer(result_layer)
 
-    # Apply enhanced symbology
     self._apply_result_symbology(result_layer)
-
-    # Apply labels
     self._apply_labels(result_layer)
-
-    # FINAL SUMMARY (summary)
     self._show_calculation_summary(results, turbines, calculator)
+
 
 def apply_result_symbology_for_page(self, layer: QgsVectorLayer):
     """Apply enhanced symbology to the output layer."""
-    from qgis.core import QgsGraduatedSymbolRenderer, QgsRendererRange, QgsSymbol, QgsStyle
-
-    # Graduated classification by hours_year
     field_name = "hours_year"
-
-    # Shadow ranges with more distinctive colors
+    unit = hours_per_year_unit()
     ranges = [
-        (0, 5, "TRÈS FAIBLE (< 5 h/an)", "#90EE90"),      # Light green
-        (5, 10, "FAIBLE (5-10 h/an)", "#ADFF2F"),        # Lime green
-        (10, 20, "MOYEN (10-20 h/an)", "#FFFF00"),     # Yellow
-        (20, 30, "ÉLEVÉ (20-30 h/an)", "#FFA500"),      # Orange
-        (30, 999, "CRITIQUE (> 30 h/an)", "#FF0000"),   # Red
+        (0, 5, _ml(f"MUY BAJO (< 5 {unit})", f"VERY LOW (< 5 {unit})", f"TRÈS FAIBLE (< 5 {unit})", f"SEHR NIEDRIG (< 5 {unit})"), "#90EE90"),
+        (5, 10, _ml(f"BAJO (5-10 {unit})", f"LOW (5-10 {unit})", f"FAIBLE (5-10 {unit})", f"NIEDRIG (5-10 {unit})"), "#ADFF2F"),
+        (10, 20, _ml(f"MEDIO (10-20 {unit})", f"MEDIUM (10-20 {unit})", f"MOYEN (10-20 {unit})", f"MITTEL (10-20 {unit})"), "#FFFF00"),
+        (20, 30, _ml(f"ALTO (20-30 {unit})", f"HIGH (20-30 {unit})", f"ÉLEVÉ (20-30 {unit})", f"HOCH (20-30 {unit})"), "#FFA500"),
+        (30, 999, _ml(f"CRÍTICO (> 30 {unit})", f"CRITICAL (> 30 {unit})", f"CRITIQUE (> 30 {unit})", f"KRITISCH (> 30 {unit})"), "#FF0000"),
     ]
 
     range_list = []
     for min_val, max_val, label, color in ranges:
         symbol = QgsSymbol.defaultSymbol(layer.geometryType())
         symbol.setColor(QtGui.QColor(color))
-        symbol.setSize(6.0)  # Larger for better visibility
-
-        # Add black outline for better contrast
+        symbol.setSize(6.0)
         symbol.symbolLayer(0).setStrokeColor(QtGui.QColor("#000000"))
         symbol.symbolLayer(0).setStrokeWidth(0.5)
+        range_list.append(QgsRendererRange(min_val, max_val, symbol, label))
 
-        range_obj = QgsRendererRange(min_val, max_val, symbol, label)
-        range_list.append(range_obj)
-
-    # Create and apply renderer
     renderer = QgsGraduatedSymbolRenderer(field_name, range_list)
     renderer.setClassAttribute(field_name)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
 
+
 def apply_labels_for_page(self, layer: QgsVectorLayer):
     """Apply labels to the output layer."""
-    from qgis.core import QgsPalLayerSettings, QgsTextFormat, QgsTextBufferSettings, QgsVectorLayerSimpleLabeling
-
-    # Configure text format
     text_format = QgsTextFormat()
     text_format.setFont(QtGui.QFont("Arial", 9, QtGui.QFont.Bold))
     text_format.setSize(9)
     text_format.setColor(QtGui.QColor("#000000"))
 
-    # Add white buffer/halo for readability
     buffer_settings = QgsTextBufferSettings()
     buffer_settings.setEnabled(True)
     buffer_settings.setSize(1.0)
     buffer_settings.setColor(QtGui.QColor("#FFFFFF"))
     text_format.setBuffer(buffer_settings)
 
-    # Configure labels
     label_settings = QgsPalLayerSettings()
     label_settings.setFormat(text_format)
-
-    # Display: "Récepteur : XX.X h/an"
-    label_settings.fieldName = "concat(receiver, ': ', round(hours_year, 1), ' h/an')"
+    unit = hours_per_year_unit()
+    label_settings.fieldName = f"concat(receiver, ': ', round(hours_year, 1), ' {unit}')"
     label_settings.isExpression = True
-
-    # Position above point - use correct enum for QGIS 3.x
-    from qgis.core import QgsPalLayerSettings
     label_settings.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
     label_settings.dist = 2.0
 
-    # Apply
     labeling = QgsVectorLayerSimpleLabeling(label_settings)
     layer.setLabeling(labeling)
     layer.setLabelsEnabled(True)
     layer.triggerRepaint()
-

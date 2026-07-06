@@ -2386,7 +2386,7 @@ TO_DE = {'\n                <b>Fast engine</b><br><br>\n                Uses a s
  'Dirección': 'Richtung',
  'Dirección [°]': 'Richtung [°]',
  'Directividad de fuente Dc asumida 0 dB.': 'Directividad de Quelle Dc asumida 0 dB.',
- 'Directorio WAsP inválido o no existente': 'Directorio WAsP inválido o existieren nichtte',
+ 'Directorio WAsP inválido o no existente': 'Directorio WAsP inválido o existiert nicht',
  'Dispersión geométrica': 'Geometrische Ausbreitung',
  'Disponibilidad': 'Verfügbarkeit',
  'Disponibilidad de turbina:': 'Disponibilidad de Turbine:',
@@ -2830,6 +2830,35 @@ TO_DE = {'\n                <b>Fast engine</b><br><br>\n                Uses a s
  'Impacto TI/turbulencia': 'TI-/Turbulenzeinfluss',
  'Impacto TI/turbulencia:': 'TI-/Turbulenzeinfluss:',
  'Importar curva acústica para el grupo fuente seleccionado…': 'Schallkurve für die ausgewählte Quellgruppe importieren…',
+ "Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…": "OEM-Spektrum (Oktavband-CSV) für die ausgewählte Quellgruppe importieren…",
+ "Los valores introducidos están ponderados A (dB(A) por banda)": "Die eingegebenen Werte sind A-bewertet (dB(A) je Band)",
+ "Si el fabricante da los niveles por banda ya en dB(A), marca esta casilla: se convertirán internamente a Lw por banda (Lw,b = LwA,b − A_b) para que el motor no aplique la ponderación A dos veces.": "Liefert der Hersteller die Bandpegel bereits in dB(A), aktiviere dieses Kästchen: Sie werden intern in Lw je Band umgerechnet (Lw,b = LwA,b − A_b), damit der Rechenkern die A-Bewertung nicht doppelt anwendet.",
+ "Columna ponderada A detectada; convertida internamente a Lw por banda para evitar doble ponderación.": "A-bewertete Spalte erkannt; intern in Lw je Band umgerechnet, um doppelte Bewertung zu vermeiden.",
+ "Atención: la normalización está activada; el total del fabricante será sustituido por el LwA del grupo.": "Achtung: Die Normierung ist aktiviert; der Herstellergesamtwert wird durch den LwA der Gruppe ersetzt.",
+ "También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A.": "Akzeptiert auch LwA_dB / dBA / dB(A) je Band; interne Umrechnung verhindert doppelte A-Bewertung.",
+ "También puedes importar el espectro OEM por bandas de octava del fabricante (CSV) o introducirlo a mano con el editor; el motor ISO propagará cada banda de ese espectro y el ruido total se calculará a partir de él.": "Du kannst auch das OEM-Oktavbandspektrum des Herstellers importieren (CSV) oder es mit dem Editor manuell eingeben; der ISO-Rechenkern breitet jedes Band dieses Spektrums aus und der Gesamtschall wird daraus berechnet.",
+ "Editar espectro del grupo seleccionado…": "Spektrum der ausgewählten Quellgruppe bearbeiten…",
+ "Limpiar espectro del grupo seleccionado": "Spektrum der ausgewählten Quellgruppe löschen",
+ "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Spektrum auf den LwA der Gruppe normieren (nur die Form verwenden)",
+ "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV mit Spalten freq_hz und Lw_dB (absolut) oder Lw_dB_rel (relative Form). Komma, Semikolon oder Tabulator als Trennzeichen möglich.",
+ "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Deaktiviert: Das absolute OEM-Spektrum wird unverändert verwendet und der betriebliche LwA der Gruppe entspricht der A-bewerteten Summe des Spektrums (empfohlen für Vergleiche mit anderer Software). Aktiviert: Das Spektrum wird nur als Form verwendet und so verschoben, dass es den LwA der Gruppe reproduziert. Im Kurvenmodus wird das Spektrum immer als Form verwendet.",
+ "Ruido · Espectro OEM por bandas de octava": "Schall · OEM-Oktavbandspektrum",
+ "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Gib den Schallleistungspegel Lw je Oktavband ein (absolute Herstellerwerte in dB). Bei Eingabe einer relativen Form (alle Werte unter 20 dB) wird sie als Form behandelt und auf den LwA der Gruppe normiert.",
+ "Banda [Hz]": "Band [Hz]",
+ "Precargar plantilla ajustada al LwA del grupo": "Vorlage angepasst an den LwA der Gruppe vorladen",
+ "Forma relativa detectada · se normalizará al LwA del grupo": "Relative Form erkannt · sie wird auf den LwA der Gruppe normiert",
+ "espectro manual (forma relativa)": "manuelles Spektrum (relative Form)",
+ "espectro manual": "manuelles Spektrum",
+ "normalizado a LwA": "auf LwA normiert",
+ "espectro OEM": "OEM-Spektrum",
+ "forma relativa": "relative Form",
+ "inválido": "ungültig",
+ "Espectro OEM por bandas de octava": "OEM-Oktavbandspektrum",
+ "Ruido · Espectro OEM": "Schall · OEM-Spektrum",
+ "No se pudo leer el espectro:": "Das Spektrum konnte nicht gelesen werden:",
+ "Espectro cargado correctamente.": "Spektrum erfolgreich geladen.",
+ "Formato": "Format",
+ "El LwA operativo del grupo se tomará de este espectro para que el ruido total se calcule a partir de él.": "Der betriebliche LwA der Gruppe wird aus diesem Spektrum übernommen, damit der Gesamtschall daraus berechnet wird.",
  'Incomplete configuration. Check the flagged items.': 'Incomplete Konfiguration. Check the flagged items.',
  'Informe': 'Bericht',
  'Informe AEP exportado correctamente:': 'Bericht AEP exportado correctamente:',
@@ -9539,3 +9568,230 @@ _LAYOUT_OPTIMIZATION_HUB_TO_DE = {
 TO_DE.update(_LAYOUT_OPTIMIZATION_HUB_TO_DE)
 FRAGMENT_TO_DE.update(_LAYOUT_OPTIMIZATION_HUB_TO_DE)
 
+
+# Release overrides for hub/project-summary labels.
+_DE_RELEASE_HUB = {
+    "Velantis Wind · Hub principal": "Velantis Wind · Haupthub",
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+    "Ruido": "Schall",
+    "Sin capas de coordenadas generadas todavía": "Noch keine Koordinaten-Layer erzeugt",
+    "Sin recurso seleccionado todavía": "Noch keine Ressource ausgewählt",
+    "No resource selected yet": "Noch keine Ressource ausgewählt",
+    "No coordinate layers generated yet": "Noch keine Koordinaten-Layer erzeugt",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energie: einsatzbereit · Schall: einsatzbereit · Schattenwurf: einsatzbereit",
+    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Nicht ausgewählt (Fallback auf TI=10 % im WRG-Ablauf vorgesehen)",
+}
+try:
+    TO_DE.update(_DE_RELEASE_HUB)
+    FRAGMENT_TO_DE.update(_DE_RELEASE_HUB)
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
+
+# Release cleanup for German mixed-language leftovers.
+_DE_RELEASE_CLEANUP = {'Aún no hay turbinas en esta capa:': 'In diesem Layer sind noch keine Turbinen vorhanden:', 'Cerrar esta ventana y volver al diálogo principal sin crear la capa.': 'Dieses Fenster schließen und zum Hauptdialog zurückkehren, ohne den Layer zu erstellen.', 'Cierra el módulo de energía y vuelve al hub principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.': 'Schließt das Energiemodul und kehrt zum Velantis-Wind-Hub zurück, ohne Layer oder geladene Projektergebnisse zu löschen.', 'Capa de resultados creada correctamente.': 'Ergebnis-Layer wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.': 'Rasterkarte wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.\n\nPuntos calculados:': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte:', 'Mapa raster creado correctamente.\n\nPuntos calculados: ': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte: ', 'CSV por turbina exportado correctamente:': 'CSV je Turbine erfolgreich exportiert:', 'Informe AEP exportado correctamente:': 'AEP-Bericht erfolgreich exportiert:', 'La capa de puntos se creó correctamente.': 'Der Punkt-Layer wurde erfolgreich erstellt.', 'Error creando turbina': 'Fehler beim Erstellen der Turbine', 'Definir turbina': 'Turbine definieren', 'Directividad de fuente Dc asumida 0 dB.': 'Quellenrichtwirkung Dc wird mit 0 dB angenommen.', 'Disponibilidad de turbina:': 'Turbinenverfügbarkeit:', 'Exportar layout editado': 'Bearbeitetes Layout exportieren', 'Exportar layout editado...': 'Bearbeitetes Layout exportieren...', 'Exportar grupos fuente': 'Quellgruppen exportieren', 'Grupo fuente': 'Quellgruppe', 'Grupo fuente:': 'Quellgruppe:', 'Grupos fuente acústicos': 'Akustische Quellgruppen', 'Grupos fuente acústicos:': 'Akustische Quellgruppen:', 'Grupos fuente acústicos: faltan': 'Akustische Quellgruppen: es fehlen', 'Grupos fuente acústicos: hay': 'Akustische Quellgruppen: vorhanden', 'Estado acústico de cada grupo fuente': 'Akustischer Zustand je Quellgruppe', 'Física del MDT y del apantallamiento topográfico': 'Physik des DGM und der topografischen Abschirmung', 'AVISO: todos los receptores han quedado fuera del radio máximo. Revisa radio, layout o ubicación de receptores.': 'HINWEIS: Alle Rezeptoren liegen außerhalb des maximalen Radius. Prüfen Sie Radius, Layout oder Rezeptorstandorte.', 'todos los receptores han quedado fuera del radio máximo': 'Alle Rezeptoren liegen außerhalb des maximalen Radius', 'Acoustic source group': 'Akustische Quellgruppe', 'Edit the fixed LwA for this acoustic source group.': 'Bearbeiten Sie den festen LwA dieser akustischen Quellgruppe.', 'Explain the acoustic source-group table': 'Erklärung der akustischen Quellgruppentabelle', 'Directorio WAsP inválido o no existente': 'Ungültiger oder nicht vorhandener WAsP-Ordner', 'Lector WRG no disponible; no se puede dibujar el perímetro WRG.': 'WRG-Leser nicht verfügbar; die WRG-Umgrenzung kann nicht gezeichnet werden.', 'Validación avanzada no disponible; se usa flujo de compatibilidad:': 'Erweiterte Validierung nicht verfügbar; Kompatibilitätsablauf wird verwendet:', 'El límite acústico no es válido.': 'Der akustische Grenzwert ist ungültig.', 'No hay configuración acústica de modelos.': 'Es ist keine akustische Modellkonfiguration vorhanden.', 'Cálculo acústico completado.': 'Schallberechnung abgeschlossen.', 'Resultado acústico:': 'Schallergebnis:'}
+try:
+    TO_DE.update(_DE_RELEASE_CLEANUP)
+    FRAGMENT_TO_DE.update(_DE_RELEASE_CLEANUP)
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
+
+
+# Release-level German cleanup for legacy fragment replacements that produced
+# malformed compounds in long dynamic labels and help text.
+def _de_release_polish_value(value):
+    if not isinstance(value, str):
+        return value
+    replacements = (
+        ("Windturbinicht", "Windturbine"),
+        ("Turbinicht", "Turbine"),
+        ("turbinicht", "Turbine"),
+        ("Zeitzonicht", "Zeitzone"),
+        ("Enginicht", "Engine"),
+        ("Ohnicht", "Ohne"),
+        ("ohnicht", "ohne"),
+        ("Keinicht", "Keine"),
+        ("keinicht", "keine"),
+        ("Einicht", "Eine"),
+        ("einicht", "eine"),
+        ("Empfohlenicht", "Empfohlene"),
+        ("eigenicht", "eigene"),
+        ("internicht", "interne"),
+        ("Betroffenicht", "Betroffene"),
+        ("ausgewogenicht", "ausgewogene"),
+        ("allgemeinicht", "allgemeine"),
+        ("deinicht", "deine"),
+        ("seinicht", "seine"),
+        ("verschiedenicht", "verschiedene"),
+        ("Kernicht", "Kerne"),
+        ("kleinicht", "kleine"),
+        ("fortgeschrittenicht", "fortgeschrittene"),
+        ("Domänicht", "Domäne"),
+        ("geladenicht", "geladene"),
+        ("zugewiesenicht", "zugewiesene"),
+        ("Kleinicht", "Kleine"),
+        ("Sonnicht", "Sonne"),
+        ("gültigs", "gültige"),
+        ("existieren nichtte", "existiert nicht"),
+    )
+    for old, new in replacements:
+        value = value.replace(old, new)
+    return value
+
+try:
+    TO_DE = {k: _de_release_polish_value(v) for k, v in TO_DE.items()}
+    FRAGMENT_TO_DE = {k: _de_release_polish_value(v) for k, v in FRAGMENT_TO_DE.items()}
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
+
+_DE_RELEASE_CLEANUP_MORE = {
+    "La capa de receptores seleccionada no tiene elementos.": "Der ausgewählte Rezeptor-Layer enthält keine Elemente.",
+    "La capa de turbinas seleccionada no tiene elementos.": "Der ausgewählte Turbinen-Layer enthält keine Elemente.",
+    "No hay coordenadas válidas en las capas/CSV proporcionados.": "In den angegebenen Layern/CSV-Dateien wurden keine gültigen Koordinaten gefunden.",
+    "No hay turbina cerca del clic.": "In der Nähe des Klicks gibt es keine Turbine.",
+    "No se encontraron turbinas en el layout.": "Im Layout wurden keine Turbinen gefunden.",
+    "No se han detectado capas de coordenadas por modelo. Genera primero el layout desde Energía.": "Es wurden keine Koordinaten-Layer je Modell erkannt. Erzeugen Sie zuerst das Layout aus dem Energiemodul.",
+    "No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.": "Es wurden keine Koordinaten-Layer je Modell erkannt. Importieren Sie hier ein CSV-Layout oder verwenden Sie ein aus dem Energiemodul erzeugtes Layout.",
+    "Vuelve al diálogo principal de Velantis Wind sin perder la edición.": "Zum Hauptdialog von Velantis Wind zurückkehren, ohne die Bearbeitung zu verlieren.",
+    "Vuelve al diálogo principal sin salir del modo interactivo.": "Zum Hauptdialog zurückkehren, ohne den interaktiven Modus zu verlassen.",
+    "WRG sin puntos (sólo cabecera)": "WRG ohne Punkte (nur Kopfzeile)",
+    "sin valor": "ohne Wert",
+    "sin nombre": "ohne Namen",
+    "sin puntos válidos": "ohne gültige Punkte",
+    "ningún archivo": "keine Datei",
+    "ningún archivo TI": "keine TI-Datei",
+    "Sin plantilla": "Keine Vorlage",
+    "No help available for this item.": "Für dieses Element ist keine Hilfe verfügbar.",
+    "Aucune aide disponible pour cet élément.": "Für dieses Element ist keine Hilfe verfügbar.",
+    "No hay ayuda disponible para este elemento.": "Für dieses Element ist keine Hilfe verfügbar.",
+    "Se generará UNA carpeta con GRD mosaico (Sector/Altura/Variable).\nSelecciona 2 o más carpetas de tiles exportadas desde WAsP.\n• 'Sector All': se tomarán TODAS las variables presentes (mosaico por altura).\n• Además, se crea subcarpeta 'pywake_compat' estricta (sin necesidad de parches).\n• Salida en Surfer ASCII (DSAA) con formato WAsP.": "Es wird EIN Ordner mit einem GRD-Mosaik erzeugt (Sektor/Höhe/Variable).\nWählen Sie mindestens zwei aus WAsP exportierte Tile-Ordner.\n• 'Sector All': Alle vorhandenen Variablen werden übernommen (Mosaik nach Höhe).\n• Zusätzlich wird ein strikter Unterordner 'pywake_compat' erstellt; Patches sind nicht erforderlich.\n• Ausgabe im Surfer-ASCII-Format (DSAA) mit WAsP-kompatiblem Format.",
+}
+try:
+    TO_DE.update(_DE_RELEASE_CLEANUP_MORE)
+    FRAGMENT_TO_DE.update(_DE_RELEASE_CLEANUP_MORE)
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
+
+_DE_RELEASE_CLEANUP_DYNAMIC = {': modo curva activo pero sin CSV de curva acústica.': ': Kurvenmodus aktiv, aber ohne CSV für die Schallkurve.', 'Calculando desglose por modelo / cluster…': 'Aufschlüsselung nach Modell / Cluster wird berechnet…', 'Calculando receptores y resumen…': 'Rezeptoren und Zusammenfassung werden berechnet…', 'Calculando ruido en segundo plano': 'Schallberechnung im Hintergrund', 'Calculando ruido en segundo plano…': 'Schallberechnung im Hintergrund…', 'Calculando ruido en segundo plano… 0%': 'Schallberechnung im Hintergrund… 0%', 'Calculando ruido y raster…': 'Schall und Raster werden berechnet…', 'Calculated receivers:': 'Berechnete Rezeptoren:', 'NO calcula bloqueo': 'Berechnet kein Blockage', 'No hay configuración de modelos disponible.\n\nRellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar.\n\nTragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay configuración de modelos disponible.  Rellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar. Tragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay wake deficit model disponible: ni BG ni NoWakeDeficit.': 'Kein Wake-Deficit-Modell verfügbar: weder BG noch NoWakeDeficit.'}
+try:
+    TO_DE.update(_DE_RELEASE_CLEANUP_DYNAMIC)
+    FRAGMENT_TO_DE.update(_DE_RELEASE_CLEANUP_DYNAMIC)
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
+
+
+# Final public-release cleanup for remaining mixed-language German strings.
+def _de_final_polish_value(value):
+    if not isinstance(value, str):
+        return value
+    replacements = (
+        ("Acoustic Quellen: will use all WT Layer automatically detected/imported in VelantisWind.", "Akustische Quellen: Es werden alle in VelantisWind automatisch erkannten/importierten WT-Layer verwendet."),
+        ("Acoustic Quellen: will use", "Akustische Quellen: Es werden verwendet"),
+        ("Acoustic Quelle group", "Akustische Quellgruppe"),
+        ("Höhe dess Rezeptors configurada", "Rezeptorhöhe konfiguriert"),
+        ("Desglose mensual (Mittel de todos los Rezeptoren)", "Monatliche Aufschlüsselung (Mittelwert aller Rezeptoren)"),
+        ("Detailed values for each Rezeptor. Columns are filled before sorting is enabled to avoid blank cells after sorting.", "Detailwerte für jeden Rezeptor. Die Spalten werden vor dem Aktivieren der Sortierung gefüllt, damit keine leeren Zellen entstehen."),
+        ("Hours of Schattenwurf by hour of day and month. Values are converted from minutes to hours. The All column sums all months for each hour.", "Schattenwurfdauer nach Tagesstunde und Monat. Die Werte werden von Minuten in Stunden umgerechnet. Die Spalte ‚Alle‘ summiert alle Monate je Stunde."),
+        ("Configure the geometric parameters for each Turbine Modell. Hub Height: hub height above Boden level [m] Rotor Diameter: rotor diameter [m]", "Geometrische Parameter für jedes Turbinenmodell konfigurieren. Nabenhöhe: Höhe über Gelände [m]. Rotordurchmesser: Rotordurchmesser [m]."),
+        ("Centroide von Turbinen:", "Schwerpunkt der Turbinen:"),
+        ("Average h/Rezeptor", "Mittlere Höhe/Rezeptor"),
+        ("Layer de", "Layer"),
+        ("de todos los", "aller"),
+        ("todos los", "alle"),
+        ("Revisa Radius", "Radius prüfen"),
+        ("layout", "Layout"),
+        ("source", "Quelle"),
+        ("Source", "Quelle"),
+        ("acoustic", "akustisch"),
+        ("Acoustic", "Akustisch"),
+        ("selected", "ausgewählt"),
+        ("manually", "manuell"),
+        ("will use", "verwendet"),
+        ("fixed", "fest"),
+        ("fast", "schnell"),
+        ("fallback", "Fallback"),
+        ("method", "Methode"),
+        ("model", "Modell"),
+        ("terrain", "Gelände"),
+        ("height", "Höhe"),
+        ("values", "Werte"),
+        ("sampled", "abgetastet"),
+        ("domain", "Bereich"),
+        ("omitted", "ausgelassen"),
+        ("valid", "gültig"),
+        ("requested", "angefordert"),
+        ("yes ·", "ja ·"),
+        ("all months", "alle Monate"),
+        ("All column", "Spalte ‚Alle‘"),
+        ("open source", "Open Source"),
+    )
+    for old, new in replacements:
+        value = value.replace(old, new)
+    return value
+
+_DE_FINAL_GITHUB_READY_CLEANUP = {
+    "Acoustic source group": "Akustische Quellgruppe",
+    "Acoustic sources: will use": "Akustische Quellen: Es werden verwendet",
+    "Acoustic sources: will use 1 source layer manually selected from Inputs.": "Akustische Quellen: Es wird ein in den Eingaben manuell ausgewählter Quellen-Layer verwendet.",
+    "Acoustic sources: will use all WT layers automatically detected/imported in VelantisWind.": "Akustische Quellen: Es werden alle in VelantisWind automatisch erkannten/importierten WT-Layer verwendet.",
+    "Altura de receptor configurada": "Rezeptorhöhe konfiguriert",
+    "Altura de receptor configurada:": "Rezeptorhöhe konfiguriert:",
+    "Altura de receptor: se toma de cada capa configurada en la tabla multi-capa.": "Rezeptorhöhe: wird je konfiguriertem Layer aus der Mehrfach-Layer-Tabelle übernommen.",
+    "Average h/receptor": "Mittlere Höhe/Rezeptor",
+    "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona horaria IANA": "Berechnet Breite/Länge aus dem Layout-Schwerpunkt und versucht, die IANA-Zeitzone zu erkennen",
+    "Configure the geometric parameters for each turbine model.\nHub Height: hub height above ground level [m]\nRotor Diameter: rotor diameter [m]": "Geometrische Parameter für jedes Turbinenmodell konfigurieren.\nNabenhöhe: Höhe über Gelände [m]\nRotordurchmesser: Rotordurchmesser [m]",
+    "Desglose mensual (media de todos los receptores)": "Monatliche Aufschlüsselung (Mittelwert aller Rezeptoren)",
+    "Detailed values for each receptor. Columns are filled before sorting is enabled to avoid blank cells after sorting.": "Detailwerte für jeden Rezeptor. Die Spalten werden vor dem Aktivieren der Sortierung gefüllt, damit keine leeren Zellen entstehen.",
+    "Hours of shadow flicker by hour of day and month. Values are converted from minutes to hours. The All column sums all months for each hour.": "Schattenwurfdauer nach Tagesstunde und Monat. Die Werte werden von Minuten in Stunden umgerechnet. Die Spalte ‚Alle‘ summiert alle Monate je Stunde.",
+    "AVISO: todos los receptores han quedado fuera del radio máximo. Revisa radio, layout o ubicación de receptores.": "HINWEIS: Alle Rezeptoren liegen außerhalb des maximalen Radius. Prüfen Sie Radius, Layout oder Rezeptorstandorte.",
+    "• AVISO: todos los receptores han quedado fuera del radio máximo. Revisa radio, layout o ubicación de receptores.": "• HINWEIS: Alle Rezeptoren liegen außerhalb des maximalen Radius. Prüfen Sie Radius, Layout oder Rezeptorstandorte.",
+    "Cálculo acústico simplificado para screening": "Vereinfachte Schallberechnung für das Screening",
+    "Capa": "Layer",
+    "Capas": "Layer",
+    "Capas creadas": "Erzeugte Layer",
+    "Capas generadas": "Erzeugte Layer",
+    "Centroide de turbinas:": "Schwerpunkt der Turbinen:",
+    "ID de capa:": "Layer-ID:",
+    "sí · resolución pedida ": "ja · angeforderte Auflösung ",
+    "sin puntos válidos": "ohne gültige Punkte",
+    "turbinas están fuera del dominio y se omitirán (ej.:": "Turbinen liegen außerhalb des Bereichs und werden ausgelassen (z. B.:",
+    "se muestreará terreno fuente/receptor en el método acústico": "Quell-/Rezeptorgelände wird in der akustischen Methode abgetastet",
+    "(se muestreará terreno fuente/receptor en el método acústico).": "(Quell-/Rezeptorgelände wird in der akustischen Methode abgetastet).",
+}
+try:
+    TO_DE.update({k: _de_final_polish_value(v) for k, v in _DE_FINAL_GITHUB_READY_CLEANUP.items()})
+    TO_DE = {k: _de_final_polish_value(v) for k, v in TO_DE.items()}
+    try:
+        FRAGMENT_TO_DE.update(_DE_FINAL_GITHUB_READY_CLEANUP)
+        FRAGMENT_TO_DE = {k: _de_final_polish_value(v) for k, v in FRAGMENT_TO_DE.items()}
+        FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+    except Exception:
+        pass
+except Exception:
+    pass
+
+# Final guards for frequent acoustic-report fragments.
+_DE_FINAL_GUARDS = {
+    "Aground representa la pérdida simplificada asociada al efecto suelo/terreno en el método acústico.": "Aground stellt den vereinfachten Verlust durch Boden-/Geländeeffekte in der akustischen Methode dar.",
+    "• Aground representa la pérdida simplificada asociada al efecto suelo/terreno en el método acústico.": "• Aground stellt den vereinfachten Verlust durch Boden-/Geländeeffekte in der akustischen Methode dar.",
+}
+try:
+    TO_DE.update(_DE_FINAL_GUARDS)
+    FRAGMENT_TO_DE.update(_DE_FINAL_GUARDS)
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
+
+_DE_FINAL_STATUS_GUARDS = {
+    "Todos los receptores (suma)": "Alle Rezeptoren (Summe)",
+}
+try:
+    TO_DE.update(_DE_FINAL_STATUS_GUARDS)
+    FRAGMENT_TO_DE.update(_DE_FINAL_STATUS_GUARDS)
+    FRAGMENT_TRANSLATIONS = FRAGMENT_TO_DE
+except Exception:
+    pass
