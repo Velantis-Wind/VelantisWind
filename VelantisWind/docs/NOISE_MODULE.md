@@ -363,6 +363,6 @@ Run these tests in a clean QGIS profile when possible:
 ## Related documents
 
 - [`NOISE_ARCHITECTURE.md`](NOISE_ARCHITECTURE.md)
-- [`SMOKE_TESTS.md`](SMOKE_TESTS.md)
+- [`RELEASE_TEST_CHECKLIST.md`](RELEASE_TEST_CHECKLIST.md)
 - [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
 - [`LIMITATIONS.md`](LIMITATIONS.md)

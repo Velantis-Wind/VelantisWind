@@ -13,6 +13,7 @@ from qgis.core import QgsRasterLayer, QgsProject
 
 from .task import ShadowRasterTask
 from ..i18n_local import tr4 as _ml, lang_code, hours_per_year_unit
+from ...raster_io import write_float32_band
 
 
 def _raster_prefix() -> str:
@@ -32,6 +33,44 @@ def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem
     raster_timestep = self.sp_raster_timestep.value()
     max_distance = getattr(calculator, "max_shadow_distance_m", 2000.0)
 
+    # Snapshot every worker input on the main thread. QgsMapLayer,
+    # QgsRasterDataProvider and QgsProject objects must not be accessed from a
+    # QgsTask worker thread.
+    turbine_snapshot = []
+    for turbine in turbines or []:
+        turbine_snapshot.append({
+            "name": str(turbine.get("name") or "WT"),
+            "x": float(turbine.get("x") or 0.0),
+            "y": float(turbine.get("y") or 0.0),
+            "hub_height": float(turbine.get("hub_height") or 0.0),
+            "rotor_diameter": float(turbine.get("rotor_diameter") or 0.0),
+            "ground_elev": float(turbine.get("ground_elev") or 0.0),
+        })
+
+    calculator_snapshot = {
+        "year": int(calculator.year),
+        "latitude": float(calculator.latitude),
+        "longitude": float(calculator.longitude),
+        "timezone_offset": float(calculator.timezone_offset),
+        "timezone_mode": str(calculator.timezone_mode or "fixed"),
+        "timezone_name": str(calculator.timezone_name or "UTC"),
+        "min_sun_elevation": float(calculator.min_sun_elevation),
+        "max_sun_elevation": float(calculator.max_sun_elevation),
+        "max_shadow_distance_m": float(max_distance),
+    }
+    turbine_crs_wkt = str(turbine_layer.crs().toWkt() or "")
+
+    dem_path = ""
+    if dem_layer is not None:
+        try:
+            # Reuse the main-thread materialisation helper already used by the
+            # noise task. It returns a real path that GDAL can open safely in a
+            # worker, including for provider-backed temporary rasters.
+            from ...noise_core.snapshot.builder import _export_dem_layer_for_task
+            dem_path = str(_export_dem_layer_for_task(dem_layer) or "")
+        except Exception as exc:
+            debug_print(f"[Shadow Raster] WARN could not prepare DEM for worker: {exc}")
+
     task = ShadowRasterTask(
         _ml(
             "Generando mapa ráster de sombras y parpadeo",
@@ -39,16 +78,16 @@ def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem
             "Génération de la carte raster d’ombres et scintillement",
             "Schattenwurf-Rasterkarte wird erzeugt",
         ),
-        turbines,
-        calculator,
-        turbine_layer,
+        turbine_snapshot,
+        calculator_snapshot,
+        turbine_crs_wkt,
         resolution,
         raster_timestep,
-        dem_layer,
+        dem_path,
     )
 
     task.taskCompleted.connect(lambda: self._on_raster_completed(task))
-    task.taskTerminated.connect(lambda: self._on_raster_terminated())
+    task.taskTerminated.connect(lambda: self._on_raster_terminated(task))
 
     from qgis.core import QgsApplication
     QgsApplication.taskManager().addTask(task)
@@ -227,8 +266,13 @@ def regenerate_filtered_raster_for_page(self):
         ds.SetProjection(srs.ExportToWkt())
 
         band = ds.GetRasterBand(1)
-        band.WriteArray(np.flipud(filtered_hours))
-        band.SetNoDataValue(-9999)
+        write_float32_band(
+            band,
+            filtered_hours,
+            gdal_module=gdal,
+            flip_vertical=True,
+            nodata=-9999,
+        )
         band.FlushCache()
         ds = None
 
@@ -277,8 +321,23 @@ def regenerate_filtered_raster_for_page(self):
         )
 
 
-def on_raster_terminated_for_page(self):
-    """Callback when raster generation is cancelled."""
+def on_raster_terminated_for_page(self, task=None):
+    """Report a real task error separately from an explicit cancellation."""
+    raw_error = str(getattr(task, "exception", "") or "").strip()
+    if raw_error:
+        detail = raw_error.splitlines()[0].strip() or raw_error
+        QtWidgets.QMessageBox.critical(
+            self,
+            _ml("Error de ráster", "Raster error", "Erreur raster", "Rasterfehler"),
+            _ml(
+                f"No se pudo generar el ráster de sombras:\n\n{detail}\n\nLos resultados por receptor siguen disponibles.",
+                f"The shadow-flicker raster could not be generated:\n\n{detail}\n\nThe receiver results remain available.",
+                f"Le raster d’ombres et scintillement n’a pas pu être généré :\n\n{detail}\n\nLes résultats par récepteur restent disponibles.",
+                f"Das Schattenwurf-Raster konnte nicht erzeugt werden:\n\n{detail}\n\nDie Ergebnisse je Rezeptor bleiben verfügbar.",
+            ),
+        )
+        return
+
     QtWidgets.QMessageBox.warning(
         self,
         _ml("Cancelado", "Cancelled", "Annulé", "Abgebrochen"),

@@ -18,6 +18,7 @@ from ..noise_spectrum import SpectrumLibrary
 from ..sources.collector import _collect_sources
 from ..receivers.collector import _build_receiver_feature_list
 from ..qgis_io.common import _is_valid_dem_value
+from ...raster_io import write_float32_band
 
 
 def _primitive(value: Any) -> Any:
@@ -215,8 +216,12 @@ def _export_dem_layer_for_task(dem_layer: QgsRasterLayer) -> str:
             except Exception:
                 pass
             band = ds.GetRasterBand(1)
-            band.WriteArray(arr)
-            band.SetNoDataValue(-9999.0)
+            write_float32_band(
+                band,
+                arr,
+                gdal_module=gdal,
+                nodata=-9999.0,
+            )
             band.FlushCache()
             ds.FlushCache()
             ds = None

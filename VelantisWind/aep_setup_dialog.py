@@ -28,6 +28,12 @@ try:
 except Exception:
     _TurbineInteractiveTool = None  # type: ignore
 
+try:
+    from .spacing_core import SpacingConfigDialog, SpacingController
+except Exception:
+    SpacingController = None  # type: ignore
+    SpacingConfigDialog = None  # type: ignore
+
 # Caja de herramientas (QDockWidget) para el modo Mapa Interactivo
 try:
     from .mapa_interactivo_dock import InteractiveMapDock
@@ -2051,6 +2057,13 @@ def _create_or_refresh_point_layer(
     model_name: str,
     hub_height: Optional[float] = None,
     diameter: Optional[float] = None,
+    spacing_long_d: Optional[float] = None,
+    spacing_trans_d: Optional[float] = None,
+    spacing_mode: str = "",
+    spacing_angle_deg: Optional[float] = None,
+    curve_quality: str = "",
+    curve_source: str = "",
+    curve_source_url: str = "",
     coords_csv: str = "",
     model_index: Optional[int] = None,
     create_new: bool = False,
@@ -2095,6 +2108,20 @@ def _create_or_refresh_point_layer(
             lyr.setCustomProperty("velantis/hub_height_m", float(hub_height))
         if diameter is not None:
             lyr.setCustomProperty("velantis/diameter_m", float(diameter))
+        if spacing_long_d is not None:
+            lyr.setCustomProperty("velantis/spacing_long_d", float(spacing_long_d))
+        if spacing_trans_d is not None:
+            lyr.setCustomProperty("velantis/spacing_trans_d", float(spacing_trans_d))
+        if spacing_mode:
+            lyr.setCustomProperty("velantis/spacing_mode", str(spacing_mode))
+        if spacing_angle_deg is not None:
+            lyr.setCustomProperty("velantis/spacing_angle_deg", float(spacing_angle_deg))
+        if curve_quality:
+            lyr.setCustomProperty("velantis/curve_quality", str(curve_quality))
+        if curve_source:
+            lyr.setCustomProperty("velantis/curve_source", str(curve_source))
+        if curve_source_url:
+            lyr.setCustomProperty("velantis/curve_source_url", str(curve_source_url))
         if coords_csv:
             lyr.setCustomProperty("velantis/coords_csv", str(coords_csv))
     except Exception:
@@ -2237,18 +2264,18 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         # --------- Logo Velantis ---------
         # Nota: se renderiza en la botonera inferior (izquierda) para no consumir altura arriba.
-        self._vortex_logo_path = os.path.join(os.path.dirname(__file__), 'assets', 'velantiswind_logo.png')
-        self._vortex_logo_pix = None
-        if os.path.exists(self._vortex_logo_path):
+        self._velantis_logo_path = os.path.join(os.path.dirname(__file__), 'assets', 'velantiswind_logo.png')
+        self._velantis_logo_pix = None
+        if os.path.exists(self._velantis_logo_path):
             try:
-                self._vortex_logo_pix = QPixmap(self._vortex_logo_path)
-                if self._vortex_logo_pix is not None and not self._vortex_logo_pix.isNull():
+                self._velantis_logo_pix = QPixmap(self._velantis_logo_path)
+                if self._velantis_logo_pix is not None and not self._velantis_logo_pix.isNull():
                     self._brand_logo_header.setPixmap(
-                        self._vortex_logo_pix.scaled(220, 220, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                        self._velantis_logo_pix.scaled(220, 220, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                     )
                     self._brand_logo_header.setToolTip('Velantis Wind')
             except Exception:
-                self._vortex_logo_pix = None
+                self._velantis_logo_pix = None
 
         # --------- Modelos ---------
         grp_models = QtWidgets.QGroupBox("Modelos de aerogenerador")
@@ -2264,6 +2291,24 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         self.rows_box = QtWidgets.QVBoxLayout()
         v_models.addLayout(self.rows_box)
+
+        # Botón de envolventes de separación, justo debajo de la importación
+        # de coordenadas CSV de los modelos. Abre la configuración compartida
+        # (misma que el dock del mapa interactivo).
+        if SpacingController is not None and SpacingConfigDialog is not None:
+            h_spacing = QtWidgets.QHBoxLayout()
+            self.btn_spacing_cfg = QtWidgets.QPushButton("Envolventes de separación…")
+            self.btn_spacing_cfg.setToolTip(
+                "Configura la separación mínima entre turbinas: elipse "
+                "semitransparente por aerogenerador (7D/4D por defecto), "
+                "orientada al sector más energético o definida en pantalla, "
+                "con detección de conflictos de spacing."
+            )
+            self.btn_spacing_cfg.clicked.connect(self._open_spacing_config)
+            h_spacing.addStretch(1)
+            h_spacing.addWidget(self.btn_spacing_cfg, 0)
+            v_models.addLayout(h_spacing)
+
         root.addWidget(grp_models)
 
         # --------- Recurso eólico (WAsP / WRG) ---------
@@ -2696,9 +2741,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         # Logo Velantis en la parte inferior izquierda
         col0 = 0
-        if getattr(self, '_vortex_logo_pix', None) is not None and not self._vortex_logo_pix.isNull():
+        if getattr(self, '_velantis_logo_pix', None) is not None and not self._velantis_logo_pix.isNull():
             lbl_logo = QtWidgets.QLabel(self)
-            lbl_logo.setPixmap(self._vortex_logo_pix.scaledToHeight(52, QtCore.Qt.SmoothTransformation))
+            lbl_logo.setPixmap(self._velantis_logo_pix.scaledToHeight(52, QtCore.Qt.SmoothTransformation))
             lbl_logo.setToolTip('Velantis Wind')
             lbl_logo.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
             actions_grid.addWidget(lbl_logo, 0, 0, 1, 1)
@@ -4095,6 +4140,10 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 extras.append(f"Hub={float(h_val):.0f} m")
             if p_val:
                 extras.append(f"P={float(p_val)/1000:.2f} MW")
+            long_val = (meta or {}).get("spacing_long_d") if isinstance(meta, dict) else None
+            trans_val = (meta or {}).get("spacing_trans_d") if isinstance(meta, dict) else None
+            if long_val and trans_val:
+                extras.append(f"{_tr('Separación')}={float(long_val):g}D×{float(trans_val):g}D")
             extra_txt = (" · " + ", ".join(extras)) if extras else ""
         except Exception:
             extra_txt = ""
@@ -4176,6 +4225,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         # Si ya existía una capa vacía creada desde «Generar capas de puntos»
         # con el nombre por defecto (Modelo N), conservarla y asociarla al nuevo
         # modelo en lugar de obligar al usuario a volver a crear/seleccionar layouts.
+        lyr = None
         try:
             lyr = self._find_interactive_layer_for_row(idx)
             if lyr is not None:
@@ -4193,11 +4243,37 @@ class AEPSetupDialog(QtWidgets.QDialog):
                         lyr.setCustomProperty("velantis/hub_height_m", float(meta.get("hh")))
                     if meta.get("diam") is not None:
                         lyr.setCustomProperty("velantis/diameter_m", float(meta.get("diam")))
+                    if meta.get("spacing_long_d") is not None:
+                        lyr.setCustomProperty("velantis/spacing_long_d", float(meta.get("spacing_long_d")))
+                    if meta.get("spacing_trans_d") is not None:
+                        lyr.setCustomProperty("velantis/spacing_trans_d", float(meta.get("spacing_trans_d")))
+                    if meta.get("spacing_mode"):
+                        lyr.setCustomProperty("velantis/spacing_mode", str(meta.get("spacing_mode")))
+                    if meta.get("spacing_angle_deg") is not None:
+                        lyr.setCustomProperty("velantis/spacing_angle_deg", float(meta.get("spacing_angle_deg")))
+                    if meta.get("curve_quality"):
+                        lyr.setCustomProperty("velantis/curve_quality", str(meta.get("curve_quality")))
+                    if meta.get("curve_source"):
+                        lyr.setCustomProperty("velantis/curve_source", str(meta.get("curve_source")))
+                    if meta.get("curve_source_url"):
+                        lyr.setCustomProperty("velantis/curve_source_url", str(meta.get("curve_source_url")))
         except Exception:
             pass
 
         # Etiqueta enriquecida: nombre + D + Hub + P_nom (si hay)
         self._refresh_model_row_header(idx)
+
+        # Si las envolventes están activas, un cambio de modelo/diámetro debe
+        # actualizar inmediatamente la capa elíptica asociada a esta fila.
+        try:
+            cb = getattr(self, "_spacing_notify_layout_changed", None)
+            if callable(cb):
+                # Refrescar también cuando el modelo todavía no tiene capa. El
+                # selector de spacing mostrará la fila como «sin capa» y permite
+                # dejar configurada su elipse antes de cargar el CSV.
+                cb(lyr if lyr is not None else None)
+        except Exception:
+            pass
 
     def _show_curve_for_model(self, idx: int) -> None:
         """Muestra un diálogo con la curva de potencia (y Ct si está) del modelo idx."""
@@ -4878,6 +4954,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
         meta = r.get("meta") if isinstance(r, dict) else None
         hub_h = None
         diam = None
+        spacing_long_d = None
+        spacing_trans_d = None
+        spacing_mode = ""
+        spacing_angle_deg = None
+        curve_quality = ""
+        curve_source = ""
+        curve_source_url = ""
         if isinstance(meta, dict):
             try:
                 if meta.get("hh") is not None:
@@ -4889,6 +4972,25 @@ class AEPSetupDialog(QtWidgets.QDialog):
                     diam = float(meta.get("diam"))
             except Exception:
                 diam = None
+            try:
+                if meta.get("spacing_long_d") is not None:
+                    spacing_long_d = float(meta.get("spacing_long_d"))
+            except Exception:
+                spacing_long_d = None
+            try:
+                if meta.get("spacing_trans_d") is not None:
+                    spacing_trans_d = float(meta.get("spacing_trans_d"))
+            except Exception:
+                spacing_trans_d = None
+            spacing_mode = str(meta.get("spacing_mode") or "")
+            try:
+                if meta.get("spacing_angle_deg") is not None:
+                    spacing_angle_deg = float(meta.get("spacing_angle_deg"))
+            except Exception:
+                spacing_angle_deg = None
+            curve_quality = str(meta.get("curve_quality") or "")
+            curve_source = str(meta.get("curve_source") or "")
+            curve_source_url = str(meta.get("curve_source_url") or "")
 
         # No pisar capas vivas durante cálculo/asegurado.
         if existing is not None and not force_reload_csv:
@@ -4915,6 +5017,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 model_name=name,
                 hub_height=hub_h,
                 diameter=diam,
+                spacing_long_d=spacing_long_d,
+                spacing_trans_d=spacing_trans_d,
+                spacing_mode=spacing_mode,
+                spacing_angle_deg=spacing_angle_deg,
+                curve_quality=curve_quality,
+                curve_source=curve_source,
+                curve_source_url=curve_source_url,
                 coords_csv=csv_path,
                 model_index=idx,
                 create_new=create_new_layer,
@@ -4941,6 +5050,20 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 lyr.setCustomProperty("velantis/hub_height_m", float(hub_h))
             if diam is not None:
                 lyr.setCustomProperty("velantis/diameter_m", float(diam))
+            if spacing_long_d is not None:
+                lyr.setCustomProperty("velantis/spacing_long_d", float(spacing_long_d))
+            if spacing_trans_d is not None:
+                lyr.setCustomProperty("velantis/spacing_trans_d", float(spacing_trans_d))
+            if spacing_mode:
+                lyr.setCustomProperty("velantis/spacing_mode", str(spacing_mode))
+            if spacing_angle_deg is not None:
+                lyr.setCustomProperty("velantis/spacing_angle_deg", float(spacing_angle_deg))
+            if curve_quality:
+                lyr.setCustomProperty("velantis/curve_quality", str(curve_quality))
+            if curve_source:
+                lyr.setCustomProperty("velantis/curve_source", str(curve_source))
+            if curve_source_url:
+                lyr.setCustomProperty("velantis/curve_source_url", str(curve_source_url))
             if csv_path:
                 lyr.setCustomProperty("velantis/coords_csv", str(csv_path))
         except Exception:
@@ -4965,6 +5088,25 @@ class AEPSetupDialog(QtWidgets.QDialog):
                     level=Qgis.Info,
                     duration=5,
                 )
+        except Exception:
+            pass
+
+        # Cualquier carga desde CSV crea/refresca inmediatamente la capa de
+        # elipses, incluso aunque el panel de spacing todavía no se haya abierto.
+        if csv_path and os.path.isfile(csv_path):
+            try:
+                from .spacing_core.auto_envelope import ensure_spacing_envelope_for_layer
+                try:
+                    wrg_path = str(self.ed_wrg.text() or "").strip()
+                except Exception:
+                    wrg_path = str(getattr(self, "_last_wrg_path", "") or "").strip()
+                ensure_spacing_envelope_for_layer(lyr, wrg_path=wrg_path or None)
+            except Exception:
+                pass
+        try:
+            cb = getattr(self, "_spacing_notify_layout_changed", None)
+            if callable(cb):
+                cb(lyr)
         except Exception:
             pass
 
@@ -5380,6 +5522,20 @@ class AEPSetupDialog(QtWidgets.QDialog):
                     layer.setCustomProperty("velantis/hub_height_m", float(meta.get("hh")))
                 if meta.get("diam") is not None:
                     layer.setCustomProperty("velantis/diameter_m", float(meta.get("diam")))
+                if meta.get("spacing_long_d") is not None:
+                    layer.setCustomProperty("velantis/spacing_long_d", float(meta.get("spacing_long_d")))
+                if meta.get("spacing_trans_d") is not None:
+                    layer.setCustomProperty("velantis/spacing_trans_d", float(meta.get("spacing_trans_d")))
+                if meta.get("spacing_mode"):
+                    layer.setCustomProperty("velantis/spacing_mode", str(meta.get("spacing_mode")))
+                if meta.get("spacing_angle_deg") is not None:
+                    layer.setCustomProperty("velantis/spacing_angle_deg", float(meta.get("spacing_angle_deg")))
+                if meta.get("curve_quality"):
+                    layer.setCustomProperty("velantis/curve_quality", str(meta.get("curve_quality")))
+                if meta.get("curve_source"):
+                    layer.setCustomProperty("velantis/curve_source", str(meta.get("curve_source")))
+                if meta.get("curve_source_url"):
+                    layer.setCustomProperty("velantis/curve_source_url", str(meta.get("curve_source_url")))
         except Exception:
             pass
 
@@ -5747,6 +5903,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
         try:
             if getattr(self, "_interactive_dock", None) is not None:
                 self._interactive_dock._refresh_layer_status()
+        except Exception:
+            pass
+        # Mantener sincronizado el selector del menú de envolventes con la capa
+        # elegida para editar en el mapa interactivo.
+        try:
+            cb = getattr(self, "_spacing_notify_layout_changed", None)
+            if callable(cb):
+                cb(lyr)
         except Exception:
             pass
         return True
@@ -6146,6 +6310,12 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 return
         except Exception:
             pass
+        # Cierre real del diálogo: limpiar envolventes de separación (capa,
+        # hooks y map tool de dibujo) para no dejar restos en el proyecto.
+        try:
+            self._teardown_spacing_controller()
+        except Exception:
+            pass
         try:
             super().closeEvent(event)
         except Exception:
@@ -6169,6 +6339,77 @@ class AEPSetupDialog(QtWidgets.QDialog):
             self._activate_map_interactive()
         else:
             self._deactivate_map_interactive()
+
+    # ------------------------------------------------ envolventes de separación
+    def _ensure_spacing_controller(self):
+        """Devuelve el SpacingController compartido, creándolo si hace falta.
+
+        Lo usan tanto el botón «Envolventes de separación…» del diálogo como
+        el dock del mapa interactivo, de modo que exista UNA sola instancia
+        (una capa de envolventes, un juego de hooks) por sesión del diálogo.
+        """
+        if SpacingController is None:
+            return None
+        ctl = getattr(self, "_spacing_ctl", None)
+        try:
+            if ctl is not None and ctl.alive:
+                return ctl
+        except Exception:
+            pass
+        try:
+            canvas = iface.mapCanvas()
+        except Exception:
+            canvas = None
+        if canvas is None:
+            return None
+        try:
+            self._spacing_ctl = SpacingController(self, canvas, parent=self)
+        except Exception:
+            self._spacing_ctl = None
+        return self._spacing_ctl
+
+    def _open_spacing_config(self):
+        """Abre la configuración de envolventes desde el diálogo principal."""
+        ctl = self._ensure_spacing_controller()
+        if ctl is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Envolvente de separación",
+                "No se pudo inicializar el módulo de envolventes (spacing_core).",
+            )
+            return
+        dlg = getattr(self, "_spacing_cfg_dlg", None)
+        try:
+            if dlg is not None and dlg.isVisible():
+                dlg.raise_()
+                dlg.activateWindow()
+                return
+        except Exception:
+            pass
+        try:
+            self._spacing_cfg_dlg = SpacingConfigDialog(ctl, main_dialog=self, parent=self)
+            self._spacing_cfg_dlg.show()
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(
+                self, "Envolvente de separación", f"No se pudo abrir la configuración:\n{e}"
+            )
+
+    def _teardown_spacing_controller(self):
+        """Limpieza del controller compartido al cerrar de verdad el diálogo."""
+        try:
+            dlg = getattr(self, "_spacing_cfg_dlg", None)
+            if dlg is not None:
+                dlg.close()
+        except Exception:
+            pass
+        self._spacing_cfg_dlg = None
+        try:
+            ctl = getattr(self, "_spacing_ctl", None)
+            if ctl is not None:
+                ctl.teardown()
+        except Exception:
+            pass
+        self._spacing_ctl = None
 
     def _activate_map_interactive(self):
         if _TurbineInteractiveTool is None:

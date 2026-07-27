@@ -19,6 +19,17 @@ from qgis.core import QgsPointXY, QgsGeometry, QgsFeature, QgsVectorLayer, QgsWk
 from qgis.utils import iface
 from qgis.PyQt.QtCore import Qt
 
+try:
+    from .i18n import tr_text
+except Exception:  # pragma: no cover
+    def tr_text(text):
+        return text
+try:
+    from . import interactive_i18n
+    interactive_i18n.register()
+except Exception:
+    pass
+
 
 class _TurbineInteractiveTool(QgsMapTool):
     """Click izq = añadir turbina | Click der = borrar turbina cercana"""
@@ -60,11 +71,11 @@ class _TurbineInteractiveTool(QgsMapTool):
             lyr = None
 
         if lyr is None:
-            raise RuntimeError("No hay una capa de turbinas válida activa para el mapa interactivo.")
+            raise RuntimeError(tr_text("No hay una capa de turbinas válida activa para el mapa interactivo."))
         if not isinstance(lyr, QgsVectorLayer):
-            raise RuntimeError("La capa activa no es vectorial.")
+            raise RuntimeError(tr_text("La capa activa no es vectorial."))
         if QgsWkbTypes.geometryType(lyr.wkbType()) != QgsWkbTypes.PointGeometry:
-            raise RuntimeError("La capa activa no es de puntos.")
+            raise RuntimeError(tr_text("La capa activa no es de puntos."))
         return lyr
 
     def _to_layer_xy(self, layer, map_point):
@@ -112,7 +123,7 @@ class _TurbineInteractiveTool(QgsMapTool):
             layer = self._get_layer()
         except Exception as ex:
             try:
-                iface.messageBar().pushWarning("Mapa interactivo", str(ex))
+                iface.messageBar().pushWarning(tr_text("Mapa interactivo"), str(ex))
             except Exception:
                 pass
             return
@@ -129,10 +140,19 @@ class _TurbineInteractiveTool(QgsMapTool):
 
         if self._exists_at(layer, x, y):
             try:
-                iface.messageBar().pushInfo("Mapa interactivo", "Ya existe una turbina en ese punto.")
+                iface.messageBar().pushInfo(tr_text("Mapa interactivo"), tr_text("Ya existe una turbina en ese punto."))
             except Exception:
                 pass
             return
+
+        # Pre-chequeo opcional de spacing (spacing_core, validación "bloquear").
+        # Si el módulo no está activo, el getattr devuelve None y no bloquea.
+        try:
+            check = getattr(self.ctl, "_spacing_check_candidate", None)
+            if callable(check) and check(layer, x, y) is False:
+                return
+        except Exception:
+            pass
 
         try:
             f = QgsFeature(layer.fields())
@@ -143,7 +163,7 @@ class _TurbineInteractiveTool(QgsMapTool):
             layer.triggerRepaint()
         except Exception as ex:
             try:
-                iface.messageBar().pushWarning("Mapa interactivo", f"No se pudo añadir turbina: {ex}")
+                iface.messageBar().pushWarning(tr_text("Mapa interactivo"), f"{tr_text('No se pudo añadir turbina:')} {ex}")
             except Exception:
                 pass
             return
@@ -153,12 +173,14 @@ class _TurbineInteractiveTool(QgsMapTool):
         except Exception:
             pass
 
+        self._notify_spacing(layer)
+
     def _handle_remove(self, e):
         try:
             layer = self._get_layer()
         except Exception as ex:
             try:
-                iface.messageBar().pushWarning("Mapa interactivo", str(ex))
+                iface.messageBar().pushWarning(tr_text("Mapa interactivo"), str(ex))
             except Exception:
                 pass
             return
@@ -166,7 +188,7 @@ class _TurbineInteractiveTool(QgsMapTool):
         fid = self._nearest_feature(layer, e.mapPoint())
         if fid is None:
             try:
-                iface.messageBar().pushInfo("Mapa interactivo", "No hay turbina cerca del clic.")
+                iface.messageBar().pushInfo(tr_text("Mapa interactivo"), tr_text("No hay turbina cerca del clic."))
             except Exception:
                 pass
             return
@@ -177,12 +199,28 @@ class _TurbineInteractiveTool(QgsMapTool):
             layer.triggerRepaint()
         except Exception as ex:
             try:
-                iface.messageBar().pushWarning("Mapa interactivo", f"No se pudo borrar turbina: {ex}")
+                iface.messageBar().pushWarning(tr_text("Mapa interactivo"), f"{tr_text('No se pudo borrar turbina:')} {ex}")
             except Exception:
                 pass
             return
 
         try:
             self.ctl._mark_turbines_layer_dirty(layer)
+        except Exception:
+            pass
+
+        self._notify_spacing(layer)
+
+    def _notify_spacing(self, layer):
+        """Hook opcional: refresca las envolventes de separación si el módulo
+        spacing_core está activo (el dock publica el callback en el ctl).
+
+        Mantiene mapa_interactivo desacoplado de spacing_core: si el módulo
+        no está cargado, el getattr devuelve None y no pasa nada.
+        """
+        try:
+            cb = getattr(self.ctl, "_spacing_notify_layout_changed", None)
+            if callable(cb):
+                cb(layer)
         except Exception:
             pass

@@ -19,6 +19,11 @@ from qgis.core import (
     QgsPointXY,
     QgsSpatialIndex,
     QgsFeatureRequest,
+    QgsGraduatedSymbolRenderer,
+    QgsRendererRange,
+    QgsMarkerSymbol,
+    QgsSingleSymbolRenderer,
+    QgsStyle,
     edit,
 )
 
@@ -41,6 +46,8 @@ _RESULT_FIELDS = [
     ("aep_wake_blk_mwh", QVariant.Double),
     ("aep_wake_ti_blk_mwh", QVariant.Double),
     ("ti_eff", QVariant.Double),
+    ("model_perf_pct", QVariant.Double),
+    ("model_rank", QVariant.Int),
 ]
 
 
@@ -106,6 +113,8 @@ def push_results_to_point_layer(layer: QgsVectorLayer, per_turbine_table: List[D
     <b>Aerogenerador</b><br/>
     <span class='k'>Modelo</span>: [% "model" %]<br/>
     <span class='k'>AEP</span>: [% round("aep_mwh",0) %] MWh/año<br/>
+    <span class='k'>Rendimiento dentro del modelo</span>: [% round("model_perf_pct",1) %]%<br/>
+    <span class='k'>Posición dentro del modelo</span>: [% "model_rank" %]<br/>
     <span class='k'>Pérdida por estelas</span>: [% round("loss_wake_mwh",0) %] MWh
     ([% round("loss_wake_pct",1) %]%)<br/>
     <span class='k'>Impacto TI/turbulencia</span>: [% coalesce(round("ti_impact_mwh",0), 'n/d') %] MWh
@@ -119,6 +128,94 @@ def push_results_to_point_layer(layer: QgsVectorLayer, per_turbine_table: List[D
     <span class='k'>TI efectiva</span>: [% coalesce(round("ti_eff",3), 'n/d') %]
     """)
 
+
+
+def _decorate_model_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Add relative performance and rank within one turbine model."""
+    valid = []
+    for row in rows:
+        try:
+            value = float(row.get("aep_mwh"))
+        except (TypeError, ValueError):
+            continue
+        if value == value:  # not NaN
+            valid.append((value, row))
+
+    if not valid:
+        return rows
+
+    best = max(value for value, _row in valid)
+    ordered = sorted(valid, key=lambda item: item[0], reverse=True)
+    rank_by_id = {id(row): rank for rank, (_value, row) in enumerate(ordered, start=1)}
+
+    for value, row in valid:
+        row["model_perf_pct"] = (100.0 * value / best) if best > 0.0 else 100.0
+        row["model_rank"] = rank_by_id[id(row)]
+    return rows
+
+
+def apply_energy_renderer(layer: QgsVectorLayer, field_name: str = "aep_mwh") -> bool:
+    """Style a turbine point layer by individual AEP, independently per model layer."""
+    if layer is None or layer.fields().indexFromName(field_name) < 0:
+        return False
+
+    values = []
+    for feat in layer.getFeatures():
+        try:
+            value = float(feat[field_name])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if value == value:
+            values.append(value)
+    if not values:
+        return False
+
+    vmin, vmax = min(values), max(values)
+    base = QgsMarkerSymbol.createSimple({
+        "name": "circle",
+        "size": "4.2",
+        "outline_width": "0.35",
+        "outline_color": "45,45,45,220",
+    })
+
+    if abs(vmax - vmin) < 1e-9:
+        layer.setRenderer(QgsSingleSymbolRenderer(base))
+        layer.setCustomProperty("velantis/energy_renderer", "per_model_aep_single_value")
+        layer.setCustomProperty("velantis/energy_renderer_field", field_name)
+        layer.triggerRepaint()
+        return True
+
+    renderer = QgsGraduatedSymbolRenderer(field_name, [])
+    renderer.setSourceSymbol(base)
+    try:
+        ramp = QgsStyle.defaultStyle().colorRamp("RdYlGn")
+        if ramp is not None:
+            renderer.setSourceColorRamp(ramp)
+    except Exception:
+        pass
+
+    # Five equal-interval classes are stable and easy to interpret for screening.
+    try:
+        renderer.updateClasses(layer, QgsGraduatedSymbolRenderer.EqualInterval, 5)
+    except Exception:
+        step = (vmax - vmin) / 5.0
+        ranges = []
+        for i in range(5):
+            lower = vmin + i * step
+            upper = vmax if i == 4 else vmin + (i + 1) * step
+            symbol = base.clone()
+            ranges.append(QgsRendererRange(lower, upper, symbol, f"{lower:,.0f}–{upper:,.0f} MWh/año"))
+        renderer = QgsGraduatedSymbolRenderer(field_name, ranges)
+
+    try:
+        renderer.updateColorRamp(renderer.sourceColorRamp())
+    except Exception:
+        pass
+    layer.setRenderer(renderer)
+    layer.setCustomProperty("velantis/energy_renderer", "per_model_aep")
+    layer.setCustomProperty("velantis/energy_renderer_field", field_name)
+    layer.triggerRepaint()
+    return True
 
 def find_layer_by_name(name: str) -> Optional[QgsVectorLayer]:
     for lyr in QgsProject.instance().mapLayers().values():
@@ -151,7 +248,9 @@ def update_layers_from_results(
             _emit(log, f"[Layer] No se encontró la capa '{layer_name}'. ¿Está cargada?", warning_level or Qgis.Warning)
             continue
 
-        push_results_to_point_layer(layer, by_model.get(name, []), tol_m=tol_m)
+        model_rows = _decorate_model_rows(by_model.get(name, []))
+        push_results_to_point_layer(layer, model_rows, tol_m=tol_m)
+        apply_energy_renderer(layer, field_name="aep_mwh")
         try:
             meta = m.get("meta") if isinstance(m, dict) else None
             layer.setCustomProperty("velantis/model_name", str(name))
@@ -160,6 +259,16 @@ def update_layers_from_results(
                     layer.setCustomProperty("velantis/hub_height_m", float(meta.get("hh")))
                 if meta.get("diam") is not None:
                     layer.setCustomProperty("velantis/diameter_m", float(meta.get("diam")))
+                if meta.get("spacing_long_d") is not None:
+                    layer.setCustomProperty("velantis/spacing_long_d", float(meta.get("spacing_long_d")))
+                if meta.get("spacing_trans_d") is not None:
+                    layer.setCustomProperty("velantis/spacing_trans_d", float(meta.get("spacing_trans_d")))
+                if meta.get("curve_quality"):
+                    layer.setCustomProperty("velantis/curve_quality", str(meta.get("curve_quality")))
+                if meta.get("curve_source"):
+                    layer.setCustomProperty("velantis/curve_source", str(meta.get("curve_source")))
+                if meta.get("curve_source_url"):
+                    layer.setCustomProperty("velantis/curve_source_url", str(meta.get("curve_source_url")))
             csv_path = (m.get("coords_csv") or "").strip() if isinstance(m, dict) else ""
             if csv_path:
                 layer.setCustomProperty("velantis/coords_csv", str(csv_path))
@@ -176,5 +285,6 @@ __all__ = [
     "ensure_result_fields",
     "push_results_to_point_layer",
     "find_layer_by_name",
+    "apply_energy_renderer",
     "update_layers_from_results",
 ]

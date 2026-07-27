@@ -1421,6 +1421,15 @@ def _final_language_cleanup(text: str, lang: str) -> str:
         s = s.replace('Open-Quelle', 'Open-Source').replace('Open source', 'Open Source').replace('Open-Source', 'Open-Source')
     return s
 
+# Turbine-catalogue terminology refinements
+_TO_EN.update({
+    "Catálogo para screening: modelos representativos con geometría y curvas sintéticas editables. No son curvas OEM y no deben utilizarse como datos certificados.": "Screening catalogue: representative models with editable geometry and synthetic curves. These are not OEM curves and must not be used as certified data.",
+    "Las curvas del catálogo son sintéticas y sirven únicamente para screening preliminar. Para cálculos de ingeniería utiliza siempre curvas oficiales de potencia y CT del fabricante o del cliente.": "Catalogue curves are synthetic and intended only for preliminary screening. For engineering calculations, always use official manufacturer or client power and CT curves.",
+    "Buscar fabricante o modelo…": "Search manufacturer or model…",
+    "Catálogo de turbinas:": "Turbine catalogue:",
+    "Sin plantilla": "No template",
+})
+
 def tr_text(text):
     """Translate a whole UI string into the active language."""
     if text is None:
@@ -7678,5 +7687,283 @@ try:
     register_language(LANG_EN, _RELEASE_LAYOUT_CTA_TO_EN, _RELEASE_LAYOUT_CTA_TO_EN, label="English")
     register_language(LANG_FR, _RELEASE_LAYOUT_CTA_TO_FR, _RELEASE_LAYOUT_CTA_TO_FR, label="Français")
     register_language(LANG_DE, _RELEASE_LAYOUT_CTA_TO_DE, _RELEASE_LAYOUT_CTA_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
+# Localized Noise receiver/XLSX export schema and messages.
+# ---------------------------------------------------------------------------
+_NOISE_XLSX_TO_EN = {
+    "ID receptor": "receiver ID",
+    "margen respecto al límite dB": "margin to limit dB",
+    "supera el límite": "exceeds limit",
+    "nº aerogeneradores": "no. wind turbines",
+    "dist. aerogenerador cercano (m)": "nearest wind turbine dist. (m)",
+    "Agr/Aground dB": "Agr/Aground dB",
+    "Abar máx. dB": "max. Abar dB",
+    "cumple": "compliant",
+    "cerca del límite": "near limit",
+    "supera": "exceeds",
+    "desde capa": "from layer",
+    "Sin datos": "No data",
+    "XLSX exportado": "XLSX exported",
+    "Paquete XLSX exportado correctamente:": "XLSX package exported successfully:",
+}
+_NOISE_XLSX_TO_FR = {
+    "ID receptor": "ID récepteur",
+    "tipo": "type",
+    "nivel total dB(A)": "niveau total dB(A)",
+    "límite dB(A)": "limite dB(A)",
+    "margen respecto al límite dB": "marge par rapport à la limite dB",
+    "estado": "état",
+    "supera el límite": "dépasse la limite",
+    "nº aerogeneradores": "nb éoliennes",
+    "dist. aerogenerador cercano (m)": "dist. éolienne proche (m)",
+    "modelo dominante": "modèle dominant",
+    "grupo fuente dom.": "groupe source dom.",
+    "parque dom.": "parc dom.",
+    "LwA fuente dom. dB(A)": "LwA source dom. dB(A)",
+    "Adiv dB": "Adiv dB",
+    "Aatm dB": "Aatm dB",
+    "Agr/Aground dB": "Agr/Aground dB",
+    "Abar máx. dB": "Abar max. dB",
+    "G suelo": "G sol",
+    "modo suelo": "mode sol",
+    "h receptor m": "h récepteur m",
+    "z terreno receptor m": "z terrain récepteur m",
+    "z acústica receptor m": "z acoustique récepteur m",
+    "capa fuente dominante": "couche source dominante",
+    "cumple": "conforme",
+    "cerca del límite": "proche de la limite",
+    "supera": "dépasse",
+    "desde capa": "depuis couche",
+    "Sin datos": "Aucune donnée",
+    "XLSX exportado": "XLSX exporté",
+    "Paquete XLSX exportado correctamente:": "Paquet XLSX exporté avec succès :",
+}
+_NOISE_XLSX_TO_DE = {
+    "ID receptor": "Rezeptor-ID",
+    "tipo": "Typ",
+    "nivel total dB(A)": "Gesamtpegel dB(A)",
+    "límite dB(A)": "Grenzwert dB(A)",
+    "margen respecto al límite dB": "Abstand zum Grenzwert dB",
+    "estado": "Status",
+    "supera el límite": "überschreitet Grenzwert",
+    "nº aerogeneradores": "Anz. Windturbinen",
+    "dist. aerogenerador cercano (m)": "nächste Windturbine (m)",
+    "modelo dominante": "dominantes Modell",
+    "grupo fuente dom.": "dominante Quellgruppe",
+    "parque dom.": "dominanter Windpark",
+    "LwA fuente dom. dB(A)": "LwA dominante Quelle dB(A)",
+    "Adiv dB": "Adiv dB",
+    "Aatm dB": "Aatm dB",
+    "Agr/Aground dB": "Agr/Aground dB",
+    "Abar máx. dB": "max. Abar dB",
+    "G suelo": "Boden-G",
+    "modo suelo": "Bodenmodus",
+    "h receptor m": "Rezeptorhöhe m",
+    "z terreno receptor m": "Geländehöhe Rezeptor m",
+    "z acústica receptor m": "akustische Höhe Rezeptor m",
+    "capa fuente dominante": "dominanter Quellen-Layer",
+    "cumple": "eingehalten",
+    "cerca del límite": "nahe am Grenzwert",
+    "supera": "überschritten",
+    "desde capa": "aus Layer",
+    "Sin datos": "Keine Daten",
+    "XLSX exportado": "XLSX exportiert",
+    "Paquete XLSX exportado correctamente:": "XLSX-Paket erfolgreich exportiert:",
+}
+try:
+    register_language(LANG_EN, _NOISE_XLSX_TO_EN, _NOISE_XLSX_TO_EN, label="English")
+    register_language(LANG_FR, _NOISE_XLSX_TO_FR, _NOISE_XLSX_TO_FR, label="Français")
+    register_language(LANG_DE, _NOISE_XLSX_TO_DE, _NOISE_XLSX_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# --- Turbine screening catalogue ---
+_I18N_TURBINE_CATALOG_TO_EN = {
+    "(curva genérica de screening)": "(generic screening curve)",
+    "Catálogo de turbinas:": "Turbine catalogue:",
+    "Catálogo de turbinas": "Turbine catalogue",
+    "Sin plantilla": "No template",
+    "Buscar fabricante o modelo…": "Search manufacturer or model…",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Screening catalogue: 74 candidates with editable generic geometry and curves. It does not replace the manufacturer's official power and CT curves.",
+    "Las curvas del catálogo son genéricas y editables para screening. Para una entrega técnica usa siempre la curva oficial del fabricante o del cliente.": "The catalogue curves are generic and editable for screening. For a technical deliverable, always use the official curve supplied by the manufacturer or client.",
+    "No se pudo aplicar el candidato seleccionado:": "The selected candidate could not be applied:",
+}
+_I18N_TURBINE_CATALOG_TO_FR = {
+    "(curva genérica de screening)": "(courbe générique de screening)",
+    "Catálogo de turbinas:": "Catalogue d’éoliennes :",
+    "Catálogo de turbinas": "Catalogue d’éoliennes",
+    "Sin plantilla": "Aucun gabarit",
+    "Buscar fabricante o modelo…": "Rechercher un fabricant ou un modèle…",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Catalogue de screening : 74 candidats avec géométrie et courbes génériques modifiables. Il ne remplace pas les courbes officielles de puissance et de CT du fabricant.",
+    "Las curvas del catálogo son genéricas y editables para screening. Para una entrega técnica usa siempre la curva oficial del fabricante o del cliente.": "Les courbes du catalogue sont génériques et modifiables pour le screening. Pour un livrable technique, utilisez toujours la courbe officielle du fabricant ou du client.",
+    "No se pudo aplicar el candidato seleccionado:": "Le candidat sélectionné n’a pas pu être appliqué :",
+}
+_I18N_TURBINE_CATALOG_TO_DE = {
+    "(curva genérica de screening)": "(generische Screening-Kurve)",
+    "Catálogo de turbinas:": "Turbinenkatalog:",
+    "Catálogo de turbinas": "Turbinenkatalog",
+    "Sin plantilla": "Keine Vorlage",
+    "Buscar fabricante o modelo…": "Hersteller oder Modell suchen…",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Screening-Katalog: 74 Kandidaten mit bearbeitbarer generischer Geometrie und Kurven. Er ersetzt nicht die offiziellen Leistungs- und CT-Kurven des Herstellers.",
+    "Las curvas del catálogo son genéricas y editables para screening. Para una entrega técnica usa siempre la curva oficial del fabricante o del cliente.": "Die Katalogkurven sind generisch und für das Screening bearbeitbar. Verwenden Sie für technische Unterlagen immer die offizielle Kurve des Herstellers oder Kunden.",
+    "No se pudo aplicar el candidato seleccionado:": "Der ausgewählte Kandidat konnte nicht angewendet werden:",
+}
+try:
+    register_language(LANG_EN, _I18N_TURBINE_CATALOG_TO_EN, _I18N_TURBINE_CATALOG_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_TURBINE_CATALOG_TO_FR, _I18N_TURBINE_CATALOG_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_TURBINE_CATALOG_TO_DE, _I18N_TURBINE_CATALOG_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+
+
+# --- Per-model spacing and turbine catalogue ---
+_I18N_TURBINE_SPACING_TO_EN = {
+    "Separación": "Spacing",
+    "Separación longitudinal del modelo:": "Model downwind spacing:",
+    "Separación transversal del modelo:": "Model crosswind spacing:",
+    "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor.": "Initial downwind spacing for this model, expressed in rotor diameters.",
+    "Separación transversal inicial de este modelo, expresada en diámetros de rotor.": "Initial crosswind spacing for this model, expressed in rotor diameters.",
+    "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje mayor de sus envolventes.": "Initial downwind spacing for this model, expressed in rotor diameters. It is stored with the model and controls the major axis of its envelopes.",
+    "Separación transversal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje menor de sus envolventes.": "Initial crosswind spacing for this model, expressed in rotor diameters. It is stored with the model and controls the minor axis of its envelopes.",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Screening catalogue: 74 candidates with editable generic geometry and curves. It does not replace the manufacturer's official power and CT curves.",
+    "Las curvas del catálogo son sintéticas y sirven únicamente para screening preliminar. Para cálculos de ingeniería utiliza siempre curvas oficiales de potencia y CT del fabricante o del cliente.": "Catalogue curves are synthetic and intended only for preliminary screening. For engineering calculations, always use official manufacturer or client power and CT curves.",
+}
+_I18N_TURBINE_SPACING_TO_FR = {
+    "Separación": "Espacement",
+    "Separación longitudinal del modelo:": "Espacement longitudinal du modèle :",
+    "Separación transversal del modelo:": "Espacement transversal du modèle :",
+    "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor.": "Espacement longitudinal initial de ce modèle, exprimé en diamètres de rotor.",
+    "Separación transversal inicial de este modelo, expresada en diámetros de rotor.": "Espacement transversal initial de ce modèle, exprimé en diamètres de rotor.",
+    "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje mayor de sus envolventes.": "Espacement longitudinal initial de ce modèle, exprimé en diamètres de rotor. Il est enregistré avec le modèle et contrôle le grand axe de ses enveloppes.",
+    "Separación transversal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje menor de sus envolventes.": "Espacement transversal initial de ce modèle, exprimé en diamètres de rotor. Il est enregistré avec le modèle et contrôle le petit axe de ses enveloppes.",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Catalogue de screening : 74 candidats avec géométrie et courbes génériques modifiables. Il ne remplace pas les courbes officielles de puissance et de CT du fabricant.",
+    "Las curvas del catálogo son sintéticas y sirven únicamente para screening preliminar. Para cálculos de ingeniería utiliza siempre curvas oficiales de potencia y CT del fabricante o del cliente.": "Les courbes du catalogue sont synthétiques et destinées uniquement au screening préliminaire. Pour les calculs d’ingénierie, utilisez toujours les courbes officielles de puissance et de CT du fabricant ou du client.",
+}
+_I18N_TURBINE_SPACING_TO_DE = {
+    "Separación": "Abstand",
+    "Separación longitudinal del modelo:": "Längsabstand des Modells:",
+    "Separación transversal del modelo:": "Querabstand des Modells:",
+    "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor.": "Anfänglicher Längsabstand dieses Modells in Rotordurchmessern.",
+    "Separación transversal inicial de este modelo, expresada en diámetros de rotor.": "Anfänglicher Querabstand dieses Modells in Rotordurchmessern.",
+    "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje mayor de sus envolventes.": "Anfänglicher Längsabstand dieses Modells in Rotordurchmessern. Er wird mit dem Modell gespeichert und steuert die Hauptachse seiner Hüllen.",
+    "Separación transversal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje menor de sus envolventes.": "Anfänglicher Querabstand dieses Modells in Rotordurchmessern. Er wird mit dem Modell gespeichert und steuert die Nebenachse seiner Hüllen.",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Screening-Katalog: 74 Kandidaten mit bearbeitbarer generischer Geometrie und Kurven. Er ersetzt nicht die offiziellen Leistungs- und CT-Kurven des Herstellers.",
+    "Las curvas del catálogo son sintéticas y sirven únicamente para screening preliminar. Para cálculos de ingeniería utiliza siempre curvas oficiales de potencia y CT del fabricante o del cliente.": "Die Katalogkurven sind synthetisch und nur für ein vorläufiges Screening vorgesehen. Verwenden Sie für technische Berechnungen immer die offiziellen Leistungs- und CT-Kurven des Herstellers oder Kunden.",
+}
+try:
+    register_language(LANG_EN, _I18N_TURBINE_SPACING_TO_EN, _I18N_TURBINE_SPACING_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_TURBINE_SPACING_TO_FR, _I18N_TURBINE_SPACING_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_TURBINE_SPACING_TO_DE, _I18N_TURBINE_SPACING_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+
+# --- Curve provenance and defensible catalogue ---
+_I18N_CURVE_PROVENANCE_TO_EN = {
+    "[Referencia pública]": "[Public reference]",
+    "[Aproximada]": "[Approximate]",
+    "Referencia pública": "Public reference",
+    "Curva aproximada": "Approximate curve",
+    "(referencia pública)": "(public reference)",
+    "(curva aproximada)": "(approximate curve)",
+    "Genérica terrestre": "Generic onshore",
+    "Genérica marina": "Generic offshore",
+    "Buscar referencia o clase de turbina…": "Search reference or turbine class…",
+    "Calidad y procedencia:": "Quality and provenance:",
+    "Selecciona una turbina para ver la calidad y la fuente de la curva.": "Select a turbine to see the curve quality and source.",
+    "Fuente:": "Source:",
+    "Sin fuente externa": "No external source",
+    "Referencia pública/abierta. Revisa la fuente y sus condiciones antes de una entrega técnica.": "Public/open reference. Review the source and its conditions before a technical deliverable.",
+    "Aproximación paramétrica de Velantis. No es una curva OEM ni certificada.": "Velantis parametric approximation. It is not an OEM or certified curve.",
+    "El catálogo distingue referencias públicas de aproximaciones genéricas. Las aproximaciones no son curvas OEM ni certificadas.": "The catalogue distinguishes public references from generic approximations. Approximations are not OEM or certified curves.",
+    "El catálogo incluye referencias públicas trazables y clases genéricas aproximadas. Comprueba siempre la procedencia indicada antes de usar una curva en una entrega técnica.": "The catalogue includes traceable public references and approximate generic classes. Always check the stated provenance before using a curve in a technical deliverable.",
+}
+_I18N_CURVE_PROVENANCE_TO_FR = {
+    "[Referencia pública]": "[Référence publique]",
+    "[Aproximada]": "[Approximative]",
+    "Referencia pública": "Référence publique",
+    "Curva aproximada": "Courbe approximative",
+    "(referencia pública)": "(référence publique)",
+    "(curva aproximada)": "(courbe approximative)",
+    "Genérica terrestre": "Générique terrestre",
+    "Genérica marina": "Générique offshore",
+    "Buscar referencia o clase de turbina…": "Rechercher une référence ou une classe d’éolienne…",
+    "Calidad y procedencia:": "Qualité et provenance :",
+    "Selecciona una turbina para ver la calidad y la fuente de la curva.": "Sélectionnez une éolienne pour voir la qualité et la source de la courbe.",
+    "Fuente:": "Source :",
+    "Sin fuente externa": "Aucune source externe",
+    "Referencia pública/abierta. Revisa la fuente y sus condiciones antes de una entrega técnica.": "Référence publique/ouverte. Vérifiez la source et ses conditions avant un livrable technique.",
+    "Aproximación paramétrica de Velantis. No es una curva OEM ni certificada.": "Approximation paramétrique Velantis. Ce n’est ni une courbe OEM ni une courbe certifiée.",
+    "El catálogo distingue referencias públicas de aproximaciones genéricas. Las aproximaciones no son curvas OEM ni certificadas.": "Le catalogue distingue les références publiques des approximations génériques. Les approximations ne sont ni OEM ni certifiées.",
+    "El catálogo incluye referencias públicas trazables y clases genéricas aproximadas. Comprueba siempre la procedencia indicada antes de usar una curva en una entrega técnica.": "Le catalogue comprend des références publiques traçables et des classes génériques approximatives. Vérifiez toujours la provenance indiquée avant d’utiliser une courbe dans un livrable technique.",
+}
+_I18N_CURVE_PROVENANCE_TO_DE = {
+    "[Referencia pública]": "[Öffentliche Referenz]",
+    "[Aproximada]": "[Näherung]",
+    "Referencia pública": "Öffentliche Referenz",
+    "Curva aproximada": "Näherungskurve",
+    "(referencia pública)": "(öffentliche Referenz)",
+    "(curva aproximada)": "(Näherungskurve)",
+    "Genérica terrestre": "Generisch Onshore",
+    "Genérica marina": "Generisch Offshore",
+    "Buscar referencia o clase de turbina…": "Referenz oder Turbinenklasse suchen…",
+    "Calidad y procedencia:": "Qualität und Herkunft:",
+    "Selecciona una turbina para ver la calidad y la fuente de la curva.": "Wählen Sie eine Turbine, um Qualität und Quelle der Kurve zu sehen.",
+    "Fuente:": "Quelle:",
+    "Sin fuente externa": "Keine externe Quelle",
+    "Referencia pública/abierta. Revisa la fuente y sus condiciones antes de una entrega técnica.": "Öffentliche/offene Referenz. Prüfen Sie Quelle und Bedingungen vor einer technischen Abgabe.",
+    "Aproximación paramétrica de Velantis. No es una curva OEM ni certificada.": "Parametrische Velantis-Näherung. Keine OEM- oder zertifizierte Kurve.",
+    "El catálogo distingue referencias públicas de aproximaciones genéricas. Las aproximaciones no son curvas OEM ni certificadas.": "Der Katalog unterscheidet öffentliche Referenzen von generischen Näherungen. Näherungen sind weder OEM- noch zertifizierte Kurven.",
+    "El catálogo incluye referencias públicas trazables y clases genéricas aproximadas. Comprueba siempre la procedencia indicada antes de usar una curva en una entrega técnica.": "Der Katalog enthält nachvollziehbare öffentliche Referenzen und angenäherte generische Klassen. Prüfen Sie vor einer technischen Abgabe immer die angegebene Herkunft.",
+}
+try:
+    register_language(LANG_EN, _I18N_CURVE_PROVENANCE_TO_EN, _I18N_CURVE_PROVENANCE_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_CURVE_PROVENANCE_TO_FR, _I18N_CURVE_PROVENANCE_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_CURVE_PROVENANCE_TO_DE, _I18N_CURVE_PROVENANCE_TO_DE, label="Deutsch")
+except Exception:
+    pass
+
+# --- Spec-anchored approximate turbine curves ---
+_I18N_SPEC_CURVES_TO_EN = {
+    "[Aprox. basada en ficha]": "[Spec-based approx.]",
+    "[Aproximada genérica]": "[Generic approximation]",
+    "Aproximación basada en ficha pública": "Approximation based on public specifications",
+    "Curva aproximada genérica": "Generic approximate curve",
+    "(aproximación basada en ficha pública)": "(approximation based on public specifications)",
+    "(curva aproximada genérica)": "(generic approximate curve)",
+    "El catálogo distingue referencias públicas, aproximaciones ancladas a fichas técnicas y clases genéricas. Ninguna aproximación es una curva OEM o certificada.": "The catalogue distinguishes public references, approximations anchored to technical specifications, and generic classes. No approximation is an OEM or certified curve.",
+    "El catálogo incluye referencias abiertas, aproximaciones basadas en especificaciones públicas y clases genéricas. Comprueba la procedencia antes de una entrega técnica.": "The catalogue includes open references, approximations based on public specifications, and generic classes. Check provenance before a technical deliverable.",
+    "La geometría y los puntos técnicos indicados proceden de la fuente pública; la curva de potencia y CT entre esos puntos es paramétrica. No es OEM ni certificada.": "The stated geometry and technical points come from the public source; the power and CT curve between those points is parametric. It is not OEM or certified.",
+}
+_I18N_SPEC_CURVES_TO_FR = {
+    "[Aprox. basada en ficha]": "[Approx. selon fiche]",
+    "[Aproximada genérica]": "[Approximation générique]",
+    "Aproximación basada en ficha pública": "Approximation basée sur une fiche publique",
+    "Curva aproximada genérica": "Courbe générique approximative",
+    "(aproximación basada en ficha pública)": "(approximation basée sur une fiche publique)",
+    "(curva aproximada genérica)": "(courbe générique approximative)",
+    "El catálogo distingue referencias públicas, aproximaciones ancladas a fichas técnicas y clases genéricas. Ninguna aproximación es una curva OEM o certificada.": "Le catalogue distingue les références publiques, les approximations fondées sur des fiches techniques et les classes génériques. Aucune approximation n’est une courbe OEM ou certifiée.",
+    "El catálogo incluye referencias abiertas, aproximaciones basadas en especificaciones públicas y clases genéricas. Comprueba la procedencia antes de una entrega técnica.": "Le catalogue comprend des références ouvertes, des approximations basées sur des spécifications publiques et des classes génériques. Vérifiez la provenance avant un livrable technique.",
+    "La geometría y los puntos técnicos indicados proceden de la fuente pública; la curva de potencia y CT entre esos puntos es paramétrica. No es OEM ni certificada.": "La géométrie et les points techniques indiqués proviennent de la source publique ; la courbe de puissance et de CT entre ces points est paramétrique. Elle n’est ni OEM ni certifiée.",
+}
+_I18N_SPEC_CURVES_TO_DE = {
+    "[Aprox. basada en ficha]": "[Datenblatt-Näherung]",
+    "[Aproximada genérica]": "[Generische Näherung]",
+    "Aproximación basada en ficha pública": "Näherung auf Basis öffentlicher Spezifikationen",
+    "Curva aproximada genérica": "Generische Näherungskurve",
+    "(aproximación basada en ficha pública)": "(Näherung auf Basis öffentlicher Spezifikationen)",
+    "(curva aproximada genérica)": "(generische Näherungskurve)",
+    "El catálogo distingue referencias públicas, aproximaciones ancladas a fichas técnicas y clases genéricas. Ninguna aproximación es una curva OEM o certificada.": "Der Katalog unterscheidet öffentliche Referenzen, an technische Datenblätter angelehnte Näherungen und generische Klassen. Keine Näherung ist eine OEM- oder zertifizierte Kurve.",
+    "El catálogo incluye referencias abiertas, aproximaciones basadas en especificaciones públicas y clases genéricas. Comprueba la procedencia antes de una entrega técnica.": "Der Katalog enthält offene Referenzen, Näherungen auf Basis öffentlicher Spezifikationen und generische Klassen. Prüfen Sie vor einer technischen Abgabe die Herkunft.",
+    "La geometría y los puntos técnicos indicados proceden de la fuente pública; la curva de potencia y CT entre esos puntos es paramétrica. No es OEM ni certificada.": "Die angegebene Geometrie und die technischen Eckpunkte stammen aus der öffentlichen Quelle; die Leistungs- und CT-Kurve dazwischen ist parametrisch. Sie ist weder OEM noch zertifiziert.",
+}
+try:
+    register_language(LANG_EN, _I18N_SPEC_CURVES_TO_EN, _I18N_SPEC_CURVES_TO_EN, label="English")
+    register_language(LANG_FR, _I18N_SPEC_CURVES_TO_FR, _I18N_SPEC_CURVES_TO_FR, label="Français")
+    register_language(LANG_DE, _I18N_SPEC_CURVES_TO_DE, _I18N_SPEC_CURVES_TO_DE, label="Deutsch")
 except Exception:
     pass

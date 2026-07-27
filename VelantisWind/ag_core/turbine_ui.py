@@ -10,17 +10,28 @@ para que AG_dialog pueda reconstruir si lo desea.
 from qgis.PyQt import QtWidgets, QtCore
 from typing import Optional, List, Tuple, Dict, Any
 import os
+import math
 
 # Utilidades del módulo turbine.py
 from .turbine import TxtSpec, load_curves_from_txt, build_wt_from_manual
 
 try:
-    from ..i18n import apply_i18n, install_runtime_i18n_patches
+    from .turbines.library import load_builtin_candidates, load_candidate_curve
+except Exception:  # pragma: no cover - package data fallback
+    def load_builtin_candidates():
+        return tuple()
+    def load_candidate_curve(_candidate):
+        raise FileNotFoundError("Built-in turbine catalogue is not available")
+
+try:
+    from ..i18n import apply_i18n, install_runtime_i18n_patches, tr_text
 except Exception:  # pragma: no cover - allows standalone imports during tests
     def apply_i18n(widget):
         return None
     def install_runtime_i18n_patches():
         return None
+    def tr_text(text):
+        return text
 
 __all__ = ["CustomTurbineDialog"]
 
@@ -54,40 +65,84 @@ def _parse_num_list(txt: str) -> List[float]:
 
 # Plantillas rápidas para pre-assessment. No son curvas oficiales de fabricante:
 # generan una curva genérica editable a partir de geometría + potencia nominal típica.
-_GENERIC_PRESETS: Dict[str, Dict[str, float]] = {
-    "Vestas V80-2.0 · genérico": {"diam": 80.0, "hub": 80.0, "rated_kw": 2000.0},
-    "Vestas V90-2.0 · genérico": {"diam": 90.0, "hub": 80.0, "rated_kw": 2000.0},
-    "Vestas V100-2.0 · genérico": {"diam": 100.0, "hub": 95.0, "rated_kw": 2000.0},
-    "Vestas V112-3.0 · genérico": {"diam": 112.0, "hub": 94.0, "rated_kw": 3000.0},
-    "Siemens SWT-2.3-93 · genérico": {"diam": 93.0, "hub": 80.0, "rated_kw": 2300.0},
-    "Enercon E-82 · genérico": {"diam": 82.0, "hub": 85.0, "rated_kw": 2000.0},
-    "GE 1.5sle · genérico": {"diam": 77.0, "hub": 80.0, "rated_kw": 1500.0},
+_FALLBACK_GENERIC_PRESETS: Dict[str, Dict[str, float]] = {
+    "Genérica terrestre 2 MW · D90 m": {"diam": 90.0, "hub": 80.0, "rated_kw": 2000.0, "curve_quality": "approximate", "category": "generic_onshore"},
+    "Genérica terrestre 3 MW · D120 m": {"diam": 120.0, "hub": 100.0, "rated_kw": 3000.0, "curve_quality": "approximate", "category": "generic_onshore"},
+    "Genérica terrestre 5 MW · D165 m": {"diam": 165.0, "hub": 130.0, "rated_kw": 5000.0, "curve_quality": "approximate", "category": "generic_onshore"},
+    "Genérica marina 12 MW · D220 m": {"diam": 220.0, "hub": 140.0, "rated_kw": 12000.0, "curve_quality": "approximate", "category": "generic_offshore"},
 }
 
 
-def _generic_curve_from_rated(rated_kw: float, cut_in: float = 3.0, rated_ws: float = 12.0, cut_out: float = 25.0) -> Tuple[List[float], List[float], List[float]]:
-    """Curva screening simple, editable y no certificada por fabricante."""
-    ws = [float(v) for v in range(0, 26)]
+def _catalogue_presets() -> List[Dict[str, Any]]:
+    """Load the packaged catalogue, with the legacy seven presets as fallback."""
+    try:
+        candidates = [dict(item) for item in load_builtin_candidates()]
+    except Exception:
+        candidates = []
+    if candidates:
+        return candidates
+    return [{"name": label, **data} for label, data in _FALLBACK_GENERIC_PRESETS.items()]
+
+
+def _generic_curve_from_rated(
+    rated_kw: float,
+    diameter_m: float = 120.0,
+    cut_in: float = 3.0,
+    rated_ws: float = 0.0,
+    cut_out: float = 25.0,
+) -> Tuple[List[float], List[float], List[float]]:
+    """Physically plausible fallback for screening; never an OEM curve."""
+    rho = 1.225
+    area = math.pi * (max(float(diameter_m), 1.0) / 2.0) ** 2
+    if rated_ws <= cut_in:
+        rated_ws = (max(float(rated_kw), 1.0) * 1000.0 / (0.5 * rho * area * 0.43)) ** (1.0 / 3.0)
+        rated_ws = max(8.0, min(13.5, rated_ws))
+    cp_target = max(0.25, min(0.47, float(rated_kw) * 1000.0 / (0.5 * rho * area * rated_ws ** 3)))
+    ct_base = max(0.72, min(0.84, 0.78 + (cp_target - 0.40) * 0.45))
+    ws = [round(i * 0.5, 1) for i in range(61)]
     power: List[float] = []
     ct: List[float] = []
     for w in ws:
         if w < cut_in or w > cut_out:
             p = 0.0
             c = 0.0
-        elif w < rated_ws:
-            frac = max(0.0, min(1.0, (w - cut_in) / max(rated_ws - cut_in, 1e-9)))
-            p = float(rated_kw) * (frac ** 3)
-            c = 0.82
         else:
-            p = float(rated_kw)
-            c = max(0.18, 0.82 - 0.045 * (w - rated_ws))
+            ramp = max(0.0, min(1.0, (w - cut_in) / 2.0))
+            smooth = ramp * ramp * (3.0 - 2.0 * ramp)
+            cp = cp_target * smooth
+            p = min(float(rated_kw), 0.5 * rho * area * cp * w ** 3 / 1000.0)
+            if w >= rated_ws:
+                p = float(rated_kw)
+            ct_ramp = max(0.0, min(1.0, (w - cut_in)))
+            ct_smooth = ct_ramp * ct_ramp * (3.0 - 2.0 * ct_ramp)
+            c = ct_base * ct_smooth
+            if w > rated_ws:
+                c = max(0.04, ct_base * (rated_ws / w) ** 2.5)
         power.append(round(p, 3))
-        ct.append(round(max(0.0, min(1.0, c)), 3))
+        ct.append(round(max(0.0, min(1.0, c)), 4))
     return ws, power, ct
 
 
 def _fmt_list(vals: List[float]) -> str:
-    return " ".join((f"{v:.3f}".rstrip("0").rstrip(".") for v in vals))
+    return " ".join((f"{float(v):.8f}".rstrip("0").rstrip(".") for v in vals))
+
+
+def _candidate_display_label(data: Dict[str, Any]) -> str:
+    quality = str(data.get("curve_quality") or "approximate")
+    category = str(data.get("category") or "")
+    if quality == "approximate" and category in {"generic_onshore", "generic_offshore"}:
+        prefix = tr_text("Genérica terrestre") if category == "generic_onshore" else tr_text("Genérica marina")
+        mw = float(data.get("rated_kw", 0.0) or 0.0) / 1000.0
+        diam = float(data.get("diam", data.get("diameter_m", 0.0)) or 0.0)
+        return f"{prefix} {mw:g} MW · D{diam:g} m"
+    return str(data.get("name") or data.get("display_name") or tr_text("Turbina"))
+
+
+def _same_curve(a: Tuple[List[float], List[float], List[float]], b: Tuple[List[float], List[float], List[float]], tol: float = 1e-7) -> bool:
+    try:
+        return all(len(x) == len(y) and all(abs(float(i) - float(j)) <= tol for i, j in zip(x, y)) for x, y in zip(a, b))
+    except Exception:
+        return False
 
 
 class _HLine(QtWidgets.QFrame):
@@ -111,6 +166,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
         self._wt = None  # type: Optional[object]
         self._last_curves = None  # type: Optional[Tuple[List[float], List[float], List[float]]]
         self._result_data = None  # type: Optional[Dict[str, Any]]
+        self._active_catalogue_candidate = None  # type: Optional[Dict[str, Any]]
+        self._active_catalogue_curve = None  # type: Optional[Tuple[List[float], List[float], List[float]]]
 
         tabs = QtWidgets.QTabWidget(self)
 
@@ -154,6 +211,28 @@ class CustomTurbineDialog(QtWidgets.QDialog):
         self.sp_hub_m.setValue(90.0)
         self.sp_hub_m.setSuffix(" m")
 
+        self.sp_spacing_long_m = QtWidgets.QDoubleSpinBox()
+        self.sp_spacing_long_m.setRange(0.5, 30.0)
+        self.sp_spacing_long_m.setDecimals(2)
+        self.sp_spacing_long_m.setSingleStep(0.5)
+        self.sp_spacing_long_m.setValue(7.0)
+        self.sp_spacing_long_m.setSuffix(" · D")
+        self.sp_spacing_long_m.setToolTip(
+            "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor. "
+            "Se guarda con el modelo y controla el eje mayor de sus envolventes."
+        )
+
+        self.sp_spacing_trans_m = QtWidgets.QDoubleSpinBox()
+        self.sp_spacing_trans_m.setRange(0.5, 30.0)
+        self.sp_spacing_trans_m.setDecimals(2)
+        self.sp_spacing_trans_m.setSingleStep(0.5)
+        self.sp_spacing_trans_m.setValue(4.0)
+        self.sp_spacing_trans_m.setSuffix(" · D")
+        self.sp_spacing_trans_m.setToolTip(
+            "Separación transversal inicial de este modelo, expresada en diámetros de rotor. "
+            "Se guarda con el modelo y controla el eje menor de sus envolventes."
+        )
+
         self.te_ws = QtWidgets.QPlainTextEdit()
         self.te_power = QtWidgets.QPlainTextEdit()
         self.te_ct = QtWidgets.QPlainTextEdit()
@@ -167,27 +246,66 @@ class CustomTurbineDialog(QtWidgets.QDialog):
 
         self.cb_generic_preset = QtWidgets.QComboBox()
         self.cb_generic_preset.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        self.cb_generic_preset.setMinimumContentsLength(22)
-        self.cb_generic_preset.addItem("Sin plantilla", None)
-        for label, data in _GENERIC_PRESETS.items():
-            self.cb_generic_preset.addItem(label, data)
-        self.cb_generic_preset.setToolTip(
-            "Plantillas de screening: rellenan D, hub, potencia nominal y una curva genérica editable. "
-            "No sustituyen la curva oficial del fabricante."
-        )
+        self.cb_generic_preset.setMinimumContentsLength(30)
+        self.cb_generic_preset.setEditable(True)
+        try:
+            self.cb_generic_preset.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        except Exception:
+            pass
+        self.cb_generic_preset.addItem(tr_text("Sin plantilla"), None)
+        catalogue = _catalogue_presets()
+        public_items = [d for d in catalogue if str(d.get("curve_quality") or "") == "public_reference"]
+        spec_items = [d for d in catalogue if str(d.get("curve_quality") or "") == "spec_based_approximation"]
+        approximate_items = [
+            d for d in catalogue
+            if str(d.get("curve_quality") or "") not in {"public_reference", "spec_based_approximation"}
+        ]
+        for data in public_items:
+            self.cb_generic_preset.addItem(f"{tr_text('[Referencia pública]')} {_candidate_display_label(data)}", data)
+        if public_items and (spec_items or approximate_items):
+            self.cb_generic_preset.insertSeparator(self.cb_generic_preset.count())
+        for data in spec_items:
+            self.cb_generic_preset.addItem(f"{tr_text('[Aprox. basada en ficha]')} {_candidate_display_label(data)}", data)
+        if spec_items and approximate_items:
+            self.cb_generic_preset.insertSeparator(self.cb_generic_preset.count())
+        for data in approximate_items:
+            self.cb_generic_preset.addItem(f"{tr_text('[Aproximada genérica]')} {_candidate_display_label(data)}", data)
+        try:
+            completer = self.cb_generic_preset.completer()
+            completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+            completer.setFilterMode(QtCore.Qt.MatchContains)
+            completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
+            self.cb_generic_preset.lineEdit().setPlaceholderText(tr_text("Buscar referencia o clase de turbina…"))
+        except Exception:
+            pass
+        self.cb_generic_preset.setToolTip(tr_text(
+            "El catálogo distingue referencias públicas, aproximaciones ancladas a fichas "
+            "técnicas y clases genéricas. Ninguna aproximación es una curva OEM o certificada."
+        ))
         self.cb_generic_preset.currentIndexChanged.connect(self._apply_generic_preset)
 
-        note_preset = QtWidgets.QLabel(
-            "Las plantillas son genéricas para pre-screening. Para entrega final usa la curva oficial del fabricante/cliente."
-        )
+        note_preset = QtWidgets.QLabel(tr_text(
+            "El catálogo incluye referencias abiertas, aproximaciones basadas en especificaciones "
+            "públicas y clases genéricas. Comprueba la procedencia antes de una entrega técnica."
+        ))
         note_preset.setWordWrap(True)
         note_preset.setStyleSheet("color: #666; font-size: 11px;")
 
-        f_man.addRow("Plantilla rápida:", self.cb_generic_preset)
+        self.lbl_curve_provenance = QtWidgets.QLabel(tr_text(
+            "Selecciona una turbina para ver la calidad y la fuente de la curva."
+        ))
+        self.lbl_curve_provenance.setWordWrap(True)
+        self.lbl_curve_provenance.setTextFormat(QtCore.Qt.RichText)
+        self.lbl_curve_provenance.setStyleSheet("padding: 5px; border: 1px solid #bbb; border-radius: 3px;")
+
+        f_man.addRow("Catálogo de turbinas:", self.cb_generic_preset)
         f_man.addRow("", note_preset)
+        f_man.addRow(tr_text("Calidad y procedencia:"), self.lbl_curve_provenance)
         f_man.addRow("Nombre:", self.ed_name_m)
         f_man.addRow("Diámetro rotor:", self.sp_diam_m)
         f_man.addRow("Altura buje:", self.sp_hub_m)
+        f_man.addRow("Separación longitudinal del modelo:", self.sp_spacing_long_m)
+        f_man.addRow("Separación transversal del modelo:", self.sp_spacing_trans_m)
         f_man.addRow(_HLine())
         f_man.addRow("Velocidad viento (m/s):", self.te_ws)
         f_man.addRow("Potencia (kW):", self.te_power)
@@ -220,6 +338,26 @@ class CustomTurbineDialog(QtWidgets.QDialog):
         self.sp_hub_c.setValue(90.0)
         self.sp_hub_c.setSuffix(" m")
 
+        self.sp_spacing_long_c = QtWidgets.QDoubleSpinBox()
+        self.sp_spacing_long_c.setRange(0.5, 30.0)
+        self.sp_spacing_long_c.setDecimals(2)
+        self.sp_spacing_long_c.setSingleStep(0.5)
+        self.sp_spacing_long_c.setValue(7.0)
+        self.sp_spacing_long_c.setSuffix(" · D")
+        self.sp_spacing_long_c.setToolTip(
+            "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor."
+        )
+
+        self.sp_spacing_trans_c = QtWidgets.QDoubleSpinBox()
+        self.sp_spacing_trans_c.setRange(0.5, 30.0)
+        self.sp_spacing_trans_c.setDecimals(2)
+        self.sp_spacing_trans_c.setSingleStep(0.5)
+        self.sp_spacing_trans_c.setValue(4.0)
+        self.sp_spacing_trans_c.setSuffix(" · D")
+        self.sp_spacing_trans_c.setToolTip(
+            "Separación transversal inicial de este modelo, expresada en diámetros de rotor."
+        )
+
         h_path = QtWidgets.QHBoxLayout()
         h_path.setContentsMargins(0, 0, 0, 0)
         self.ed_path = QtWidgets.QLineEdit()
@@ -245,6 +383,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
         f_csv.addRow("Nombre:", self.ed_name_c)
         f_csv.addRow("Diámetro rotor:", self.sp_diam_c)
         f_csv.addRow("Altura buje:", self.sp_hub_c)
+        f_csv.addRow("Separación longitudinal del modelo:", self.sp_spacing_long_c)
+        f_csv.addRow("Separación transversal del modelo:", self.sp_spacing_trans_c)
         f_csv.addRow(_HLine())
         f_csv.addRow("Fichero TXT/CSV:", path_wrap)
         f_csv.addRow("Delimitador:", self.cb_delim)
@@ -298,32 +438,75 @@ class CustomTurbineDialog(QtWidgets.QDialog):
             pass
 
     def _apply_generic_preset(self) -> None:
-        """Rellena la pestaña Manual con una plantilla genérica editable."""
+        """Load a packaged curve and expose its quality/provenance clearly."""
         try:
             data = self.cb_generic_preset.currentData()
         except Exception:
             data = None
         if not isinstance(data, dict):
+            self._active_catalogue_candidate = None
+            self._active_catalogue_curve = None
+            try:
+                self.lbl_curve_provenance.setText(tr_text("Selecciona una turbina para ver la calidad y la fuente de la curva."))
+                self.lbl_curve_provenance.setToolTip("")
+            except Exception:
+                pass
             return
         try:
-            label = self.cb_generic_preset.currentText().replace(" · genérico", "")
+            label = _candidate_display_label(data)
             rated_kw = float(data.get("rated_kw", 0.0) or 0.0)
-            ws, power_kw, ct = _generic_curve_from_rated(rated_kw)
-            self.ed_name_m.setText(label + " (generic curve)")
+            try:
+                ws, power_kw, ct = load_candidate_curve(data)
+            except Exception:
+                ws, power_kw, ct = _generic_curve_from_rated(
+                    rated_kw,
+                    diameter_m=float(data.get("diam", 120.0) or 120.0),
+                    cut_in=float(data.get("cut_in", 3.0) or 3.0),
+                    rated_ws=float(data.get("rated_ws", 0.0) or 0.0),
+                    cut_out=float(data.get("cut_out", 25.0) or 25.0),
+                )
+            quality = str(data.get("curve_quality") or "approximate")
+            if quality == "public_reference":
+                suffix = tr_text("(referencia pública)")
+            elif quality == "spec_based_approximation":
+                suffix = tr_text("(aproximación basada en ficha pública)")
+            else:
+                suffix = tr_text("(curva aproximada genérica)")
+            self.ed_name_m.setText(f"{label} {suffix}")
             self.sp_diam_m.setValue(float(data.get("diam", 120.0)))
             self.sp_hub_m.setValue(float(data.get("hub", 90.0)))
+            self.sp_spacing_long_m.setValue(float(data.get("spacing_long_d", 7.0)))
+            self.sp_spacing_trans_m.setValue(float(data.get("spacing_trans_d", 4.0)))
             self.te_ws.setPlainText(_fmt_list(ws))
             self.te_power.setPlainText(_fmt_list(power_kw))
             self.te_ct.setPlainText(_fmt_list(ct))
+            self._active_catalogue_candidate = dict(data)
+            self._active_catalogue_curve = (list(ws), list(power_kw), list(ct))
+
+            source = str(data.get("source_name") or tr_text("Sin fuente externa"))
+            if quality == "public_reference":
+                title = tr_text("Referencia pública")
+                warning = tr_text("Referencia pública/abierta. Revisa la fuente y sus condiciones antes de una entrega técnica.")
+            elif quality == "spec_based_approximation":
+                title = tr_text("Aproximación basada en ficha pública")
+                warning = tr_text(
+                    "La geometría y los puntos técnicos indicados proceden de la fuente pública; "
+                    "la curva de potencia y CT entre esos puntos es paramétrica. No es OEM ni certificada."
+                )
+            else:
+                title = tr_text("Curva aproximada genérica")
+                warning = tr_text("Aproximación paramétrica de Velantis. No es una curva OEM ni certificada.")
+            self.lbl_curve_provenance.setText(f"<b>{title}</b><br>{tr_text('Fuente:')} {source}<br>{warning}")
+            self.lbl_curve_provenance.setToolTip(str(data.get("source_url") or data.get("source_note") or ""))
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Plantilla de turbina", f"No se pudo aplicar la plantilla:\n{e}")
+            QtWidgets.QMessageBox.warning(self, tr_text("Catálogo de turbinas"), f"{tr_text('No se pudo aplicar el candidato seleccionado:')}\n{e}")
 
 
     # -------------------- Handlers --------------------
     def _browse_file(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Abrir TXT/CSV", os.path.expanduser("~"),
-            "TXT/CSV (*.txt *.csv);;Todos (*.*)"
+            self, tr_text("Abrir TXT/CSV"), os.path.expanduser("~"),
+            tr_text("TXT/CSV (*.txt *.csv);;Todos (*.*)")
         )
         if path:
             self.ed_path.setText(path)
@@ -338,6 +521,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
             name = self.ed_name_m.text().strip() or "Custom WT"
             d = float(self.sp_diam_m.value())
             h = float(self.sp_hub_m.value())
+            spacing_long_d = float(self.sp_spacing_long_m.value())
+            spacing_trans_d = float(self.sp_spacing_trans_m.value())
             ws = _parse_num_list(self.te_ws.toPlainText())
             pw_kw = _parse_num_list(self.te_power.toPlainText())
             ct_txt = self.te_ct.toPlainText().strip()
@@ -354,6 +539,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
                 "name": name,
                 "diam": d,
                 "hh": h,
+                "spacing_long_d": spacing_long_d,
+                "spacing_trans_d": spacing_trans_d,
                 "ws": ws,
                 "power_kw": pw_kw,
                 "ct": ct,
@@ -361,19 +548,45 @@ class CustomTurbineDialog(QtWidgets.QDialog):
                 # inferirla desde wt.power() (camino frágil entre versiones de PyWake).
                 "p_rated_kw": float(max(pw_kw)) if pw_kw else 0.0,
             }
+            candidate = self._active_catalogue_candidate if isinstance(self._active_catalogue_candidate, dict) else None
+            current_curve = (list(ws), list(pw_kw), list(ct) if ct else [])
+            geometry_unchanged = bool(
+                candidate
+                and abs(d - float(candidate.get("diam", d) or d)) <= 1e-6
+                and abs(h - float(candidate.get("hub", h) or h)) <= 1e-6
+            )
+            unchanged = bool(
+                candidate
+                and geometry_unchanged
+                and self._active_catalogue_curve
+                and _same_curve(current_curve, self._active_catalogue_curve)
+            )
+            if candidate:
+                self._result_data.update({
+                    "candidate_id": str(candidate.get("candidate_id") or ""),
+                    "curve_kind": str(candidate.get("curve_kind") or ""),
+                    "curve_quality": str(candidate.get("curve_quality") or "approximate") if unchanged else "user_edited",
+                    "curve_source": str(candidate.get("source_name") or ""),
+                    "curve_source_url": str(candidate.get("source_url") or ""),
+                    "curve_source_note": str(candidate.get("source_note") or ""),
+                })
+            else:
+                self._result_data.update({"curve_kind": "user_defined", "curve_quality": "user_defined"})
 
-            QtWidgets.QMessageBox.information(self, "Listo",
-                                              "Turbina creada (manual). Pulsa Aceptar para usarla.")
+            QtWidgets.QMessageBox.information(
+                self, tr_text("Listo"),
+                tr_text("Turbina creada (manual). Pulsa Aceptar para usarla.")
+            )
             _debug_print("[Energy turbine UI] Manual turbine created and stored.")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error creando turbina", str(e))
+            QtWidgets.QMessageBox.critical(self, tr_text("Error creando turbina"), str(e))
             _debug_print(f"[Energy turbine UI][ERROR] _on_build_manual: {e}")
 
     def _on_build_csv(self):
         try:
             path = self.ed_path.text().strip()
             if not path or not os.path.exists(path):
-                raise FileNotFoundError("Selecciona un archivo TXT/CSV válido.")
+                raise FileNotFoundError(tr_text("Selecciona un archivo TXT/CSV válido."))
 
             spec = TxtSpec(
                 ws_col=int(self.sp_ws_col.value()),
@@ -390,6 +603,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
             name = self.ed_name_c.text().strip() or "Custom WT (CSV)"
             d = float(self.sp_diam_c.value())
             h = float(self.sp_hub_c.value())
+            spacing_long_d = float(self.sp_spacing_long_c.value())
+            spacing_trans_d = float(self.sp_spacing_trans_c.value())
 
             _debug_print(f"[Energy turbine UI] CSV curve: name={name} D={d} HH={h} npts={len(ws)}")
 
@@ -402,6 +617,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
                 "name": name,
                 "diam": d,
                 "hh": h,
+                "spacing_long_d": spacing_long_d,
+                "spacing_trans_d": spacing_trans_d,
                 "path": path,
                 "ws_col": int(self.sp_ws_col.value()),
                 "power_col": int(self.sp_pw_col.value()),
@@ -414,13 +631,19 @@ class CustomTurbineDialog(QtWidgets.QDialog):
                 "power_kw": list(power_kW),
                 "ct": list(ct) if ct else None,
                 "p_rated_kw": float(max(power_kW)) if power_kW else 0.0,
+                "curve_kind": "user_imported",
+                "curve_quality": "user_defined",
+                "curve_source": str(path),
+                "curve_source_url": "",
             }
 
-            QtWidgets.QMessageBox.information(self, "Listo",
-                                              "Turbina creada desde TXT/CSV. Pulsa Aceptar para usarla.")
+            QtWidgets.QMessageBox.information(
+                self, tr_text("Listo"),
+                tr_text("Turbina creada desde TXT/CSV. Pulsa Aceptar para usarla.")
+            )
             _debug_print("[Energy turbine UI] CSV turbine created and stored.")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error leyendo TXT/CSV", str(e))
+            QtWidgets.QMessageBox.critical(self, tr_text("Error leyendo TXT/CSV"), str(e))
             _debug_print(f"[Energy turbine UI][ERROR] _on_build_csv: {e}")
 
     # -------------------- API pública --------------------
@@ -448,8 +671,8 @@ class CustomTurbineDialog(QtWidgets.QDialog):
     def accept(self):
         if self._wt is None:
             QtWidgets.QMessageBox.warning(
-                self, "Sin turbina",
-                "Primero pulsa «Crear turbina» en la pestaña correspondiente."
+                self, tr_text("Sin turbina"),
+                tr_text("Primero pulsa «Crear turbina» en la pestaña correspondiente.")
             )
             _debug_print("[Energy turbine UI] accept blocked: turbine not created yet.")
             return

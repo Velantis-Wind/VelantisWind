@@ -2275,13 +2275,16 @@ class NoisePage(QtWidgets.QWidget):
         except Exception:
             pass
         lyr = QgsProject.instance().mapLayer(layer_id) if layer_id else None
+        lang = str(current_language() or "es").lower().replace("-", "_").split("_", 1)[0]
+        feature_label = {"en": "feature(s)", "fr": "entité(s)", "de": "Objekt(e)"}.get(lang, "elemento(s)")
+        not_selected = {"en": "Not selected", "fr": "Non sélectionné", "de": "Nicht ausgewählt"}.get(lang, "No seleccionado")
         if isinstance(lyr, QgsVectorLayer):
             try:
-                self.lbl_receptor_info.setText(f"{lyr.name()} · {int(lyr.featureCount())} feature(s)")
+                self.lbl_receptor_info.setText(f"{lyr.name()} · {int(lyr.featureCount())} {feature_label}")
             except Exception:
                 self.lbl_receptor_info.setText(lyr.name())
         else:
-            self.lbl_receptor_info.setText("Not selected")
+            self.lbl_receptor_info.setText(not_selected)
         self._check_configuration()
 
     def _on_dem_changed(self, *_args):
@@ -2314,60 +2317,111 @@ class NoisePage(QtWidgets.QWidget):
     def _check_configuration(self):
         msgs: List[str] = []
         ok = True
-        de = str(current_language()).lower().startswith("de")
-        fr = current_language() == "fr"
+        lang = str(current_language() or "es").lower().replace("-", "_").split("_", 1)[0]
+
+        def _l(es: str, en: str, fr: str, de: str) -> str:
+            return {"en": en, "fr": fr, "de": de}.get(lang, es)
 
         if not self._model_rows:
             ok = False
-            if de:
-                msgs.append("• Es wurden keine Koordinaten-Layer nach Modell erkannt. Importieren Sie hier ein CSV-Layout oder verwenden Sie ein aus dem Energiemodul erzeugtes Layout.")
-            else:
-                msgs.append("• No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.")
+            msgs.append(_l(
+                "• No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.",
+                "• No model-specific coordinate layers were detected. Import a CSV layout here or reuse a layout generated in Energy.",
+                "• Aucune couche de coordonnées par modèle n’a été détectée. Importez ici un layout CSV ou réutilisez un layout généré dans Énergie.",
+                "• Es wurden keine Koordinaten-Layer je Modell erkannt. Importieren Sie hier ein CSV-Layout oder verwenden Sie ein im Energiemodul erzeugtes Layout.",
+            ))
         else:
             n_models = len(self._model_rows)
             n_turbs = sum(int(r.get("n_turbines", 0)) for r in self._model_rows)
-            if de:
-                msgs.append(f"• Layout erkannt: {n_models} WT-Modell(e) und {n_turbs} Windturbine(n).")
-            else:
-                msgs.append(f"• Layout detectado: {n_models} modelo(s) WT y {n_turbs} turbina(s).")
+            msgs.append(_l(
+                f"• Layout detectado: {n_models} modelo(s) WT y {n_turbs} turbina(s).",
+                f"• Layout detected: {n_models} WT model(s) and {n_turbs} turbine(s).",
+                f"• Layout détecté : {n_models} modèle(s) d’éolienne et {n_turbs} éolienne(s).",
+                f"• Layout erkannt: {n_models} WT-Modell(e) und {n_turbs} Windturbine(n).",
+            ))
             src_ids = self._selected_source_layer_ids() or []
             if len(src_ids) == 1:
-                msgs.append("• Akustische Quellen: Es wird 1 manuell in den Eingaben ausgewählter Quell-Layer verwendet." if de else "• Acoustic sources: will use 1 source layer manually selected from Inputs.")
+                msgs.append(_l(
+                    "• Fuentes acústicas: se usará 1 capa fuente seleccionada manualmente en Entradas.",
+                    "• Acoustic sources: 1 source layer manually selected in Inputs will be used.",
+                    "• Sources acoustiques : 1 couche source sélectionnée manuellement dans Entrées sera utilisée.",
+                    "• Akustische Quellen: Es wird 1 manuell unter Eingaben ausgewählter Quellen-Layer verwendet.",
+                ))
             elif len(src_ids) > 1:
-                msgs.append(f"• Akustische Quellen: Es werden {len(src_ids)} manuell in den Eingaben ausgewählte Quell-Layer verwendet." if de else f"• Acoustic sources: will use {len(src_ids)} source layers manually selected from Inputs.")
+                msgs.append(_l(
+                    f"• Fuentes acústicas: se usarán {len(src_ids)} capas fuente seleccionadas manualmente en Entradas.",
+                    f"• Acoustic sources: {len(src_ids)} source layers manually selected in Inputs will be used.",
+                    f"• Sources acoustiques : {len(src_ids)} couches source sélectionnées manuellement dans Entrées seront utilisées.",
+                    f"• Akustische Quellen: Es werden {len(src_ids)} manuell unter Eingaben ausgewählte Quellen-Layer verwendet.",
+                ))
             else:
-                msgs.append("• Akustische Quellen: Es werden alle in VelantisWind automatisch erkannten/importierten WT-Layer verwendet." if de else "• Acoustic sources: will use all WT layers automatically detected/imported in VelantisWind.")
+                msgs.append(_l(
+                    "• Fuentes acústicas: se usarán todas las capas WT detectadas o importadas automáticamente en VelantisWind.",
+                    "• Acoustic sources: all WT layers automatically detected or imported in VelantisWind will be used.",
+                    "• Sources acoustiques : toutes les couches d’éoliennes détectées ou importées automatiquement dans VelantisWind seront utilisées.",
+                    "• Akustische Quellen: Es werden alle in VelantisWind automatisch erkannten oder importierten WT-Layer verwendet.",
+                ))
 
         if self.chk_multi_receivers.isChecked():
             n_groups = 0
             n_feats = 0
             for r in range(self.tbl_receiver_groups.rowCount()):
-                w_enabled = self.tbl_receiver_groups.cellWidget(r,0)
+                w_enabled = self.tbl_receiver_groups.cellWidget(r, 0)
                 if w_enabled and not w_enabled.isChecked():
                     continue
-                w_layer = self.tbl_receiver_groups.cellWidget(r,1)
+                w_layer = self.tbl_receiver_groups.cellWidget(r, 1)
                 lyr = QgsProject.instance().mapLayer(str(w_layer.currentData(QtCore.Qt.UserRole) or "")) if w_layer else None
                 if isinstance(lyr, QgsVectorLayer):
                     n_groups += 1
                     n_feats += int(lyr.featureCount())
             if n_groups == 0:
                 ok = False
-                msgs.append("• Es muss mindestens ein Rezeptor-Layer in der Mehrlayer-Tabelle konfiguriert werden." if de else "• Falta configurar al menos una capa de receptores en la tabla multi-capa.")
+                msgs.append(_l(
+                    "• Falta configurar al menos una capa de receptores en la tabla multicapa.",
+                    "• At least one receiver layer must be configured in the multi-layer table.",
+                    "• Au moins une couche de récepteurs doit être configurée dans le tableau multicouche.",
+                    "• In der Mehrlayer-Tabelle muss mindestens ein Rezeptor-Layer konfiguriert werden.",
+                ))
             else:
-                msgs.append(f"• Mehrlayer-Rezeptoren: {n_groups} aktive Layer und {n_feats} Elemente insgesamt." if de else f"• Receptores multi-capa: {n_groups} capa(s) activas y {n_feats} elemento(s) totales.")
-                msgs.append(f"• Grenzwertkriterium je Layer: {self.cb_limit_scenario.currentText()}." if de else f"• Criterio de límite por capa: {self.cb_limit_scenario.currentText()}.")
+                msgs.append(_l(
+                    f"• Receptores multicapa: {n_groups} capa(s) activas y {n_feats} elemento(s) totales.",
+                    f"• Multi-layer receivers: {n_groups} active layer(s) and {n_feats} total feature(s).",
+                    f"• Récepteurs multicouches : {n_groups} couche(s) active(s) et {n_feats} entité(s) au total.",
+                    f"• Mehrlayer-Rezeptoren: {n_groups} aktive Layer und insgesamt {n_feats} Objekte.",
+                ))
+                msgs.append(_l(
+                    f"• Criterio de límite por capa: {self.cb_limit_scenario.currentText()}.",
+                    f"• Limit criterion by layer: {self.cb_limit_scenario.currentText()}.",
+                    f"• Critère de limite par couche : {self.cb_limit_scenario.currentText()}.",
+                    f"• Grenzwertkriterium je Layer: {self.cb_limit_scenario.currentText()}.",
+                ))
         else:
             receiver_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
             if not receiver_id:
                 ok = False
-                msgs.append("• Es fehlt ein Rezeptor-Layer. Für diesen Workflow wird ein Punkt- oder Polygon-Layer mit Wohngebäuden/Rezeptoren empfohlen." if de else "• Falta seleccionar la capa de receptores. Para este flujo se recomienda una capa de puntos o polígonos de viviendas/receptores.")
+                msgs.append(_l(
+                    "• Falta seleccionar la capa de receptores. Para este flujo se recomienda una capa de puntos o polígonos de viviendas/receptores.",
+                    "• A receiver layer must be selected. A point or polygon layer of dwellings/receivers is recommended for this workflow.",
+                    "• Une couche de récepteurs doit être sélectionnée. Une couche de points ou de polygones représentant les habitations/récepteurs est recommandée pour ce flux.",
+                    "• Es muss ein Rezeptor-Layer ausgewählt werden. Für diesen Ablauf wird ein Punkt- oder Polygon-Layer mit Wohngebäuden/Rezeptoren empfohlen.",
+                ))
             else:
                 lyr = QgsProject.instance().mapLayer(receiver_id)
                 if isinstance(lyr, QgsVectorLayer):
-                    msgs.append(f"• Rezeptoren: {lyr.name()} ({int(lyr.featureCount())} Element(e))." if de else f"• Receptores: {lyr.name()} ({int(lyr.featureCount())} elemento(s)).")
-                    if lyr.id() in {str(r.get('layer_id')) for r in self._model_rows}:
+                    msgs.append(_l(
+                        f"• Receptores: {lyr.name()} ({int(lyr.featureCount())} elemento(s)).",
+                        f"• Receivers: {lyr.name()} ({int(lyr.featureCount())} feature(s)).",
+                        f"• Récepteurs : {lyr.name()} ({int(lyr.featureCount())} entité(s)).",
+                        f"• Rezeptoren: {lyr.name()} ({int(lyr.featureCount())} Objekt(e)).",
+                    ))
+                    if lyr.id() in {str(r.get("layer_id")) for r in self._model_rows}:
                         ok = False
-                        msgs.append("• Der Rezeptor-Layer entspricht dem Turbinenlayout. Wählen Sie einen anderen Layer für Wohngebäude/Rezeptoren." if de else "• La capa de receptores coincide con el layout de turbinas. Elige una capa distinta de viviendas/receptores.")
+                        msgs.append(_l(
+                            "• La capa de receptores coincide con el layout de turbinas. Elige una capa distinta de viviendas/receptores.",
+                            "• The receiver layer matches the turbine layout. Select a different dwellings/receivers layer.",
+                            "• La couche de récepteurs correspond au layout des éoliennes. Sélectionnez une autre couche d’habitations/récepteurs.",
+                            "• Der Rezeptor-Layer entspricht dem Turbinenlayout. Wählen Sie einen anderen Layer für Wohngebäude/Rezeptoren.",
+                        ))
 
         if self.tbl_models.rowCount() > 0:
             ok_rows = 0
@@ -2381,9 +2435,9 @@ class NoisePage(QtWidgets.QWidget):
                 except Exception:
                     pass
                 try:
-                    gname = (self.tbl_models.item(row, 0).text() or '').strip()
+                    gname = (self.tbl_models.item(row, 0).text() or "").strip()
                 except Exception:
-                    gname = ''
+                    gname = ""
                 if not gname:
                     empty_groups += 1
                 else:
@@ -2392,105 +2446,262 @@ class NoisePage(QtWidgets.QWidget):
                 ok = False
             if empty_groups > 0:
                 ok = False
-                msgs.append(f"• Akustische Quellgruppen: In der Tabelle fehlen {empty_groups} Gruppenname(n)." if de else f"• Grupos fuente acústicos: faltan {empty_groups} nombre(s) de grupo en la tabla.")
+                msgs.append(_l(
+                    f"• Grupos fuente acústicos: faltan {empty_groups} nombre(s) de grupo en la tabla.",
+                    f"• Acoustic source groups: {empty_groups} group name(s) are missing from the table.",
+                    f"• Groupes source acoustiques : {empty_groups} nom(s) de groupe manquent dans le tableau.",
+                    f"• Akustische Quellgruppen: In der Tabelle fehlen {empty_groups} Gruppenname(n).",
+                ))
             dups = len(group_names) - len(set(group_names))
             if dups > 0:
                 ok = False
-                msgs.append(f"• Akustische Quellgruppen: {dups} doppelte Gruppenname(n). Benennen Sie sie für Export und Nachverfolgbarkeit um." if de else f"• Grupos fuente acústicos: hay {dups} nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.")
-            msgs.append(f"• Akustische Quellgruppen: {ok_rows}/{self.tbl_models.rowCount()} Gruppe(n) mit gültigem LwA." if de else f"• Grupos fuente acústicos: {ok_rows}/{self.tbl_models.rowCount()} grupo(s) con LwA válido.")
+                msgs.append(_l(
+                    f"• Grupos fuente acústicos: hay {dups} nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.",
+                    f"• Acoustic source groups: {dups} duplicate name(s) were found. Rename them for export and traceability.",
+                    f"• Groupes source acoustiques : {dups} nom(s) dupliqué(s) ont été détectés. Renommez-les pour l’export et la traçabilité.",
+                    f"• Akustische Quellgruppen: {dups} doppelte Gruppenname(n) wurden gefunden. Benennen Sie sie für Export und Nachverfolgbarkeit um.",
+                ))
+            msgs.append(_l(
+                f"• Grupos fuente acústicos: {ok_rows}/{self.tbl_models.rowCount()} grupo(s) con LwA válido.",
+                f"• Acoustic source groups: {ok_rows}/{self.tbl_models.rowCount()} group(s) with a valid LwA.",
+                f"• Groupes source acoustiques : {ok_rows}/{self.tbl_models.rowCount()} groupe(s) avec un LwA valide.",
+                f"• Akustische Quellgruppen: {ok_rows}/{self.tbl_models.rowCount()} Gruppe(n) mit gültigem LwA.",
+            ))
 
         mode = self._current_acoustic_mode()
-        if mode == 'curve':
+        if mode == "curve":
             curve_settings = self._load_curve_settings()
-            n_curves = sum(1 for r in self._model_rows if curve_settings.get(str(r.get('source_group_key') or r.get('layer_id') or r.get('name') or '')) or curve_settings.get(str(r.get('name') or '')))
+            n_curves = sum(
+                1 for r in self._model_rows
+                if curve_settings.get(str(r.get("source_group_key") or r.get("layer_id") or r.get("name") or ""))
+                or curve_settings.get(str(r.get("name") or ""))
+            )
             if self.chk_curve_worst.isChecked():
-                msgs.append(f"• Akustisches Szenario: LwA(ws)-Kurven im Worst Case. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e)." if de else f"• Escenario acústico: curvas LwA(ws) en peor caso. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).")
+                msgs.append(_l(
+                    f"• Escenario acústico: curvas LwA(ws) en peor caso. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).",
+                    f"• Acoustic scenario: worst-case LwA(ws) curves. Available curves: {n_curves}/{len(self._model_rows)} model(s).",
+                    f"• Scénario acoustique : courbes LwA(ws) au pire cas. Courbes disponibles : {n_curves}/{len(self._model_rows)} modèle(s).",
+                    f"• Akustisches Szenario: LwA(ws)-Kurven im ungünstigsten Fall. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e).",
+                ))
             else:
-                msgs.append(f"• Akustisches Szenario: LwA(ws)-Kurven bei {self.sp_eval_ws.value():.1f} m/s. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e)." if de else f"• Escenario acústico: curvas LwA(ws) a {self.sp_eval_ws.value():.1f} m/s. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).")
+                msgs.append(_l(
+                    f"• Escenario acústico: curvas LwA(ws) a {self.sp_eval_ws.value():.1f} m/s. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).",
+                    f"• Acoustic scenario: LwA(ws) curves at {self.sp_eval_ws.value():.1f} m/s. Available curves: {n_curves}/{len(self._model_rows)} model(s).",
+                    f"• Scénario acoustique : courbes LwA(ws) à {self.sp_eval_ws.value():.1f} m/s. Courbes disponibles : {n_curves}/{len(self._model_rows)} modèle(s).",
+                    f"• Akustisches Szenario: LwA(ws)-Kurven bei {self.sp_eval_ws.value():.1f} m/s. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e).",
+                ))
         else:
-            msgs.append("• Akustisches Szenario: fester LwA je akustischer Quellgruppe." if de else "• Escenario acústico: LwA fijo por grupo fuente acústico.")
+            msgs.append(_l(
+                "• Escenario acústico: LwA fijo por grupo fuente acústico.",
+                "• Acoustic scenario: fixed LwA by acoustic source group.",
+                "• Scénario acoustique : LwA fixe par groupe source acoustique.",
+                "• Akustisches Szenario: fester LwA je akustischer Quellgruppe.",
+            ))
+
         if self.chk_multi_receivers.isChecked():
-            msgs.append("• Rezeptorhöhe: wird aus jedem in der Mehrlayer-Tabelle konfigurierten Layer übernommen." if de else "• Altura de receptor: se toma de cada capa configurada en la tabla multi-capa.")
+            msgs.append(_l(
+                "• Altura de receptor: se toma de cada capa configurada en la tabla multicapa.",
+                "• Receiver height: taken from each layer configured in the multi-layer table.",
+                "• Hauteur de récepteur : reprise de chaque couche configurée dans le tableau multicouche.",
+                "• Rezeptorhöhe: wird aus jedem in der Mehrlayer-Tabelle konfigurierten Layer übernommen.",
+            ))
         else:
-            msgs.append(f"• Konfigurierte Rezeptorhöhe: {self.sp_receiver_h.value():.1f} m." if de else f"• Altura de receptor configurada: {self.sp_receiver_h.value():.1f} m.")
-        msgs.append(f"• Konfigurierter Maximalradius: {self.sp_max_radius.value():.0f} m." if de else f"• Radio máximo configurado: {self.sp_max_radius.value():.0f} m.")
-        msgs.append(f"• Lineare Dämpfung α: {self.sp_alpha.value():.4f} dB/m (vereinfachte atmosphärische Absorption)." if de else f"• Atenuación lineal α: {self.sp_alpha.value():.4f} dB/m (absorción atmosférica simplificada).")
-        ground_mode = str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or 'global')
-        if ground_mode == 'landuse':
+            msgs.append(_l(
+                f"• Altura de receptor configurada: {self.sp_receiver_h.value():.1f} m.",
+                f"• Configured receiver height: {self.sp_receiver_h.value():.1f} m.",
+                f"• Hauteur de récepteur configurée : {self.sp_receiver_h.value():.1f} m.",
+                f"• Konfigurierte Rezeptorhöhe: {self.sp_receiver_h.value():.1f} m.",
+            ))
+
+        msgs.append(_l(
+            f"• Radio máximo configurado: {self.sp_max_radius.value():.0f} m.",
+            f"• Configured maximum radius: {self.sp_max_radius.value():.0f} m.",
+            f"• Rayon maximal configuré : {self.sp_max_radius.value():.0f} m.",
+            f"• Konfigurierter Maximalradius: {self.sp_max_radius.value():.0f} m.",
+        ))
+        msgs.append(_l(
+            f"• Atenuación lineal α: {self.sp_alpha.value():.4f} dB/m (absorción atmosférica simplificada).",
+            f"• Linear attenuation α: {self.sp_alpha.value():.4f} dB/m (simplified atmospheric absorption).",
+            f"• Atténuation linéaire α : {self.sp_alpha.value():.4f} dB/m (absorption atmosphérique simplifiée).",
+            f"• Lineare Dämpfung α: {self.sp_alpha.value():.4f} dB/m (vereinfachte atmosphärische Absorption).",
+        ))
+
+        ground_mode = str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or "global")
+        if ground_mode == "landuse":
             lu_id = self.cb_landuse.currentData(QtCore.Qt.UserRole)
             lu = QgsProject.instance().mapLayer(lu_id) if lu_id else None
             if lu is not None:
-                msgs.append(f"• Boden/Gelände: aus Landnutzungs-Layer '{lu.name()}'. Globaler G-Fallback = {self.sp_ground_g.value():.2f}." if de else f"• Suelo/terreno: desde capa de uso del suelo '{lu.name()}'. G global de respaldo = {self.sp_ground_g.value():.2f}.")
+                msgs.append(_l(
+                    f"• Suelo/terreno: desde la capa de uso del suelo '{lu.name()}'. G global de respaldo = {self.sp_ground_g.value():.2f}.",
+                    f"• Ground/terrain: from land-use layer '{lu.name()}'. Fallback global G = {self.sp_ground_g.value():.2f}.",
+                    f"• Sol/terrain : depuis la couche d’occupation du sol « {lu.name()} ». G global de secours = {self.sp_ground_g.value():.2f}.",
+                    f"• Boden/Gelände: aus dem Landnutzungs-Layer „{lu.name()}“. Globaler G-Fallback = {self.sp_ground_g.value():.2f}.",
+                ))
             else:
-                msgs.append(f"• Boden/Gelände: Layer-Modus aktiv, aber kein gültiger Layer; globaler G-Wert = {self.sp_ground_g.value():.2f} wird als Fallback verwendet." if de else f"• Suelo/terreno: modo capa activado pero sin capa válida; will use G global = {self.sp_ground_g.value():.2f}.")
+                msgs.append(_l(
+                    f"• Suelo/terreno: el modo por capa está activo, pero no hay una capa válida; se usará G global = {self.sp_ground_g.value():.2f} como respaldo.",
+                    f"• Ground/terrain: layer mode is active, but no valid layer is selected; global G = {self.sp_ground_g.value():.2f} will be used as fallback.",
+                    f"• Sol/terrain : le mode par couche est actif, mais aucune couche valide n’est sélectionnée ; le G global = {self.sp_ground_g.value():.2f} sera utilisé en secours.",
+                    f"• Boden/Gelände: Der Layer-Modus ist aktiv, aber es ist kein gültiger Layer ausgewählt; globales G = {self.sp_ground_g.value():.2f} wird als Fallback verwendet.",
+                ))
         else:
-            msgs.append(f"• Bodenfaktor G: {self.sp_ground_g.value():.2f} (0=hart, 1=porös)." if de else f"• Factor de suelo G: {self.sp_ground_g.value():.2f} (0=duro, 1=poroso).")
+            msgs.append(_l(
+                f"• Factor de suelo G: {self.sp_ground_g.value():.2f} (0=duro, 1=poroso).",
+                f"• Ground factor G: {self.sp_ground_g.value():.2f} (0=hard, 1=porous).",
+                f"• Facteur de sol G : {self.sp_ground_g.value():.2f} (0=dur, 1=poreux).",
+                f"• Bodenfaktor G: {self.sp_ground_g.value():.2f} (0=hart, 1=porös).",
+            ))
+
         if self.chk_multi_receivers.isChecked():
-            msgs.append("• Rezeptorgrenzwert: wird aus jedem in der Mehrlayer-Tabelle konfigurierten Layer übernommen." if de else "• Límite de receptor: se toma de cada capa configurada en la tabla multi-capa.")
+            msgs.append(_l(
+                "• Límite de receptor: se toma de cada capa configurada en la tabla multicapa.",
+                "• Receiver limit: taken from each layer configured in the multi-layer table.",
+                "• Limite du récepteur : reprise de chaque couche configurée dans le tableau multicouche.",
+                "• Rezeptorgrenzwert: wird aus jedem in der Mehrlayer-Tabelle konfigurierten Layer übernommen.",
+            ))
         else:
-            msgs.append(f"• Rezeptorgrenzwert: {self.sp_limit.value():.1f} dB(A)." if de else f"• Límite de receptor: {self.sp_limit.value():.1f} dB(A).")
-        msgs.append(f"• Konfigurierte Isophonen: {self.le_iso_levels.text().strip() or '35,40,45,50'} dB(A)." if de else f"• Configured isophones: {self.le_iso_levels.text().strip() or '35,40,45,50'} dB(A).")
+            msgs.append(_l(
+                f"• Límite de receptor: {self.sp_limit.value():.1f} dB(A).",
+                f"• Receiver limit: {self.sp_limit.value():.1f} dB(A).",
+                f"• Limite du récepteur : {self.sp_limit.value():.1f} dB(A).",
+                f"• Rezeptorgrenzwert: {self.sp_limit.value():.1f} dB(A).",
+            ))
+
+        iso_levels = self.le_iso_levels.text().strip() or "35,40,45,50"
+        msgs.append(_l(
+            f"• Isófonas configuradas: {iso_levels} dB(A).",
+            f"• Configured isophones: {iso_levels} dB(A).",
+            f"• Isophones configurées : {iso_levels} dB(A).",
+            f"• Konfigurierte Isophonen: {iso_levels} dB(A).",
+        ))
+
         dem_id = self.cb_dem.currentData(QtCore.Qt.UserRole)
         if dem_id:
             dem = QgsProject.instance().mapLayer(dem_id)
             if dem:
-                msgs.append(f"• Ausgewähltes DGM/DSM: {dem.name()} (Gelände an Quelle/Rezeptor wird im akustischen Rechenkern abgetastet)." if de else f"• MDT/DSM seleccionado: {dem.name()} (se muestreará terreno fuente/receptor en el cálculo acústico).")
+                msgs.append(_l(
+                    f"• MDT/DSM seleccionado: {dem.name()} (se muestreará el terreno en fuente y receptor durante el cálculo acústico).",
+                    f"• Selected DTM/DSM: {dem.name()} (source and receiver terrain will be sampled during the acoustic calculation).",
+                    f"• MNT/MNS sélectionné : {dem.name()} (le terrain à la source et au récepteur sera échantillonné pendant le calcul acoustique).",
+                    f"• Ausgewähltes DGM/DSM: {dem.name()} (das Gelände an Quelle und Rezeptor wird während der Schallberechnung abgetastet).",
+                ))
         else:
-            msgs.append("• Kein DGM/DSM ausgewählt. Die Akustikberechnung startet mit planaren Koordinaten und relativen Quell-/Rezeptorhöhen." if de else "• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.")
+            msgs.append(_l(
+                "• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.",
+                "• No DTM/DSM selected. The acoustic calculation will start with planar coordinates and relative source/receiver heights.",
+                "• Aucun MNT/MNS sélectionné. Le calcul acoustique démarrera avec des coordonnées planes et des hauteurs relatives source/récepteur.",
+                "• Kein DGM/DSM ausgewählt. Die Schallberechnung startet mit planaren Koordinaten und relativen Quell-/Rezeptorhöhen.",
+            ))
 
-        if de:
-            msgs.append("• Aktuelle Methode: akustische Quelle-Rezeptor-Berechnung für Windenergie-Beratung (Lp = LwA - Adiv - Aatm - Aground). Zusätzlich können GIS-Layer für Quellen, dominante Verbindungen, Rezeptoren außerhalb des Radius, Schallraster und Isophonen erzeugt werden.")
-            msgs.append("• Beratungsparameter: Rezeptorgrenzwert, Isophonen und Bodenfaktor G für eine schnelle Prüfung von Einhaltung und Geländeeinfluss.")
-        else:
-            msgs.append("• Método actual: cálculo acústico fuente-receptor para consultoría eólica (Lp = LwA - Adiv - Aatm - Aground). Además puede crear capas GIS de fuentes, enlaces dominantes, receptores fuera de radio, mapa de ruido ráster e isófonas.")
-            msgs.append("• Parámetros de consultoría acústica: límite de receptor, isófonas y factor de suelo G para revisión rápida de cumplimiento e influencia del terreno.")
-        
-        if str(current_language()).lower().startswith("de"):
-            msgs = [_de_cleanup_noise_status(m) for m in msgs]
+        msgs.append(_l(
+            "• Método actual: cálculo acústico fuente-receptor para consultoría eólica (Lp = LwA - Adiv - Aatm - Aground). Además puede crear capas GIS de fuentes, enlaces dominantes, receptores fuera de radio, mapa de ruido ráster e isófonas.",
+            "• Current method: source-receiver acoustic calculation for wind-energy consultancy (Lp = LwA - Adiv - Aatm - Aground). It can also create GIS layers for sources, dominant links, receivers outside the radius, a raster noise map and isophones.",
+            "• Méthode actuelle : calcul acoustique source-récepteur pour le conseil éolien (Lp = LwA - Adiv - Aatm - Aground). Il peut également créer des couches SIG de sources, de liaisons dominantes, de récepteurs hors rayon, une carte raster de bruit et des isophones.",
+            "• Aktuelle Methode: akustische Quelle-Rezeptor-Berechnung für die Windenergieberatung (Lp = LwA - Adiv - Aatm - Aground). Zusätzlich können GIS-Layer für Quellen, dominante Verbindungen, Rezeptoren außerhalb des Radius, Schallraster und Isophonen erzeugt werden.",
+        ))
+        msgs.append(_l(
+            "• Parámetros de consultoría acústica: límite de receptor, isófonas y factor de suelo G para revisión rápida de cumplimiento e influencia del terreno.",
+            "• Acoustic consultancy parameters: receiver limit, isophones and ground factor G for a quick review of compliance and terrain influence.",
+            "• Paramètres de conseil acoustique : limite du récepteur, isophones et facteur de sol G pour une vérification rapide de la conformité et de l’influence du terrain.",
+            "• Beratungsparameter: Rezeptorgrenzwert, Isophonen und Bodenfaktor G für eine schnelle Prüfung der Einhaltung und des Geländeeinflusses.",
+        ))
+
         self.txt_status.setPlainText("\n".join(msgs))
         self.btn_calc.setEnabled(ok)
 
     def _validate_inputs_for_run(self):
         errors = []
         warnings = []
+        lang = str(current_language() or "es").lower().replace("-", "_").split("_", 1)[0]
+
+        def _l(es: str, en: str, fr: str, de: str) -> str:
+            return {"en": en, "fr": fr, "de": de}.get(lang, es)
+
         if self.chk_multi_receivers.isChecked():
             n_active = 0
             for r in range(self.tbl_receiver_groups.rowCount()):
-                w_enabled = self.tbl_receiver_groups.cellWidget(r,0)
+                w_enabled = self.tbl_receiver_groups.cellWidget(r, 0)
                 if w_enabled and not w_enabled.isChecked():
                     continue
-                w_layer = self.tbl_receiver_groups.cellWidget(r,1)
+                w_layer = self.tbl_receiver_groups.cellWidget(r, 1)
                 lyr = QgsProject.instance().mapLayer(str(w_layer.currentData(QtCore.Qt.UserRole) or "")) if w_layer else None
                 if not isinstance(lyr, QgsVectorLayer):
-                    errors.append(f"Zeile {r+1}: ungültiger Rezeptor-Layer." if str(current_language()).lower().startswith("de") else f"Fila {r+1}: capa de receptores no válida.")
+                    errors.append(_l(
+                        f"Fila {r + 1}: capa de receptores no válida.",
+                        f"Row {r + 1}: invalid receiver layer.",
+                        f"Ligne {r + 1} : couche de récepteurs non valide.",
+                        f"Zeile {r + 1}: ungültiger Rezeptor-Layer.",
+                    ))
                     continue
                 if int(lyr.featureCount()) <= 0:
-                    errors.append(f"Zeile {r+1}: Der Layer '{lyr.name()}' ist leer." if str(current_language()).lower().startswith("de") else f"Fila {r+1}: la capa '{lyr.name()}' está vacía.")
+                    errors.append(_l(
+                        f"Fila {r + 1}: la capa '{lyr.name()}' está vacía.",
+                        f"Row {r + 1}: layer '{lyr.name()}' is empty.",
+                        f"Ligne {r + 1} : la couche « {lyr.name()} » est vide.",
+                        f"Zeile {r + 1}: Der Layer „{lyr.name()}“ ist leer.",
+                    ))
                 n_active += 1
             if n_active <= 0:
-                errors.append("Es gibt keine aktiven Rezeptor-Layer nach Kategorie." if str(current_language()).lower().startswith("de") else "No hay capas activas de receptores por categoría.")
+                errors.append(_l(
+                    "No hay capas activas de receptores por categoría.",
+                    "There are no active receiver layers by category.",
+                    "Aucune couche de récepteurs active n’est configurée par catégorie.",
+                    "Es sind keine aktiven Rezeptor-Layer nach Kategorie vorhanden.",
+                ))
         else:
             receiver_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
             lyr = QgsProject.instance().mapLayer(receiver_id) if receiver_id else None
             if not isinstance(lyr, QgsVectorLayer):
-                errors.append("Wählen Sie einen gültigen Rezeptor-Layer aus." if str(current_language()).lower().startswith("de") else "Select a valid receiver layer.")
+                errors.append(_l(
+                    "Selecciona una capa de receptores válida.",
+                    "Select a valid receiver layer.",
+                    "Sélectionnez une couche de récepteurs valide.",
+                    "Wählen Sie einen gültigen Rezeptor-Layer aus.",
+                ))
             elif int(lyr.featureCount()) <= 0:
-                errors.append(f"Der Rezeptor-Layer '{lyr.name()}' ist leer." if str(current_language()).lower().startswith("de") else f"La capa de receptores '{lyr.name()}' está vacía.")
+                errors.append(_l(
+                    f"La capa de receptores '{lyr.name()}' está vacía.",
+                    f"The receiver layer '{lyr.name()}' is empty.",
+                    f"La couche de récepteurs « {lyr.name()} » est vide.",
+                    f"Der Rezeptor-Layer „{lyr.name()}“ ist leer.",
+                ))
+
         for row in range(self.tbl_models.rowCount()):
             name_item = self.tbl_models.item(row, 0)
-            name = name_item.text().strip() if name_item else f"fila {row+1}"
+            name = name_item.text().strip() if name_item else _l(f"fila {row + 1}", f"row {row + 1}", f"ligne {row + 1}", f"Zeile {row + 1}")
             try:
                 lwa = float(self._model_lwa_value(row))
                 if lwa <= 0:
                     raise ValueError
             except Exception:
-                errors.append(f"{name}: ungültiger fester LwA." if str(current_language()).lower().startswith("de") else f"{name}: LwA fijo inválido.")
+                errors.append(_l(
+                    f"{name}: LwA fijo no válido.",
+                    f"{name}: invalid fixed LwA.",
+                    f"{name} : LwA fixe non valide.",
+                    f"{name}: ungültiger fester LwA.",
+                ))
+
         if float(self.sp_max_radius.value()) <= 0:
-            errors.append("Der maximale Radius muss größer als 0 sein." if str(current_language()).lower().startswith("de") else "El radio máximo debe ser mayor que 0.")
+            errors.append(_l(
+                "El radio máximo debe ser mayor que 0.",
+                "The maximum radius must be greater than 0.",
+                "Le rayon maximal doit être supérieur à 0.",
+                "Der maximale Radius muss größer als 0 sein.",
+            ))
         if float(self.sp_grid_res.value()) <= 0:
-            errors.append("Die Rasterauflösung muss größer als 0 sein." if str(current_language()).lower().startswith("de") else "La resolución del raster debe ser mayor que 0.")
-        if str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or 'global') == 'landuse' and not self.cb_landuse.currentData(QtCore.Qt.UserRole):
-            warnings.append("Bodenmodus aus Layer ist aktiv, aber ohne gültigen Layer: Der globale G-Wert wird als Fallback verwendet." if str(current_language()).lower().startswith("de") else "Modo suelo desde capa activo sin capa válida: will use G global como respaldo.")
+            errors.append(_l(
+                "La resolución del ráster debe ser mayor que 0.",
+                "The raster resolution must be greater than 0.",
+                "La résolution du raster doit être supérieure à 0.",
+                "Die Rasterauflösung muss größer als 0 sein.",
+            ))
+        if str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or "global") == "landuse" and not self.cb_landuse.currentData(QtCore.Qt.UserRole):
+            warnings.append(_l(
+                "El modo de suelo por capa está activo sin una capa válida: se usará el G global como respaldo.",
+                "Layer-based ground mode is active without a valid layer: global G will be used as fallback.",
+                "Le mode de sol par couche est actif sans couche valide : le G global sera utilisé en secours.",
+                "Der Layer-basierte Bodenmodus ist ohne gültigen Layer aktiv: Der globale G-Wert wird als Fallback verwendet.",
+            ))
         return errors, warnings
 
     def _run_noise(self):

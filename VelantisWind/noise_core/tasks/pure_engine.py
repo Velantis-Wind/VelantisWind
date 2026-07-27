@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ..noise_common import OCTAVE_BANDS, A_WEIGHTING, global_lwa_to_octave_spectrum
 from ..noise_engine_iso import calculate_alpha_atm_iso, calculate_agr_iso_regions
+from ...raster_io import read_float64_pixel
 
 ProgressCallback = Optional[Callable[[float], None]]
 CancelCallback = Optional[Callable[[], bool]]
@@ -115,10 +116,7 @@ class _GdalDemSampler:
             py = int(math.floor(py_f + 0.5))
             if px < 0 or py < 0 or px >= int(self.ds.RasterXSize) or py >= int(self.ds.RasterYSize):
                 return None
-            arr = self.band.ReadAsArray(px, py, 1, 1)
-            if arr is None:
-                return None
-            val = float(arr[0][0])
+            val = read_float64_pixel(self.band, px, py, gdal_module=gdal)
             if self.nodata is not None and abs(val - float(self.nodata)) < 1e-9:
                 return None
             if not math.isfinite(val):

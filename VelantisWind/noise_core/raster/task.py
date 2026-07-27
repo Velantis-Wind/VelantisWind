@@ -22,6 +22,7 @@ from ..noise_engine_iso import calculate_alpha_atm_iso, calculate_agr_iso_region
 from ..tasks.pure_engine import _GdalDemSampler, _prepare_mdt_context, _calculate_abar_mdt
 from ..qgis_io.common import _remove_existing_layers_by_name, _unique_temp_output
 from ..qgis_io.layers import _apply_raster_heatmap_style, _build_isophones_layer_from_raster
+from ...raster_io import read_float64_band, read_float64_pixel, write_float32_band
 
 
 GridFinishedCallback = Callable[[bool, Dict[str, Any], Optional[Any], Optional[Any], Optional[str]], None]
@@ -70,10 +71,7 @@ def _sample_gdal_raster_nearest(ds: Any, inv_gt: Tuple[float, ...], x: float, y:
         if px < 0 or py < 0 or px >= int(ds.RasterXSize) or py >= int(ds.RasterYSize):
             return 0.0, False
         band = ds.GetRasterBand(int(band_index))
-        arr = band.ReadAsArray(px, py, 1, 1)
-        if arr is None:
-            return 0.0, False
-        val = float(arr[0][0])
+        val = read_float64_pixel(band, px, py, gdal_module=gdal)
         nodata = band.GetNoDataValue()
         if nodata is not None and abs(val - float(nodata)) < 1e-9:
             return 0.0, False
@@ -131,11 +129,12 @@ class _GdalArraySampler:
             if band is None:
                 self.error = "DEM has no band 1."
                 return
-            arr = band.ReadAsArray()
-            if arr is None:
-                self.error = "Could not read DEM band 1."
-                return
-            self.array = np.asarray(arr, dtype=np.float64)
+            self.array = read_float64_band(
+                band,
+                self.width,
+                self.height,
+                gdal_module=gdal,
+            )
             self.inv_gt = tuple(float(v) for v in inv)
             self.nodata = band.GetNoDataValue()
             try:
@@ -923,8 +922,12 @@ def compute_noise_grid_file_from_snapshot(
     except Exception:
         pass
     band = ds.GetRasterBand(1)
-    band.WriteArray(arr)
-    band.SetNoDataValue(float(nodata_value))
+    write_float32_band(
+        band,
+        arr,
+        gdal_module=gdal,
+        nodata=nodata_value,
+    )
     band.FlushCache()
     ds.FlushCache()
     ds = None

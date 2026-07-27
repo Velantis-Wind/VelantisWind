@@ -37,6 +37,7 @@ from ..noise_engine_iso import (
 from ..propagation.ground import _bbox_from_point, _lp_from_source
 from ..qgis_io.common import _is_valid_dem_value, _remove_existing_layers_by_name, _sample_dem, _unique_temp_output
 from ..qgis_io.layers import _apply_raster_heatmap_style
+from ...raster_io import write_float32_band
 
 
 def _ground_term_iso_scalar(freq_hz: int, height_m: float) -> float:
@@ -581,8 +582,12 @@ def _build_noise_grid_layer(
     except Exception:
         pass
     band = ds.GetRasterBand(1)
-    band.WriteArray(arr)
-    band.SetNoDataValue(float(nodata_value))
+    write_float32_band(
+        band,
+        arr,
+        gdal_module=gdal,
+        nodata=nodata_value,
+    )
     band.FlushCache()
     ds.FlushCache()
     ds = None
@@ -614,4 +619,3 @@ def _build_noise_grid_layer(
     diag.update({'grid_covered_cells': int(covered), 'grid_min_noise': float(min_noise if math.isfinite(min_noise) else 0.0), 'grid_max_noise': float(max_noise if math.isfinite(max_noise) else 0.0), 'grid_path': out_path})
     _log(f"[Noise][GRID] Raster de mapa creado: {layer_name} | celdas={n_cells} | resolución efectiva={effective_resolution:.1f} m | cobertura={covered}/{n_cells}")
     return lyr, diag
-

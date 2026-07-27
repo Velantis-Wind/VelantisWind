@@ -5,24 +5,28 @@ This module keeps the heavy raster task outside shadow_page.py.
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from ..debug import debug_print
 from ..i18n_local import tr4 as _ml
 
-from qgis.core import QgsTask, QgsRasterLayer, QgsCoordinateTransform, QgsProject, QgsPointXY
+from qgis.core import QgsTask
+
+from ...raster_io import read_float64_pixel, write_float32_band
 
 
 class ShadowRasterTask(QgsTask):
     """Task to calculate the shadow flicker raster in the background with threading."""
 
-    def __init__(self, description, turbines, calculator, turbine_layer, resolution,
-                 raster_timestep=5, dem_layer=None):
+    def __init__(self, description, turbines, calculator_snapshot, turbine_crs_wkt, resolution,
+                 raster_timestep=5, dem_path=""):
         super().__init__(description, QgsTask.CanCancel)
-        self.turbines = turbines
-        self.calculator = calculator
-        self.turbine_layer = turbine_layer
+        self.turbines = [dict(turbine) for turbine in (turbines or [])]
+        self.calculator = SimpleNamespace(**dict(calculator_snapshot or {}))
+        self.turbine_crs_wkt = str(turbine_crs_wkt or "")
         self.resolution = resolution
         self.raster_timestep = raster_timestep  # min/timestep para raster
-        self.dem_layer = dem_layer  # optional DEM for terrain-aware computation
+        self.dem_path = str(dem_path or "")
         self.raster_path = None
         self.npz_path = None  # Path del archivo NPZ with matriz 12x24
         self.points_calculated = 0
@@ -35,6 +39,7 @@ class ShadowRasterTask(QgsTask):
         import numpy as np
         from datetime import datetime, timedelta
         from threading import Thread, Lock
+        import math
         import os
 
         start_time = time.time()
@@ -77,64 +82,104 @@ class ShadowRasterTask(QgsTask):
                 debug_print("[Shadow Raster Task] ERROR: no valid points")
                 return False
 
-            # 3b. DEM pre-sampling for the whole grid (terrain-aware mode)
-            # Pixel ground elevations are sampled ONCE upfront so the threaded
-            # angular comparison stays a pure numpy operation. If no DEM is
-            # available, the grid stays at z=0 and the result matches the
-            # flat-terrain behaviour.
-            if self.dem_layer is not None and isinstance(self.dem_layer, QgsRasterLayer):
-                debug_print(f"[Shadow Raster Task] Pre-sampling DEM '{self.dem_layer.name()}' for grid...")
+            # 3b. DEM pre-sampling for the whole grid (terrain-aware mode).
+            # QgsRasterLayer/QgsRasterDataProvider objects belong to QGIS' main
+            # thread, so the task receives only a GDAL-readable path and CRS WKT.
+            # ReadRaster is used instead of ReadAsArray to avoid the optional
+            # gdal_array NumPy bridge on installations with a NumPy/GDAL ABI
+            # mismatch.
+            pixel_ground_elevs = np.zeros((len(y_range), len(x_range)), dtype=np.float32)
+            if self.dem_path:
+                debug_print(f"[Shadow Raster Task] Pre-sampling DEM with GDAL: {self.dem_path}")
                 t_dem = time.time()
-                dem_provider = self.dem_layer.dataProvider()
-                dem_xform = None
-                if self.dem_layer.crs() != self.turbine_layer.crs():
-                    try:
-                        dem_xform = QgsCoordinateTransform(
-                            self.turbine_layer.crs(),
-                            self.dem_layer.crs(),
-                            QgsProject.instance(),
-                        )
-                    except Exception as e:
-                        debug_print(f"[Shadow Raster Task] WARN CRS transform: {e}")
-                        dem_xform = None
-
-                pixel_ground_elevs = np.zeros((len(y_range), len(x_range)), dtype=np.float32)
                 n_off = 0
-                # Only sample valid pixels (within max_distance of turbines) to save calls
-                for j, i in valid_indices:
-                    pt = QgsPointXY(float(x_range[i]), float(y_range[j]))
-                    if dem_xform is not None:
+                dem_ds = None
+                try:
+                    from osgeo import gdal, osr
+
+                    dem_ds = gdal.Open(self.dem_path, gdal.GA_ReadOnly)
+                    if dem_ds is None:
+                        raise RuntimeError(f"GDAL could not open DEM: {self.dem_path}")
+                    dem_band = dem_ds.GetRasterBand(1)
+                    if dem_band is None:
+                        raise RuntimeError("The selected DEM has no band 1.")
+
+                    geotransform = dem_ds.GetGeoTransform()
+                    inv_gt = gdal.InvGeoTransform(geotransform)
+                    if (
+                        isinstance(inv_gt, tuple)
+                        and len(inv_gt) == 2
+                        and isinstance(inv_gt[0], (bool, int))
+                        and isinstance(inv_gt[1], tuple)
+                    ):
+                        inv_gt = inv_gt[1] if inv_gt[0] else None
+                    if inv_gt is None:
+                        raise RuntimeError("Could not invert the DEM geotransform.")
+
+                    coord_transform = None
+                    dem_wkt = str(dem_ds.GetProjection() or "")
+                    if self.turbine_crs_wkt and dem_wkt:
+                        source_srs = osr.SpatialReference()
+                        target_srs = osr.SpatialReference()
+                        source_srs.ImportFromWkt(self.turbine_crs_wkt)
+                        target_srs.ImportFromWkt(dem_wkt)
+                        if hasattr(source_srs, "SetAxisMappingStrategy"):
+                            source_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+                            target_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+                        if not source_srs.IsSame(target_srs):
+                            coord_transform = osr.CoordinateTransformation(source_srs, target_srs)
+
+                    nodata = dem_band.GetNoDataValue()
+                    dem_width = int(dem_ds.RasterXSize)
+                    dem_height = int(dem_ds.RasterYSize)
+
+                    for j, i in valid_indices:
+                        sample_x = float(x_range[i])
+                        sample_y = float(y_range[j])
                         try:
-                            pt = dem_xform.transform(pt)
+                            if coord_transform is not None:
+                                sample_x, sample_y, _ = coord_transform.TransformPoint(sample_x, sample_y)
+                            px_f, py_f = gdal.ApplyGeoTransform(inv_gt, sample_x, sample_y)
+                            px = int(math.floor(px_f))
+                            py = int(math.floor(py_f))
+                            if px < 0 or py < 0 or px >= dem_width or py >= dem_height:
+                                n_off += 1
+                                continue
+                            fval = read_float64_pixel(
+                                dem_band,
+                                px,
+                                py,
+                                gdal_module=gdal,
+                            )
+                            if not math.isfinite(fval):
+                                n_off += 1
+                                continue
+                            if nodata is not None and math.isclose(
+                                fval,
+                                float(nodata),
+                                rel_tol=0.0,
+                                abs_tol=max(1e-9, abs(float(nodata)) * 1e-12),
+                            ):
+                                n_off += 1
+                                continue
+                            pixel_ground_elevs[j, i] = fval
                         except Exception:
                             n_off += 1
-                            continue
-                    try:
-                        val, ok = dem_provider.sample(pt, 1)
-                    except Exception:
-                        n_off += 1
-                        continue
-                    if not ok:
-                        n_off += 1
-                        continue
-                    try:
-                        fval = float(val)
-                    except (TypeError, ValueError):
-                        n_off += 1
-                        continue
-                    if fval != fval:  # NaN
-                        n_off += 1
-                        continue
-                    pixel_ground_elevs[j, i] = fval
 
-                elapsed_dem = time.time() - t_dem
-                masked = pixel_ground_elevs[mask]
-                if masked.size > 0:
-                    debug_print(f"[Shadow Raster Task] DEM pre-sampling done in {elapsed_dem:.2f}s "
-                          f"({len(valid_indices):,} pixels, "
-                          f"min={masked.min():.1f}m max={masked.max():.1f}m, no-data={n_off})")
+                    elapsed_dem = time.time() - t_dem
+                    masked = pixel_ground_elevs[mask]
+                    if masked.size > 0:
+                        debug_print(
+                            f"[Shadow Raster Task] DEM pre-sampling done in {elapsed_dem:.2f}s "
+                            f"({len(valid_indices):,} pixels, min={masked.min():.1f}m "
+                            f"max={masked.max():.1f}m, no-data={n_off})"
+                        )
+                except Exception as exc:
+                    pixel_ground_elevs.fill(0.0)
+                    debug_print(f"[Shadow Raster Task] WARN DEM unavailable in worker; flat fallback: {exc}")
+                finally:
+                    dem_ds = None
             else:
-                pixel_ground_elevs = np.zeros((len(y_range), len(x_range)), dtype=np.float32)
                 debug_print("[Shadow Raster Task] No DEM - flat terrain assumed for grid (z=0)")
 
             # ----- Raster geometry verification: first valid pixel × first turbine -----
@@ -374,10 +419,10 @@ class ShadowRasterTask(QgsTask):
 
             dataset.SetGeoTransform([xmin, self.resolution, 0, ymax, 0, -self.resolution])
 
-            crs = self.turbine_layer.crs()
             srs = osr.SpatialReference()
-            srs.ImportFromWkt(crs.toWkt())
-            dataset.SetProjection(srs.ExportToWkt())
+            if self.turbine_crs_wkt:
+                srs.ImportFromWkt(self.turbine_crs_wkt)
+                dataset.SetProjection(srs.ExportToWkt())
 
             band = dataset.GetRasterBand(1)
 
@@ -385,10 +430,15 @@ class ShadowRasterTask(QgsTask):
             # raster_array[0] corresponde a y_range[0] = ymin (SUR)
             # GDAL espera raster_array[0] = ymax (NORTE) cuando GeoTransform tiene origen TOP-LEFT
             # Por eso hacemos flipud para que coincidan
-            band.WriteArray(np.flipud(raster_array))
-            band.SetNoDataValue(-9999)
+            write_float32_band(
+                band,
+                raster_array,
+                gdal_module=gdal,
+                flip_vertical=True,
+                nodata=-9999,
+            )
             band.FlushCache()
-
+            dataset.FlushCache()
             dataset = None
 
             debug_print(f"[Shadow Raster Task] Raster saved successfully")
@@ -407,7 +457,7 @@ class ShadowRasterTask(QgsTask):
                 resolution=self.resolution,
                 width=len(x_range),
                 height=len(y_range),
-                crs_wkt=crs.toWkt(),
+                crs_wkt=self.turbine_crs_wkt,
                 year=self.calculator.year,
                 latitude=self.calculator.latitude,
                 longitude=self.calculator.longitude,

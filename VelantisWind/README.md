@@ -8,6 +8,15 @@ Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind
 >
 > **Compatibility:** this public package is marked as compatible with QGIS 3.x and QGIS 4.x. QGIS 4 support remains experimental and should be validated with real installations and user feedback.
 
+## What is new in 0.1.16
+
+- Per-model elliptical spacing envelopes with WRG-based orientation, conflict validation, automatic CSV-layer refresh and screen-defined overrides.
+- A curated 42-candidate turbine screening catalogue with explicit quality and source labels.
+- More robust Noise/Shadow raster processing and a dependency-free Noise XLSX writer for affected Windows/QGIS installations.
+- Independent per-model AEP symbology and relative turbine performance fields after calculation.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full release notes.
+
 ---
 
 ## What Velantis Wind does
@@ -17,6 +26,7 @@ Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind
 | **Energy / AEP** | Estimate wind-farm production with PyWake-compatible workflows and GIS inputs. | Gross/free AEP, wake-reduced AEP, wake/TI/blockage diagnostics, per-turbine table, sector summaries, HTML/CSV reports and QGIS layers. |
 | **Noise** | Run preliminary wind-turbine noise screening with fast and ISO-aligned octave-band engines. | Receiver levels, margins, compliance tables, critical receiver, noise raster, isophones and source-receptor links. |
 | **Shadow Flicker** | Estimate preliminary shadow/flicker impact using turbine, receptor, terrain and solar-geometry inputs. | Annual hours, real/adjusted hours, affected days, monthly/hourly matrices, receptor layer and raster map. |
+| **Spacing envelopes** | Visualize and validate model-specific minimum turbine separation in the Interactive Map. | Per-model elliptical layers, conflict status, optional insertion blocking and GeoPackage export. |
 
 The plugin is designed for transparent pre-assessment, GIS-based QA/QC, technical validation against existing workflows and layout iteration. Users should document all input assumptions and independently verify outputs before using them in formal studies.
 
@@ -37,7 +47,7 @@ The plugin is designed for transparent pre-assessment, GIS-based QA/QC, technica
 Copy the plugin folder into your QGIS profile plugin directory:
 
 ```text
-QGIS3/profiles/default/python/plugins/velantiswind/
+QGIS3/profiles/default/python/plugins/VelantisWind/
 ```
 
 Then restart QGIS and enable **Velantis Wind** from the Plugin Manager.
@@ -69,6 +79,7 @@ Detailed installation guide:
 1. Load or create a turbine point layer, or prepare a layout CSV.
 2. Open **Velantis Wind → Energy / AEP**.
 3. Select turbine model/curve, layout input and wind-resource input.
+   - Version 0.1.16 includes 4 traceable public/reference curves, 8 commercial-model approximations anchored to public technical specifications, and 30 manufacturer-neutral onshore/offshore classes. The dialog separates all three quality levels. Spec-based and generic curves are not OEM-certified and must be replaced with project data for technical deliverables.
 4. Select wake model and optional physics settings.
 5. Run the calculation.
 6. Review AEP, losses, sector summaries and per-turbine outputs.
@@ -111,6 +122,7 @@ velantiswind/
 │
 ├─ energy_core/             # Energy UI state, validation, controller and runner
 ├─ ag_core/                 # Energy engine, resources, PyWake helpers and QGIS outputs
+├─ spacing_core/            # Spacing envelopes: separation ellipses in Interactive Map mode
 ├─ noise_core/              # Noise engines, propagation, receivers, raster and outputs
 ├─ shadow_core/             # Shadow calculation, solar geometry, terrain, raster and outputs
 ├─ ui_core/                 # Shared Qt/QGIS UI helpers
@@ -198,19 +210,19 @@ On Linux/macOS, use `export VELANTISWIND_DEBUG=1` before launching QGIS.
 - [`docs/ENERGY_MODULE.md`](docs/ENERGY_MODULE.md)
 - [`docs/NOISE_MODULE.md`](docs/NOISE_MODULE.md)
 - [`docs/SHADOW_FLICKER_MODULE.md`](docs/SHADOW_FLICKER_MODULE.md)
+- [`docs/SPACING_ENVELOPE_MODULE.md`](docs/SPACING_ENVELOPE_MODULE.md)
 
 ### Architecture
 
 - [`docs/ENERGY_ARCHITECTURE.md`](docs/ENERGY_ARCHITECTURE.md)
 - [`docs/NOISE_ARCHITECTURE.md`](docs/NOISE_ARCHITECTURE.md)
 - [`docs/SHADOW_ARCHITECTURE.md`](docs/SHADOW_ARCHITECTURE.md)
+- [`docs/SPACING_ENVELOPE_ARCHITECTURE.md`](docs/SPACING_ENVELOPE_ARCHITECTURE.md)
 
 ### Testing and publication
 
-- [`docs/EXPERIMENTAL_TESTING_GUIDE.md`](docs/EXPERIMENTAL_TESTING_GUIDE.md)
-- [`docs/SMOKE_TESTS.md`](docs/SMOKE_TESTS.md)
-- [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md)
-- [`docs/PUBLISHING_QGIS.md`](docs/PUBLISHING_QGIS.md)
+- [`docs/RELEASE_TEST_CHECKLIST.md`](docs/RELEASE_TEST_CHECKLIST.md)
+- [`docs/QGIS4_SMOKE_TEST.md`](docs/QGIS4_SMOKE_TEST.md)
 - [`SUPPORT.md`](SUPPORT.md)
 
 ---
@@ -257,7 +269,7 @@ Before submitting to the official QGIS plugin repository, check:
 - The plugin opens from a clean QGIS profile.
 - Energy, Noise and Shadow smoke tests pass.
 
-See [`docs/PUBLISHING_QGIS.md`](docs/PUBLISHING_QGIS.md) and [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+See [`docs/RELEASE_TEST_CHECKLIST.md`](docs/RELEASE_TEST_CHECKLIST.md) and [`docs/QGIS4_SMOKE_TEST.md`](docs/QGIS4_SMOKE_TEST.md).
 
 The QGIS Plugin Repository also runs automated security and quality checks after upload. Keep the public ZIP free from hidden files, cache folders, bundled binaries, secrets, generated reports and temporary-only documents.
 

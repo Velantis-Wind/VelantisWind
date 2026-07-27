@@ -1613,10 +1613,10 @@ class ShadowPage(QtWidgets.QWidget):
         from .shadow_core.raster.map import regenerate_filtered_raster_for_page
         return regenerate_filtered_raster_for_page(self)
 
-    def _on_raster_terminated(self):
-        """Callback when raster generation is cancelled."""
+    def _on_raster_terminated(self, task=None):
+        """Callback when raster generation is cancelled or fails."""
         from .shadow_core.raster.map import on_raster_terminated_for_page
-        return on_raster_terminated_for_page(self)
+        return on_raster_terminated_for_page(self, task)
 
     def _apply_raster_symbology(self, layer):
         """Apply heatmap-style symbology to the ombres et scintillement raster."""

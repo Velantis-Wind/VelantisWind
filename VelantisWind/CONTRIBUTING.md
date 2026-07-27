@@ -58,7 +58,7 @@ detect-secrets scan .
 flake8 .
 ```
 
-Then run the relevant QGIS smoke tests described in `docs/RELEASE_CHECKLIST.md`.
+Then run the relevant QGIS smoke tests described in `docs/RELEASE_TEST_CHECKLIST.md`.
 
 ---
 

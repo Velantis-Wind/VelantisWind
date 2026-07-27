@@ -13,6 +13,15 @@ import os
 from typing import Dict, List, Optional, Tuple
 
 from qgis.PyQt import QtCore, QtWidgets
+
+try:
+    from ..i18n import apply_i18n, tr_text
+except Exception:  # pragma: no cover
+    def apply_i18n(_widget):
+        return None
+    def tr_text(text):
+        return text
+
 from qgis.core import (
     QgsFeature,
     QgsField,
@@ -190,6 +199,11 @@ def create_turbine_layout_layer(
 
     QgsProject.instance().addMapLayer(lyr, False)
     _ensure_group().addLayer(lyr)
+    try:
+        from ..spacing_core.auto_envelope import ensure_spacing_envelope_for_layer
+        ensure_spacing_envelope_for_layer(lyr)
+    except Exception:
+        pass
     return lyr
 
 
@@ -239,6 +253,22 @@ class TurbineLayoutImportDialog(QtWidgets.QDialog):
         self.sp_diam.setSuffix(" m")
         form.addRow("Rotor diameter:", self.sp_diam)
 
+        self.sp_spacing_long = QtWidgets.QDoubleSpinBox()
+        self.sp_spacing_long.setRange(0.5, 30.0)
+        self.sp_spacing_long.setDecimals(2)
+        self.sp_spacing_long.setSingleStep(0.5)
+        self.sp_spacing_long.setValue(7.0)
+        self.sp_spacing_long.setSuffix(" · D")
+        form.addRow("Longitudinal spacing:", self.sp_spacing_long)
+
+        self.sp_spacing_trans = QtWidgets.QDoubleSpinBox()
+        self.sp_spacing_trans.setRange(0.5, 30.0)
+        self.sp_spacing_trans.setDecimals(2)
+        self.sp_spacing_trans.setSingleStep(0.5)
+        self.sp_spacing_trans.setValue(4.0)
+        self.sp_spacing_trans.setSuffix(" · D")
+        form.addRow("Crosswind spacing:", self.sp_spacing_trans)
+
         self.ed_source_group = QtWidgets.QLineEdit("Acoustic source group" if self.module == "noise" else "")
         if self.module == "noise":
             form.addRow("Noise source group:", self.ed_source_group)
@@ -265,6 +295,7 @@ class TurbineLayoutImportDialog(QtWidgets.QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         lay.addWidget(buttons)
+        apply_i18n(self)
 
     def _browse_csv(self):
         start_dir = os.path.dirname(self.ed_csv.text().strip()) if self.ed_csv.text().strip() else os.path.expanduser("~")
@@ -286,6 +317,8 @@ class TurbineLayoutImportDialog(QtWidgets.QDialog):
             "coords_csv": self.ed_csv.text().strip(),
             "hub_height_m": float(self.sp_hh.value()) if self.sp_hh.value() > 0 else None,
             "rotor_diameter_m": float(self.sp_diam.value()) if self.sp_diam.value() > 0 else None,
+            "spacing_long_d": float(self.sp_spacing_long.value()),
+            "spacing_trans_d": float(self.sp_spacing_trans.value()),
             "source_group_name": self.ed_source_group.text().strip() if self.module == "noise" else "",
         }
         if self.module == "noise" and self.sp_lwa is not None:
@@ -311,6 +344,10 @@ def import_turbine_layout_from_csv(parent=None, module: str = "noise") -> Option
     extra: Dict[str, object] = {}
     if module == "noise" and values.get("default_lwa_dba") is not None:
         extra["velantis/default_lwa_dba"] = float(values.get("default_lwa_dba"))
+    extra["velantis/spacing_long_d"] = float(values.get("spacing_long_d") or 7.0)
+    extra["velantis/spacing_trans_d"] = float(values.get("spacing_trans_d") or 4.0)
+    extra["velantis/spacing_mode"] = "auto_energy"
+    extra["velantis/spacing_angle_deg"] = 0.0
     return create_turbine_layout_layer(
         coords=coords,
         layer_name=str(values.get("layer_name") or "Turbine layout"),

@@ -39,6 +39,24 @@ from qgis.PyQt import QtCore, QtWidgets
 from qgis.utils import iface
 from qgis.core import QgsVectorLayer
 
+try:
+    from .i18n import apply_i18n, tr_text
+except Exception:  # pragma: no cover
+    def apply_i18n(_widget):
+        return None
+    def tr_text(text):
+        return text
+try:
+    from . import interactive_i18n
+    interactive_i18n.register()
+except Exception:
+    pass
+
+try:
+    from .spacing_core import SpacingController
+except Exception:
+    SpacingController = None  # type: ignore
+
 
 class InteractiveMapDock(QtWidgets.QDockWidget):
     """Dock con física PyWake + TI ambiente + acciones para el modo Mapa Interactivo."""
@@ -222,6 +240,27 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             self.btn_ti_clear = None
             self.ed_ti_heights = None
 
+        # --- Envolvente de separación --------------------------------------
+        # Módulo spacing_core: elipse semitransparente por turbina con
+        # orientación automática (sector más energético) o definida en
+        # pantalla. Se reutiliza el controller compartido del diálogo
+        # principal (botón «Envolventes de separación…»); solo si no existe
+        # se crea uno propio (_owns_spacing) que se destruye con el dock.
+        self._spacing = None
+        self._owns_spacing = False
+        if SpacingController is not None:
+            try:
+                get = getattr(self.ctl, "_ensure_spacing_controller", None)
+                if callable(get):
+                    self._spacing = get()
+                if self._spacing is None:
+                    self._spacing = SpacingController(self.ctl, iface.mapCanvas(), parent=self)
+                    self._owns_spacing = True
+                outer.addWidget(self._spacing.panel)
+            except Exception:
+                self._spacing = None
+                self._owns_spacing = False
+
         # --- Acciones ------------------------------------------------------
         grp_act = QtWidgets.QGroupBox("Acciones")
         v_act = QtWidgets.QVBoxLayout(grp_act)
@@ -293,6 +332,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             pass
         scroll.setWidget(wrapper)
         self.setWidget(scroll)
+        apply_i18n(self)
 
     # ----------------------------------------------------------- signals
     def _connect(self, signal, slot):
@@ -375,6 +415,21 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         if self._torn_down:
             return
         self._torn_down = True
+        # Limpiar el módulo de envolventes de separación. Si el controller es
+        # el compartido del diálogo, NO se destruye (las envolventes deben
+        # seguir vivas al volver al diálogo): solo se devuelve el panel.
+        try:
+            if getattr(self, "_spacing", None) is not None:
+                if getattr(self, "_owns_spacing", False):
+                    self._spacing.teardown()
+                else:
+                    try:
+                        self._spacing.panel.setParent(None)
+                    except Exception:
+                        pass
+                self._spacing = None
+        except Exception:
+            pass
         for signal, slot in self._connections:
             try:
                 signal.disconnect(slot)
@@ -456,7 +511,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
 
             self.cb_edit_layer.clear()
             if not candidates:
-                self.cb_edit_layer.addItem("Sin capas editables", "")
+                self.cb_edit_layer.addItem(tr_text("Sin capas editables"), "")
                 self.cb_edit_layer.setEnabled(False)
                 return
 
@@ -466,11 +521,11 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                 lid = str(c.get("layer_id") or "")
                 row_idx = int(c.get("row_index", 0))
                 gen = int(c.get("generation", -1))
-                gen_txt = f" · gen {gen}" if gen >= 0 else ""
-                active_txt = " · activa" if c.get("active") else ""
+                gen_txt = f" · {tr_text('gen.')} {gen}" if gen >= 0 else ""
+                active_txt = f" · {tr_text('activa')}" if c.get("active") else ""
                 text = (
                     f"M{row_idx+1} · {c.get('model_name')} | "
-                    f"{c.get('n_points')} turb. | {c.get('layer_name')}{gen_txt}{active_txt}"
+                    f"{c.get('n_points')} {tr_text('turb.')} | {c.get('layer_name')}{gen_txt}{active_txt}"
                 )
                 self.cb_edit_layer.addItem(text, lid)
                 if lid and lid == active_id:
@@ -500,7 +555,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                 pass
             except Exception as e:
                 try:
-                    QtWidgets.QMessageBox.warning(self, "Mapa interactivo", f"No se pudo activar la capa seleccionada:\n{e}")
+                    QtWidgets.QMessageBox.warning(self, tr_text("Mapa interactivo"), f"{tr_text('No se pudo activar la capa seleccionada:')}\n{e}")
                 except Exception:
                     pass
         self._refresh_layer_status()
@@ -548,13 +603,13 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
 
             if not ti_text:
                 self.lbl_ti_status.setText(
-                    "<i>Sin raster TI</i> · "
-                    "<span style='color:#a85a00;'>fallback 10%</span>"
+                    f"<i>{tr_text('Sin raster TI')}</i> · "
+                    f"<span style='color:#a85a00;'>{tr_text('respaldo TI=10%')}</span>"
                 )
             else:
                 paths = [p.strip() for p in ti_text.split(";") if p.strip()]
                 if not paths:
-                    self.lbl_ti_status.setText("<i>Sin raster TI</i>")
+                    self.lbl_ti_status.setText(f"<i>{tr_text('Sin raster TI')}</i>")
                 elif len(paths) == 1:
                     self.lbl_ti_status.setText(
                         f"<b>{os.path.basename(paths[0])}</b>"
@@ -563,7 +618,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                     extras = len(paths) - 1
                     self.lbl_ti_status.setText(
                         f"<b>{os.path.basename(paths[0])}</b> "
-                        f"<span style='color:#666;'>(+{extras} más)</span>"
+                        f"<span style='color:#666;'>(+{extras} {tr_text('más')})</span>"
                     )
 
             # Alturas
@@ -628,7 +683,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             except Exception as e:
                 try:
                     QtWidgets.QMessageBox.warning(
-                        self, "Velantis Wind", f"{name} falló:\n{e}"
+                        self, "Velantis Wind", f"{name} {tr_text('falló:')}\n{e}"
                     )
                 except Exception:
                     pass
@@ -672,7 +727,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             except RuntimeError:
                 pass
             except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "Calcular AEP", str(e))
+                QtWidgets.QMessageBox.warning(self, tr_text("Calcular AEP"), str(e))
             finally:
                 self._refresh_layer_status()
             return
@@ -771,16 +826,15 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                     n_layers = len(candidates)
                     n_turbs = sum(int(c.get("n_points", 0) or 0) for c in candidates)
                     extra = (
-                        f"<br><span style='color:#0a7;'>Hay {n_layers} capa(s) "
-                        f"con {n_turbs} turbina(s) disponibles para calcular.</span>"
+                        f"<br><span style='color:#0a7;'>{tr_text('Hay')} {n_layers} "
+                        f"{tr_text('capa(s) con')} {n_turbs} {tr_text('turbina(s) disponibles para calcular.')}</span>"
                     )
                 except Exception:
                     extra = ""
             self.lbl_layer_status.setText(
-                "<span style='color:#a85a00;'><b>Sin capa activa</b></span>"
-                " de turbinas «<i>Modelo (CSV)</i>».<br>"
-                "Selecciónala en el panel de capas, o usa "
-                "«Generar capas de puntos» en el diálogo."
+                "<span style='color:#a85a00;'><b>" + tr_text("Sin capa activa") + "</b></span>"
+                " " + tr_text("de turbinas") + " «<i>Modelo (CSV)</i>».<br>"
+                + tr_text("Selecciónala en el panel de capas, o usa «Generar capas de puntos» en el diálogo.")
                 + extra
             )
             self.btn_calc.setEnabled(has_compute_layers)
@@ -801,27 +855,28 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             dirty = False
 
         edited_tag = (
-            " · <span style='color:#0a7;'><b>editada</b></span>" if dirty else ""
+            " · <span style='color:#0a7;'><b>" + tr_text("editada") + "</b></span>" if dirty else ""
         )
         warn = ""
         if n == 0:
             warn = (
-                "<br><span style='color:#a85a00;'>Aún no hay turbinas en esta capa: "
-                "haz click izq en el mapa para añadirlas.</span>"
+                "<br><span style='color:#a85a00;'>" +
+                tr_text("Aún no hay turbinas en esta capa: haz click izq en el mapa para añadirlas.") +
+                "</span>"
             )
             if has_compute_layers:
                 try:
                     n_layers = len(candidates)
                     n_turbs = sum(int(c.get("n_points", 0) or 0) for c in candidates)
                     warn += (
-                        f"<br><span style='color:#0a7;'>Puedes calcular igualmente con "
-                        f"{n_layers} capa(s) ya cargada(s), {n_turbs} turbina(s) en total.</span>"
+                        f"<br><span style='color:#0a7;'>{tr_text('Puedes calcular igualmente con')} "
+                        f"{n_layers} {tr_text('capa(s) ya cargada(s),')} {n_turbs} {tr_text('turbina(s) en total.')}</span>"
                     )
                 except Exception:
                     pass
         self.lbl_layer_status.setText(
             f"<b>{layer.name()}</b>{edited_tag}<br>"
-            f"{n} turbina(s){warn}"
+            f"{n} {tr_text('turbina(s)')}{warn}"
         )
         self.btn_calc.setEnabled((n > 0) or has_compute_layers)
         self.btn_export.setEnabled(True)

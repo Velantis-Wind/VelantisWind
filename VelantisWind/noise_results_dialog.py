@@ -20,15 +20,15 @@ except Exception:
     from noise_core.noise_common import OCTAVE_BANDS, A_WEIGHTING
 
 try:
-    from openpyxl import Workbook
+    from .noise_core.results.xlsx_writer import write_xlsx_workbook
 except Exception:
-    Workbook = None
+    from noise_core.results.xlsx_writer import write_xlsx_workbook
 
 
 # Client-facing receiver table/export schema.  Detailed MDT/path diagnostics are
 # still kept internally in the result payload, but the default dialog and exports
 # should stay readable for consultancy workflows.
-NOISE_I18N_NATIVE_BUILD = "2026-07-06-v7-consultancy-report-clean"
+NOISE_I18N_NATIVE_BUILD = "2026-07-22-v8-xlsx-i18n"
 
 CONSULTANCY_RECEIVER_COLUMNS = [
     ("rec_id", "ID receptor"),
@@ -2635,6 +2635,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         install_runtime_i18n_patches()
         super().__init__(parent)
         self._res = result or {}
+        self._receiver_headers = [_tr(label) for _key, label in CONSULTANCY_RECEIVER_COLUMNS]
         self.setWindowTitle("Schall · Technische Übersicht" if str(current_language()).lower().startswith("de") else _tr("Ruido · Resumen técnico"))
         self.setModal(True)
         self._resize_to_screen()
@@ -2677,8 +2678,8 @@ class NoiseResultsDialog(QtWidgets.QDialog):
         self.tbl_models.horizontalHeader().setStretchLastSection(True)
         self.tabs.addTab(self.tbl_models, _tr("Modelos"))
 
-        self.tbl_top = QtWidgets.QTableWidget(0, len(CONSULTANCY_RECEIVER_HEADERS), self)
-        self.tbl_top.setHorizontalHeaderLabels(CONSULTANCY_RECEIVER_HEADERS)
+        self.tbl_top = QtWidgets.QTableWidget(0, len(self._receiver_headers), self)
+        self.tbl_top.setHorizontalHeaderLabels(self._receiver_headers)
         self.tbl_top.setToolTip(
             _tr("Tabla sintética para consultoría: resultados acústicos por receptor, ")
             + _tr("cumplimiento, fuente dominante y atenuaciones principales. ")
@@ -4109,7 +4110,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
                 for key in CONSULTANCY_RECEIVER_KEYS:
                     raw[key] = self._feature_value_last(f, key, "")
                 clean_row = self._clean_receiver_row(raw)
-            for c, header in enumerate(CONSULTANCY_RECEIVER_HEADERS):
+            for c, header in enumerate(self._receiver_headers):
                 v = str(clean_row.get(header, ""))
                 it = QtWidgets.QTableWidgetItem(v)
                 it.setFlags(it.flags() & ~QtCore.Qt.ItemIsEditable)
@@ -4181,6 +4182,25 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             except Exception:
                 txt = str(val or "").strip().lower()
                 return _tr("sí") if txt in ("true", "yes", "sí", "si", "oui", "1") else _tr("no")
+        if key == "state":
+            state = str(val or "").strip().lower()
+            labels = {
+                "cumple": _tr("cumple"),
+                "compliant": _tr("cumple"),
+                "pass": _tr("cumple"),
+                "near_limit": _tr("cerca del límite"),
+                "near limit": _tr("cerca del límite"),
+                "supera": _tr("supera"),
+                "exceeds": _tr("supera"),
+                "excede": _tr("supera"),
+            }
+            return labels.get(state, _tr(str(val or "")))
+        if key == "ground_md":
+            mode = str(val or "").strip().lower()
+            if mode in ("from_layer", "layer", "desde capa", "depuis couche", "aus layer"):
+                return _tr("desde capa")
+            if mode == "global":
+                return _tr("global")
         if val is None:
             return "N/A"
         txt = str(val).strip()
@@ -4207,7 +4227,7 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             val = row.get(key, "") if isinstance(row, dict) else ""
             if key == "rec_id" and (val is None or str(val).strip() == "") and isinstance(row, dict):
                 val = row.get("fid", "")
-            out[label] = self._format_receiver_value(key, val)
+            out[_tr(label)] = self._format_receiver_value(key, val)
         return out
 
 
@@ -4308,44 +4328,28 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             for row in self._collect_table_rows(table):
                 writer.writerow([row.get(h, '') for h in headers])
 
-    def _append_table_sheet(self, wb, title: str, table: QtWidgets.QTableWidget):
-        ws = wb.create_sheet(title=title[:31] or 'Hoja')
+    def _xlsx_table_rows(self, table: QtWidgets.QTableWidget) -> List[List[object]]:
         headers = self._table_headers(table)
-        ws.append(headers)
         rows = self._collect_table_rows(table)
-        if not rows:
-            ws.append(['sin_datos'])
-        else:
-            for row in rows:
-                ws.append([row.get(h, '') for h in headers])
-        try:
-            for idx, h in enumerate(headers, start=1):
-                width = max(len(str(h)), max((len(str(r.get(h, ''))) for r in rows), default=0))
-                ws.column_dimensions[chr(64 + idx) if idx <= 26 else ws.cell(row=1, column=idx).column_letter].width = min(max(width + 2, 10), 45)
-        except Exception:
-            pass
+        no_data = _tr("Sin datos")
+        return [headers] + ([[row.get(h, "") for h in headers] for row in rows] if rows else [[no_data]])
 
-    def _append_sheet(self, wb, title: str, rows):
-        ws = wb.create_sheet(title=title[:31] or 'Hoja')
+    def _xlsx_dict_rows(self, rows) -> List[List[object]]:
         rows = list(rows or [])
-        headers = []
-        for r in rows:
-            for k in r.keys():
-                if k not in headers:
-                    headers.append(k)
-        if not headers:
-            ws.append(['sin_datos'])
-            ws.append([''])
-            return
-        ws.append(headers)
+        headers: List[str] = []
         for row in rows:
-            ws.append([row.get(h, '') for h in headers])
-        try:
-            for idx, h in enumerate(headers, start=1):
-                width = max(len(str(h)), max((len(str(r.get(h, ''))) for r in rows), default=0))
-                ws.column_dimensions[chr(64 + idx) if idx <= 26 else ws.cell(row=1, column=idx).column_letter].width = min(max(width + 2, 10), 40)
-        except Exception:
-            pass
+            if not isinstance(row, dict):
+                continue
+            for key in row.keys():
+                if key not in headers:
+                    headers.append(str(key))
+        if not headers:
+            return [[_tr("Sin datos")]]
+        return [headers] + [
+            [row.get(header, "") for header in headers]
+            for row in rows
+            if isinstance(row, dict)
+        ]
 
     def _export_summary(self):
         path, _ = QtWidgets.QFileDialog.getSaveFileName(self, ('Zusammenfassung exportieren' if str(current_language()).lower().startswith('de') else _tr('Exportar resumen')), os.path.expanduser('~/schall_zusammenfassung.html' if str(current_language()).lower().startswith('de') else '~/ruido_resumen.html'), ('HTML (*.html);;Text (*.txt)' if str(current_language()).lower().startswith('de') else _tr('HTML (*.html);;Texto (*.txt)')))
@@ -4471,26 +4475,37 @@ class NoiseResultsDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(self, _tr('Exportar excedencias'), _tr('No se pudo exportar el CSV:') + f'\n{e}')
 
     def _export_package_xlsx(self):
-        if Workbook is None:
-            QtWidgets.QMessageBox.information(self, _tr('Exportar paquete XLSX'), _tr('openpyxl no está disponible en este entorno QGIS. Usa las exportaciones CSV o instala openpyxl.'))
-            return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, _tr('Exportar paquete XLSX'), os.path.expanduser('~/ruido_paquete.xlsx'), 'Excel (*.xlsx)')
+        language = str(current_language()).lower()[:2]
+        default_name = {
+            'en': 'noise_package.xlsx',
+            'fr': 'bruit_package.xlsx',
+            'de': 'schall_paket.xlsx',
+        }.get(language, 'ruido_paquete.xlsx')
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            _tr('Exportar paquete XLSX'),
+            os.path.expanduser('~/' + default_name),
+            'Excel (*.xlsx)',
+        )
         if not path:
             return
         try:
             if not path.lower().endswith('.xlsx'):
                 path += '.xlsx'
-            wb = Workbook()
-            ws0 = wb.active
-            ws0.title = _tr('Resumen')[:31]
             plain = self.page_summary.toPlainText().splitlines()
-            for line in plain:
-                ws0.append([line])
-            self._append_table_sheet(wb, _tr('Modelos'), self.tbl_models)
-            self._append_sheet(wb, _tr('Receptores'), self._receiver_rows_for_export())
-            self._append_sheet(wb, 'Excedencias', self._collect_exceedance_rows())
-            self._append_table_sheet(wb, _tr('Capas_creadas'), self.tbl_layers)
-            wb.save(path)
+            sheets = [
+                {'title': _tr('Resumen'), 'rows': [[line] for line in plain] or [[_tr('Sin datos')]]},
+                {'title': _tr('Modelos'), 'rows': self._xlsx_table_rows(self.tbl_models), 'freeze_header': True},
+                {'title': _tr('Receptores'), 'rows': self._xlsx_dict_rows(self._receiver_rows_for_export()), 'freeze_header': True},
+                {'title': _tr('Excedencias'), 'rows': self._xlsx_dict_rows(self._collect_exceedance_rows()), 'freeze_header': True},
+                {'title': _tr('Capas creadas'), 'rows': self._xlsx_table_rows(self.tbl_layers), 'freeze_header': True},
+            ]
+            write_xlsx_workbook(path, sheets)
+            QtWidgets.QMessageBox.information(
+                self,
+                _tr('XLSX exportado'),
+                _tr('Paquete XLSX exportado correctamente:') + f'\n{path}',
+            )
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, _tr('Exportar paquete XLSX'), _tr('No se pudo exportar el XLSX:') + f'\n{e}')
 
