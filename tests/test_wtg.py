@@ -62,6 +62,23 @@ class WtgTestCase(unittest.TestCase):
 
 
 class ReadTest(WtgTestCase):
+    def test_valid_turbine_with_internal_dtd_is_accepted(self):
+        xml = document().replace(
+            "?><WindTurbineGenerator", "?>\n<!DOCTYPE WindTurbineGenerator [<!ELEMENT WindTurbineGenerator ANY>]>\n<WindTurbineGenerator", 1
+        )
+        loaded = self.load(xml)
+        self.assertEqual(loaded.source_format, "wtg")
+
+    def test_entity_declaration_in_turbine_dtd_is_rejected(self):
+        xml = document().replace(
+            "?><WindTurbineGenerator", "?>\n<!DOCTYPE WindTurbineGenerator [<!ENTITY payload 'ATTACK'>]>\n<WindTurbineGenerator", 1
+        )
+        self.assertRejected(xml, "EntitiesForbidden")
+
+    def test_rejects_xml_entity_declarations(self):
+        dangerous = '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY payload "ATTACK">]><x>&payload;</x>'
+        self.assertRejected(dangerous, "No se pudo leer el XML")
+
     def test_equivalent_to_a_hand_made_table(self):
         loaded = self.load()
         rho = sorted(TABLES)

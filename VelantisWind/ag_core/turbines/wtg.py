@@ -50,12 +50,8 @@ from ..log_text import log_text
 from ..turbine import _error
 from .density_curve import CurveTableError, TurbineCurveTable
 
-try:  # pragma: no cover - depends on the environment
-    # defusedxml hardens the parser against entity expansion. It is not a hard
-    # dependency: these files are local and chosen by the user.
-    from defusedxml.ElementTree import parse as _xml_parse  # type: ignore
-except Exception:  # pragma: no cover
-    from xml.etree.ElementTree import parse as _xml_parse  # nosec B405 B314 - local user-selected file
+# Bundled, pure-Python safe XML parser. No additional pip installation needed.
+from ..._vendor.defusedxml.ElementTree import parse as _xml_parse
 
 __all__ = ["WtgFormatError", "WTG_EXTENSIONS", "is_wtg_path", "load_wtg"]
 
@@ -223,7 +219,9 @@ def load_wtg(path: str, *, hub_height_m: Optional[float] = None) -> TurbineCurve
         raise _fail("No existe el fichero .wtg: {path!r}.", path=path)
     name_of_file = os.path.basename(path)
     try:
-        root = _xml_parse(path).getroot()
+        # OpenWind / WAsP files may contain harmless DOCTYPE declarations.
+        # Entities and external references remain forbidden to prevent XXE.
+        root = _xml_parse(path, forbid_dtd=False, forbid_entities=True, forbid_external=True).getroot()
     except Exception as exc:
         raise _fail("No se pudo leer el XML de {file}: {error}", file=name_of_file, error=exc) from exc
 

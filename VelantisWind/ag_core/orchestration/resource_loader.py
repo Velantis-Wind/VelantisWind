@@ -9,6 +9,8 @@ semantics.
 
 from __future__ import annotations
 
+import logging
+
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -102,8 +104,8 @@ def load_energy_site(
             speedup = str(ds.attrs.get("wrg_speedup_method", "none"))
             wd_interp = str(ds.attrs.get("wrg_wd_interp_method", ""))
             log(f"[WRG] alturas={heights} | política_vertical={policy} | speedup={speedup} | wd_interp={wd_interp}", info_level)
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 105, _ignored_exc)
         ds = ensure_wd_dim(ds)
         site = rebuild_xrsite_if_needed(site, ds)
 

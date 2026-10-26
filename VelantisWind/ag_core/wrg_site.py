@@ -33,6 +33,8 @@ Devuelve:
 """
 from __future__ import annotations
 
+import logging
+
 import os
 import warnings
 import zipfile
@@ -298,8 +300,8 @@ def _prepare_vertical_climate(ds: xr.Dataset) -> xr.Dataset:
     try:
         if "h" in out.coords and not any("h" in out[name].dims for name in out.data_vars):
             out = out.drop_vars("h")
-    except Exception:
-        pass
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 301, _ignored_exc)
 
     out.attrs.update({
         "wrg_vertical_policy": "single_height_reference",

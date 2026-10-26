@@ -2,11 +2,11 @@
 
 **Open-source wind-farm pre-assessment workflows directly inside QGIS.**
 
-Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
+Velantis Wind is an open-source QGIS 3.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
 
-> **Status:** experimental release. Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
+> **Status:** stable QGIS repository release 0.1.17. Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
 >
-> **Compatibility:** this public package is marked as compatible with QGIS 3.x and QGIS 4.x. QGIS 4 support remains experimental and should be validated with real installations and user feedback.
+> **Compatibility:** stable package targeting QGIS 3.28–3.99. QGIS 4 support remains unvalidated and is not declared for this build.
 
 ## What is new in 0.1.17
 
@@ -21,7 +21,7 @@ Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind
 
 **Default AEP results change compared with 0.1.16**, through wake defaults, resource grids, 8766 h/year, bin-mean power and turbine-curve corrections. The reference air density, new in this version, is stored in each project; a project without one starts undefined, with the density adjustment off.
 
-**Installation:** use `py_wake==2.6.18`, `h5netcdf>=1.8` and, on Linux/macOS, `h5py` with pip. On Windows with QGIS from OSGeo4W, do not install `h5py` with pip: an HDF5 conflict is expected but has not been reproduced there; `python3-h5py` through the OSGeo4W installer is an untested option. When GaussianOverlap's libraries are unavailable, the dialog asks before using `CGIRotorAvg(7)` where its table is needed and records the adaptation, or applies an applicable saved decision for the predefined model without asking. See [Energy dependency](#energy-dependency).
+**Installation:** use `py_wake==2.6.18`, `h5netcdf>=1.8` and, on Linux/macOS, `h5py` with pip. On Windows with QGIS from OSGeo4W, do not install `h5py` with pip: an HDF5 conflict is expected but has not been reproduced there; `python3-h5py` through the OSGeo4W installer is an untested option. WTG/OWTG XML turbine imports use a safe XML parser included in the plugin ZIP: no separate XML dependency installation is required. When GaussianOverlap's libraries are unavailable, the dialog asks before using `CGIRotorAvg(7)` where its table is needed and records the adaptation, or applies an applicable saved decision for the predefined model without asking. See [Energy dependency](#energy-dependency).
 
 **Known problem:** **Merge resource** ("Unir recurso") can write grids PyWake cannot read and discards turbulence intensity and speed factors; these problems remain for the next version. See the [full changelog](CHANGELOG.md).
 
