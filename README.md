@@ -5,11 +5,11 @@
 [![QGIS](https://img.shields.io/badge/QGIS-3.28%2B-589632?logo=qgis&logoColor=white)](https://qgis.org/)
 [![QGIS 4](https://img.shields.io/badge/QGIS%204-experimental-orange)](VelantisWind/docs/QGIS4_SMOKE_TEST.md)
 [![PyWake](https://img.shields.io/badge/PyWake-2.6.18-blue)](VelantisWind/docs/INSTALL_OSGEO4W_PYWAKE.md)
-[![Version](https://img.shields.io/badge/version-0.1.17-blue)](https://github.com/Velantis-Wind/VelantisWind/releases)
+[![Version](https://img.shields.io/badge/version-0.1.19-blue)](https://github.com/Velantis-Wind/VelantisWind/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](LICENSE)
 [![Languages](https://img.shields.io/badge/UI-ES%20%7C%20EN%20%7C%20FR%20%7C%20DE-lightgrey)](VelantisWind/docs/QUICKSTART.md)
 
-VelantisWind is an experimental QGIS plugin for early-stage wind-farm analysis. It combines:
+VelantisWind is an open-source QGIS plugin for early-stage wind-farm analysis. It combines:
 
 - **Energy / AEP assessment with PyWake**
 - **Wake, turbulence and blockage model comparison**
@@ -21,12 +21,12 @@ VelantisWind is an experimental QGIS plugin for early-stage wind-farm analysis. 
 The objective is to keep project inputs, engineering assumptions, calculations and outputs connected to the same QGIS project, making wind-farm screening more transparent, reproducible and easier to review.
 
 > [!IMPORTANT]
-> VelantisWind is experimental software intended for technical screening, layout comparison, GIS-based QA/QC, workflow validation, research and technical feedback.
+> VelantisWind is pre-assessment software intended for technical screening, layout comparison, GIS-based QA/QC, workflow validation, research and technical feedback.
 >
 > It is **not** certified regulatory, permitting or bankable assessment software. Results must be independently reviewed before being used in formal engineering studies.
 
 > [!NOTE]
-> The plugin supports QGIS 3.28 and later. Qt5/Qt6 compatibility work is included, but QGIS 4 support remains experimental and should be tested on real installations and project workflows.
+> The stable QGIS repository package supports QGIS 3.28 through 3.x. Qt5/Qt6 compatibility work is included, but QGIS 4 remains unvalidated and is not included in this stable version's declared compatibility.
 
 ---
 

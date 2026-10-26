@@ -1,14 +1,14 @@
 [general]
 name=Velantis Wind
 qgisMinimumVersion=3.28
-qgisMaximumVersion=4.99
+qgisMaximumVersion=3.99
 description=Wind-farm pre-assessment in QGIS: Energy/AEP, Noise and Shadow Flicker workflows.
-version=0.1.17
+version=0.1.19
 author=VelantisWind Project
 email=info@velantiswind.com
 license=GPL-3.0-or-later
 
-about=Experimental open-source QGIS plugin for early-stage wind-farm pre-assessment. It includes Energy/AEP workflows, wind-turbine noise screening and shadow flicker analysis. This package is marked as compatible with QGIS 3.x and QGIS 4.x. A Qt5/Qt6 compatibility layer is included, but QGIS 4 support should still be validated with real installations and user feedback. Important installation note: the Energy/AEP module requires PyWake to be installed separately in the same Python environment used by QGIS. PyWake is not a QGIS plugin and will not appear in the QGIS plugin manager. On Windows, open OSGeo4W Shell and run: python -m pip install py_wake==2.6.18 "h5netcdf>=1.8". Then restart QGIS. Since version 1.8, h5netcdf no longer depends on h5py, so this command does not install h5py through h5netcdf. h5py is needed by the GaussianOverlapAvgModel rotor average; see the OSGeo4W installation guide for the untested OSGeo4W package option. Noise and Shadow Flicker can be tested independently without PyWake. This experimental release is intended for screening, layout comparison, workflow testing and technical feedback. It is not certified regulatory or bankable assessment software. Full installation instructions, documentation and troubleshooting are available on the project website and GitHub repository.
+about=Open-source QGIS plugin for early-stage wind-farm pre-assessment. It includes Energy/AEP workflows, wind-turbine noise screening and shadow flicker analysis. This stable-channel package targets QGIS 3.28 through 3.x. Qt5/Qt6 compatibility work is included, but QGIS 4 remains unvalidated and is outside the supported range of this build. Important installation note: the Energy/AEP module requires PyWake to be installed separately in the same Python environment used by QGIS. PyWake is not a QGIS plugin and will not appear in the QGIS plugin manager. On Windows, open OSGeo4W Shell and run: python -m pip install py_wake==2.6.18 "h5netcdf>=1.8". Then restart QGIS. Since version 1.8, h5netcdf no longer depends on h5py, so this command does not install h5py through h5netcdf. h5py is needed by the GaussianOverlapAvgModel rotor average; see the OSGeo4W installation guide for the untested OSGeo4W package option. Noise and Shadow Flicker can be tested independently without PyWake. This release is intended for screening, layout comparison, workflow testing and technical feedback. It is not certified regulatory or bankable assessment software. Full installation instructions, documentation and troubleshooting are available on the project website and GitHub repository.
 
 tracker=https://github.com/Velantis-Wind/VelantisWind/issues
 repository=https://github.com/Velantis-Wind/VelantisWind
@@ -17,11 +17,11 @@ homepage=https://www.velantiswind.com/qgis
 category=Raster
 tags=wind energy,AEP,PyWake,QGIS,noise,shadow flicker,renewables,GIS,pre-assessment,i18n,multilingual,French,German,Spanish,English
 icon=icon.png
-experimental=True
+experimental=False
 deprecated=False
 hasProcessingProvider=False
 server=False
-changelog=0.1.17 - Extends Energy/AEP with predefined PyWake models (NOJ on a new installation, including TurbOPark among the choices) and manual class selection with editable parameters, blockage and executed-configuration reporting. Manual defaults use Bastankhah with LinearSum and the PyWake signature values.
+changelog=0.1.19 - Stable QGIS repository publication of the code released on GitHub as 0.1.17; no physics or calculation changes in this packaging update. Extends Energy/AEP with predefined PyWake models (NOJ on a new installation, including TurbOPark among the choices) and manual class selection with editable parameters, blockage and executed-configuration reporting. Manual defaults use Bastankhah with LinearSum and the PyWake signature values.
     WRG resource parameters use sector-subdivision centres, nearest or linear directional interpolation, Speedup none and wind speeds covering the turbines' operating bands; WRG and GRD use 8766 h/year. Adds bin-mean power, density-tabulated .wtg/.owtg curves, validated CSV/TXT curves and per-row turbine layers; fixes mixed-model hub heights, resource coverage, coordinate precision and spacing-envelope persistence. Default AEP results change compared with 0.1.16.
     Negative effective speeds no longer stop density-tabulated curves at their axis boundary; results report negative and non-finite values and partial totals. WeightedSum handles the 0 m/s node separately where applicable. Wake rasters use the current dialog inputs, record differences from the last AEP, retain custom and derived CRS and are not loaded into another project after a project change.
     The reference air density, new in this version, is stored in each project; a project without one starts undefined, with the density adjustment off. Known Merge resource problems: it can write grids PyWake cannot read and discards turbulence intensity and speed factors of the merged resource.

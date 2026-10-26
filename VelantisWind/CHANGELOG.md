@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.1.17
+## 0.1.19 (QGIS stable publication)
+
+The code from the GitHub 0.1.17 release is published to the QGIS stable channel as 0.1.19, because QGIS already has older experimental 0.1.17 and 0.1.18 records. This update changes packaging/version metadata only, not calculation behavior. The stable package targets QGIS 3.28–3.99; QGIS 4 support remains unvalidated.
+
+## 0.1.17 (source release)
 
 ### Installation
 - Pinned `py_wake==2.6.18`, the version used to check the predefined models and consistency with PyWake. The dialog does not warn if another version is installed. In the Python environment used by QGIS, Linux and macOS install `py_wake==2.6.18`, `h5py` and `h5netcdf>=1.8` with pip; Windows with QGIS from OSGeo4W installs `py_wake==2.6.18` and `h5netcdf>=1.8` with pip. Since version 1.8, `h5netcdf` no longer depends on `h5py`.

@@ -2,13 +2,15 @@
 
 **Open-source wind-farm pre-assessment workflows directly inside QGIS.**
 
-Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
+Velantis Wind is an open-source QGIS 3.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
 
-> **Status:** experimental release. Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
+> **Status:** stable QGIS repository release 0.1.19. Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
 >
-> **Compatibility:** this public package is marked as compatible with QGIS 3.x and QGIS 4.x. QGIS 4 support remains experimental and should be validated with real installations and user feedback.
+> **Compatibility:** QGIS 3.28–3.99. QGIS 4 support has not been validated and is not included in this stable package.
 
-## What is new in 0.1.17
+## What is new in 0.1.19
+
+This QGIS stable-channel release packages the source previously merged as 0.1.17 on GitHub. Changes to wake physics and calculations have not been made in this packaging update.
 
 - Predefined PyWake models, including TurbOPark, and manual class selection with editable parameters, rotor averaging, ground, turbulence and blockage. A new installation opens with predefined NOJ; manual defaults use Bastankhah with `LinearSum` and PyWake signature values. Results report the executed configuration and signed losses.
 - WRG resource parameters: sector-subdivision centres (seven per sector initially, or one if seven would exceed 360 directions), `nearest` or `linear` directional interpolation, Speedup `none` and wind speeds covering the turbines' operating bands. GRD uses its PyWake site's directions and wind speeds; both use 8766 h/year.
