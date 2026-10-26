@@ -17,6 +17,8 @@ Uso desde el diálogo:
 """
 
 from __future__ import annotations
+
+import logging
 import copy
 import os
 import re
@@ -576,8 +578,8 @@ def _compute_aep(*, config, provenance, legacy_request, wasp_dir, models, comput
                 "WRG: se conservan A, k y frecuencia sectorial locales del WRG en cada "
                 "posición, sin convertirlos a una Weibull global + Speedup."
             ))
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 579, _ignored_exc)
 
     # ===========================
     # 6) Turbulencia inicial (TI)

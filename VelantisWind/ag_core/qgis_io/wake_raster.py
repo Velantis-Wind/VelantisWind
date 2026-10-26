@@ -8,6 +8,8 @@ main thread.
 """
 from __future__ import annotations
 
+import logging
+
 import json
 import math
 import os
@@ -83,8 +85,8 @@ def _find_data_array(container: Any, candidates: Iterable[str]) -> Any:
         except Exception:
             try:
                 return getattr(container, key)
-            except Exception:
-                pass
+            except Exception as _ignored_exc:
+                logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 86, _ignored_exc)
     return None
 
 
@@ -95,8 +97,8 @@ def _extract_field_2d(flow_map: Any, candidates: Iterable[str], display_name: st
         names: List[str] = []
         try:
             names = list(getattr(flow_map, "data_vars", {}).keys())
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 98, _ignored_exc)
         raise log_error(RuntimeError, "PyWake no devolvió el campo {field}. Variables disponibles: {names}.",
                         field=display_name, names=", ".join(map(str, names)) or log_text("desconocidas"))
 
@@ -362,8 +364,8 @@ def _apply_style(layer: Any, entry: Dict[str, Any]) -> None:
         elif hasattr(renderer, "setOpacity"):
             renderer.setOpacity(opacity)
         layer.triggerRepaint()
-    except Exception:
-        pass
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 365, _ignored_exc)
 
 
 def _layer_name(entry: Dict[str, Any], wd: float, ws: float, without_blockage: bool = False) -> str:
@@ -401,8 +403,8 @@ def _add_one_to_qgis(entry: Dict[str, Any], result: Dict[str, Any], subgroup: An
     try:
         if (not layer.crs().isValid()) and project.crs().isValid():
             layer.setCrs(project.crs())
-    except Exception:
-        pass
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 404, _ignored_exc)
 
     variable = str(entry.get("variable") or "")
     layer.setCustomProperty("velantiswind/layer_type", "wake_raster")
@@ -417,8 +419,8 @@ def _add_one_to_qgis(entry: Dict[str, Any], result: Dict[str, Any], subgroup: An
             continue
         try:
             layer.setCustomProperty(f"velantiswind/{key}", value)
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 420, _ignored_exc)
 
     project.addMapLayer(layer, False)
     node = subgroup.insertLayer(0, layer)
@@ -426,8 +428,8 @@ def _add_one_to_qgis(entry: Dict[str, Any], result: Dict[str, Any], subgroup: An
     # The effective field is shown over a subtle terrain hillshade by default.
     try:
         node.setItemVisibilityChecked(variable in {"WS_eff", "Elevation"})
-    except Exception:
-        pass
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 429, _ignored_exc)
     _apply_style(layer, entry)
     return layer
 
@@ -456,8 +458,8 @@ def _write_metadata_sidecar(metadata_path: str, payload: Dict[str, Any]) -> str:
         try:
             if os.path.isfile(tmp_path):
                 os.remove(tmp_path)
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 459, _ignored_exc)
         raise
     return metadata_path
 
@@ -586,8 +588,8 @@ def build_wake_raster_file(
                     # Its .aux.xml only once the temporary raster is gone, as for the final one below.
                     if os.path.isfile(temp_path + ".aux.xml"):
                         os.remove(temp_path + ".aux.xml")
-                except Exception:
-                    pass
+                except Exception as _ignored_exc:
+                    logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 589, _ignored_exc)
                 raise
             stats = _field_stats(values)
             entry: Dict[str, Any] = {
@@ -657,8 +659,8 @@ def build_wake_raster_file(
                 # A raster's .aux.xml goes with it: kept if the raster could not be removed, which would lose its CRS.
                 if cleanup_path in written_paths and os.path.isfile(cleanup_path + ".aux.xml"):
                     os.remove(cleanup_path + ".aux.xml")
-            except Exception:
-                pass
+            except Exception as _ignored_exc:
+                logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 660, _ignored_exc)
         raise
 
 
@@ -702,12 +704,12 @@ def add_wake_raster_result_to_qgis(result: Dict[str, Any]) -> List[Any]:
         for layer in layers:
             try:
                 project.removeMapLayer(layer.id())
-            except Exception:
-                pass
+            except Exception as _ignored_exc:
+                logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 705, _ignored_exc)
         try:
             group.removeChildNode(subgroup)
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 709, _ignored_exc)
         raise
     subgroup.setExpanded(True)
     group.setExpanded(True)
@@ -735,8 +737,8 @@ def create_wake_raster_layer(
         crs = project.crs()
         if crs is not None and crs.isValid():
             crs_wkt = preferred_wkt(crs)
-    except Exception:
-        pass
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 738, _ignored_exc)
     result = build_wake_raster_file(
         flow_map,
         wd=wd,

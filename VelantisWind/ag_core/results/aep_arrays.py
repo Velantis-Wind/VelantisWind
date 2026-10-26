@@ -7,6 +7,8 @@ explicit ``hours_pr_year`` and only fall back to ``aep_ilk`` when necessary.
 """
 from __future__ import annotations
 
+import logging
+
 from typing import Callable, List, Optional, Tuple
 
 import numpy as np
@@ -23,10 +25,10 @@ def _aep_da(sim, hours_per_year: float = 8760.0):
         try:
             da = sim.aep()
             return da * (hours / 8760.0)
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 26, _ignored_exc)
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 28, _ignored_exc)
 
     if hasattr(sim, "aep_ilk"):
         da = sim.aep_ilk()
@@ -58,8 +60,8 @@ def aep_per_turb(sim, hours_per_year: float = 8760.0) -> np.ndarray:
                     if d not in ("wt", "i"):
                         da = da.sum(d)
                 return np.asarray(da.values, dtype=float).reshape(-1) * 1000.0
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 61, _ignored_exc)
 
         if arr.ndim == 0 or arr.size == 1:
             n_wt = None
@@ -68,8 +70,8 @@ def aep_per_turb(sim, hours_per_year: float = 8760.0) -> np.ndarray:
                     try:
                         n_wt = len(getattr(sim, attr))
                         break
-                    except Exception:
-                        pass
+                    except Exception as _ignored_exc:
+                        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 71, _ignored_exc)
             if n_wt is None:
                 try:
                     n_wt = int(getattr(sim, "n_wt"))
@@ -156,8 +158,8 @@ def extract_directional_breakdown(
         if log is not None:
             try:
                 log(f"[AEP] No se pudo extraer desglose por dirección: {exc!r}")
-            except Exception:
-                pass
+            except Exception as _ignored_exc:
+                logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 159, _ignored_exc)
     return None, None, None
 
 

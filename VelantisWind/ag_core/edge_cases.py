@@ -17,6 +17,8 @@ sectors of the resource skips every non-finite value; a total that skips a case 
 """
 from __future__ import annotations
 
+import logging
+
 import math
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
@@ -49,8 +51,8 @@ def guarded(log: Callable[[Any], None], fn: Callable[..., Any], *args: Any, **kw
     except Exception as exc:  # noqa: BLE001 - a diagnosis never stops nor changes the calculation
         try:
             log(log_text(UNAVAILABLE_TEXT, error=f"{type(exc).__name__}: {exc}"))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as _ignored_exc:  # noqa: BLE001
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 52, _ignored_exc)
         return None
 
 

@@ -8,6 +8,8 @@ prevents Noise/Shadow from depending on the Energy dialog just to load a layout.
 """
 from __future__ import annotations
 
+import logging
+
 import csv
 import math
 
@@ -390,8 +392,8 @@ class TurbineLayoutImportDialog(QtWidgets.QDialog):
         if self.crs_widget is not None:
             try:
                 self.crs_widget.setCrs(QgsProject.instance().crs())
-            except Exception:
-                pass
+            except Exception as _ignored_exc:
+                logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 393, _ignored_exc)
             form.addRow("Sistema de coordenadas:", self.crs_widget)
         else:
             project_crs = QgsProject.instance().crs()

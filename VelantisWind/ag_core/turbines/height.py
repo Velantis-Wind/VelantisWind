@@ -2,6 +2,8 @@
 """Helpers de alturas de buje para WindTurbines/PyWake."""
 from __future__ import annotations
 
+import logging
+
 from typing import Any, Callable, Optional
 import numpy as np
 
@@ -40,7 +42,8 @@ def _type_hub_heights(wt_all: Any) -> np.ndarray:
     for attr in ("hub_heights", "_hub_heights"):
         try:
             values = np.asarray(getattr(wt_all, attr), dtype=float).ravel()
-        except Exception:
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 43, _ignored_exc)
             continue
         values = values[np.isfinite(values)]
         if values.size:

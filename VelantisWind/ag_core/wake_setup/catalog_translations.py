@@ -385,7 +385,8 @@ _DE = (
     "Nicht im Menü: die Klassen, die Tabellen benötigen, die das Plugin nicht mitbringt (FugaDeficit, FugaMultiLUTDeficit, FugaYawDeficit, RANSLUTDemoDeficit, RANSLUTDeficit, RANSLUTConvDeficit, XRLUTDeficitModel); NoWakeDeficit, weil die Brutto-AEP den Fall ohne Nachläufe und Blockade bereits liefert (das Szenario nur mit Blockade liegt außerhalb des Umfangs); und die Nachlaufablenkung, weil das Plugin die AEP nicht mit Gierwinkel berechnet.",
 )
 
-assert len(_ES) == len(_EN) == len(_FR) == len(_DE), "the four tables must have the same texts"
+if not (len(_ES) == len(_EN) == len(_FR) == len(_DE)):
+    raise ValueError("the four tables must have the same texts")
 TRANSLATIONS = {lang: dict(zip(_ES, texts)) for lang, texts in (("en", _EN), ("fr", _FR), ("de", _DE))}
 
 

@@ -2,6 +2,8 @@
 """Main-thread orchestration for the asynchronous wake-raster workflow."""
 from __future__ import annotations
 
+import logging
+
 import os
 import re
 from typing import Any, Dict, List, Optional
@@ -176,14 +178,14 @@ def _dialog_is_alive(dialog: Any) -> bool:
         from qgis.PyQt import sip
         if sip.isdeleted(dialog):
             return False
-    except Exception:  # pragma: no cover - depends on PyQt packaging
-        pass
+    except Exception as _ignored_exc:  # pragma: no cover - depends on PyQt packaging
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 179, _ignored_exc)
     try:
         dialog.thread()
     except RuntimeError:
         return False
-    except Exception:
-        pass
+    except Exception as _ignored_exc:
+        logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 185, _ignored_exc)
     return True
 
 

@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](LICENSE)
 [![Languages](https://img.shields.io/badge/UI-ES%20%7C%20EN%20%7C%20FR%20%7C%20DE-lightgrey)](VelantisWind/docs/QUICKSTART.md)
 
-VelantisWind is an experimental QGIS plugin for early-stage wind-farm analysis. It combines:
+VelantisWind is an open-source QGIS plugin for early-stage wind-farm analysis. It combines:
 
 - **Energy / AEP assessment with PyWake**
 - **Wake, turbulence and blockage model comparison**
@@ -21,12 +21,12 @@ VelantisWind is an experimental QGIS plugin for early-stage wind-farm analysis. 
 The objective is to keep project inputs, engineering assumptions, calculations and outputs connected to the same QGIS project, making wind-farm screening more transparent, reproducible and easier to review.
 
 > [!IMPORTANT]
-> VelantisWind is experimental software intended for technical screening, layout comparison, GIS-based QA/QC, workflow validation, research and technical feedback.
+> VelantisWind is pre-assessment software intended for technical screening, layout comparison, GIS-based QA/QC, workflow validation, research and technical feedback.
 >
 > It is **not** certified regulatory, permitting or bankable assessment software. Results must be independently reviewed before being used in formal engineering studies.
 
 > [!NOTE]
-> The plugin supports QGIS 3.28 and later. Qt5/Qt6 compatibility work is included, but QGIS 4 support remains experimental and should be tested on real installations and project workflows.
+> The stable build targets QGIS 3.28–3.99. Qt5/Qt6 compatibility work is included, but QGIS 4 support remains unvalidated and is not declared for this build.
 
 ---
 

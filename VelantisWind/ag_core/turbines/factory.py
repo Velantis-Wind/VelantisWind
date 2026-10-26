@@ -8,6 +8,8 @@ la UI del plugin.
 """
 from __future__ import annotations
 
+import logging
+
 import inspect
 from inspect import signature
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -90,7 +92,8 @@ def _pcf_list_items(pcf: Any) -> Optional[List[Any]]:
         except Exception:
             try:
                 return [inner]
-            except Exception:
+            except Exception as _ignored_exc:
+                logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 93, _ignored_exc)
                 continue
     return None
 
@@ -104,7 +107,8 @@ def _pcf_selector_key(pcf: Any) -> Optional[str]:
         value = getattr(pcf, attr, None)
         try:
             values = [str(v) for v in value]
-        except Exception:
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 107, _ignored_exc)
             continue
         if len(values) == 1:
             return values[0]
@@ -408,8 +412,8 @@ def _infer_source_type_index(
                         f"(D={diameter}, HH={hub_height})."
                     )
                     return inferred
-        except Exception:
-            pass
+        except Exception as _ignored_exc:
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 411, _ignored_exc)
 
     if requested_index is not None and 0 <= int(requested_index) < n_items:
         return int(requested_index)

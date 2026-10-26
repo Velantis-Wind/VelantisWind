@@ -3,6 +3,8 @@
 warnings of the iterative loops that did not converge (decision 9). Shared by the AEP and the wake raster."""
 from __future__ import annotations
 
+import logging
+
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
@@ -302,8 +304,8 @@ def _extra_elements(position: str, comp: Component, data: Dict[str, Any]) -> Lis
         try:
             defaults = _cat.signature_defaults(_cat.entry(position, comp.name))
             lengths.update({k: len(v) for k, v in defaults.items() if isinstance(v, (list, tuple))})
-        except Exception:  # noqa: BLE001 - not an entry of the catalogue at this position
-            pass
+        except Exception as _ignored_exc:  # noqa: BLE001 - not an entry of the catalogue at this position
+            logging.getLogger(__name__).debug("Ignored optional operation at %s:%d: %s", __name__, 305, _ignored_exc)
     from .validation import _UNPACKED  # unpacked, another length stops PyWake where it reads it (R20)
     out = []
     for name, length in lengths.items():

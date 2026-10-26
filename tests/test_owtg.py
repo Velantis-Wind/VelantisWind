@@ -74,6 +74,10 @@ class OwtgTestCase(unittest.TestCase):
 
 
 class ReadTest(OwtgTestCase):
+    def test_rejects_xml_entity_declarations(self):
+        dangerous = '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY payload "ATTACK">]><x>&payload;</x>'
+        self.assertRejected(dangerous, "No se pudo leer el XML")
+
     def test_equivalent_to_a_hand_made_table(self):
         loaded = self.load()
         expected = TurbineCurveTable(
