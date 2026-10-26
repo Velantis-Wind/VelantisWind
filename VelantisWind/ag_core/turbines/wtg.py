@@ -219,7 +219,9 @@ def load_wtg(path: str, *, hub_height_m: Optional[float] = None) -> TurbineCurve
         raise _fail("No existe el fichero .wtg: {path!r}.", path=path)
     name_of_file = os.path.basename(path)
     try:
-        root = _xml_parse(path, forbid_dtd=True, forbid_entities=True, forbid_external=True).getroot()
+        # OpenWind / WAsP files may contain harmless DOCTYPE declarations.
+        # Entities and external references remain forbidden to prevent XXE.
+        root = _xml_parse(path, forbid_dtd=False, forbid_entities=True, forbid_external=True).getroot()
     except Exception as exc:
         raise _fail("No se pudo leer el XML de {file}: {error}", file=name_of_file, error=exc) from exc
 

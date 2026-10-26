@@ -74,6 +74,19 @@ class OwtgTestCase(unittest.TestCase):
 
 
 class ReadTest(OwtgTestCase):
+    def test_valid_turbine_with_internal_dtd_is_accepted(self):
+        xml = document().replace(
+            "?><TurbineType", "?>\n<!DOCTYPE TurbineType [<!ELEMENT TurbineType ANY>]>\n<TurbineType", 1
+        )
+        loaded = self.load(xml)
+        self.assertEqual(loaded.source_format, "owtg")
+
+    def test_entity_declaration_in_turbine_dtd_is_rejected(self):
+        xml = document().replace(
+            "?><TurbineType", "?>\n<!DOCTYPE TurbineType [<!ENTITY payload 'ATTACK'>]>\n<TurbineType", 1
+        )
+        self.assertRejected(xml, "EntitiesForbidden")
+
     def test_rejects_xml_entity_declarations(self):
         dangerous = '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY payload "ATTACK">]><x>&payload;</x>'
         self.assertRejected(dangerous, "No se pudo leer el XML")
