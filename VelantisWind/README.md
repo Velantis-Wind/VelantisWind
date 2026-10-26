@@ -2,11 +2,11 @@
 
 **Open-source wind-farm pre-assessment workflows directly inside QGIS.**
 
-Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
+Velantis Wind is an open-source QGIS 3.x plugin for early-stage wind-farm analysis. It brings together **Energy / AEP**, **Noise** and **Shadow Flicker** workflows in one GIS-based environment.
 
-> **Status:** experimental release. Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
+> **Status:** stable QGIS repository release (version 0.1.17). Velantis Wind is intended for screening, layout comparison, validation workflows and technical feedback. It is **not** certified regulatory, permitting or bankable assessment software.
 >
-> **Compatibility:** this public package is marked as compatible with QGIS 3.x and QGIS 4.x. QGIS 4 support remains experimental and should be validated with real installations and user feedback.
+> **Compatibility:** this stable package declares QGIS 3.28–3.99 support. QGIS 4 has not been validated and is outside the declared compatibility of this build.
 
 ## What is new in 0.1.17
 
