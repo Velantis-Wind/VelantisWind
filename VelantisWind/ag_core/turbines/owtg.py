@@ -52,10 +52,8 @@ from ..log_text import log_text
 from ..turbine import _error
 from .density_curve import CurveTableError, TurbineCurveTable
 
-try:  # pragma: no cover - depends on the QGIS Python environment
-    from defusedxml.ElementTree import parse as _xml_parse
-except ImportError:  # pragma: no cover
-    _xml_parse = None  # never fall back to an unsafe XML parser
+# Bundled, pure-Python safe XML parser. No additional pip installation needed.
+from ..._vendor.defusedxml.ElementTree import parse as _xml_parse
 
 __all__ = ["OwtgFormatError", "OWTG_EXTENSIONS", "is_owtg_path", "load_owtg"]
 
@@ -293,11 +291,9 @@ def load_owtg(path: str) -> TurbineCurveTable:
     """
     if not path or not os.path.isfile(path):
         raise _fail("No existe el fichero .owtg: {path!r}.", path=path)
-    if _xml_parse is None:
-        raise _fail("Falta defusedxml: instala defusedxml en el Python de QGIS para leer curvas XML de aerogeneradores.")
     name_of_file = os.path.basename(path)
     try:
-        root = _xml_parse(path).getroot()
+        root = _xml_parse(path, forbid_dtd=True, forbid_entities=True, forbid_external=True).getroot()
     except Exception as exc:
         raise _fail("No se pudo leer el XML de {file}: {error}", file=name_of_file, error=exc) from exc
 
