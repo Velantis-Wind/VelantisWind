@@ -24,12 +24,13 @@ from qgis.core import (
     QgsVectorLayer,
 )
 
+from ...crs_utils import memory_layer_with_crs, preferred_wkt
 from ..noise_common import NoiseSource, NoiseReceiver, log as _log
 from .common import _remove_existing_layers_by_name, _set_field_aliases, _unique_temp_output
 
-def _build_source_layer(prj: QgsProject, sources: List[NoiseSource], src_stats: Dict[int, Dict[str, object]], layer_name: str) -> Optional[QgsVectorLayer]:
+def _build_source_layer(prj: QgsProject, sources: List[NoiseSource], src_stats: Dict[int, Dict[str, object]], layer_name: str, crs=None) -> Optional[QgsVectorLayer]:
     _remove_existing_layers_by_name(prj, [layer_name])
-    lyr = QgsVectorLayer(f"Point?crs={prj.crs().authid() or 'EPSG:25830'}", layer_name, 'memory')
+    lyr = memory_layer_with_crs("Point", layer_name, prj.crs() if crs is None else crs)
     pr = lyr.dataProvider()
     fields = QgsFields()
     fields.append(QgsField('src_id', QVariant.Int))
@@ -69,9 +70,9 @@ def _build_source_layer(prj: QgsProject, sources: List[NoiseSource], src_stats: 
     return lyr
 
 
-def _build_dominant_links_layer(prj: QgsProject, links: List[Dict[str, object]], layer_name: str) -> Optional[QgsVectorLayer]:
+def _build_dominant_links_layer(prj: QgsProject, links: List[Dict[str, object]], layer_name: str, crs=None) -> Optional[QgsVectorLayer]:
     _remove_existing_layers_by_name(prj, [layer_name])
-    lyr = QgsVectorLayer(f"LineString?crs={prj.crs().authid() or 'EPSG:25830'}", layer_name, 'memory')
+    lyr = memory_layer_with_crs("LineString", layer_name, prj.crs() if crs is None else crs)
     pr = lyr.dataProvider()
     fields = QgsFields()
     fields.append(QgsField('rec_id', QVariant.Int))
@@ -122,7 +123,7 @@ def _apply_raster_heatmap_style(layer: QgsRasterLayer, min_val: float, max_val: 
         renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
         layer.setRenderer(renderer)
         layer.triggerRepaint()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -130,7 +131,7 @@ def _apply_line_style(layer: QgsVectorLayer) -> None:
     try:
         sym = layer.renderer().symbol()
         sym.setWidth(0.8)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -139,57 +140,75 @@ def _build_isophones_layer_from_raster(prj: QgsProject, raster_path: str, levels
     if not raster_path or not levels:
         return None
     _remove_existing_layers_by_name(prj, [layer_name])
-    tmpdir = os.path.join(tempfile.gettempdir(), 'velantis_noise')
-    os.makedirs(tmpdir, exist_ok=True)
-    out_path = _unique_temp_output(tmpdir, layer_name.replace(' · ', '_').replace(' ', '_'), '.gpkg')
-    src_ds = gdal.Open(raster_path)
-    if src_ds is None:
-        return None
-    band = src_ds.GetRasterBand(1)
-    drv = ogr.GetDriverByName('GPKG')
-    dst_ds = drv.CreateDataSource(out_path)
-    if dst_ds is None:
-        return None
-    srs = osr.SpatialReference()
+    out_path = ''
+    src_ds = dst_ds = None
     try:
-        srs.ImportFromWkt(prj.crs().toWkt())
-    except Exception:
-        srs = None
-    dst_layer = dst_ds.CreateLayer('isophones', srs, ogr.wkbLineString)
-    fld = ogr.FieldDefn('level_db', ogr.OFTReal)
-    dst_layer.CreateField(fld)
-    try:
+        tmpdir = os.path.join(tempfile.gettempdir(), 'velantis_noise')
+        os.makedirs(tmpdir, exist_ok=True)
+        # FlatGeobuf keeps any CRS of the raster; GeoPackage needs its WKT1, which a derived projected CRS lacks (#54).
+        out_path = _unique_temp_output(tmpdir, layer_name.replace(' · ', '_').replace(' ', '_'), '.fgb')
+        src_ds = gdal.Open(raster_path)
+        drv = ogr.GetDriverByName('FlatGeobuf')
+        if src_ds is None or drv is None:
+            raise RuntimeError("no se pudo abrir el raster o falta el driver FlatGeobuf")
+        band = src_ds.GetRasterBand(1)
+        # The isophones in the CRS of the raster they come from (the one of its calculation), not the one the project
+        # may have when they are built; the project's only if the raster has none.
+        srs = src_ds.GetSpatialRef()
+        srs = srs.Clone() if srs is not None else None
+        if srs is None:
+            srs = osr.SpatialReference()
+            try:
+                srs.ImportFromWkt(preferred_wkt(prj.crs()))
+            except Exception:
+                srs = None
+        dst_ds = drv.CreateDataSource(out_path)
+        dst_layer = dst_ds.CreateLayer('isophones', srs, ogr.wkbLineString) if dst_ds is not None else None
+        if dst_layer is None or dst_layer.CreateField(ogr.FieldDefn('level_db', ogr.OFTReal)) != 0:
+            raise RuntimeError(gdal.GetLastErrorMsg() or "no se pudo crear la capa de isófonas")
         # Python GDAL bindings expect the fixed contour levels as a sequence,
         # not as (count, levels). Passing len(levels) here triggers the runtime
         # error: 'not a sequence'.
-        gdal.ContourGenerate(band, 0.0, 0.0, tuple(levels), 0, 0.0, dst_layer, -1, 0)
+        gdal.ErrorReset()
+        # Without GDAL exceptions a failure is a return code, or an error left behind.
+        if gdal.ContourGenerate(band, 0.0, 0.0, tuple(levels), 0, 0.0, dst_layer, -1, 0) != 0 \
+                or gdal.GetLastErrorType() >= gdal.CE_Failure:
+            raise RuntimeError(gdal.GetLastErrorMsg() or "ContourGenerate")
+        dst_ds = None  # FlatGeobuf writes the file on close: its failure (a full disk) is only an error left behind
+        if gdal.GetLastErrorType() >= gdal.CE_Failure:
+            raise RuntimeError(gdal.GetLastErrorMsg())
+        src_ds = None
+        lyr = QgsVectorLayer(out_path, layer_name, 'ogr')
+        if not lyr.isValid():
+            raise RuntimeError("QGIS no pudo abrir la capa de isófonas")
     except Exception as e:
         try:
             _log(f"[NOISE][ISO][WARN] No se pudieron generar las isófonas con GDAL: {e}")
-        except Exception:
+        except Exception:  # nosec B110
             pass
         dst_ds = None
         src_ds = None
-        return None
-    dst_ds = None
-    src_ds = None
-    lyr = QgsVectorLayer(out_path + '|layername=isophones', layer_name, 'ogr')
-    if not lyr.isValid():
+        try:
+            if out_path and os.path.isfile(out_path):
+                os.remove(out_path)
+        except Exception:  # nosec B110
+            pass
+        gdal.ErrorReset()  # after the close, which can fail too: a pending error would be raised by whoever switches GDAL exceptions next
         return None
     try:
         lyr.setCustomProperty('velantis/noise_output', True)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     _apply_line_style(lyr)
     prj.addMapLayer(lyr)
     return lyr
 
 
-def _build_uncovered_receivers_layer(prj: QgsProject, receivers: List[NoiseReceiver], uncovered_ids: List[int], layer_name: str) -> Optional[QgsVectorLayer]:
+def _build_uncovered_receivers_layer(prj: QgsProject, receivers: List[NoiseReceiver], uncovered_ids: List[int], layer_name: str, crs=None) -> Optional[QgsVectorLayer]:
     if not uncovered_ids:
         return None
     _remove_existing_layers_by_name(prj, [layer_name])
-    lyr = QgsVectorLayer(f"Point?crs={prj.crs().authid() or 'EPSG:25830'}", layer_name, 'memory')
+    lyr = memory_layer_with_crs("Point", layer_name, prj.crs() if crs is None else crs)
     pr = lyr.dataProvider()
     fields = QgsFields()
     fields.append(QgsField('rec_id', QVariant.Int))
@@ -208,7 +227,7 @@ def _build_uncovered_receivers_layer(prj: QgsProject, receivers: List[NoiseRecei
     pr.addFeatures(feats)
     try:
         lyr.setCustomProperty('velantis/noise_output', True)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     prj.addMapLayer(lyr)
     return lyr

@@ -15,7 +15,7 @@ This guide explains the recommended installation process on Windows using **OSGe
 3. Run:
 
 ```bat
-python -m pip install py_wake==2.6.18
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 ```
 
 4. Verify the installation:
@@ -26,6 +26,8 @@ python -c "import py_wake; print('PyWake OK:', py_wake.__file__)"
 
 5. Restart QGIS.
 6. Install or enable VelantisWind.
+
+This command also ensures `h5netcdf>=1.8` is installed, a required dependency of PyWake 2.6.18. Since version 1.8, `h5netcdf` no longer depends on `h5py`, so this command does not install `h5py` through `h5netcdf`. `GaussianOverlapAvgModel` needs both libraries. Do not install `h5py` with pip in this QGIS environment: see [`h5py` in QGIS from OSGeo4W](#h5py-in-qgis-from-osgeo4w) below for an untested option using the OSGeo4W installer.
 
 ---
 
@@ -47,7 +49,7 @@ Other parts of VelantisWind, such as the interface, documentation, Noise module 
 | QGIS 4 / Qt6 | Experimental support, pending wider real-world testing |
 | Operating system | Windows 10 / Windows 11 |
 | Python environment | QGIS / OSGeo4W Python |
-| PyWake version | `py_wake==2.6.18` |
+| PyWake version | `py_wake==2.6.18` (the version used to check the predefined models and the plugin's consistency with PyWake) |
 
 VelantisWind should be installed in QGIS, but PyWake must be installed separately in the QGIS Python environment.
 
@@ -126,7 +128,7 @@ If this does not work, your QGIS / OSGeo4W installation may need to be repaired 
 Recommended command:
 
 ```bat
-python -m pip install py_wake==2.6.18
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 ```
 
 This installs the PyWake version used for the current VelantisWind experimental release.
@@ -134,7 +136,7 @@ This installs the PyWake version used for the current VelantisWind experimental 
 If your package index normalizes the name differently, this equivalent command may also work:
 
 ```bat
-python -m pip install py-wake==2.6.18
+python -m pip install py-wake==2.6.18 "h5netcdf>=1.8"
 ```
 
 After installation, restart QGIS.
@@ -156,6 +158,20 @@ python -m pip show py_wake
 ```
 
 If no error appears, PyWake is installed in the OSGeo4W Python environment.
+
+---
+
+## `h5py` in QGIS from OSGeo4W
+
+`GaussianOverlapAvgModel`, the rotor average used by the predefined models NiayifarGaussian and TurbOPark, needs `h5py` and `h5netcdf`. `python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"` installs the required `h5netcdf` version. Since version 1.8, `h5netcdf` no longer depends on `h5py`, so this command does not install `h5py` through `h5netcdf`. The package metadata checked with pip in the QGIS environment lists only `numpy` and `packaging` as requirements of `h5netcdf` 1.8.1; it does not declare `h5py` as a dependency.
+
+Expected problem on Windows (not reproduced there): the `h5py` pip wheel is expected to fail to load inside QGIS from OSGeo4W (`ImportError: DLL load failed while importing defs`). Its wheel bundles an HDF5 library named `hdf5.dll`, the same name as the library QGIS loads from OSGeo4W. Windows reuses a DLL already loaded under that name. Inspection of the binaries found that `gdal313.dll` imports `netcdf.dll`, which imports OSGeo4W's `hdf5.dll` 1.14.6. The `h5py` 3.16.0 wheel for Windows bundles HDF5 2.0.0 under the same name, and version 1.14.6 lacks 19 of the 522 symbols required by `h5py`. The same type of error is documented in qgis/QGIS#54643 and qgis/QGIS#29439; h5py/h5py#1979 describes the conflict between two `hdf5.dll` libraries in one process. The outcome depends on the HDF5 versions bundled with QGIS and the pip wheel. For this reason, `pip install h5py` is not offered as a solution on Windows.
+
+An option to try is installing `python3-h5py` through the OSGeo4W installer. This package is built against OSGeo4W's HDF5 and is not included in `qgis-full`. This option has not been tested. The command above ensures `h5netcdf>=1.8` is installed by pip; it does not need to be installed through OSGeo4W.
+
+If `h5py` is missing, the result note and the plugin API error suggest `python -m pip install h5py` on Linux and macOS. On Windows they say that `h5py` is not installed with pip and refer to the installation instructions, where the untested OSGeo4W installer option above applies.
+
+If `h5py` or `h5netcdf` is missing or fails to load when PyWake would read the `GaussianOverlapAvgModel` table (for the predefined models NiayifarGaussian and TurbOPark, with two or more turbines or in a wake raster), the dialog asks before calculating in both predefined and manual modes. **Continue** uses `CGIRotorAvg(7)` and records the adaptation in the results; **Cancel** calculates nothing. If a predefined model has an applicable saved decision, the dialog adapts without asking, and the result states that the saved decision was applied.
 
 ---
 
@@ -226,7 +242,7 @@ python -m pip show py_wake
 Then reinstall from OSGeo4W Shell:
 
 ```bat
-python -m pip install py_wake==2.6.18
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 ```
 
 Restart QGIS afterwards.
@@ -265,7 +281,7 @@ Right click → Run as administrator
 Then run:
 
 ```bat
-python -m pip install py_wake==2.6.18
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 ```
 
 If you work in a managed company environment, ask your IT administrator before modifying the QGIS Python environment.
@@ -283,7 +299,7 @@ python -m pip install --upgrade pip setuptools wheel
 Then retry:
 
 ```bat
-python -m pip install py_wake==2.6.18
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 ```
 
 Avoid replacing QGIS / OSGeo4W GDAL packages with unrelated GDAL wheels unless you know exactly what you are doing.
@@ -297,7 +313,7 @@ If your company uses a proxy, configure pip using your organization’s recommen
 A typical command looks like:
 
 ```bat
-python -m pip install py_wake==2.6.18 --proxy http://proxy.company.com:PORT
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8" --proxy http://proxy.company.com:PORT
 ```
 
 If your proxy requires authentication, configure credentials using your organization's approved secure method. Do not share proxy credentials in screenshots, logs or GitHub issues.

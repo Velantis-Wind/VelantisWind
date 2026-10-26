@@ -11,11 +11,11 @@ principal:
 - Configurar la TI ambiente (raster(s) y alturas override) sin reabrir
   el diálogo: es la palanca real para mover el AEP en modelos TI-driven
   como Niayifar/Zong/TurboGaussian/TurboNOJ.
-- Calcular o recalcular AEP para la capa que se está editando en el
-  canvas.
+- Calcular o recalcular el AEP con las capas elegidas en las filas del
+  diálogo.
 - Exportar el layout editado a CSV ("Guardar layout").
-- Graficar estelas y guardar/comparar escenarios A/B.
-- Ver el estado de la capa de turbinas activa (nombre, nº de puntos,
+- Crear ráster de estelas y guardar/comparar escenarios A/B.
+- Ver el estado de la capa de turbinas que se edita (nombre, nº de puntos,
   flag "editada") y salir del modo.
 
 Los combos y editores del dock son PROXIES de los widgets del diálogo
@@ -37,19 +37,23 @@ import os
 
 from qgis.PyQt import QtCore, QtWidgets
 from qgis.utils import iface
-from qgis.core import QgsVectorLayer
+from qgis.core import QgsProject, QgsVectorLayer
+
+from .ui_core.wake_group import WakeGroupMirror
 
 try:
-    from .i18n import apply_i18n, tr_text
+    from .i18n import apply_i18n, mark_translated, tr_text
 except Exception:  # pragma: no cover
     def apply_i18n(_widget):
+        return None
+    def mark_translated(_widget):
         return None
     def tr_text(text):
         return text
 try:
     from . import interactive_i18n
     interactive_i18n.register()
-except Exception:
+except Exception:  # nosec B110
     pass
 
 try:
@@ -60,15 +64,6 @@ except Exception:
 
 class InteractiveMapDock(QtWidgets.QDockWidget):
     """Dock con física PyWake + TI ambiente + acciones para el modo Mapa Interactivo."""
-
-    # (atributo_en_dock, atributo_en_dialogo, etiqueta_visible)
-    _MIRRORED = (
-        ("cb_wfm_engine",       "cb_wfm_engine",       "Motor WFM"),
-        ("cb_wake_deficit",     "cb_wake_deficit",     "Estela"),
-        ("cb_rotor_avg",        "cb_rotor_avg",        "Rotor-avg"),
-        ("cb_blockage_deficit", "cb_blockage_deficit", "Bloqueo"),
-        ("cb_turbulence_model", "cb_turbulence_model", "Turbulencia (modelo)"),
-    )
 
     # Señal emitida cuando el usuario cierra el dock con la X de la cabecera
     closed = QtCore.pyqtSignal()
@@ -84,6 +79,11 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         self._syncing_layer_combo = False  # cortacircuito selector de capa editable
         self._connections = []            # [(senders_signal, slot), ...]
         self._torn_down = False
+        # Las altas y bajas de puntos en las capas de las filas (también desde la edición de QGIS) cambian si se puede
+        # calcular: refrescan el estado, una vez por ráfaga.
+        self._watched_layers = {}  # id -> capa de una fila cuyas señales arrancan el refresco
+        self._status_timer = QtCore.QTimer(self)
+        self._status_timer.setSingleShot(True)
 
         self.setObjectName("VelantisWindInteractiveDock")
         self.setAllowedAreas(
@@ -100,7 +100,6 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         self._wire_signals()
 
         # Estado inicial: copiar valores actuales del diálogo
-        self._sync_from_dialog()
         self._sync_ti_from_dialog()
         self._refresh_layer_status()
 
@@ -118,10 +117,13 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         v_layer.setSpacing(4)
 
         self.cb_edit_layer = QtWidgets.QComboBox()
-        self.cb_edit_layer.setToolTip(
-            "Elige qué capa/modelo editas con el click izquierdo/derecho del mapa. "
+        self.cb_edit_layer.setToolTip(tr_text(
+            "Elige qué capa/modelo editas con el clic izquierdo/derecho del mapa. "
             "Esto permite modificar cualquiera de las capas cargadas, no solo la última creada."
-        )
+        ))
+        # Sus elementos, el estado de la capa y el de la TI llevan nombres de capas y de ficheros: se ponen ya
+        # traducidos y apply_i18n no los toca.
+        mark_translated(self.cb_edit_layer)
         self.cb_edit_layer.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.btn_refresh_layers = QtWidgets.QPushButton("↻")
         self.btn_refresh_layers.setMaximumWidth(34)
@@ -137,10 +139,11 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         self.lbl_layer_status.setWordWrap(True)
         self.lbl_layer_status.setTextFormat(QtCore.Qt.RichText)
         self.lbl_layer_status.setStyleSheet("color: #333;")
+        mark_translated(self.lbl_layer_status)
         v_layer.addWidget(self.lbl_layer_status)
 
         self.lbl_hint = QtWidgets.QLabel(
-            "Click izq: añadir · Click der: borrar · ESC: salir"
+            "Clic izq: añadir · Clic der: borrar · ESC: salir"
         )
         self.lbl_hint.setStyleSheet("color: #777; font-style: italic;")
         v_layer.addWidget(self.lbl_hint)
@@ -168,21 +171,10 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         form.setLabelAlignment(QtCore.Qt.AlignLeft)
         form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
 
-        for dock_attr, dlg_attr, label in self._MIRRORED:
-            dlg_cb = getattr(self.ctl, dlg_attr, None)
-            if not isinstance(dlg_cb, QtWidgets.QComboBox):
-                continue
-            cb = QtWidgets.QComboBox()
-            for i in range(dlg_cb.count()):
-                cb.addItem(dlg_cb.itemText(i), dlg_cb.itemData(i))
-            tip = dlg_cb.toolTip() or ""
-            if tip:
-                cb.setToolTip(tip)
-            cb.setSizeAdjustPolicy(
-                QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon
-            )
-            form.addRow(QtWidgets.QLabel(label + ":"), cb)
-            setattr(self, dock_attr, cb)
+        # The visible selectors of the dialog's group, with the same options enabled, the same help and the same
+        # messages; a change here is a change of the group (#75, row 1.6).
+        group = getattr(self.ctl, "wake_group", None)
+        self._wake_mirror = WakeGroupMirror(group, form, tr=tr_text) if group is not None else None
 
         outer.addWidget(grp_phys)
 
@@ -190,7 +182,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         # Solo se muestra si el diálogo expone los editores correspondientes;
         # si no, la sección se omite.
         if isinstance(getattr(self.ctl, "ed_wrg_ti", None), QtWidgets.QLineEdit):
-            grp_ti = QtWidgets.QGroupBox("TI ambiente (raster)")
+            grp_ti = QtWidgets.QGroupBox("TI ambiente (ráster)")
             v_ti = QtWidgets.QVBoxLayout(grp_ti)
             v_ti.setContentsMargins(8, 8, 8, 8)
             v_ti.setSpacing(4)
@@ -199,17 +191,17 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             self.lbl_ti_status.setWordWrap(True)
             self.lbl_ti_status.setTextFormat(QtCore.Qt.RichText)
             self.lbl_ti_status.setStyleSheet("color: #333;")
+            mark_translated(self.lbl_ti_status)
             v_ti.addWidget(self.lbl_ti_status)
 
             h_ti_btns = QtWidgets.QHBoxLayout()
             h_ti_btns.setSpacing(4)
-            self.btn_ti_pick = QtWidgets.QPushButton("Elegir raster TI…")
+            self.btn_ti_pick = QtWidgets.QPushButton("Elegir ráster TI…")
             self.btn_ti_pick.setToolTip(
-                "Selecciona uno o varios raster(s) .asc/.tif de TI ambiente "
-                "(p.ej. de Vortex). Si no hay ninguno, se usa TI=10% como fallback."
+                "Selecciona uno o varios rásteres .asc/.tif de TI ambiente. Si no hay ninguno, se usa TI = 10 % como respaldo."
             )
             self.btn_ti_clear = QtWidgets.QPushButton("Limpiar")
-            self.btn_ti_clear.setToolTip("Deja la lista de raster(s) TI vacía.")
+            self.btn_ti_clear.setToolTip("Deja la lista de ráster(es) TI vacía.")
             h_ti_btns.addWidget(self.btn_ti_pick, 1)
             h_ti_btns.addWidget(self.btn_ti_clear, 0)
             v_ti.addLayout(h_ti_btns)
@@ -270,21 +262,21 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         self.btn_calc = QtWidgets.QPushButton("Calcular / Recalcular AEP")
         self.btn_calc.setDefault(True)
         self.btn_calc.setToolTip(
-            "Calcula AEP con la capa de turbinas activa y los modelos seleccionados."
+            "Calcula el AEP con las capas de turbinas elegidas en las filas y sus modelos."
         )
         self.btn_calc.setStyleSheet("font-weight: bold; padding: 6px;")
         v_act.addWidget(self.btn_calc)
 
-        self.btn_export = QtWidgets.QPushButton("Guardar layout (CSV)…")
+        self.btn_export = QtWidgets.QPushButton("Guardar la disposición (CSV)…")
         self.btn_export.setToolTip(
-            "Exporta los puntos editados de la capa activa a CSV. "
-            "No sobrescribe el CSV original sin confirmar."
+            "Guardar a CSV los puntos editados en el mapa interactivo.\n"
+            "Por defecto: <nombre de la capa>_edited.csv."
         )
         v_act.addWidget(self.btn_export)
 
-        self.btn_plot_wakes = QtWidgets.QPushButton("Graficar estelas")
+        self.btn_plot_wakes = QtWidgets.QPushButton("Crear ráster de estelas")
         self.btn_plot_wakes.setToolTip(
-            "Dibuja mapas de estelas (N/E/S/O) con los modelos seleccionados."
+            "Crea una capa ráster QGIS de velocidad efectiva con las turbinas y el recurso seleccionados."
         )
         v_act.addWidget(self.btn_plot_wakes)
 
@@ -328,7 +320,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         scroll.setWidgetResizable(True)
         try:
             scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         scroll.setWidget(wrapper)
         self.setWidget(scroll)
@@ -340,27 +332,14 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         try:
             signal.connect(slot)
             self._connections.append((signal, slot))
-        except Exception:
+        except Exception:  # nosec B110
             # algunas señales pueden no ser conectables en versiones antiguas
             pass
 
     def _wire_signals(self):
-        # ----- Combos: dock -> diálogo principal
-        for dock_attr, dlg_attr, _ in self._MIRRORED:
-            cb = getattr(self, dock_attr, None)
-            if not isinstance(cb, QtWidgets.QComboBox):
-                continue
-            slot = (
-                lambda _ix, da=dock_attr, ld=dlg_attr:
-                    self._on_dock_combo_changed(da, ld)
-            )
-            self._connect(cb.currentIndexChanged, slot)
-
-        # ----- Combos: diálogo -> dock (locks, persist, etc.)
-        for _dock_attr, dlg_attr, _ in self._MIRRORED:
-            dlg_cb = getattr(self.ctl, dlg_attr, None)
-            if isinstance(dlg_cb, QtWidgets.QComboBox):
-                self._connect(dlg_cb.currentIndexChanged, self._sync_from_dialog)
+        # ----- Física: el espejo del grupo del diálogo (sus cambios se ven aquí)
+        if getattr(self, "_wake_mirror", None) is not None:
+            self._connections.append((self._wake_mirror.group.changed, self._wake_mirror.sync))
 
         # ----- TI ambiente: diálogo -> dock (cambios externos)
         dlg_ti = getattr(self.ctl, "ed_wrg_ti", None)
@@ -398,6 +377,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         self._connect(self.btn_exit.clicked, self._on_exit_clicked)
         self._connect(self.cb_edit_layer.currentIndexChanged, self._on_edit_layer_changed)
         self._connect(self.btn_refresh_layers.clicked, self._refresh_layer_status)
+        self._connect(self._status_timer.timeout, self._refresh_layer_status)
 
         if self.btn_ti_pick is not None:
             self._connect(self.btn_ti_pick.clicked, self._on_ti_pick_clicked)
@@ -407,7 +387,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         # ----- Capa activa
         try:
             self._connect(iface.currentLayerChanged, self._refresh_layer_status)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _teardown(self):
@@ -425,17 +405,35 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                 else:
                     try:
                         self._spacing.panel.setParent(None)
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
                 self._spacing = None
-        except Exception:
+        except Exception:  # nosec B110
             pass
         for signal, slot in self._connections:
             try:
                 signal.disconnect(slot)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         self._connections.clear()
+        self._unwatch_layers(set())
+
+    def _unwatch_layers(self, keep_ids):
+        """Deja de seguir las capas que ya no están en ninguna fila.
+
+        Solo se desconectan las que siguen en el proyecto, que están vivas: una que ya no está puede estar destruida, y
+        desconectar la señal de una capa destruida puede tumbar QGIS (pasa a través de un objeto de señal guardado);
+        Qt ya cortó esa conexión al destruirla. Una capa sacada del proyecto sin destruirla seguiría arrancando
+        refrescos, que no cambian nada.
+        """
+        for layer_id in [i for i in self._watched_layers if i not in keep_ids]:
+            layer = self._watched_layers.pop(layer_id)
+            if QgsProject.instance().mapLayer(layer_id) is not None:
+                for signal in ("repaintRequested", "crsChanged"):
+                    try:
+                        getattr(layer, signal).disconnect(self._status_timer.start)
+                    except Exception:  # nosec B110
+                        pass
 
     # ------------------------------------------------- ctl access guards
     def _ctl_alive(self) -> bool:
@@ -451,35 +449,6 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             return False
 
     # ----------------------------------------------------- sync de combos
-    def _on_dock_combo_changed(self, dock_attr: str, dlg_attr: str):
-        """Reenvía el cambio del combo del dock al combo del diálogo."""
-        if self._syncing or not self._ctl_alive():
-            return
-        try:
-            dock_cb = getattr(self, dock_attr, None)
-            dlg_cb = getattr(self.ctl, dlg_attr, None)
-            if not (isinstance(dock_cb, QtWidgets.QComboBox)
-                    and isinstance(dlg_cb, QtWidgets.QComboBox)):
-                return
-            data = dock_cb.currentData()
-            if data is None:
-                return
-            idx = dlg_cb.findData(data)
-            if idx < 0 or idx == dlg_cb.currentIndex():
-                return
-            # Setear el índice en el diálogo dispara todas sus cadenas de señales
-            # (persistencia QSettings, locks de compatibilidad, notas, etc.).
-            self._syncing = True
-            try:
-                dlg_cb.setCurrentIndex(idx)
-            finally:
-                self._syncing = False
-        except RuntimeError:
-            # widget del diálogo borrado: nada que hacer
-            return
-        # Refresco extra para reflejar locks posibles del diálogo en el dock.
-        self._sync_from_dialog()
-
     # ---------------------------------------------------------- selector capa editable
     def _refresh_edit_layer_combo(self, active_layer=None):
         """Sincroniza el combo de capas editables con el proyecto QGIS."""
@@ -498,7 +467,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                 active_id = ""
             if not active_id:
                 try:
-                    lyr = self.ctl._get_interactive_target_layer(allow_auto_pick=False)
+                    lyr = self.ctl._get_interactive_target_layer()
                     active_id = lyr.id() if isinstance(lyr, QgsVectorLayer) else ""
                 except Exception:
                     active_id = ""
@@ -520,12 +489,10 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             for i, c in enumerate(candidates):
                 lid = str(c.get("layer_id") or "")
                 row_idx = int(c.get("row_index", 0))
-                gen = int(c.get("generation", -1))
-                gen_txt = f" · {tr_text('gen.')} {gen}" if gen >= 0 else ""
                 active_txt = f" · {tr_text('activa')}" if c.get("active") else ""
                 text = (
                     f"M{row_idx+1} · {c.get('model_name')} | "
-                    f"{c.get('n_points')} {tr_text('turb.')} | {c.get('layer_name')}{gen_txt}{active_txt}"
+                    f"{c.get('n_points')} {tr_text('turb.')} | {c.get('layer_name')}{active_txt}"
                 )
                 self.cb_edit_layer.addItem(text, lid)
                 if lid and lid == active_id:
@@ -556,35 +523,9 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             except Exception as e:
                 try:
                     QtWidgets.QMessageBox.warning(self, tr_text("Mapa interactivo"), f"{tr_text('No se pudo activar la capa seleccionada:')}\n{e}")
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         self._refresh_layer_status()
-
-    def _sync_from_dialog(self, *_args):
-        """Refresca los combos del dock con valor + estado enabled del diálogo."""
-        if self._syncing or not self._ctl_alive():
-            return
-        self._syncing = True
-        try:
-            for dock_attr, dlg_attr, _label in self._MIRRORED:
-                dock_cb = getattr(self, dock_attr, None)
-                dlg_cb = getattr(self.ctl, dlg_attr, None)
-                if not (isinstance(dock_cb, QtWidgets.QComboBox)
-                        and isinstance(dlg_cb, QtWidgets.QComboBox)):
-                    continue
-                try:
-                    data = dlg_cb.currentData()
-                    idx = dock_cb.findData(data) if data is not None else dlg_cb.currentIndex()
-                    if 0 <= idx < dock_cb.count() and idx != dock_cb.currentIndex():
-                        dock_cb.setCurrentIndex(idx)
-                    dock_cb.setEnabled(dlg_cb.isEnabled())
-                    tip = dlg_cb.toolTip() or ""
-                    if tip:
-                        dock_cb.setToolTip(tip)
-                except RuntimeError:
-                    continue
-        finally:
-            self._syncing = False
 
     # -------------------------------------------------- sync TI ambiente
     def _sync_ti_from_dialog(self):
@@ -603,13 +544,13 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
 
             if not ti_text:
                 self.lbl_ti_status.setText(
-                    f"<i>{tr_text('Sin raster TI')}</i> · "
+                    f"<i>{tr_text('Sin ráster TI')}</i> · "
                     f"<span style='color:#a85a00;'>{tr_text('respaldo TI=10%')}</span>"
                 )
             else:
                 paths = [p.strip() for p in ti_text.split(";") if p.strip()]
                 if not paths:
-                    self.lbl_ti_status.setText(f"<i>{tr_text('Sin raster TI')}</i>")
+                    self.lbl_ti_status.setText(f"<i>{tr_text('Sin ráster TI')}</i>")
                 elif len(paths) == 1:
                     self.lbl_ti_status.setText(
                         f"<b>{os.path.basename(paths[0])}</b>"
@@ -685,7 +626,7 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                     QtWidgets.QMessageBox.warning(
                         self, "Velantis Wind", f"{name} {tr_text('falló:')}\n{e}"
                     )
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         return None
 
@@ -762,13 +703,15 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
             self.ctl._hidden_for_interactive = False
         except RuntimeError:
             return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
+            # Minimized with its window controls (#87), it is still visible: bring it back, keeping it maximized if it was.
+            self.ctl.setWindowState(self.ctl.windowState() & ~QtCore.Qt.WindowMinimized)
             self.ctl.show()
             self.ctl.raise_()
             self.ctl.activateWindow()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _on_exit_clicked(self, *_args):
@@ -782,11 +725,22 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
                 return
         except RuntimeError:
             return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._call_ctl("_deactivate_map_interactive")
 
     # ------------------------------------------------------ estado capa
+    def retranslate(self):
+        apply_i18n(self)
+        self.cb_edit_layer.setToolTip(tr_text(
+            "Elige qué capa/modelo editas con el clic izquierdo/derecho del mapa. "
+            "Esto permite modificar cualquiera de las capas cargadas, no solo la última creada."
+        ))
+        self._refresh_layer_status()
+        self._sync_ti_from_dialog()
+        if self._wake_mirror is not None:
+            self._wake_mirror.sync()
+
     def _refresh_layer_status(self, *_args):
         if not self._ctl_alive():
             return
@@ -799,43 +753,53 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         except Exception:
             layer = None
 
-        # Puede haber una capa activa vacía (por ejemplo el segundo modelo recién
-        # creado) y, a la vez, otras capas de turbinas con puntos disponibles para
-        # el cálculo multi-modelo. Por eso el botón de cálculo no debe depender
-        # exclusivamente de la capa activa.
-        candidates = []
+        # El cálculo y el ráster usan todas las filas y paran en la primera sin capa con turbinas: los botones
+        # dependen de las filas, no de la capa que se edita.
+        missing = []
         try:
-            fn_candidates = getattr(self.ctl, "_candidate_turbine_layers_for_compute", None)
-            if callable(fn_candidates):
-                candidates = fn_candidates() or []
+            n_rows = len(getattr(self.ctl, "_rows", []) or [])
         except RuntimeError:
-            candidates = []
-        except Exception:
-            candidates = []
-        has_compute_layers = bool(candidates)
+            n_rows = 0
+        row_layer_ids = set()
+        for idx in range(n_rows):
+            try:
+                row_layer = self.ctl._find_interactive_layer_for_row(idx)
+                if row_layer is not None:
+                    row_layer_ids.add(row_layer.id())
+                    if row_layer.id() not in self._watched_layers:
+                        # repaintRequested llega con cada cambio de entidades, en edición, al guardar o al descartar,
+                        # y con las escrituras del mapa interactivo; crsChanged, al corregir el sistema de la capa.
+                        row_layer.repaintRequested.connect(self._status_timer.start)
+                        row_layer.crsChanged.connect(self._status_timer.start)
+                        self._watched_layers[row_layer.id()] = row_layer
+            except Exception:  # nosec B110
+                pass
+            try:
+                n_row = len(self.ctl._collect_layer_points_for_row(idx) or [])
+            except Exception:
+                # Una capa que no se puede leer no cuenta; el cálculo dirá por qué.
+                n_row = 0
+            if not n_row:
+                missing.append(idx + 1)
+        has_compute_layers = n_rows > 0 and not missing
+        self._unwatch_layers(row_layer_ids)
+        missing_warn = (
+            "<br><span style='color:#a85a00;'>"
+            + tr_text("Modelos sin capa con turbinas: {rows}.").format(rows=", ".join(str(i) for i in missing))
+            + " " + tr_text("Para calcular, todas las filas deben tener una capa con turbinas.")
+            + "</span>"
+        ) if missing else ""
 
         try:
             self._refresh_edit_layer_combo(layer if isinstance(layer, QgsVectorLayer) else None)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         if not isinstance(layer, QgsVectorLayer):
-            extra = ""
-            if has_compute_layers:
-                try:
-                    n_layers = len(candidates)
-                    n_turbs = sum(int(c.get("n_points", 0) or 0) for c in candidates)
-                    extra = (
-                        f"<br><span style='color:#0a7;'>{tr_text('Hay')} {n_layers} "
-                        f"{tr_text('capa(s) con')} {n_turbs} {tr_text('turbina(s) disponibles para calcular.')}</span>"
-                    )
-                except Exception:
-                    extra = ""
             self.lbl_layer_status.setText(
-                "<span style='color:#a85a00;'><b>" + tr_text("Sin capa activa") + "</b></span>"
-                " " + tr_text("de turbinas") + " «<i>Modelo (CSV)</i>».<br>"
-                + tr_text("Selecciónala en el panel de capas, o usa «Generar capas de puntos» en el diálogo.")
-                + extra
+                "<span style='color:#a85a00;'><b>" + tr_text("Ninguna fila tiene capa de turbinas.") + "</b></span><br>"
+                + tr_text("Elige una capa en el selector «Capa de turbinas» de una fila, o usa «Generar capas de puntos» en el diálogo.")
+                + missing_warn
             )
             self.btn_calc.setEnabled(has_compute_layers)
             self.btn_export.setEnabled(False)
@@ -861,26 +825,16 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         if n == 0:
             warn = (
                 "<br><span style='color:#a85a00;'>" +
-                tr_text("Aún no hay turbinas en esta capa: haz click izq en el mapa para añadirlas.") +
+                tr_text("Aún no hay turbinas en esta capa: haz clic izq en el mapa para añadirlas.") +
                 "</span>"
             )
-            if has_compute_layers:
-                try:
-                    n_layers = len(candidates)
-                    n_turbs = sum(int(c.get("n_points", 0) or 0) for c in candidates)
-                    warn += (
-                        f"<br><span style='color:#0a7;'>{tr_text('Puedes calcular igualmente con')} "
-                        f"{n_layers} {tr_text('capa(s) ya cargada(s),')} {n_turbs} {tr_text('turbina(s) en total.')}</span>"
-                    )
-                except Exception:
-                    pass
         self.lbl_layer_status.setText(
             f"<b>{layer.name()}</b>{edited_tag}<br>"
-            f"{n} {tr_text('turbina(s)')}{warn}"
+            f"{n} {tr_text('turbina(s)')}{warn}{missing_warn}"
         )
-        self.btn_calc.setEnabled((n > 0) or has_compute_layers)
+        self.btn_calc.setEnabled(has_compute_layers)
         self.btn_export.setEnabled(True)
-        self.btn_plot_wakes.setEnabled((n > 0) or has_compute_layers)
+        self.btn_plot_wakes.setEnabled(has_compute_layers)
 
     # ------------------------------------------------------------ close
     def closeEvent(self, ev):
@@ -890,6 +844,6 @@ class InteractiveMapDock(QtWidgets.QDockWidget):
         self._teardown()
         try:
             self.closed.emit()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         super().closeEvent(ev)

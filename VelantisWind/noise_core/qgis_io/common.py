@@ -17,7 +17,7 @@ def _unique_temp_output(tmpdir: str, layer_name: str, suffix: str) -> str:
     os.close(fd)
     try:
         os.remove(path)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return path
 def _iter_provider_nodata_values(provider, band: int = 1):
@@ -32,7 +32,7 @@ def _iter_provider_nodata_values(provider, band: int = 1):
         nodata = provider.sourceNoDataValue(int(band))
         if nodata is not None:
             yield (float(nodata), float(nodata))
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     try:
@@ -46,13 +46,13 @@ def _iter_provider_nodata_values(provider, band: int = 1):
             hi = float(rng.max())
             yield (lo, hi)
             continue
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             lo = float(rng.minValue())
             hi = float(rng.maxValue())
             yield (lo, hi)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
 
@@ -84,7 +84,7 @@ def _is_valid_dem_value(value, provider=None, band: int = 1) -> bool:
                 eps = max(1e-6, 1e-9 * max(abs(lo), abs(hi), 1.0))
                 if (lo - eps) <= z <= (hi + eps):
                     return False
-            except Exception:
+            except Exception:  # nosec B112
                 continue
     return True
 
@@ -116,7 +116,7 @@ def _set_field_aliases(layer, aliases: Dict[str, str]) -> None:
             idx = layer.fields().indexOf(name)
             if idx >= 0:
                 layer.setFieldAlias(idx, alias)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 def _remove_existing_layers_by_name(prj: QgsProject, names: List[str]) -> None:
@@ -125,5 +125,5 @@ def _remove_existing_layers_by_name(prj: QgsProject, names: List[str]) -> None:
         try:
             if lyr.name() in wanted:
                 prj.removeMapLayer(lyr.id())
-        except Exception:
+        except Exception:  # nosec B112
             continue

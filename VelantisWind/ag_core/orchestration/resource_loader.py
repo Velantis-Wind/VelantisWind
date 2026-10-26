@@ -14,6 +14,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from ..log_text import log_error, log_text
+
 LogFn = Callable[..., None]
 
 
@@ -38,20 +40,20 @@ def normalize_resource_inputs(
     if use_wrg:
         clean_wrg_paths = [str(p) for p in (wrg_paths or []) if str(p).strip()]
         if not clean_wrg_paths:
-            raise ValueError("No se proporcionaron rutas WRG")
+            raise log_error(ValueError, "No se proporcionaron rutas WRG")
         for path in clean_wrg_paths:
             if not os.path.isfile(path):
-                raise ValueError(f"WRG/ZIP no existe: {path}")
+                raise log_error(ValueError, "WRG/ZIP no existe: {path}", path=path)
             if not path.lower().endswith((".wrg", ".zip")):
-                raise ValueError(f"Extensión WRG no soportada (use .wrg o .zip): {path}")
+                raise log_error(ValueError, "Extensión WRG no soportada (use .wrg o .zip): {path}", path=path)
         wrg_paths = clean_wrg_paths
     else:
         if not wasp_dir or not os.path.isdir(wasp_dir):
-            raise ValueError("Directorio WAsP inválido o no existente")
+            raise log_error(ValueError, "Directorio WAsP inválido o no existente")
         wrg_paths = []
 
     if not models:
-        raise ValueError("No se han definido modelos de aerogeneradores")
+        raise log_error(ValueError, "No se han definido modelos de aerogeneradores")
 
     return use_wrg, list(wrg_paths or []), wrg_ti_paths
 
@@ -61,6 +63,9 @@ def load_energy_site(
     use_wrg: bool,
     wasp_dir: str,
     wrg_paths: List[str],
+    wrg_speedup_method: str,
+    wrg_direction_count: Optional[int],
+    wrg_wd_interp: str,
     wrg_ti_paths: Optional[List[str]],
     wrg_ti_heights_m: Optional[List[Optional[float]]],
     project_crs_authid: Optional[str],
@@ -81,10 +86,24 @@ def load_energy_site(
     ``wasp_dir`` may be normalized for the caller.
     """
     if use_wrg:
-        from ..wrg_site import load_wrg_site
+        from ..wrg_site import TERRAIN_FOLLOWING, load_wrg_site
 
-        site, ds, used_dir = load_wrg_site(wrg_paths or [])
+        site, ds, used_dir = load_wrg_site(
+            wrg_paths or [],
+            direction_count=wrg_direction_count,
+            wd_interp=wrg_wd_interp,
+            speedup_method=wrg_speedup_method,
+            terrain_following=TERRAIN_FOLLOWING,
+        )
         log(f"[WRG] Site cargado desde: {used_dir}", info_level)
+        try:
+            heights = list(ds.attrs.get("wrg_heights_m", []))
+            policy = str(ds.attrs.get("wrg_vertical_policy", "?"))
+            speedup = str(ds.attrs.get("wrg_speedup_method", "none"))
+            wd_interp = str(ds.attrs.get("wrg_wd_interp_method", ""))
+            log(f"[WRG] alturas={heights} | política_vertical={policy} | speedup={speedup} | wd_interp={wd_interp}", info_level)
+        except Exception:
+            pass
         ds = ensure_wd_dim(ds)
         site = rebuild_xrsite_if_needed(site, ds)
 
@@ -100,7 +119,7 @@ def load_energy_site(
                 )
             except Exception as exc:
                 log(
-                    f"[WRG][TI] No se pudieron aplicar los raster(s) TI '{wrg_ti_paths}': {exc}. Se usará fallback fijo.",
+                    log_text("[WRG][TI] No se pudieron aplicar los ráster(es) TI '{paths}': {error}. Se usará fallback fijo.", paths=wrg_ti_paths, error=exc),
                     warning_level,
                 )
                 if fixed_ti is None:
@@ -109,22 +128,22 @@ def load_energy_site(
             if fixed_ti is None:
                 fixed_ti = 0.10
             log(
-                f"[WRG][TI] No se ha seleccionado raster de turbulencia. Se usará TI fija={float(fixed_ti):.3f}.",
+                log_text("[WRG][TI] No se ha seleccionado ráster de turbulencia. Se usará TI fija={ti}.", ti=f"{float(fixed_ti):.3f}"),
                 warning_level,
             )
 
         try:
             log(f"[WRG] dims={dict(ds.sizes)} | wd[n]={int(ds.sizes.get('wd', 0))}", info_level)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return site, ds, used_dir, fixed_ti, wasp_dir
 
     wasp_dir = os.path.abspath(wasp_dir)
     compat_dir = resolve_wasp_dir_for_pywake(wasp_dir)
     if compat_dir is None:
-        raise RuntimeError(
-            "No se ha podido encontrar una subcarpeta válida para PyWake "
-            f"en '{wasp_dir}'. Revisa la estructura exportada de WAsP."
+        raise log_error(
+            RuntimeError, "No se ha podido encontrar una subcarpeta válida para PyWake en '{folder}'. Revisa la estructura "
+            "exportada de WAsP.", folder=wasp_dir,
         )
 
     sanitize_dir_for_pywake(compat_dir, move_bad=True)
@@ -148,7 +167,7 @@ def ensure_ti_available(
     """
     ds = ds or getattr(site, "ds", None) or getattr(site, "dataset", None)
     if ds is None:
-        raise RuntimeError("El 'site' cargado no expone 'ds'/'dataset'.")
+        raise log_error(RuntimeError, "El 'site' cargado no expone 'ds'/'dataset'.")
 
     try:
         ds_check = getattr(site, "ds", None) or getattr(site, "dataset", None)
@@ -156,8 +175,8 @@ def ensure_ti_available(
             ti_val = float(fixed_ti) if fixed_ti is not None else 0.10
             if (not np.isfinite(ti_val)) or ti_val <= 0 or ti_val >= 1:
                 ti_val = 0.10
-            log(f"[TI] Dataset sin 'TI/ti15ms/ti' -> inyecto TI fija={ti_val:.3f}.", warning_level)
+            log(log_text("[TI] Dataset sin 'TI/ti15ms/ti' -> inyecto TI fija={ti}.", ti=f"{ti_val:.3f}"), warning_level)
             apply_fixed_ti(site, ti_val, prefer_var="TI")
     except Exception as exc:
-        log(f"[TI] No se pudo inyectar TI fija en dataset: {exc}", warning_level)
+        log(log_text("[TI] No se pudo inyectar TI fija en dataset: {error}", error=exc), warning_level)
     return ds

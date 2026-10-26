@@ -23,6 +23,8 @@ from ..tasks.pure_engine import _GdalDemSampler, _prepare_mdt_context, _calculat
 from ..qgis_io.common import _remove_existing_layers_by_name, _unique_temp_output
 from ..qgis_io.layers import _apply_raster_heatmap_style, _build_isophones_layer_from_raster
 from ...raster_io import read_float64_band, read_float64_pixel, write_float32_band
+from ...i18n import tr_text
+from ..project_watch import PROJECT_CHANGED, ProjectWatch
 
 
 GridFinishedCallback = Callable[[bool, Dict[str, Any], Optional[Any], Optional[Any], Optional[str]], None]
@@ -50,7 +52,7 @@ def _snapshot_sources(raw_sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 "lw_octave": lw_octave,
                 "spectrum_source": str(src.get("spectrum_source") or ""),
             })
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return out
 
@@ -545,7 +547,7 @@ def _presample_dem_grid(
             if progress_callback is not None:
                 try:
                     progress_callback(2.0 + 13.0 * float(min(start + chunk_size, len(valid_idx))) / float(n_total))
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         diag["grid_dem_presample_vectorized"] = True
     else:
@@ -563,7 +565,7 @@ def _presample_dem_grid(
             if progress_callback is not None and (k % 750 == 0 or k + 1 == n_total):
                 try:
                     progress_callback(2.0 + 13.0 * float(k + 1) / float(n_total))
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         diag["grid_dem_presample_vectorized"] = False
 
@@ -612,7 +614,7 @@ def compute_noise_grid_file_from_snapshot(
         if progress_callback is not None:
             try:
                 progress_callback(float(max(0.0, min(100.0, value))))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     def _canceled() -> bool:
@@ -880,7 +882,7 @@ def compute_noise_grid_file_from_snapshot(
                             corrected_energy += 10.0 ** (lp_a / 10.0)
                         source_energy[ly, lx] = corrected_energy
                         grid_max_abar_1000_db = max(grid_max_abar_1000_db, float(max_abar_cell_1000))
-                    except Exception:
+                    except Exception:  # nosec B112
                         # Compatibility fallback: keep the vectorized base
                         # value if the MDT profile/correction cannot be applied.
                         continue
@@ -918,8 +920,8 @@ def compute_noise_grid_file_from_snapshot(
         srs = osr.SpatialReference()
         if crs_wkt:
             srs.ImportFromWkt(str(crs_wkt))
-            ds.SetProjection(srs.ExportToWkt())
-    except Exception:
+            ds.SetProjection(srs.ExportToWkt(["FORMAT=WKT2_2019"]))
+    except Exception:  # nosec B110
         pass
     band = ds.GetRasterBand(1)
     write_float32_band(
@@ -951,13 +953,15 @@ class NoiseGridTask(QgsTask):
     """QgsTask that computes the noise raster in the background."""
 
     def __init__(self, *, params: Dict[str, Any], on_finished: Optional[GridFinishedCallback] = None):
-        super().__init__("Velantis Wind · Noise raster", QgsTask.CanCancel)
+        super().__init__(tr_text("Velantis Wind · ráster de ruido"), QgsTask.CanCancel)
         self.params = dict(params)
         self.on_finished_callback = on_finished
         self.diag: Dict[str, Any] = {}
         self.error: Optional[str] = None
         self.grid_layer = None
         self.iso_layer = None
+        self.project_changed = False
+        self._project_watch = ProjectWatch()  # created in the main thread, with the task
 
     def run(self) -> bool:  # QGIS worker thread
         try:
@@ -973,6 +977,11 @@ class NoiseGridTask(QgsTask):
 
     def finished(self, success: bool) -> None:  # QGIS main thread
         ok = bool(success and not self.error and self.diag.get("grid_path"))
+        if self._project_watch.changed() and ok:
+            # Calculated for a project that is no longer open: never added to this one; its file is kept.
+            ok = False
+            self.project_changed = True
+            self.error = tr_text(PROJECT_CHANGED).format(path=os.path.dirname(str(self.diag.get("grid_path") or "")))
         if ok:
             try:
                 prj = QgsProject.instance()
@@ -985,7 +994,7 @@ class NoiseGridTask(QgsTask):
                     raise RuntimeError(f"No se pudo cargar el raster generado: {raster_path}")
                 try:
                     lyr.setCustomProperty("velantis/noise_output", True)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 min_val = float(self.diag.get("grid_min_noise", 0.0))
                 max_val = float(self.diag.get("grid_max_noise", 0.0))
@@ -998,13 +1007,13 @@ class NoiseGridTask(QgsTask):
                     if iface is not None:
                         try:
                             iface.layerTreeView().refreshLayerSymbology(lyr.id())
-                        except Exception:
+                        except Exception:  # nosec B110
                             pass
                         try:
                             iface.mapCanvas().refreshAllLayers()
                         except Exception:
                             iface.mapCanvas().refresh()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
 
                 if bool(self.params.get("create_iso_layer", False)):
@@ -1017,7 +1026,7 @@ class NoiseGridTask(QgsTask):
         if self.on_finished_callback is not None:
             try:
                 self.on_finished_callback(ok, self.diag or {}, self.grid_layer, self.iso_layer, self.error)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
 
@@ -1031,7 +1040,7 @@ def start_noise_grid_task(
     if on_progress is not None:
         try:
             task.progressChanged.connect(on_progress)
-        except Exception:
+        except Exception:  # nosec B110
             pass
     QgsApplication.taskManager().addTask(task)
     return task

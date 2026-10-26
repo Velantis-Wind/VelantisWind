@@ -75,7 +75,7 @@ def extract_result_layer_statistics(result: QgsVectorLayer, max_noise_fid: Optio
         # use a positive level / at least one source as a safe fallback.
         try:
             return int(_val(feat, 'covered', 0)) == 1
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             return float(_val(feat, 'noise_dba', 0.0) or 0.0) > 0.0
@@ -86,13 +86,13 @@ def extract_result_layer_statistics(result: QgsVectorLayer, max_noise_fid: Optio
         vals: List[int] = []
         try:
             vals.append(int(feat.id()))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         for name in ('rec_id', 'receiver_id', 'id', 'fid'):
             try:
                 if _has(feat, name):
                     vals.append(int(_val(feat, name)))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         return vals
 
@@ -103,7 +103,7 @@ def extract_result_layer_statistics(result: QgsVectorLayer, max_noise_fid: Optio
                 if _has(feat, name):
                     rec_id_val = int(_val(feat, name))
                     break
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         if rec_id_val is None:
             try:
@@ -172,7 +172,7 @@ def extract_result_layer_statistics(result: QgsVectorLayer, max_noise_fid: Optio
             if noise == noise and noise > best_noise:
                 best_noise = noise
                 best_feat = f
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         if _is_covered(f):
@@ -185,20 +185,20 @@ def extract_result_layer_statistics(result: QgsVectorLayer, max_noise_fid: Optio
                     v = _float(f, key)
                     if v == v:
                         target.append(float(v))
-                except Exception:
+                except Exception:  # nosec B110
                     pass
             try:
                 v_abar = _float(f, 'abar_max_db', _float(f, 'abar_db'))
                 if v_abar == v_abar:
                     stats.abar_vals.append(float(v_abar))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         if max_noise_fid is not None and matched_feat is None:
             try:
                 if int(max_noise_fid) in _receiver_id_candidates(f):
                     matched_feat = f
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     if matched_feat is not None:

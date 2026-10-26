@@ -5,11 +5,9 @@ aep_compute.py  — Cálculo AEP con carga robusta de WAsP grids (py_wake-safe) 
 - Detecta automáticamente y prioriza la subcarpeta 'pywake_compat' si existe.
 - Valida nombres con el patrón real de py_wake para evitar IndexError al cargar .grd.
 - Opción de saneo: mueve a _bad_for_pywake los .grd que no casen (por defecto activado).
-- Fallbacks amplios de PyWake (modelos, compatibility paths) para mayor compatibilidad.
-- Calcula AEP por turbina (free/operativa) y deltas por efecto.
-- Integra rotor-average Gaussian (CGIRotorAvg) con fallbacks.
-- Integra bloqueo (SelfSimilarityDeficit2020) y fuerza A2A si hay bloqueo.
-- Superposición compatible: WeightedSum SOLO con rotor-average por nodos; si no, LinearSum.
+- La física de estelas es la configuración validada (``wake_setup``), construida exactamente por la fábrica, con la
+  comprobación de clases antes de simular y sin sustituciones ni reintentos; lo ejecutado se lee de los objetos.
+- Calcula el AEP por turbina de la configuración principal, A_0 y las variantes del desglose firmado de pérdidas.
 - Imprime por modelo: curva de potencia (muestra), altura de buje y diámetro.
 - Actualiza las capas de puntos por modelo (las creadas en aep_setup_dialog) y configura Map Tips.
 
@@ -19,8 +17,9 @@ Uso desde el diálogo:
 """
 
 from __future__ import annotations
+import copy
 import os
-import re, inspect
+import re
 from typing import Dict, List, Tuple, Any, Optional, Callable
 
 import numpy as np
@@ -32,109 +31,6 @@ except Exception:
     osr = None
 
 
-# --------- Fallback: turbulencia constante para evitar AssertionError ---------
-class ConstantTurbulenceModel:
-    """Modelo de turbulencia mínimo: no añade turbulencia; TI_eff ~= TI_ambiente.
-    Útil como compatibilidad cuando el turbulenceModel seleccionado no está disponible.
-    """
-    def __init__(self, ti: float = 0.10):
-        try:
-            self.ti = float(ti)
-        except Exception:
-            self.ti = 0.10
-
-    def calc_added_turbulence(self, *args, **kwargs):
-        """Devuelve turbulencia añadida cero con forma compatible si es posible."""
-        # PyWake suele pasar arrays con sufijos *_ijlk. Buscamos uno para clonar la forma.
-        for key in ("dw_ijlk", "cw_ijlk", "D_src_il", "D_dst_il", "x_ijlk", "y_ijlk"):
-            arr = kwargs.get(key, None)
-            if hasattr(arr, "shape"):
-                return np.zeros_like(arr, dtype=float)
-        for a in args:
-            if hasattr(a, "shape"):
-                return np.zeros_like(a, dtype=float)
-        return 0.0
-
-    def __call__(self, *args, **kwargs):
-        return self.calc_added_turbulence(*args, **kwargs)
-
-    def calc_effective_TI(self, *args, **kwargs):
-        """Si alguien pide TI efectiva directamente, devolvemos TI ambiente o constante."""
-        TI_ilk = kwargs.get("TI_ilk", kwargs.get("TI", None))
-        if TI_ilk is None:
-            return self.ti
-        return TI_ilk
-def _safe_name(obj) -> str:
-    if obj is None:
-        return "None"
-    try:
-        return obj.__class__.__name__
-    except Exception:
-        return str(obj)
-
-
-def _safe_cls_name(obj) -> str:
-    if obj is None:
-        return "None"
-    try:
-        return getattr(obj, "__name__", str(obj))
-    except Exception:
-        return str(obj)
-
-
-def _choice_text(value: Any, fallback: str = "None") -> str:
-    try:
-        txt = str(value).strip()
-    except Exception:
-        txt = ""
-    return txt or fallback
-
-
-def _build_config_snapshot(*, engine: Any, wake: Any, turbulence: Any, blockage: Any, rotor_avg: Any, superposition: Any = None) -> Dict[str, str]:
-    snap = {
-        "engine": _choice_text(engine),
-        "wake_deficit": _choice_text(wake),
-        "turbulence": _choice_text(turbulence),
-        "blockage": _choice_text(blockage),
-        "rotor_avg": _choice_text(rotor_avg),
-    }
-    if superposition is not None:
-        snap["superposition"] = _choice_text(superposition)
-    return snap
-
-
-def _guidance_notes_for_config(*, wake_cls, turbulence_obj, use_wrg: bool, wrg_ti_paths: Optional[List[str]] = None, unique_hubs: Optional[List[float]] = None) -> List[str]:
-    notes: List[str] = []
-    wake_name = _safe_cls_name(wake_cls)
-    turb_name = _safe_name(turbulence_obj)
-    hubs = [float(h) for h in (unique_hubs or [])]
-    if wake_cls is BG_DEF:
-        notes.append("BastankhahGaussianDeficit usa una k fija: la TI ambiente y el modelo de turbulencia apenas cambian el déficit base del wake.")
-    elif wake_cls is NOJ_DEF:
-        notes.append("NOJDeficit usa una expansión top-hat constante: el modelo de turbulencia no cambia el AEP en la configuración estándar.")
-    elif wake_cls in (NIA_DEF, ZG_DEF, TG_DEF, TNOJ_DEF, GCL_DEF):
-        if turbulence_obj is None:
-            notes.append(f"{wake_name} puede ser sensible a la TI, pero se ha ejecutado sin modelo de turbulencia añadida; la sensibilidad queda limitada a la TI ambiente disponible.")
-        else:
-            notes.append(f"{wake_name} puede usar la TI ambiente/efectiva para abrir la estela; el modelo de turbulencia activo ({turb_name}) sí puede influir en el AEP.")
-
-    ti_paths = [p for p in (wrg_ti_paths or []) if p]
-    if use_wrg:
-        if ti_paths:
-            if len(ti_paths) == 1:
-                notes.append("WRG: se ha usado un único raster de TI ambiente; si mezclas varios hub heights, esa TI se replica/interpela como aproximación vertical.")
-            else:
-                notes.append(f"WRG: se han usado {len(ti_paths)} raster(s) de TI ambiente para reconstruir TI por altura cuando es posible.")
-        else:
-            notes.append("WRG: no se ha proporcionado raster TI, así que la TI ambiente se ha fijado al valor fallback definido por el usuario como campo uniforme.")
-        if len(hubs) > 1 and len(ti_paths) <= 1:
-            notes.append("Hay varios hub heights pero solo una TI ambiente verticalmente uniforme; el cálculo sigue siendo válido, aunque es una aproximación en altura.")
-    return notes
-
-
-# Tipado NumPy: usar float32 por defecto en arrays
-F32 = np.float32
-
 # ========= QGIS =========
 from qgis.utils import iface
 from qgis.core import (
@@ -142,7 +38,7 @@ from qgis.core import (
     QgsProject, QgsVectorLayer, QgsField, QgsFeature, QgsGeometry,
     QgsWkbTypes, QgsPointXY, QgsSpatialIndex, QgsFeatureRequest, edit
 )
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QThread, QVariant
 
 # --- WAsP grids / py_wake
 from py_wake.site.wasp_grid_site import WaspGridSite
@@ -168,29 +64,8 @@ except Exception:
     except Exception:
         _robust_loader = None  # fallback a WaspGridSite.from_wasp_grd
 
-# ============================================================
-# Modelos PyWake físicos
-# ============================================================
-# Los imports/fallbacks de wake, turbulencia, bloqueo y rotor-average viven en
-# ag_core.physics.*. Aquí solo se mantiene el import de WindTurbines y se
-# reexportan aliases para compatibilidad con el resto del motor histórico.
 from py_wake.wind_turbines._wind_turbines import WindTurbines
 from py_wake.wind_turbines.power_ct_functions import PowerCtFunctionList
-
-
-# ============================================================
-# Arquitectura física extraída (wake / turbulencia / bloqueo / rotor-average)
-# ============================================================
-try:
-    from .physics import wake as _physics_wake
-    from .physics import blockage as _physics_blockage
-    from .physics import rotor_average as _physics_rotor
-    from .physics import turbulence as _physics_turbulence
-except Exception:  # pragma: no cover - fallback standalone
-    from ag_core.physics import wake as _physics_wake  # type: ignore
-    from ag_core.physics import blockage as _physics_blockage  # type: ignore
-    from ag_core.physics import rotor_average as _physics_rotor  # type: ignore
-    from ag_core.physics import turbulence as _physics_turbulence  # type: ignore
 
 try:
     from .resources import wasp as _resource_wasp
@@ -199,55 +74,86 @@ try:
     from .turbines import height as _turbine_height
     from .turbines import factory as _turbine_factory
     from .turbines import curves as _turbine_curves
+    from .turbines import density_resolution as _density_resolution
+    from .turbines.bin_power import BIN_MEAN, POINT
     from .results import aep_arrays as _result_arrays
     from .results import tables as _result_tables
     from .results import summary as _result_summary
+    from .qgis_io import export as _qgis_export
     from .qgis_io import layers as _qgis_layers
     from .simulation import runner as _simulation_runner
+    from .simulation import zero_node as _zero_node
+    from .simulation.pywake_lock import PYWAKE_LOCK
+    from .wake_setup import api as _wake_api
+    from .wake_setup import config as _wake_config
+    from .wake_setup import factory as _wake_factory
+    from .wake_setup import notices as _wake_notices
+    from .wake_setup import presets as _wake_presets
+    from .wake_setup import readers as _wake_readers
+    from .wake_setup.api import NOT_SET
+    from .wake_setup.instrumentation import ConvergenceRecorder, effective_ti_per_turbine
+    from .results import result_v2 as _result_v2
+    from .results import variants as _variants
     from . import orchestration as _orchestration
+    from . import edge_cases as _edge_cases
+    from .log_text import log_text, shown
+    from .turbine import CT_ESTIMATED_WARNING
 except Exception:  # pragma: no cover - fallback standalone
+    from ag_core.log_text import log_text, shown  # type: ignore
     from ag_core.resources import wasp as _resource_wasp  # type: ignore
     from ag_core.resources import turbulence_grid as _resource_ti  # type: ignore
     from ag_core.layout import io as _layout_io  # type: ignore
     from ag_core.turbines import height as _turbine_height  # type: ignore
     from ag_core.turbines import factory as _turbine_factory  # type: ignore
     from ag_core.turbines import curves as _turbine_curves  # type: ignore
+    from ag_core.turbines import density_resolution as _density_resolution  # type: ignore
+    from ag_core.turbines.bin_power import BIN_MEAN, POINT  # type: ignore
     from ag_core.results import aep_arrays as _result_arrays  # type: ignore
     from ag_core.results import tables as _result_tables  # type: ignore
     from ag_core.results import summary as _result_summary  # type: ignore
+    from ag_core.qgis_io import export as _qgis_export  # type: ignore
     from ag_core.qgis_io import layers as _qgis_layers  # type: ignore
     from ag_core.simulation import runner as _simulation_runner  # type: ignore
+    from ag_core.simulation import zero_node as _zero_node  # type: ignore
+    from ag_core.simulation.pywake_lock import PYWAKE_LOCK  # type: ignore
+    from ag_core.wake_setup import api as _wake_api  # type: ignore
+    from ag_core.wake_setup import config as _wake_config  # type: ignore
+    from ag_core.wake_setup import factory as _wake_factory  # type: ignore
+    from ag_core.wake_setup import notices as _wake_notices  # type: ignore
+    from ag_core.wake_setup import presets as _wake_presets  # type: ignore
+    from ag_core.wake_setup import readers as _wake_readers  # type: ignore
+    from ag_core.wake_setup.api import NOT_SET  # type: ignore
+    from ag_core.wake_setup.instrumentation import ConvergenceRecorder, effective_ti_per_turbine  # type: ignore
+    from ag_core.results import result_v2 as _result_v2  # type: ignore
+    from ag_core.results import variants as _variants  # type: ignore
     from ag_core import orchestration as _orchestration  # type: ignore
+    from ag_core import edge_cases as _edge_cases  # type: ignore
+    from ag_core.turbine import CT_ESTIMATED_WARNING  # type: ignore
 
-# Usar el registry nuevo como fuente de verdad para los modelos PyWake.
-PDW = _physics_wake.PDW
-A2A = _physics_wake.A2A
-PUD = _physics_wake.PUD
-BG_DEF = _physics_wake.BG_DEF
-NOJ_DEF = _physics_wake.NOJ_DEF
-TNOJ_DEF = _physics_wake.TNOJ_DEF
-TG_DEF = _physics_wake.TG_DEF
-ZG_DEF = _physics_wake.ZG_DEF
-NIA_DEF = _physics_wake.NIA_DEF
-GCL_DEF = _physics_wake.GCL_DEF
-WeightedSum = _physics_wake.WeightedSum
-LinearSum = _physics_wake.LinearSum
-SquaredSum = getattr(_physics_wake, "SquaredSum", None)
-MaxSum = getattr(_physics_wake, "MaxSum", None)
-NoWakeDeficit = _physics_wake.NoWakeDeficit
 
-SS_BLOCK = _physics_blockage.SS_BLOCK
-VD_BLOCK = _physics_blockage.VD_BLOCK
-HI_BLOCK = _physics_blockage.HI_BLOCK
-RATH_BLOCK = _physics_blockage.RATH_BLOCK
-BLOCKAGE_MODEL_CLS = _physics_blockage.BLOCKAGE_MODEL_CLS
 
-CGI_AVG = _physics_rotor.CGI_AVG
-GO_AVG = _physics_rotor.GO_AVG
-EQ_AVG = _physics_rotor.EQ_AVG
-RC_AVG = _physics_rotor.RC_AVG
-TURB_MODEL_CLS = _physics_turbulence.TURB_MODEL_CLS
-ConstantTurbulenceModel = _physics_turbulence.ConstantTurbulenceModel
+def _resource_ti_notes(*, use_wrg: bool, wrg_ti_paths: Optional[List[str]] = None,
+                       unique_hubs: Optional[List[float]] = None) -> List[Any]:
+    """The notes of the ambient TI of a WRG (what was given, not a judgement of the physics)."""
+    notes: List[Any] = []
+    hubs = [float(h) for h in (unique_hubs or [])]
+    ti_paths = [p for p in (wrg_ti_paths or []) if p]
+    if use_wrg:
+        if ti_paths:
+            if len(ti_paths) == 1:
+                notes.append(log_text("WRG: se ha usado un único ráster de TI ambiente; si mezclas varias alturas de buje, esa TI "
+                                      "se replica/interpola como aproximación vertical."))
+            else:
+                notes.append(log_text("WRG: se han usado {n} rásteres de TI ambiente para reconstruir TI por altura cuando es "
+                                      "posible.", n=len(ti_paths)))
+        else:
+            notes.append(log_text("WRG: no se ha proporcionado ráster TI, así que la TI ambiente se ha fijado al valor de respaldo "
+                                  "definido por el usuario como campo uniforme."))
+        if len(hubs) > 1 and len(ti_paths) <= 1:
+            notes.append(log_text("Hay varias alturas de buje pero solo una TI ambiente verticalmente uniforme; el cálculo sigue "
+                                  "siendo válido, aunque es una aproximación en altura."))
+    return notes
+
 
 # ============================================================
 # Utils de logging/diagnóstico
@@ -257,154 +163,37 @@ def _log(msg: str, level=Qgis.Info):
         print("[AEP] " + msg)
     try:
         QgsMessageLog.logMessage(msg, "AEP", level=level)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     try:
-        iface.messageBar().pushMessage("AEP", msg, level=level, duration=6)
-    except Exception:
+        # The message bar is a widget: touching it from a QgsTask worker corrupts Qt state.
+        # It shows only the warnings, translated from their template when the message carries one;
+        # the message log keeps every message in Spanish.
+        if level in (Qgis.Warning, Qgis.Critical) and QThread.currentThread() == QCoreApplication.instance().thread():
+            if getattr(msg, "template_item", None):
+                try:
+                    from ..i18n import tr_text
+                    msg = shown(msg, tr_text)
+                except Exception:  # nosec B110
+                    pass
+            iface.messageBar().pushMessage("AEP", msg, level=level, duration=6)
+    except Exception:  # nosec B110
         pass
 
+
+# The messages of the wake physics (the contract of the API, the validation, the notices) are translated wherever the
+# AEP shows them, even when no window that registers them was opened.
+from .wake_setup.messages_translations import register_messages_translations  # noqa: E402
+
+register_messages_translations()
 
 # Conectar módulos extraídos al logger/QGIS levels del motor principal.
 try:
     _turbine_height.configure_logging(_log, warning_level=Qgis.Warning, info_level=Qgis.Info)
     _turbine_factory.configure_logging(_log, warning_level=Qgis.Warning, info_level=Qgis.Info)
     _turbine_curves.configure_logging(_log, warning_level=Qgis.Warning, info_level=Qgis.Info)
-except Exception:
+except Exception:  # nosec B110
     pass
-
-def _dump_obj_signature(tag: str, obj: Any):
-    try:
-        mod = getattr(obj, "__module__", "?")
-        name = obj.__class__.__name__ if not inspect.isclass(obj) else obj.__name__
-        try:
-            sig = str(inspect.signature(obj.__init__ if not inspect.isclass(obj) else obj))
-        except Exception:
-            sig = "n/d"
-        _log(f"[{tag}] clase={name} | módulo={mod} | firma={sig}")
-        _log(f"[{tag}] repr={repr(obj)}")
-    except Exception as e:
-        _log(f"[{tag}] No se pudo obtener firma/repr: {e}", Qgis.Warning)
-
-
-# ============================================================
-# Compatibilidad: PropagateUpDownIterative requiere WS efectiva
-# ============================================================
-# En PyWake, PropagateUpDownIterative suele exigir que wake_deficitModel y
-# blockage_deficitModel "escalen" con WS_eff. Muchos modelos lo activan con
-# use_effective_ws=True. Aquí lo forzamos automáticamente cuando el motor es PUD.
-_FORCE_EFFECTIVE_WS = False
-
-def _set_force_effective_ws(enabled: bool) -> None:
-    global _FORCE_EFFECTIVE_WS
-    _FORCE_EFFECTIVE_WS = bool(enabled)
-    try:
-        _physics_wake.set_force_effective_ws(enabled)
-    except Exception:
-        pass
-
-def _kw_supported(cls, kw: str) -> bool:
-    """True si la clase expone el kwarg en su firma (__init__)."""
-    try:
-        if cls is None:
-            return False
-        if not inspect.isclass(cls):
-            cls = cls.__class__
-        sig = inspect.signature(cls.__init__)
-        return kw in sig.parameters
-    except Exception:
-        return False
-
-def _instantiate_with_optional_kw(cls, **preferred_kwargs):
-    """Instancia cls pasando solo kwargs soportados (o devuelve instancia si ya lo es)."""
-    if cls is None:
-        return None
-    try:
-        if not inspect.isclass(cls):
-            return cls
-    except Exception:
-        pass
-
-    try:
-        sig = inspect.signature(cls.__init__)
-        params = sig.parameters
-        kw = {k: v for k, v in preferred_kwargs.items() if k in params}
-    except Exception:
-        kw = {}
-
-    try:
-        return cls(**kw) if kw else cls()
-    except Exception:
-        # Último intento: sin kwargs
-        try:
-            return cls()
-        except Exception:
-            raise
-
-
-def _force_ws_eff_if_needed(obj, *, context: str = "wake"):
-    """Compatibilidad para PropagateUpDownIterative (PUD).
-
-    PyWake hace un assert en PUD exigiendo que el deficit (y el bloqueo) se
-    evalúen con la **velocidad efectiva** (WS_eff) y no con la free-stream.
-    En muchas clases esto se activa con `use_effective_ws=True`, pero NO en
-    todas las versiones/modelos (p.ej. algunas variantes de NOJ).
-
-    Si estamos en modo PUD (_FORCE_EFFECTIVE_WS=True) y el objeto expone
-    `WS_key`, lo forzamos a 'WS_eff_ilk' para evitar el assert.
-    """
-    if not _FORCE_EFFECTIVE_WS or obj is None:
-        return obj
-    try:
-        ws_key = getattr(obj, "WS_key", None)
-        if ws_key and ws_key != "WS_eff_ilk":
-            try:
-                setattr(obj, "WS_key", "WS_eff_ilk")
-                _log(f"[AEP] [Compat] {context}: se fuerza WS_key='WS_eff_ilk' (modelo no expone use_effective_ws).", Qgis.Warning)
-            except Exception:
-                # Si es propiedad read-only o falla, no forzamos
-                pass
-    except Exception:
-        pass
-    return obj
-def _resolve_engine_choice(wfm_engine: str) -> str:
-    """Resuelve el motor WFM final (PDW/A2A/PUD) usando el registry físico extraído."""
-    return _physics_wake.resolve_engine_choice(wfm_engine)
-def _make_turbulence_model(key: Optional[str], include_turbulence: bool = True) -> Any:
-    """Crea el turbulence model seleccionado usando ag_core.physics.turbulence."""
-    return _physics_turbulence.make_turbulence_model(
-        key,
-        include_turbulence=include_turbulence,
-        log=_log,
-    )
-def _make_rotor_avg_model(key: Optional[str]) -> Any:
-    """Crea el rotor-average model seleccionado usando ag_core.physics.rotor_average."""
-    return _physics_rotor.make_rotor_avg_model(key, log=_log)
-def _env_diag():
-    try:
-        import py_wake as _pyw
-        _log(f"[ENV] py_wake version = {getattr(_pyw, '__version__', '?')}")
-    except Exception:
-        _log("[ENV] No se pudo leer la versión de py_wake", Qgis.Warning)
-    try:
-        import py_wake.blockage_models as bm
-        names = [n for n in dir(bm) if "Deficit" in n or "Block" in n]
-        _log(f"[ENV] blockage_models(moderno) = {names if names else '[]'}")
-    except Exception:
-        _log("[ENV] blockage_models(moderno) no disponible", Qgis.Warning)
-    try:
-        import py_wake.deficit_models.selfsimilarity as s
-        names = [n for n in dir(s) if "Deficit" in n or "Block" in n]
-        _log(f"[ENV] selfsimilarity(clásico) = {names if names else '[]'}")
-    except Exception:
-        _log("[ENV] selfsimilarity(clásico) no disponible", Qgis.Warning)
-    try:
-        import py_wake.turbulence_models as tm
-        names = [n for n in dir(tm) if any(k in n for k in ("Turbulence", "Crespo", "STF", "GCL"))]
-        _log(f"[ENV] turbulence_models = {names if names else '[]'}")
-    except Exception:
-        _log("[ENV] py_wake.turbulence_models no disponible", Qgis.Warning)
-
 
 # ============================================================
 # Helpers WAsP / py_wake (filtro nombres + carga)
@@ -442,32 +231,6 @@ def _bbox_from_site(site) -> Tuple[float, float, float, float]:
     """Compatibilidad: delega bbox en ag_core.layout.io."""
     return _layout_io.bbox_from_site(site)
 
-
-def _native_wd_for_site(ds) -> Optional[np.ndarray]:
-    """Return native wind-direction centres for sector-based resources.
-
-    PyWake defaults to 360 one-degree directions when ``wd`` is omitted. For
-    WAsP/WRG sector climates this linearly interpolates Weibull A/k and sector
-    probabilities between sector centres, which can bias the free-flow AEP.
-    Using the native WRG/WAsP sector centres evaluates the climate exactly as
-    exported. A duplicated closure at 360° is removed to avoid double-counting
-    the first sector.
-    """
-    try:
-        if ds is None or "wd" not in ds.coords:
-            return None
-        wd = np.asarray(ds["wd"].values, dtype=float).reshape(-1)
-        wd = wd[np.isfinite(wd)]
-        if wd.size == 0:
-            return None
-        # Remove duplicated 360° closure when 0° is already present.
-        if wd.size > 1 and abs(float(wd[-1]) - 360.0) < 1e-6 and np.any(np.isclose(wd[:-1], 0.0, atol=1e-6)):
-            wd = wd[:-1]
-        # Use native sectors only when they are coarser than 1-degree; if a site
-        # already provides many directions, passing them is still harmless.
-        return wd.astype(float)
-    except Exception:
-        return None
 
 # ============================================================
 # TI fija / inyección si falta
@@ -572,225 +335,142 @@ def _print_power_curve_info(models: List[Dict[str, Any]]):
     return _turbine_curves.print_power_curve_info(models)
 
 
-# ============================================================
-# Utilidades varias
-# ============================================================
-def _diag_pdw(pdw_obj):
-    _log(f"PropagateDownwind obj: {repr(pdw_obj)}")
-    _log(f"  módulo: {getattr(pdw_obj,'__module__','?')}")
-    _log(f"  es clase: {inspect.isclass(pdw_obj)} | callable: {callable(pdw_obj)}")
-    try:
-        _log(f"  firma __init__: {inspect.signature(pdw_obj.__init__)}")
-    except Exception:
-        pass
-
-
-
-def _build_deficit_model(deficit_cls, turb_model=None, rotor_avg_model=None, block_model=None,
-                         user_kwargs: Optional[Dict[str, Any]] = None):
-    """Instancia el wake deficit model usando ag_core.physics.wake."""
-    return _physics_wake.build_deficit_model(
-        deficit_cls,
-        turb_model=turb_model,
-        rotor_avg_model=rotor_avg_model,
-        block_model=block_model,
-        user_kwargs=user_kwargs,
-        force_effective_ws=_FORCE_EFFECTIVE_WS,
-        log=_log,
-    )
-def _build_wfm(engine: str,
-               site,
-               windTurbines: WindTurbines,
-               wake_deficitModel,
-               superpositionModel,
-               *,
-               turbulenceModel=None,
-               rotorAvgModel=None,
-               blockageModel=None):
-    """Crea el WindFarmModel usando ag_core.physics.wake."""
-    return _physics_wake.build_wfm(
-        engine,
-        site,
-        windTurbines,
-        wake_deficitModel,
-        superpositionModel,
-        turbulenceModel=turbulenceModel,
-        rotorAvgModel=rotorAvgModel,
-        blockageModel=blockageModel,
-        force_effective_ws=_FORCE_EFFECTIVE_WS,
-        log=_log,
-    )
-def _run_sim_with_type_fallback(*args, **kwargs):
-    """Compatibilidad: delega la ejecución con fallback de `type_i` en ag_core.simulation.runner.
-
-    Mantiene las dos firmas históricas:
-    - _run_sim_with_type_fallback(wfm, xs, ys, types, need_types=bool) -> (sim, used_key)
-    - _run_sim_with_type_fallback(site=..., windTurbines=..., ...) -> sim
-    """
-    # ---- Firma antigua de compatibilidad interna ----
-    if args and callable(args[0]) and len(args) >= 3 and isinstance(args[1], np.ndarray):
-        wfm = args[0]
-        xs = args[1]
-        ys = args[2]
-        types = args[3] if len(args) > 3 else None
-        need_types = kwargs.get("need_types", False)
-        return _simulation_runner.call_wfm_with_type_fallback(
-            wfm,
-            xs,
-            ys,
-            type_i=types,
-            wd=kwargs.get("wd", None),
-            need_types=need_types,
-            log=_log,
-            warning_level=Qgis.Warning,
-        )
-
-    # ---- Firma nueva ----
-    site = kwargs["site"]
-    wt = kwargs["windTurbines"]
-    deficit = kwargs.get("wake_deficitModel") or kwargs.get("bg_deficitModel")
-    superpos = kwargs.get("superpositionModel")
-    xs = kwargs["xs"]
-    ys = kwargs["ys"]
-    engine = kwargs.get("engine", "auto")
-    type_i = kwargs.get("type_i", None)
-
-    return _simulation_runner.run_simulation(
-        site=site,
-        windTurbines=wt,
-        wake_deficitModel=deficit,
-        turbulenceModel=kwargs.get("turbulenceModel", None),
-        rotorAvgModel=kwargs.get("rotorAvgModel", None),
-        blockageModel=kwargs.get("blockageModel", None),
-        superpositionModel=superpos,
-        xs=xs,
-        ys=ys,
-        type_i=type_i,
-        wd=kwargs.get("wd", None),
-        engine=engine,
-        build_wfm=_build_wfm,
-        log=_log,
-        warning_level=Qgis.Warning,
-    )
-
-
-def _run_sim_robust(*,
-                   site,
-                   windTurbines: WindTurbines,
-                   deficit_cls,
-                   turbulenceModel,
-                   rotorAvgModel,
-                   blockageModel,
-                   engine: str,
-                   xs: np.ndarray,
-                   ys: np.ndarray,
-                   type_i=None,
-                   wd=None,
-                   superpositionModel=None,
-                   wake_deficit_kwargs: Optional[Dict[str, Any]] = None,
-                   blockage_alternatives: Optional[list] = None):
-    """Compatibilidad: delega la simulación robusta en ag_core.simulation.runner."""
-    fallback_cls = BG_DEF if (BG_DEF is not None and deficit_cls is not BG_DEF) else None
-    return _simulation_runner.run_robust_simulation(
-        site=site,
-        windTurbines=windTurbines,
-        deficit_cls=deficit_cls,
-        turbulenceModel=turbulenceModel,
-        rotorAvgModel=rotorAvgModel,
-        blockageModel=blockageModel,
-        engine=engine,
-        xs=xs,
-        ys=ys,
-        type_i=type_i,
-        wd=wd,
-        superpositionModel=superpositionModel,
-        wake_deficit_kwargs=wake_deficit_kwargs,
-        fallback_deficit_cls=fallback_cls,
-        blockage_alternatives=blockage_alternatives,
-        build_deficit_model=_build_deficit_model,
-        build_wfm=_build_wfm,
-        choose_superposition=_choose_superposition,
-        log=_log,
-        warning_level=Qgis.Warning,
-    )
-
-
 def _clip_hub_heights_to_site(wt_all: WindTurbines, site) -> None:
     _turbine_height.configure_logging(_log, warning_level=Qgis.Warning, info_level=Qgis.Info)
     return _turbine_height.clip_hub_heights_to_site(wt_all, site)
 
 
 def _hub_heights_per_turbine(wt_all: WindTurbines, type_i, n: int) -> np.ndarray:
-    return _turbine_height.hub_heights_per_turbine(wt_all, type_i, n)
+    return _turbine_height.hub_heights_per_turbine(wt_all, type_i, n, strict=True)
 
 
 def _compute_ti_per_turbine(*args,
                            ti_cap: float = 1.00,
-                           default_ti: float = 0.10,
                            hh_per_turb: Optional[np.ndarray] = None) -> np.ndarray:
-    return _resource_ti.compute_ti_per_turbine(
-        *args, ti_cap=ti_cap, default_ti=default_ti, hh_per_turb=hh_per_turb
-    )
+    return _resource_ti.compute_ti_per_turbine(*args, ti_cap=ti_cap, hh_per_turb=hh_per_turb)
 
 
 import numpy as np
 
-def _aep_per_turb(sim):
-    """Compatibilidad: delega la extracción AEP por turbina en ag_core.results.aep_arrays."""
-    return _result_arrays.aep_per_turb(sim)
+def _aep_per_turb(sim, hours_per_year: float = 8760.0):
+    """Compatibilidad: extrae AEP por turbina con anualización explícita."""
+    return _result_arrays.aep_per_turb(sim, hours_per_year=hours_per_year)
 
-def _is_node_rotor_avg_instance(rotor_mdl) -> bool:
-    """True si el rotor-average es NodeRotorAvgModel (compatible con WeightedSum)."""
-    return _physics_rotor.is_node_rotor_avg_instance(rotor_mdl)
-def _deficit_cls_name(deficit_cls) -> str:
-    """Nombre de clase para logs/heurísticas (acepta clase o instancia)."""
-    return _physics_wake.deficit_cls_name(deficit_cls)
-def _is_gaussian_deficit(deficit_cls) -> bool:
-    """True si el wake deficit es Gaussiano (candidato a WeightedSum)."""
-    return _physics_wake.is_gaussian_deficit(deficit_cls)
-def _is_weightedsum_incompatible_deficit(deficit_cls) -> bool:
-    """True si WeightedSum NO aplica (deficits no-Gaussian: NOJ/TurboNOJ/GCL)."""
-    return _physics_wake.is_weightedsum_incompatible_deficit(deficit_cls)
-def _choose_superposition(rotor_mdl, deficit_cls=None, engine: Optional[str] = None, selected: Optional[str] = "AUTO", include_blockage: bool = False):
-    """Selecciona/crea el superpositionModel evitando combinaciones no soportadas."""
-    return _physics_wake.make_superposition_model(selected, rotor_mdl, deficit_cls, engine, include_blockage=include_blockage, log=_log)
 def compute_aep_from_ui(wasp_dir: str,
                         models: List[Dict[str, Any]],
-                        wake_model: str = 'gauss',
-                        wake_deficit_model: Optional[str] = None,
-                        wake_deficit_kwargs: Optional[Dict[str, Any]] = None,
-                        blockage_deficit_model: Optional[str] = None,
-                        turbulence_model: Optional[str] = None,
-                        include_turbulence: bool = True,
-                        include_blockage: bool = True,
-                        include_rotor_avg: bool = True,
-                        rotor_avg_model: Optional[str] = None,
-                        superposition_model: Optional[str] = "AUTO",
+                        wake_model: Any = NOT_SET,
+                        wake_deficit_model: Any = NOT_SET,
+                        wake_deficit_kwargs: Any = NOT_SET,
+                        blockage_deficit_model: Any = NOT_SET,
+                        turbulence_model: Any = NOT_SET,
+                        include_turbulence: Any = NOT_SET,
+                        include_blockage: Any = NOT_SET,
+                        include_rotor_avg: Any = NOT_SET,
+                        rotor_avg_model: Any = NOT_SET,
+                        superposition_model: Any = NOT_SET,
                         compute_variants: bool = False,
                         fixed_ti: Optional[float] = None,
-                        wfm_engine: str = "auto",  # 'auto' | 'PDW' | 'A2A' | 'PUD'
+                        wfm_engine: Any = NOT_SET,
                         wrg_paths: Optional[List[str]] = None,
+                        wrg_speedup_method: str = "none",
+                        wrg_direction_count: Optional[int] = None,
+                        wrg_wd_interp: str = "nearest",
                         wrg_ti_paths: Optional[List[str]] = None,
                         wrg_ti_path: Optional[str] = None,
                         wrg_ti_heights_m: Optional[List[Optional[float]]] = None,
                         project_crs_authid: Optional[str] = None,
+                        energy_ws_step: Optional[float] = None,
+                        air_density_mode: str = "off",
+                        air_density_ref_kg_m3: Optional[float] = None,
+                        air_density_ref_altitude_m: Optional[float] = None,
                         progress_callback: Optional[Callable[[int, str], None]] = None,
+                        power_bin_mode: str = BIN_MEAN,
+                        wake_physics: Any = NOT_SET,
+                        wake_provenance: Optional[Dict[str, Any]] = None,
                         ) -> Dict[str, Any]:
+    """AEP of the models on a WRG or a GRD, with the wake physics of the request (result of schema 2).
+
+    The physics is ``wake_physics`` (``ag_core/wake_setup/api.py``) or, translated once, the fields of the previous
+    schema (``wfm_engine``, ``wake_deficit_model``, …, each «not indicated» by default); a request that cannot be read
+    or a configuration that cannot be calculated raises before loading anything (``api.RequestError``,
+    ``api.ConfigRejected``), and nothing is replaced. The wind farm model is built by the factory with the class
+    check before simulating, the main calculation and the terms of the signed loss breakdown (A_0 always, the
+    variants with ``compute_variants``) are calculated with it, and what was executed is read from the built objects.
+    All the PyWake work holds ``PYWAKE_LOCK``, shared with the wake raster.
+
+    With a WRG, the resource settings: ``wrg_direction_count`` directions (``None``, the initial choice of
+    ``resource_grid``), the interpolation ``wrg_wd_interp``, Speedup ``none`` (``wrg_speedup_method``; anything else
+    is refused) and the wind speeds that cover the band of the turbines with ``energy_ws_step`` (``None``, the
+    initial step of their curves). A request outside the options raises ``WrgContractError`` before any simulation,
+    never rounded. With a GRD, the directions and wind speeds of its ``Site``; the WRG settings do not apply.
+
+    ``wake_provenance`` is the provenance of a predefined model (``presets.provenance``), given with its configuration
+    when the calculation is launched; it is checked against it (``presets.checked_provenance``) and recorded in the
+    result.
+    """
+    config, legacy_request = _wake_api.resolve_request(
+        wake_physics, wfm_engine=wfm_engine, wake_deficit_model=wake_deficit_model,
+        superposition_model=superposition_model, rotor_avg_model=rotor_avg_model, turbulence_model=turbulence_model,
+        blockage_deficit_model=blockage_deficit_model, wake_deficit_kwargs=wake_deficit_kwargs,
+        include_turbulence=include_turbulence, include_blockage=include_blockage, include_rotor_avg=include_rotor_avg,
+        wake_model=wake_model)
+    _wake_api.check_calculable(config)
+    provenance = _wake_presets.checked_provenance(config, wake_provenance)
+    if legacy_request is not None:
+        _log(_wake_api.legacy_note(legacy_request), Qgis.Warning)
+    with PYWAKE_LOCK:
+        return _compute_aep(
+            config=config, provenance=provenance, legacy_request=legacy_request, wasp_dir=wasp_dir, models=models,
+            compute_variants=compute_variants, fixed_ti=fixed_ti, wrg_paths=wrg_paths,
+            wrg_speedup_method=wrg_speedup_method, wrg_direction_count=wrg_direction_count,
+            wrg_wd_interp=wrg_wd_interp, wrg_ti_paths=wrg_ti_paths, wrg_ti_path=wrg_ti_path,
+            wrg_ti_heights_m=wrg_ti_heights_m, project_crs_authid=project_crs_authid, energy_ws_step=energy_ws_step,
+            air_density_mode=air_density_mode, air_density_ref_kg_m3=air_density_ref_kg_m3,
+            air_density_ref_altitude_m=air_density_ref_altitude_m, progress_callback=progress_callback,
+            power_bin_mode=power_bin_mode)
 
 
+class _Discarded(Exception):
+    """A simulation of the attempt of the exception of WeightedSum with the 0 m/s node failed (#63, decision 4)."""
+
+
+def _compute_aep(*, config, provenance, legacy_request, wasp_dir, models, compute_variants, fixed_ti, wrg_paths,
+                 wrg_speedup_method, wrg_direction_count, wrg_wd_interp, wrg_ti_paths, wrg_ti_path, wrg_ti_heights_m,
+                 project_crs_authid, energy_ws_step, air_density_mode, air_density_ref_kg_m3,
+                 air_density_ref_altitude_m, progress_callback, power_bin_mode) -> Dict[str, Any]:
     def _progress(value: int, message: str) -> None:
         """Notifica el progreso al callback (si lo hay) y al log de QGIS."""
         if progress_callback is not None:
             try:
                 progress_callback(int(value), str(message))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         try:
             _log(f"[AEP][{value:3d}%] {message}", Qgis.Info)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     _progress(2, "Inicializando cálculo…")
+
+    # Several selected QGIS layers may belong to one physical turbine model.
+    # Compact them before both layout indexing and WindTurbines construction so
+    # the same dense type vector is used throughout the AEP calculation.
+    models = _turbine_factory.canonicalize_models(list(models or []))
+
+    # Ajustes del recurso que no dependen del fichero, antes de cargar nada: el Speedup y,
+    # con un WRG, las velocidades de cálculo de las turbinas (también sin modelos: error).
+    _orchestration.check_speedup(wrg_speedup_method)
+    wrg_speeds = None
+    if wrg_paths:
+        wrg_speeds = _orchestration.turbine_speed_grid(
+            _orchestration.effective_turbines(models), energy_ws_step, " | ".join(str(p) for p in wrg_paths),
+            bin_mean=power_bin_mode != POINT,
+        )
+
+    # Keep the caller-supplied TI separate from the loader fallback so reports
+    # can distinguish a deliberate fixed-TI run from the automatic 10% fallback
+    # used when no TI information was provided.
+    fixed_ti_requested = fixed_ti
 
     use_wrg, wrg_paths, wrg_ti_paths = _orchestration.normalize_resource_inputs(
         wasp_dir=wasp_dir,
@@ -808,6 +488,9 @@ def compute_aep_from_ui(wasp_dir: str,
         use_wrg=use_wrg,
         wasp_dir=wasp_dir,
         wrg_paths=wrg_paths,
+        wrg_speedup_method=wrg_speedup_method,
+        wrg_direction_count=wrg_direction_count,
+        wrg_wd_interp=wrg_wd_interp,
         wrg_ti_paths=wrg_ti_paths,
         wrg_ti_heights_m=wrg_ti_heights_m,
         project_crs_authid=project_crs_authid,
@@ -841,7 +524,7 @@ def compute_aep_from_ui(wasp_dir: str,
         wasp_dir=wasp_dir,
         use_wrg=use_wrg,
         wrg_paths=wrg_paths,
-        dtype=F32,
+        dtype=np.float64,  # UTM coordinates must not collapse to a float32 grid
         read_xy_csv=_read_xy_csv,
         bbox_from_site=_bbox_from_site,
     )
@@ -850,81 +533,51 @@ def compute_aep_from_ui(wasp_dir: str,
     type_i = layout["type_i"]
     use_types = bool(layout["use_types"])
     skipped = int(layout["skipped"])
+    _wake_api.check_layout(config, len(xs))  # what PyWake refuses only with the layout (R9f), before simulating
 
-    
-    # ===========================
-    # 2.4) Trazabilidad de selección del usuario
-    # ===========================
-    config_notes: List[str] = []
+    config_notes: List[Any] = [_wake_api.legacy_note(legacy_request)] if legacy_request is not None else []
     use_wrg_resource = bool(wrg_paths)
     ti_paths_used = [p for p in ((wrg_ti_paths or []) if wrg_ti_paths is not None else ([wrg_ti_path] if wrg_ti_path else [])) if p]
-    user_selected_config = _build_config_snapshot(
-        engine=wfm_engine or "AUTO",
-        wake=wake_deficit_model or wake_model or "BG",
-        turbulence=("NONE" if not include_turbulence else (turbulence_model or "NONE")),
-        blockage=("NONE" if not include_blockage else (blockage_deficit_model or "NONE")),
-        rotor_avg=("NONE" if not include_rotor_avg else (rotor_avg_model or "NONE")),
-        superposition=(superposition_model or "AUTO"),
-    )
-
-    # ===========================
-    # 2.5 / 3) Configuración física PyWake
-    # ===========================
-    _progress(20, "Configurando modelos PyWake (wake / TI / bloqueo / rotor-avg)…")
-    physical_config = _orchestration.build_physical_model_config(
-        wake_model=wake_model,
-        wake_deficit_model=wake_deficit_model,
-        blockage_deficit_model=blockage_deficit_model,
-        turbulence_model=turbulence_model,
-        include_turbulence=include_turbulence,
-        include_blockage=include_blockage,
-        include_rotor_avg=include_rotor_avg,
-        rotor_avg_model=rotor_avg_model,
-        superposition_model=superposition_model,
-        wfm_engine=wfm_engine,
-        resolve_engine_choice=_resolve_engine_choice,
-        set_force_effective_ws=_set_force_effective_ws,
-        make_turbulence_model=_make_turbulence_model,
-        make_rotor_avg_model=_make_rotor_avg_model,
-        choose_superposition=_choose_superposition,
-        log=_log,
-        info_level=Qgis.Info,
-        warning_level=Qgis.Warning,
-    )
-
-    config_notes.extend(physical_config["notes"])
-    engine = physical_config["engine"]
-    bg_def_cls = physical_config["wake_deficit_cls"]
-    key = physical_config["wake_key"]
-    wake_key_norm = physical_config["wake_key_norm"]
-    turb_model = physical_config["turbulence_model"]
-    block_model = physical_config["blockage_model"]
-    block_model_alternatives = physical_config["blockage_alternatives"]
-    rotor_avg_obj = physical_config["rotor_avg_model"]
-    superpos = physical_config["superposition_model"]
-    include_turbulence = bool(physical_config["include_turbulence"])
-    include_blockage = bool(physical_config["include_blockage"])
-    include_rotor_avg = bool(physical_config["include_rotor_avg"])
-    turbulence_model = physical_config["turbulence_model_key"]
-    blockage_deficit_model = physical_config["blockage_deficit_model_key"]
-    rotor_avg_model = physical_config["rotor_avg_model_key"]
-
 
     # ==========================================
     # 4) Construir WindTurbines combinado
     # ==========================================
     wt, use_types_wt = _combine_wt(models)
+    # Curvas sin Ct: el que se ha estimado no es un dato del fabricante, y el resultado lo dice.
+    for m in models:
+        meta = m.get("meta") if isinstance(m.get("meta"), dict) else {}
+        if meta.get("ct_estimated"):
+            note = log_text("Modelo «{name}»: {warning}", name=m.get("name") or meta.get("name") or "Custom WT",
+                            warning=log_text(CT_ESTIMATED_WARNING))
+            _log(note, Qgis.Info)
+            config_notes.append(note)
     # El WT combinado dicta si PyWake necesita type_i.
     use_types = bool(use_types_wt)
     if not use_types:
         type_i = None
 
-    # Forzar clipping de hub heights a rango del site (por seguridad)
+    # Validar compatibilidad vertical del WRG sin modificar la geometría de la turbina.
     _clip_hub_heights_to_site(wt, site)
-    # ===========================
-    # 5) Engine WFM (ya resuelto)
-    # ===========================
-    _log(f"[AEP] WFM engine utilizado: {engine}", Qgis.Info)
+    if use_wrg_resource:
+        try:
+            _wrg_policy = str(ds.attrs.get("wrg_vertical_policy", "?"))
+            _wrg_heights = list(ds.attrs.get("wrg_heights_m", []))
+            if _wrg_policy == "single_height_reference":
+                config_notes.append(log_text(
+                    "WRG: solo hay una altura climática ({heights}); se usa como referencia vertical "
+                    "sin modificar la altura de buje ni inferir shear.", heights=_wrg_heights,
+                ))
+            elif _wrg_policy == "multi_height_interpolation":
+                config_notes.append(log_text(
+                    "WRG: alturas climáticas disponibles {heights}; PyWake interpola linealmente en altura "
+                    "cuando la HH está dentro del rango.", heights=_wrg_heights,
+                ))
+            config_notes.append(log_text(
+                "WRG: se conservan A, k y frecuencia sectorial locales del WRG en cada "
+                "posición, sin convertirlos a una Weibull global + Speedup."
+            ))
+        except Exception:
+            pass
 
     # ===========================
     # 6) Turbulencia inicial (TI)
@@ -933,12 +586,9 @@ def compute_aep_from_ui(wasp_dir: str,
         try:
             _apply_fixed_ti(site, float(fixed_ti), prefer_var="TI")
         except Exception as e:
-            _log(f"[AEP] No se pudo fijar TI={fixed_ti}: {e}", Qgis.Warning)
-        hh_per_turb = _hub_heights_per_turbine(wt, type_i, len(xs))
-        ti_per_turb = _compute_ti_per_turbine(site, xs, ys, hh_per_turb=hh_per_turb)
-    else:
-        hh_per_turb = _hub_heights_per_turbine(wt, type_i, len(xs))
-        ti_per_turb = _compute_ti_per_turbine(site, xs, ys, hh_per_turb=hh_per_turb)
+            _log(log_text("[AEP] No se pudo fijar TI={ti}: {error}", ti=fixed_ti, error=e), Qgis.Warning)
+    hh_per_turb = _hub_heights_per_turbine(wt, type_i, len(xs))
+    ti_per_turb = _compute_ti_per_turbine(site, xs, ys, hh_per_turb=hh_per_turb)
 
     unique_hubs = []
     try:
@@ -947,228 +597,302 @@ def compute_aep_from_ui(wasp_dir: str,
     except Exception:
         unique_hubs = []
 
-
-    # Evaluar el recurso en las direcciones nativas del WRG/WAsP. Si no se pasa
-    # wd, PyWake usa 360 direcciones por defecto e interpola linealmente A/k/f
-    # entre sectores; en WRG sectorial eso introduce un sesgo apreciable en AEP libre.
-    wd_eval = _native_wd_for_site(ds)
-    if wd_eval is not None:
-        try:
-            _log(f"[AEP] Usando direcciones nativas del recurso: n={len(wd_eval)} ({float(wd_eval[0]):.1f}°..{float(wd_eval[-1]):.1f}°).", Qgis.Info)
-        except Exception:
-            pass
-
     # ==========================================
-    # 7) Ejecutar simulación principal AEP
+    # 6.4) Densidad del aire de cada turbina
     # ==========================================
-    _progress(35, "Simulación principal con PyWake…")
-    # Ejecutar simulación con degradación automática si PyWake no soporta la combinación elegida
-    sim_main, used_def_cls, used_turb, used_rotor, used_blk, used_superpos, used_attempt_label = _run_sim_robust(
+    # Qué densidad recibe cada turbina se decide en turbines/density_resolution.py.
+    # Aquí solo va la política del AEP: si no se puede establecer, AirDensityError
+    # detiene el cálculo, porque un AEP con la densidad equivocada es un número falso.
+    air_density = _density_resolution.resolve_air_density(
         site=site,
-        windTurbines=wt,
-        deficit_cls=bg_def_cls,
-        turbulenceModel=turb_model,
-        rotorAvgModel=rotor_avg_obj,
-        blockageModel=block_model,
-        superpositionModel=superpos,
+        wt=wt,
         xs=xs,
         ys=ys,
         type_i=type_i if use_types else None,
-        wd=wd_eval,
-        engine=engine,
-        wake_deficit_kwargs=wake_deficit_kwargs,
-        blockage_alternatives=block_model_alternatives,
+        mode=air_density_mode,
+        reference_density=air_density_ref_kg_m3,
+        reference_altitude_m=air_density_ref_altitude_m,
     )
+    wt_inputs: Dict[str, Any] = {}
+    if air_density.values is not None:
+        wt_inputs["Air_density"] = air_density.values
+    for message in air_density.warnings:
+        _log(message, Qgis.Warning)
+        config_notes.append(message)
+    for message in air_density.notes:
+        _log(message, Qgis.Info)
+        config_notes.append(message)
+    if air_density.info:
+        summary = log_text("Densidad del aire: {summary}.", summary=air_density.info["summary"])
+        _log(summary, Qgis.Info)
+        config_notes.append(summary)
 
-    # Si hubo degradación, sincronizar los modelos usados para el resto de cálculos
-    requested_def_cls = bg_def_cls
-    requested_turb_model = turb_model
-    requested_rotor_avg_obj = rotor_avg_obj
-    requested_block_model = block_model
-    requested_superpos = superpos
-
-    bg_def_cls = used_def_cls
-    turb_model = used_turb
-    rotor_avg_obj = used_rotor
-    block_model = used_blk
-    superpos = used_superpos
-
-    requested_config = _build_config_snapshot(
-        engine=engine,
-        wake=_safe_cls_name(requested_def_cls),
-        turbulence=_safe_name(requested_turb_model),
-        blockage=_safe_name(requested_block_model),
-        rotor_avg=_safe_name(requested_rotor_avg_obj),
-        superposition=type(requested_superpos).__name__,
+    # ==========================================
+    # 6.5) Parámetros del recurso
+    # ==========================================
+    resource = _orchestration.resolve_resource_settings(
+        site, ds, use_wrg=use_wrg_resource, source=(ds.attrs.get("wrg_source") if use_wrg_resource else used_dir),
+        speeds=wrg_speeds, models=models, bin_mean=power_bin_mode != POINT,
     )
-    executed_config = _build_config_snapshot(
-        engine=engine,
-        wake=_safe_cls_name(bg_def_cls),
-        turbulence=_safe_name(turb_model),
-        blockage=_safe_name(block_model),
-        rotor_avg=_safe_name(rotor_avg_obj),
-        superposition=type(superpos).__name__,
-    )
-    simulation_degraded = used_attempt_label != "seleccionado"
-    if simulation_degraded:
-        if used_attempt_label.startswith("bloqueo alternativo:"):
-            # Sustitución de modelo de bloqueo: la simulación conserva todo lo
-            # demás de la selección del usuario (wake, rotor-average,
-            # turbulencia). Mejor explicar qué ha pasado en vez de hablar de
-            # "degradación", que suena a algo se ha perdido.
-            _alt_name = used_attempt_label.split(":", 1)[1].strip() or "alternativo"
-            _user_blk = str(blockage_deficit_model or "SS2020")
-            config_notes.append(
-                f"Sustitución del modelo de bloqueo: la combinación seleccionada con {_user_blk} "
-                f"no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 "
-                f"no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando "
-                f"{_alt_name} como modelo alternativo de acoplamiento más débil con la TI efectiva. "
-                f"Esto preserva la partida de pérdidas por bloqueo manteniendo intactos wake, "
-                f"rotor-average y modelo de turbulencia."
-            )
+    resource_record = resource["record"]
+    wd_native = resource["native_wd"]
+    wd_eval = resource["wd"]
+    ws_eval = resource["ws"]
+    aep_hours_per_year = resource["hours_per_year"]
+    _log(_orchestration.resource_log_line(resource_record), Qgis.Info)
+    config_notes.append(_orchestration.resource_note(resource_record))
+    config_notes.extend(_resource_ti_notes(use_wrg=use_wrg_resource, wrg_ti_paths=ti_paths_used,
+                                           unique_hubs=unique_hubs))
+
+    # ==========================================
+    # 7) El modelo de parque de la configuración, y su simulación
+    # ==========================================
+    # Each wind farm model is built by the factory from its configuration, with the class check before simulating;
+    # nothing is replaced, and an error of PyWake is the error of the calculation (decisions 1 and 15).
+    def build(target: Any) -> Any:
+        if target is _variants.FREE_STREAM:
+            wfm = _wake_factory.build_free_stream_model(config, site, wt, ws_grid=ws_eval, power_bin_mode=power_bin_mode)
+            expected = _wake_factory.free_stream_expected_classes(config)
         else:
-            config_notes.append(f"La simulación principal no pudo ejecutarse con la combinación pedida y PyWake requirió la degradación automática: {used_attempt_label}.")
+            expected = _wake_factory.expected_classes(target)
+            wfm = _wake_factory.build_wind_farm_model(target, site, wt, ws_grid=ws_eval, power_bin_mode=power_bin_mode)
+        _wake_factory.check_classes(expected, wfm)
+        if target is not _variants.FREE_STREAM:
+            _wake_factory.check_ws_reference(target, wfm)
+        return wfm
 
-    # Detectar si hemos caído al fallback TI=10% en WRG sin raster TI
-    ti_fallback_10pct = bool(use_wrg_resource and not (ti_paths_used and any(ti_paths_used)))
+    # The edge cases (#63): their warnings, said as they come.
+    edge_warnings: List[Any] = []
 
-    config_notes.extend(_guidance_notes_for_config(
-        wake_cls=bg_def_cls,
-        turbulence_obj=turb_model,
-        use_wrg=use_wrg_resource,
-        wrg_ti_paths=ti_paths_used,
-        unique_hubs=unique_hubs,
-    ))
+    def edge_warning(text: Any) -> None:
+        _log(text, Qgis.Warning)
+        edge_warnings.append(text)
 
-    _log("[REPORT] Configuración pedida por el usuario: " + str(user_selected_config), Qgis.Info)
-    _log("[REPORT] Configuración solicitada al solver: " + str(requested_config), Qgis.Info)
-    _log("[REPORT] Configuración finalmente ejecutada: " + str(executed_config), Qgis.Info)
+    # The warnings of the arguments and the persistent ones, once, before the first simulation (decision 9), each
+    # part protected and with its own copies: a failure of a text is «aviso no disponible», never a stop of the
+    # calculation, and nothing it does reaches what is calculated.
+    persistent = []
+    for part in (lambda: _wake_notices.persistent_warnings(copy.deepcopy(config), hub_heights=copy.deepcopy(hh_per_turb)),
+                 lambda: _wake_notices.adaptation_notes(copy.deepcopy(config)),
+                 lambda: _wake_presets.notes(copy.deepcopy(provenance)) if provenance else []):
+        persistent += _edge_cases.guarded(edge_warning, part) or []
+    for note in persistent:
+        _log(note, Qgis.Warning)
 
-    # AEP con estelas (operativa)
-    aep_wake_wt = _aep_per_turb(sim_main)
-    aep_wake = float(aep_wake_wt.sum().item())
+    # The exception of WeightedSum with the 0 m/s node (decision 4): its plan, before simulating, with its own copies
+    # (a failure preparing it is the ordinary calculation, with the configuration of always).
+    zero_plan = _zero_node.plan(copy.deepcopy(config), copy.deepcopy(ws_eval))
+    if zero_plan.warning is not None:
+        edge_warning(zero_plan.warning)
+    variant_terms = _variants.variant_configs(config)
 
-    # AEP free-stream (sin efecto wake)
-    free_result = _simulation_runner.run_free_stream(
-        site=site,
-        windTurbines=wt,
-        no_wake_deficit_cls=NoWakeDeficit,
-        linear_sum_cls=LinearSum,
-        fallback_superposition=superpos,
-        rotorAvgModel=rotor_avg_obj,
-        xs=xs,
-        ys=ys,
-        type_i=type_i if use_types else None,
-        wd=wd_eval,
-        engine=engine,
-        build_deficit_model=_build_deficit_model,
-        build_wfm=_build_wfm,
-        aep_per_turb=_aep_per_turb,
-        log=_log,
-        warning_level=Qgis.Warning,
-    )
-    sim_free = free_result["sim_free"]
-    aep_free_wt = free_result["aep_free_wt"]
-    aep_free = float(free_result["aep_free"])
+    def calculate(attempt: Optional[_zero_node.Attempt]) -> Dict[str, Any]:
+        """The main simulation, the breakdown and the directional breakdown; with ``attempt``, every simulation runs
+        with the exception (``zero_node``). What it gives, with its diagnoses of the edge cases."""
+        diagnoses: Dict[str, Any] = {}
+        diagnosis_warnings: List[Any] = []
 
-    # --- Desglose por dirección (rosa de pérdidas por sector) ---
-    # Útil en la UI para ver qué direcciones del viento limitan más el AEP.
-    aep_per_wd_wake_mwh, aep_per_wd_free_mwh, sector_directions_deg = _result_arrays.extract_directional_breakdown(
-        sim_main,
-        sim_free,
-        log=lambda msg: _log(msg, Qgis.Info),
-    )
+        def simulate(wfm: Any) -> Any:
+            def one(ws: Any, operator_ws: Any = None) -> Any:
+                return _simulation_runner.simulate(wfm, xs, ys, type_i=type_i if use_types else None, wd=wd_eval,
+                                                   ws=ws, wt_inputs=wt_inputs, operator_ws=operator_ws)
+            return one(ws_eval) if attempt is None else attempt.simulate(one)
+
+        def diagnose(term: str, sim: Any) -> None:
+            """The edge cases of one simulation (decisions 2 and 5), protected, and only once the calculation has
+            read everything it reads from it: nothing the diagnosis does can change what was calculated. Its grids
+            of directions are read-only copies."""
+            def run() -> None:
+                found = _edge_cases.simulation_diagnosis(
+                    **_result_arrays.edge_case_arrays(sim, aep_hours_per_year),
+                    directions=None if wd_eval is None else _edge_cases.read_only(np.array(wd_eval, dtype=float)),
+                    sector_centers=None if wd_native is None else _edge_cases.read_only(np.array(wd_native, dtype=float)))
+                if found is not None:
+                    diagnoses[term] = found
+            _edge_cases.guarded(diagnosis_warnings.append, run)
+
+        _progress(35, "Simulación principal con PyWake…")
+        wfm_main = build(config)
+        executed = _wake_readers.executed_config(wfm_main, config)
+        with ConvergenceRecorder() as main_recorder:
+            sim_main = simulate(wfm_main)
+        principal = _aep_per_turb(sim_main, hours_per_year=aep_hours_per_year)
+        ti_effective = effective_ti_per_turbine(sim_main)
+        # Why a turbine has no effective TI (decision 8), protected: the value kept stays None.
+        ti_reasons = _edge_cases.guarded(
+            diagnosis_warnings.append,
+            lambda: _edge_cases.ti_reasons(*_result_arrays.ti_arrays(sim_main), None if ti_effective is None
+                                           else _edge_cases.read_only(ti_effective), len(xs)))
+
+        # ==========================================
+        # 8) El desglose firmado: A_0 siempre; las variantes, si se piden
+        # ==========================================
+        if compute_variants:
+            _progress(55, "Variantes del desglose de pérdidas…")
+        sims: Dict[str, Any] = {}
+        variant_recorder = ConvergenceRecorder()
+
+        def run(target: Any) -> np.ndarray:
+            wfm = build(target)
+            if target is _variants.FREE_STREAM:
+                sims["free"] = simulate(wfm)
+                return _aep_per_turb(sims["free"], hours_per_year=aep_hours_per_year)
+            with variant_recorder:
+                sim = simulate(wfm)
+            per_turbine = _aep_per_turb(sim, hours_per_year=aep_hours_per_year)
+            diagnose(next((t for t, c in variant_terms.items() if c == target), "?"), sim)  # its last use
+            return per_turbine
+
+        aep, aep_states, term_states, errors = _variants.run_breakdown(
+            config, principal, run, compute_variants=compute_variants,
+            turbulence_reaches_deficit=_variants.turbulence_changes_deficit(wfm_main.wake_deficitModel))
+
+        # --- Desglose por dirección (rosa de pérdidas por sector) ---
+        aep_per_wd_wake_mwh = aep_per_wd_free_mwh = sector_directions_deg = None
+        if "free" in sims:
+            aep_per_wd_wake_mwh, aep_per_wd_free_mwh, sector_directions_deg = _result_arrays.extract_directional_breakdown(
+                sim_main,
+                sims["free"],
+                log=lambda msg: _log(msg, Qgis.Info),
+                sector_centers_deg=wd_native,
+                hours_per_year=aep_hours_per_year,
+            )
+        diagnose("A_WTB", sim_main)  # after the directional breakdown, the last use of these two simulations
+        if "free" in sims:
+            diagnose("A_0", sims["free"])
+        if attempt is not None and attempt.join_error is not None:
+            raise attempt.join_error  # joining the 0 m/s slice is code of the calculation: its error, never skipped
+        if attempt is not None and attempt.error is not None:
+            raise _Discarded()  # a simulation of the attempt failed (also a variant): none of it counts
+        return dict(executed=executed, main_recorder=main_recorder, principal=principal, ti_effective=ti_effective,
+                    ti_reasons=ti_reasons,
+                    aep=aep, aep_states=aep_states, term_states=term_states, errors=errors,
+                    variant_recorder=variant_recorder, aep_per_wd_wake_mwh=aep_per_wd_wake_mwh,
+                    aep_per_wd_free_mwh=aep_per_wd_free_mwh, sector_directions_deg=sector_directions_deg,
+                    diagnoses=diagnoses, diagnosis_warnings=diagnosis_warnings,
+                    auxiliary=attempt.auxiliary_summary() if attempt is not None else None)
+
+    attempt = _zero_node.Attempt(zero_plan) if zero_plan.applies else None
+    try:
+        out = calculate(attempt)
+    except Exception:
+        if attempt is not None and attempt.join_error is not None:
+            raise attempt.join_error  # also with a failed simulation: joining the slice is code of the calculation
+        if attempt is None or attempt.error is None:
+            raise
+        # With the grid without 0 m/s PyWake fails where the whole grid may calculate: the whole calculation again,
+        # with the whole grid, and said; nothing of the attempt is kept (decision 4).
+        retry = attempt.retry_warning()
+        _log(retry, Qgis.Warning)
+        edge_warnings.append(retry)
+        attempt = None
+        out = calculate(None)
+    for warning in out["diagnosis_warnings"]:
+        _log(warning, Qgis.Warning)
+    edge_warnings.extend(out["diagnosis_warnings"])
+    # The texts of the diagnoses (decisions 2 and 5), protected: the warnings to every output, the cases without
+    # energy only to the log.
+    for term, diagnosis in out["diagnoses"].items():
+        label = (log_text("Cálculo principal") if term == "A_WTB"
+                 else log_text("Variantes del desglose ({term})", term=term))
+        texts = _edge_cases.guarded(edge_warning, _edge_cases.diagnosis_warnings, diagnosis, label) or {}
+        for warning in texts.get("warnings") or []:
+            edge_warning(warning)
+        for note in texts.get("notes") or []:
+            _log(note, Qgis.Info)
+    # Why a turbine has no effective TI (decision 8): a warning for each reason.
+    for reason in _edge_cases.TI_REASON_TEXTS:
+        turbines = [i for i, r in (out["ti_reasons"] or {}).items() if r == reason]
+        if turbines:
+            edge_warning(log_text("TI efectiva {reason} en las turbinas {turbines}: no se guarda ningún valor.",
+                                  reason=log_text(_edge_cases.TI_REASON_TEXTS[reason]),
+                                  turbines=", ".join(str(i) for i in sorted(turbines))))
+    if attempt is not None:
+        _log(attempt.note(), Qgis.Info)
+        config_notes.append(attempt.note())
+    executed, main_recorder, variant_recorder = out["executed"], out["main_recorder"], out["variant_recorder"]
+    principal, ti_effective, aep, errors = out["principal"], out["ti_effective"], out["aep"], out["errors"]
+    aep_states, term_states = out["aep_states"], out["term_states"]
+    aep_per_wd_wake_mwh, aep_per_wd_free_mwh = out["aep_per_wd_wake_mwh"], out["aep_per_wd_free_mwh"]
+    sector_directions_deg = out["sector_directions_deg"]
+    for term, error in errors.items():
+        _log(log_text("[AEP] No se pudo calcular {term}: {error}", term=term, error=error), Qgis.Warning)
 
     # ==========================================
-    # 8) Simulaciones variantes (wake-only, TI, bloqueo)
+    # 9) Convergencia, avisos persistentes y configuración ejecutada
     # ==========================================
-    if compute_variants:
-        _progress(55, "Variantes: wake-only / wake+TI / wake+bloqueo…")
-
-    variants = _simulation_runner.run_simulation_variants(
-        compute_variants=compute_variants,
-        site=site,
-        windTurbines=wt,
-        deficit_cls=bg_def_cls,
-        turbulenceModel=turb_model,
-        rotorAvgModel=rotor_avg_obj,
-        blockageModel=block_model,
-        superpositionModel=superpos,
-        xs=xs,
-        ys=ys,
-        type_i=type_i if use_types else None,
-        wd=wd_eval,
-        engine=engine,
-        ti_coupled_classes=(NIA_DEF, ZG_DEF, TG_DEF, TNOJ_DEF, GCL_DEF),
-        wake_deficit_kwargs=wake_deficit_kwargs,
-        build_deficit_model=_build_deficit_model,
-        build_wfm=_build_wfm,
-        aep_per_turb=_aep_per_turb,
-        log=_log,
-        info_level=Qgis.Info,
-        warning_level=Qgis.Warning,
-    )
-
-    ti_breakdown_disabled_for_ti_coupled = bool(variants["ti_breakdown_disabled_for_ti_coupled"])
-    if variants.get("ti_coupled_note"):
-        config_notes.append(str(variants["ti_coupled_note"]))
-
-    aep_wake_only = variants["aep_wake_only"]
-    aep_wake_ti = variants["aep_wake_ti"]
-    aep_wake_blk_only = variants["aep_wake_blk_only"]
-    aep_wake_ti_blk = variants["aep_wake_ti_blk"]
-
-    aep_wake_only_wt = variants["aep_wake_only_wt"]
-    aep_wake_ti_wt = variants["aep_wake_ti_wt"]
-    aep_wake_blk_only_wt = variants["aep_wake_blk_only_wt"]
-    aep_wake_ti_blk_wt = variants["aep_wake_ti_blk_wt"]
+    convergence = {"main": main_recorder.summary(), "variants": variant_recorder.summary()}
+    if out["auxiliary"] is not None:
+        convergence["auxiliary_zero"] = out["auxiliary"]
+    convergence_notes = [log_text("Cálculo principal: {warning}", warning=w)
+                         for w in _wake_notices.convergence_warnings(convergence["main"])]
+    convergence_notes += [log_text("Variantes del desglose: {warning}", warning=w)
+                          for w in _wake_notices.convergence_warnings(convergence["variants"])]
+    convergence_notes += [log_text("Simulación auxiliar de 0 m/s: {warning}", warning=w)
+                          for w in _wake_notices.convergence_warnings(convergence.get("auxiliary_zero") or {})]
+    for note in convergence_notes:
+        _log(note, Qgis.Warning)
+    selection = _wake_api.user_selection(config)
+    wake_config = {
+        "selected": selection.to_dict(), "effective": config.to_dict(),
+        "identification": _wake_config.identification(config),
+        "differences_vs_signature": _wake_config.differences_vs_signature(config),
+        "expected_classes": {p: (c.__name__ if c else None)
+                             for p, c in _wake_factory.expected_classes(config).items()},
+        "executed": executed,
+        "differences_vs_selection": _wake_readers.differences_vs_selection(executed, selection),
+        "adaptations": config.to_dict()["adaptations"],
+        "legacy_request": legacy_request,
+    }
+    if provenance is not None:
+        # A predefined model: its identification (its differences with the signatures are not the user's), adapted when
+        # the user accepted CGIRotorAvg(7) (decision 19 of the predefined models), and where it comes from, with the
+        # full configuration above.
+        wake_config["identification"] = _wake_presets.identification(provenance, config)
+        wake_config["provenance"] = provenance
+        data = dict(preset=provenance["preset"], revision=provenance["revision"],
+                    reference=provenance["reference_class"], reference_version=provenance["reference_version"],
+                    executed_version=provenance["executed_version"])
+        if config.adaptations:
+            _log(log_text("[REPORT] Configuración adaptada a partir del modelo predefinido {preset}, revisión {revision} "
+                          "({reference} de PyWake {reference_version}), calculada con PyWake {executed_version}.",
+                          **data), Qgis.Info)
+        else:
+            _log(log_text("[REPORT] Modelo predefinido {preset}, revisión {revision}: {reference} de PyWake "
+                          "{reference_version}, calculado con PyWake {executed_version}.", **data), Qgis.Info)
+    _log("[REPORT] Configuración ejecutada: " + str(wake_config["identification"]), Qgis.Info)
+    for line in _wake_readers.executed_lines(executed):
+        _log("[REPORT]   " + line, Qgis.Info)
 
     # ==========================================
-    # 9) Construcción del resultado final para la UI
+    # 10) Construcción del resultado final para la UI (esquema 2)
     # ==========================================
-    _progress(80, "Calculando desglose por modelo / cluster…")
     _progress(92, "Generando tabla por aerogenerador…")
-
-    return _orchestration.build_energy_result_payload(
-        models=models,
-        xs=xs,
-        ys=ys,
-        skipped=skipped,
-        use_types=use_types,
-        type_i=type_i,
-        compute_variants=compute_variants,
-        aep_free=aep_free,
-        aep_wake=aep_wake,
-        aep_free_wt=aep_free_wt,
-        aep_wake_wt=aep_wake_wt,
-        aep_wake_only=aep_wake_only,
-        aep_wake_ti=aep_wake_ti,
-        aep_wake_blk_only=aep_wake_blk_only,
-        aep_wake_ti_blk=aep_wake_ti_blk,
-        aep_wake_only_wt=aep_wake_only_wt,
-        aep_wake_ti_wt=aep_wake_ti_wt,
-        aep_wake_blk_only_wt=aep_wake_blk_only_wt,
-        aep_wake_ti_blk_wt=aep_wake_ti_blk_wt,
-        ti_breakdown_disabled_for_ti_coupled=ti_breakdown_disabled_for_ti_coupled,
-        ti_per_turb=ti_per_turb,
-        block_model=block_model,
-        turb_model=turb_model,
-        rotor_avg_obj=rotor_avg_obj,
-        superpos=superpos,
-        bg_def_cls=bg_def_cls,
-        engine=engine,
-        aep_per_wd_wake_mwh=aep_per_wd_wake_mwh,
-        aep_per_wd_free_mwh=aep_per_wd_free_mwh,
-        sector_directions_deg=sector_directions_deg,
-        user_selected_config=user_selected_config,
-        requested_config=requested_config,
-        executed_config=executed_config,
-        simulation_degraded=simulation_degraded,
-        used_attempt_label=used_attempt_label,
-        config_notes=config_notes,
-        ti_fallback_10pct=ti_fallback_10pct,
-        log=lambda msg: _log(msg),
-    )
+    result = _result_v2.build_result(
+        models=models, xs=xs, ys=ys, use_types=use_types, type_i=type_i, skipped=skipped,
+        skipped_by_model=layout["skipped_by_model"], aep=aep, aep_states=aep_states, term_states=term_states,
+        errors=errors, ti_ambient=ti_per_turb, ti_effective=ti_effective, aep_per_wd_wake_mwh=aep_per_wd_wake_mwh,
+        aep_per_wd_free_mwh=aep_per_wd_free_mwh, sector_directions_deg=sector_directions_deg,
+        wake_config=wake_config, convergence=convergence, persistent_warnings=persistent,
+        notes=config_notes + convergence_notes + edge_warnings, resource_settings=resource_record, air_density=air_density.info,
+        log=lambda msg: _log(msg))
+    result["ti_fallback_10pct"] = bool(
+        use_wrg_resource and not ti_paths_used and fixed_ti_requested is None and fixed_ti is not None
+        and abs(float(fixed_ti) - 0.10) <= 1e-9)
+    # The edge cases (#63), only when there are some: an ordinary result has none of these keys.
+    if attempt is not None:  # the grids executed with the exception of WeightedSum (decision 4)
+        result["executed_ws"] = {"simulations_m_s": attempt.plan.ws.tolist(),
+                                 "zero_node_m_s": attempt.plan.small_ws.tolist(),
+                                 "bin_mean_m_s": attempt.plan.operator_ws.tolist()}
+    if out["ti_reasons"]:  # the reason of each turbine without an effective TI (decision 8); its warnings, above
+        result["ti_effective_reasons"] = {str(i): reason for i, reason in out["ti_reasons"].items()}
+        for row in result.get("per_turbine_table") or []:
+            reason = out["ti_reasons"].get(int(row.get("id", 0) or 0))
+            if reason is not None:
+                row["ti_effective_reason"] = _edge_cases.TI_REASON_TEXTS[reason]
+    if out["diagnoses"] or edge_warnings:
+        result["edge_cases"] = {"diagnoses": out["diagnoses"], "warnings": edge_warnings}
+    return result
 
 
 # ============================================================
@@ -1207,32 +931,50 @@ def compute_and_update(
     models: List[Dict[str, Any]],
     *,
     wrg_paths: Optional[List[str]] = None,
+    wrg_speedup_method: str = "none",
+    wrg_direction_count: Optional[int] = None,
+    wrg_wd_interp: str = "nearest",
     compute_variants: bool = True,
-    include_turbulence: bool = True,
-    include_blockage: bool = True,
-    include_rotor_avg: bool = True,
+    include_turbulence: Any = NOT_SET,
+    include_blockage: Any = NOT_SET,
+    include_rotor_avg: Any = NOT_SET,
     fixed_ti: Optional[float] = None,
     wrg_ti_paths: Optional[List[str]] = None,
     wrg_ti_path: Optional[str] = None,
     wrg_ti_heights_m: Optional[List[Optional[float]]] = None,
     project_crs_authid: Optional[str] = None,
-    wfm_engine: str = "auto",
-    wake_deficit_model: str = "BG",
-    wake_deficit_kwargs: Optional[Dict[str, Any]] = None,
-    blockage_deficit_model: Optional[str] = None,
-    turbulence_model: Optional[str] = None,
-    rotor_avg_model: Optional[str] = None,
-    superposition_model: Optional[str] = "AUTO",
+    wfm_engine: Any = NOT_SET,
+    wake_deficit_model: Any = NOT_SET,
+    wake_deficit_kwargs: Any = NOT_SET,
+    blockage_deficit_model: Any = NOT_SET,
+    turbulence_model: Any = NOT_SET,
+    rotor_avg_model: Any = NOT_SET,
+    superposition_model: Any = NOT_SET,
+    wake_physics: Any = NOT_SET,
+    wake_provenance: Optional[Dict[str, Any]] = None,
+    wake_model: Any = NOT_SET,
+    energy_ws_step: Optional[float] = None,
+    air_density_mode: str = "off",
+    air_density_ref_kg_m3: Optional[float] = None,
+    air_density_ref_altitude_m: Optional[float] = None,
+    update_project_layers: bool = True,
     tol_m: float = 30.0,
     progress_callback: Optional[Callable[[int, str], None]] = None,
 ) -> Dict[str, Any]:
     """
-    Calcula y actualiza las capas del proyecto en un paso.
+    Calcula y actualiza las capas del proyecto en un paso. La física, como en ``compute_aep_from_ui``: los campos
+    que no se indican llegan como «no indicados» (``NOT_SET``), nunca con un valor por defecto propio.
     """
     res = compute_aep_from_ui(
+        wake_physics=wake_physics,
+        wake_provenance=wake_provenance,
+        wake_model=wake_model,
         wasp_dir=wasp_dir,
         models=models,
         wrg_paths=wrg_paths,
+        wrg_speedup_method=wrg_speedup_method,
+        wrg_direction_count=wrg_direction_count,
+        wrg_wd_interp=wrg_wd_interp,
         include_turbulence=include_turbulence,
         include_blockage=include_blockage,
         include_rotor_avg=include_rotor_avg,
@@ -1249,17 +991,28 @@ def compute_and_update(
         turbulence_model=turbulence_model,
         rotor_avg_model=rotor_avg_model,
         superposition_model=superposition_model,
+        energy_ws_step=energy_ws_step,
+        air_density_mode=air_density_mode,
+        air_density_ref_kg_m3=air_density_ref_kg_m3,
+        air_density_ref_altitude_m=air_density_ref_altitude_m,
         progress_callback=progress_callback,
     )
     if progress_callback is not None:
         try:
-            progress_callback(96, "Volcando resultados a las capas QGIS…")
-        except Exception:
+            progress_callback(96, "Volcando resultados a las capas QGIS…" if update_project_layers else "Finalizando caso de sensibilidad…")
+        except Exception:  # nosec B110
             pass
-    update_layers_from_results(res["per_turbine_table"], models, tol_m=tol_m)
+    if update_project_layers:
+        rows = res["per_turbine_table"]
+        if res.get("wake_config"):
+            # Each entity that receives the results carries the identification and the warnings of this calculation.
+            texts = _qgis_export.wake_texts(res)
+            rows = [dict(row, **texts) for row in rows]
+        update_layers_from_results(rows, models, tol_m=tol_m)
     if progress_callback is not None:
         try:
             progress_callback(100, "Cálculo completado.")
-        except Exception:
+        except Exception:  # nosec B110
             pass
     return res
+

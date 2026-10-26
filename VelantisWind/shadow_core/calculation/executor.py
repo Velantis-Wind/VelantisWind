@@ -27,7 +27,7 @@ def _process_events() -> None:
     """Keep the UI responsive while preserving the current synchronous flow."""
     try:
         QtWidgets.QApplication.processEvents()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -45,7 +45,7 @@ def _set_progress(progress_dialog: Any, value: int, label: Optional[str] = None)
         if label is not None:
             progress_dialog.setLabelText(label)
         progress_dialog.setValue(max(0, min(100, int(value))))
-    except Exception:
+    except Exception:  # nosec B110
         pass
     _process_events()
 

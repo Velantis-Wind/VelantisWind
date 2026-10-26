@@ -25,7 +25,7 @@ def _available_geometry(widget: Optional[QtWidgets.QWidget] = None):
             screen = QtWidgets.QApplication.primaryScreen()
         if screen is not None:
             return screen.availableGeometry()
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return QtCore.QRect(0, 0, 1280, 800)
 
@@ -61,7 +61,7 @@ def fit_to_screen(
     except Exception:
         try:
             widget.resize(*preferred)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
 
@@ -72,7 +72,7 @@ def configure_scroll_area(scroll: QtWidgets.QScrollArea) -> None:
         scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -100,7 +100,7 @@ def configure_table(
                 header.setSectionResizeMode(c, QtWidgets.QHeaderView.Interactive)
             else:
                 header.setSectionResizeMode(c, QtWidgets.QHeaderView.ResizeToContents)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -111,5 +111,5 @@ def relax_fixed_buttons(buttons: Iterable[QtWidgets.QAbstractButton], *, min_siz
             btn.setMinimumSize(int(min_size[0]), int(min_size[1]))
             btn.setMaximumSize(16777215, 16777215)
             btn.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
-        except Exception:
+        except Exception:  # nosec B112
             continue

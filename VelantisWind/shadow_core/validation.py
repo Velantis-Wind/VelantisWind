@@ -29,6 +29,16 @@ def validate_shadow_run_config(config: ShadowRunConfig) -> List[str]:
             errors.append(_ml("La capa de aerogeneradores seleccionada no contiene entidades.", "The selected wind-turbine layer contains no features.", "La couche d’éoliennes sélectionnée ne contient aucune entité.", "Der ausgewählte Windturbinen-Layer enthält keine Features."))
         elif QgsWkbTypes.geometryType(lyr.wkbType()) != QgsWkbTypes.PointGeometry:
             errors.append(_ml("La capa de aerogeneradores debe contener geometrías de punto.", "The wind-turbine layer must contain point geometries.", "La couche d’éoliennes doit contenir des géométries ponctuelles.", "Der Windturbinen-Layer muss Punktgeometrien enthalten."))
+        elif not lyr.crs().isValid() or lyr.crs() != prj.crs():
+            # The calculation measures turbines and receivers in their layers' coordinates. Energy's selector lets a
+            # row take a layer in any CRS, and its turbine data make it a shadow source.
+            name = lyr.name()
+            errors.append(_ml(
+                f"La capa de aerogeneradores «{name}» no está en el sistema de coordenadas del proyecto: reproyéctala.",
+                f"The wind-turbine layer “{name}” is not in the project's coordinate reference system: reproject it.",
+                f"La couche d’éoliennes « {name} » n’est pas dans le système de coordonnées du projet : reprojetez-la.",
+                f"Der Windturbinen-Layer „{name}“ ist nicht im Koordinatenbezugssystem des Projekts: Projizieren Sie ihn um.",
+            ))
 
     if not config.receiver_layer_id:
         errors.append(_ml("Selecciona una capa de receptores.", "Select a receiver layer.", "Sélectionnez une couche de récepteurs.", "Wählen Sie einen Rezeptor-Layer aus."))
@@ -44,11 +54,11 @@ def validate_shadow_run_config(config: ShadowRunConfig) -> List[str]:
     if config.dem_layer_id:
         dem = prj.mapLayer(config.dem_layer_id)
         if dem is None:
-            errors.append(_ml("No se encontró la capa MDT/DEM seleccionada; actualiza el módulo de sombras.", "The selected DEM/DTM layer was not found; refresh the shadow module.", "La couche MDT/DEM sélectionnée est introuvable ; actualisez le module d’ombres.", "Der ausgewählte DGM/DEM-Layer wurde nicht gefunden; aktualisieren Sie das Schattenwurfmodul."))
+            errors.append(_ml("No se encontró la capa MDT/DEM seleccionada; actualiza el módulo de sombras.", "The selected DEM layer was not found; refresh the shadow flicker module.", "La couche MNT sélectionnée est introuvable ; actualisez le module d’ombres portées.", "Der ausgewählte DGM-Layer wurde nicht gefunden; aktualisieren Sie das Schattenwurfmodul."))
         elif not isinstance(dem, QgsRasterLayer):
-            errors.append(_ml("La entrada MDT/DEM seleccionada no es una capa raster.", "The selected DEM/DTM entry is not a raster layer.", "L’entrée MDT/DEM sélectionnée n’est pas une couche raster.", "Der ausgewählte DGM/DEM-Eintrag ist kein Raster-Layer."))
+            errors.append(_ml("La entrada MDT/DEM seleccionada no es una capa ráster.", "The selected DEM entry is not a raster layer.", "L’entrée MNT sélectionnée n’est pas une couche raster.", "Der ausgewählte DGM-Eintrag ist kein Raster-Layer."))
         elif not dem.isValid():
-            errors.append(_ml("El raster MDT/DEM seleccionado no es válido.", "The selected DEM/DTM raster is not valid.", "Le raster MDT/DEM sélectionné n’est pas valide.", "Das ausgewählte DGM/DEM-Raster ist nicht gültig."))
+            errors.append(_ml("El ráster MDT/DEM seleccionado no es válido.", "The selected DEM raster is not valid.", "Le raster MNT sélectionné n’est pas valide.", "Das ausgewählte DGM-Raster ist nicht gültig."))
 
     if not (-90.0 <= config.latitude <= 90.0):
         errors.append(_ml("La latitud debe estar entre -90° y 90°.", "Latitude must be between -90° and 90°.", "La latitude doit être comprise entre -90° et 90°.", "Der Breitengrad muss zwischen -90° und 90° liegen."))
@@ -59,9 +69,9 @@ def validate_shadow_run_config(config: ShadowRunConfig) -> List[str]:
     if config.max_shadow_distance_m <= 0:
         errors.append(_ml("La distancia máxima de sombra debe ser mayor que 0 m.", "The maximum shadow distance must be greater than 0 m.", "La distance maximale d’ombre doit être supérieure à 0 m.", "Die maximale Schattenentfernung muss größer als 0 m sein."))
     if config.raster_resolution_m <= 0:
-        errors.append(_ml("La resolución del raster debe ser mayor que 0 m.", "Raster resolution must be greater than 0 m.", "La résolution du raster doit être supérieure à 0 m.", "Die Rasterauflösung muss größer als 0 m sein."))
+        errors.append(_ml("La resolución del ráster debe ser mayor que 0 m.", "Raster resolution must be greater than 0 m.", "La résolution du raster doit être supérieure à 0 m.", "Die Rasterauflösung muss größer als 0 m sein."))
     if config.raster_timestep_minutes <= 0:
-        errors.append(_ml("El paso temporal del raster debe ser mayor que 0 minutos.", "The raster time step must be greater than 0 minutes.", "Le pas temporel du raster doit être supérieur à 0 minute.", "Der Raster-Zeitschritt muss größer als 0 Minuten sein."))
+        errors.append(_ml("El paso temporal del ráster debe ser mayor que 0 minutos.", "The raster time step must be greater than 0 minutes.", "Le pas temporel du raster doit être supérieur à 0 minute.", "Der Raster-Zeitschritt muss größer als 0 Minuten sein."))
     if config.observer_height_m < 0:
         errors.append(_ml("La altura del observador no puede ser negativa.", "Observer height cannot be negative.", "La hauteur de l’observateur ne peut pas être négative.", "Die Beobachterhöhe darf nicht negativ sein."))
     if config.min_sun_elevation_deg >= config.max_sun_elevation_deg:

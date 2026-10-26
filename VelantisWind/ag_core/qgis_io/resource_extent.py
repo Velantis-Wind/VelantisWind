@@ -11,8 +11,10 @@ import os
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple
 
 from qgis.PyQt.QtCore import QVariant
+from ...crs_utils import portable_crs_definition, memory_layer_with_crs
 from qgis.core import (
     QgsProject,
+    QgsCoordinateReferenceSystem,
     QgsVectorLayer,
     QgsRasterLayer,
     QgsField,
@@ -28,6 +30,15 @@ try:
 except Exception:  # pragma: no cover - only when imported outside QGIS
     iface = None  # type: ignore
 
+
+def _tr(text: str) -> str:
+    """Translate a message template; outside the plugin it stays in Spanish."""
+    try:
+        from ...i18n import tr_text
+    except Exception:
+        return text
+    return tr_text(text)
+
 _LAYER_PROP = "velantis/resource_extent"
 _LAYER_NAME = "Velantis · perímetro recurso eólico"
 _GROUP_NAME = "Velantis · Recurso eólico"
@@ -39,11 +50,9 @@ ExtentTuple = Tuple[float, float, float, float]  # xmin, xmax, ymin, ymax
 def _project_crs_authid() -> str:
     try:
         crs = QgsProject.instance().crs()
-        if crs is not None and crs.isValid() and crs.authid():
-            return crs.authid()
-    except Exception:
-        pass
-    return "EPSG:25830"
+        return portable_crs_definition(crs)
+    except Exception:  # nosec B110
+        return ""
 
 
 def _valid_extent(ext: ExtentTuple) -> bool:
@@ -95,7 +104,7 @@ def clear_resource_extent_layers() -> int:
         try:
             if lyr.customProperty(_LAYER_PROP, False):
                 to_remove.append(lyr.id())
-        except Exception:
+        except Exception:  # nosec B112
             continue
     if to_remove:
         prj.removeMapLayers(to_remove)
@@ -120,7 +129,7 @@ def _apply_extent_style(layer: QgsVectorLayer, source_type: str) -> None:
         })
         layer.renderer().setSymbol(symbol)
         layer.triggerRepaint()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -134,16 +143,18 @@ def add_extent_layer(
 ) -> QgsVectorLayer:
     """Create/replace a memory polygon layer with the supplied extent."""
     if not _valid_extent(extent):
-        raise ValueError(f"Extensión no válida: {extent}")
-
-    clear_resource_extent_layers()
+        raise ValueError(_tr("Extensión no válida: {extent}").format(extent=extent))
 
     xmin, xmax, ymin, ymax = [float(v) for v in extent]
-    crs_authid = crs_authid or _project_crs_authid()
-    uri = f"Polygon?crs={crs_authid}" if crs_authid else "Polygon"
-    layer = QgsVectorLayer(uri, _LAYER_NAME, "memory")
-    if not layer.isValid():
-        raise RuntimeError("No se pudo crear la capa temporal de perímetro del recurso.")
+    crs_definition = crs_authid or _project_crs_authid()
+    crs = QgsCoordinateReferenceSystem(crs_definition) if crs_definition else QgsCoordinateReferenceSystem()
+    if not crs.isValid() and crs_definition:
+        crs = QgsCoordinateReferenceSystem.fromWkt(crs_definition)
+    if not crs.isValid():
+        raise ValueError(_tr("CRS del recurso/proyecto no válido; no se dibuja un perímetro con CRS supuesto."))
+    layer = memory_layer_with_crs("Polygon", _LAYER_NAME, crs)
+    # Keep the previous perimeter if QGIS cannot create its replacement.
+    clear_resource_extent_layers()
 
     prov = layer.dataProvider()
     prov.addAttributes([
@@ -188,7 +199,7 @@ def add_extent_layer(
             canvas = iface.mapCanvas()
             canvas.setExtent(QgsRectangle(xmin, ymin, xmax, ymax))
             canvas.refresh()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     return layer
@@ -257,13 +268,13 @@ def _extent_from_raster_file(path: str) -> Tuple[Optional[ExtentTuple], Optional
             ext = (float(e.xMinimum()), float(e.xMaximum()), float(e.yMinimum()), float(e.yMaximum()))
             crs_authid = None
             try:
-                if r.crs().isValid() and r.crs().authid():
-                    crs_authid = r.crs().authid()
+                if r.crs().isValid():
+                    crs_authid = portable_crs_definition(r.crs())
             except Exception:
                 crs_authid = None
             if _valid_extent(ext):
                 return ext, crs_authid
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     for parser in (_parse_dsaa_extent, _parse_esri_ascii_extent):
@@ -298,11 +309,11 @@ def _iter_grid_files(folder: str) -> Iterable[str]:
 def show_wasp_resource_extent(folder: str, *, zoom: bool = False) -> Tuple[bool, str]:
     """Draw the common domain of WAsP/Surfer grids in a folder."""
     if not os.path.isdir(folder):
-        return False, "La carpeta WAsP/Surfer no existe."
+        return False, _tr("La carpeta WAsP/Surfer no existe.")
 
     candidates = list(_iter_grid_files(folder))
     if not candidates:
-        return False, "No se han encontrado grids .grd/.asc/.tif en la carpeta seleccionada."
+        return False, _tr("No se han encontrado grids .grd/.asc/.tif en la carpeta seleccionada.")
 
     extents: List[ExtentTuple] = []
     crs_authid: Optional[str] = None
@@ -315,19 +326,19 @@ def show_wasp_resource_extent(folder: str, *, zoom: bool = False) -> Tuple[bool,
             crs_authid = crs
 
     if not extents:
-        return False, "No se pudo leer la extensión espacial de los grids seleccionados."
+        return False, _tr("No se pudo leer la extensión espacial de los grids seleccionados.")
 
     common = _intersection_extents(extents)
     used_common = common is not None
     extent = common or _union_extents(extents)
     if extent is None:
-        return False, "Las extensiones de los grids no tienen intersección válida."
+        return False, _tr("Las extensiones de los grids no tienen intersección válida.")
 
     label = os.path.basename(os.path.normpath(folder)) or folder
     add_extent_layer(extent, source_type="WAsP/Surfer", label=label, crs_authid=crs_authid, zoom=zoom)
     if used_common:
-        return True, f"Perímetro WAsP/Surfer dibujado: dominio común de {len(extents)} grid(s)."
-    return True, f"Perímetro WAsP/Surfer dibujado: envolvente de {len(extents)} grid(s) sin intersección común."
+        return True, _tr("Perímetro WAsP/Surfer dibujado: dominio común de {n} grid(s).").format(n=len(extents))
+    return True, _tr("Perímetro WAsP/Surfer dibujado: envolvente de {n} grid(s) sin intersección común.").format(n=len(extents))
 
 
 def show_wrg_resource_extent(
@@ -339,13 +350,13 @@ def show_wrg_resource_extent(
     """Draw the union of one or several WRG/ZIP extents."""
     clean_paths = [p.strip() for p in paths if p and str(p).strip()]
     if not clean_paths:
-        return False, "No se ha seleccionado ningún WRG/ZIP."
+        return False, _tr("No se ha seleccionado ningún WRG/ZIP.")
 
     extents: List[ExtentTuple] = []
     labels: List[str] = []
     for p in clean_paths:
         if not os.path.isfile(p):
-            return False, f"El archivo WRG/ZIP no existe: {p}"
+            return False, _tr("El archivo WRG/ZIP no existe: {path}").format(path=p)
         meta = read_wrg_meta_func(p)
         ext = meta.get("extent") if isinstance(meta, dict) else None
         if ext and len(ext) == 4:
@@ -354,11 +365,11 @@ def show_wrg_resource_extent(
             labels.append(os.path.basename(p))
     extent = _union_extents(extents)
     if extent is None:
-        return False, "No se pudo leer una extensión válida desde el WRG/ZIP."
+        return False, _tr("No se pudo leer una extensión válida desde el WRG/ZIP.")
 
     label = "; ".join(labels[:3]) + ("…" if len(labels) > 3 else "")
     add_extent_layer(extent, source_type="WRG", label=label, crs_authid=_project_crs_authid(), zoom=zoom)
-    return True, f"Perímetro WRG dibujado: {len(extents)} archivo(s)."
+    return True, _tr("Perímetro WRG dibujado: {n} archivo(s).").format(n=len(extents))
 
 
 __all__ = [

@@ -29,6 +29,15 @@ try:
 except Exception:
     _HAS_QT = False
 
+
+def _tr(text):
+    """Traduce un texto de la interfaz; fuera del plugin lo deja en español."""
+    try:
+        from .i18n import tr_text
+    except Exception:
+        return text
+    return tr_text(text)
+
 DEBUG = str(os.environ.get("VELANTISWIND_DEBUG", "")).strip().lower() in {"1", "true", "yes", "on"}
 
 # === Comportamiento ===
@@ -86,7 +95,7 @@ def _ask_epsg_cli(default: int = 25830) -> int:
 def _read_grd(path: str) -> Tuple[np.ndarray, tuple]:
     ds = gdal.Open(path, gdal.GA_ReadOnly)
     if ds is None:
-        raise IOError(f"No se puede abrir: {path}")
+        raise IOError(_tr("No se puede abrir: {path}").format(path=path))
     band = ds.GetRasterBand(1)
     arr = band.ReadAsArray().astype(float)
     gt = ds.GetGeoTransform()
@@ -212,11 +221,11 @@ def _write_dsaa_waspstyle(out_path: str, arr: np.ndarray, gt: tuple, nodata: flo
 # ======================= Mosaico en memoria (GDAL VRT) ======================= #
 def _mosaic_to_mem(inputs: List[str]) -> Tuple[np.ndarray, tuple]:
     if not inputs:
-        raise ValueError("mosaic: lista de entrada vacía")
+        raise ValueError(_tr("Mosaico: la lista de entrada está vacía."))
     vrt = gdal.BuildVRT("/vsimem/_tmp.vrt", inputs,
                         srcNodata=_SURFER_NODATA, VRTNodata=_SURFER_NODATA)
     if vrt is None:
-        raise RuntimeError("BuildVRT devolvió None; revisa los paths")
+        raise RuntimeError(_tr("GDAL no ha podido construir el mosaico (BuildVRT); revisa las rutas."))
     band = vrt.GetRasterBand(1)
     arr = band.ReadAsArray().astype(float)
     gt = vrt.GetGeoTransform()
@@ -278,7 +287,7 @@ def _scan_tiles(dirs: Iterable[str]):
             entries.append(_Entry(p, var, int(sector), float(height)))
 
     if not entries and not all_by_hv:
-        raise RuntimeError("No se encontraron GRD válidos en los directorios dados")
+        raise RuntimeError(_tr("No se encontraron GRD válidos en las carpetas indicadas."))
     return entries, all_by_hv
 
 # ======================= Validación “anti-crash” para py_wake ======================= #
@@ -353,7 +362,7 @@ def construir_waspgridsite(dirs_tiles: List[str], out_dir: str, grid_id: int = 1
                 try:
                     if os.path.isfile(fp):
                         os.remove(fp)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         os.makedirs(out_pywake, exist_ok=True)
 
@@ -421,38 +430,42 @@ def ejecutar_waspgridsite(parent=None):
         QtWidgets.QMessageBox.information(
             parent,
             "WaspGridSite",
-            "Se generará UNA carpeta con GRD mosaico (Sector/Altura/Variable).\n"
-            "Selecciona 2 o más carpetas de tiles exportadas desde WAsP.\n"
-            "• 'Sector All': se tomarán TODAS las variables presentes (mosaico por altura).\n"
-            "• Además, se crea subcarpeta 'pywake_compat' estricta (sin necesidad de parches).\n"
-            "• Salida en Surfer ASCII (DSAA) con formato WAsP.",
+            _tr(
+                "Se generará UNA carpeta con GRD mosaico (Sector/Altura/Variable).\n"
+                "Selecciona 2 o más carpetas de teselas exportadas desde WAsP.\n"
+                "• 'Sector All': se tomarán TODAS las variables presentes (mosaico por altura).\n"
+                "• Además, se crea subcarpeta 'pywake_compat' estricta (sin necesidad de parches).\n"
+                "• Salida en Surfer ASCII (DSAA) con formato WAsP."
+            ),
         )
-        dlg = QtWidgets.QFileDialog(parent, "Selecciona carpetas de tiles (WAsP)")
+        dlg = QtWidgets.QFileDialog(parent, _tr("Selecciona carpetas de teselas (WAsP)"))
         dlg.setFileMode(QtWidgets.QFileDialog.Directory)
         dlg.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, True)
         dlg.setOption(QtWidgets.QFileDialog.ShowDirsOnly, True)
         for view in dlg.findChildren((QtWidgets.QListView, QtWidgets.QTreeView)):
             view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         if dlg.exec_() != QtWidgets.QDialog.Accepted:
-            QtWidgets.QMessageBox.information(parent, "WaspGridSite", "No se seleccionaron carpetas.")
+            QtWidgets.QMessageBox.information(parent, "WaspGridSite", _tr("No se seleccionaron carpetas."))
             return None
         in_dirs = [u.toLocalFile() for u in dlg.selectedUrls()]
 
-        out_dir = QtWidgets.QFileDialog.getExistingDirectory(parent, "Selecciona carpeta de salida", os.path.dirname(in_dirs[0]))
+        out_dir = QtWidgets.QFileDialog.getExistingDirectory(parent, _tr("Selecciona carpeta de salida"), os.path.dirname(in_dirs[0]))
         if not out_dir:
-            QtWidgets.QMessageBox.information(parent, "WaspGridSite", "No se seleccionó carpeta de salida.")
+            QtWidgets.QMessageBox.information(parent, "WaspGridSite", _tr("No se seleccionó carpeta de salida."))
             return None
 
         # Preguntar EPSG antes de hacer la unión
         epsg_default = _EPSG
         txt, ok = QtWidgets.QInputDialog.getText(
             parent,
-            "CRS de trabajo (EPSG)",
-            "Introduce el EPSG en el que están las coordenadas de los tiles.\n"
-            "Por ejemplo:\n"
-            "  • 25829 → ETRS89 / UTM 29N (Galicia oeste)\n"
-            "  • 25830 → ETRS89 / UTM 30N (gran parte de España)\n\n"
-            f"Deja vacío para usar {epsg_default}.",
+            _tr("CRS de trabajo (EPSG)"),
+            _tr(
+                "Introduce el EPSG en el que están las coordenadas de las teselas.\n"
+                "Por ejemplo:\n"
+                "  • 25829 → ETRS89 / UTM 29N (Galicia oeste)\n"
+                "  • 25830 → ETRS89 / UTM 30N (gran parte de España)\n\n"
+                "Deja vacío para usar {epsg}."
+            ).format(epsg=epsg_default),
         )
         if ok:
             txt = txt.strip()
@@ -463,26 +476,30 @@ def ejecutar_waspgridsite(parent=None):
                     QtWidgets.QMessageBox.warning(
                         parent,
                         "WaspGridSite",
-                        f"EPSG no válido. Se seguirá usando EPSG:{epsg_default}."
+                        _tr("EPSG no válido. Se seguirá usando EPSG:{epsg}.").format(epsg=epsg_default)
                     )
                     set_epsg(epsg_default)
             else:
                 set_epsg(epsg_default)
 
         res = construir_waspgridsite(in_dirs, out_dir, grid_id=1)
-        msg = (
-            f"Escritura completada en: {out_dir}\n"
-            f"Ficheros escritos: {res['n_out']}  | omitidos: {res['n_skipped']}\n"
-            f"Sectores: {res['n_sectors']}  Alturas: {res['n_heights']}  Variables: {res['vars']}\n"
-            f"CRS de trabajo (EPSG): {res.get('epsg', '?')}\n"
-            f"Driver: {res['driver']}\n"
-            f"py_wake dir: {res['pywake_dir'] or '(no creado)'}\n"
-            f"Movidos a _bad_for_pywake (para evitar crash): {res.get('pywake_bad_moved', 0)}\n"
+        msg = _tr(
+            "Escritura completada en: {out_dir}\n"
+            "Ficheros escritos: {n_out}  | omitidos: {n_skipped}\n"
+            "Sectores: {n_sectors}  Alturas: {n_heights}  Variables: {n_vars}\n"
+            "CRS de trabajo (EPSG): {epsg}\n"
+            "Controlador: {driver}\n"
+            "Carpeta py_wake: {pywake_dir}\n"
+            "Movidos a _bad_for_pywake (para evitar un fallo): {n_moved}\n"
+        ).format(
+            out_dir=out_dir, n_out=res["n_out"], n_skipped=res["n_skipped"], n_sectors=res["n_sectors"],
+            n_heights=res["n_heights"], n_vars=res["vars"], epsg=res.get("epsg", "?"), driver=res["driver"],
+            pywake_dir=res["pywake_dir"] or _tr("(no creado)"), n_moved=res.get("pywake_bad_moved", 0),
         )
         QtWidgets.QMessageBox.information(parent, "WaspGridSite", msg)
         return res
     except Exception as e:
-        QtWidgets.QMessageBox.critical(parent, "WaspGridSite", f"Ocurrió un error:\n{e}")
+        QtWidgets.QMessageBox.critical(parent, "WaspGridSite", _tr("Ocurrió un error:\n{error}").format(error=e))
         return None
 
 # ======================= Compat nombre antiguo ======================= #

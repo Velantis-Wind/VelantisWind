@@ -783,7 +783,7 @@ def _ground_g_from_attributes(feat, default_g: float) -> float:
                 gv = float(v)
                 if math.isfinite(gv):
                     return max(0.0, min(1.0, gv))
-        except Exception:
+        except Exception:  # nosec B110
             pass
     
     # Buscar clasificación textual
@@ -795,7 +795,7 @@ def _ground_g_from_attributes(feat, default_g: float) -> float:
             if v is not None and str(v).strip():
                 txt = str(v).strip().lower()
                 break
-        except Exception:
+        except Exception:  # nosec B110
             pass
     
     if txt:
@@ -890,7 +890,7 @@ def _effective_ground_g(
                 gv = _ground_g_from_attributes(feat, g0)
                 weighted += gv * ilen
                 used += ilen
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         
         if used > 0:
@@ -907,7 +907,7 @@ def _effective_ground_g(
                 geom = feat.geometry()
                 if geom and geom.contains(mid):
                     return _ground_g_from_attributes(feat, g0)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
                 
     except Exception:

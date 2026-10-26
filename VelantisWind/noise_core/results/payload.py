@@ -58,12 +58,12 @@ def _receiver_rows_from_layer(layer: Any) -> List[Dict[str, Any]]:
             for idx, name in enumerate(fields):
                 try:
                     d[name] = feat.attribute(idx)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
             try:
                 d.setdefault("fid", int(feat.id()))
                 d.setdefault("rec_id", int(feat.id()))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             rows.append(d)
     except Exception:
@@ -172,6 +172,7 @@ def build_noise_result_payload(
     pressure_kpa: float,
     model_cfg: Dict[str, Dict[str, Any]],
     path_diagnostics: Optional[List[Dict[str, Any]]] = None,
+    iso_requested: bool = False,
 ) -> Dict[str, object]:
     """Build the rich dictionary consumed by the existing results dialog."""
     engine_name = "iso_aligned" if calculation_engine == "iso" else "fast"
@@ -197,6 +198,7 @@ def build_noise_result_payload(
         "links_layer": link_layer,
         "grid_layer": grid_layer,
         "iso_layer": iso_layer,
+        "iso_requested": bool(iso_requested),
         "uncovered_layer": uncovered_layer,
         "n_sources": len(sources),
         "n_receivers": len(receivers),
@@ -297,6 +299,7 @@ def build_noise_result_payload(
                     "lwa_effective": float((d or {}).get('lwa', float('nan'))),
                     "lwa_fixed": float((d or {}).get('lwa_fixed', float('nan'))),
                     "curve_note": str((d or {}).get('curve_note') or ''),
+                    "curve_note_source": (d or {}).get('curve_note_source'),
                     "acoustic_mode": str((d or {}).get('acoustic_mode') or 'fixed'),
                 }
                 for name, d in src_diag.items()

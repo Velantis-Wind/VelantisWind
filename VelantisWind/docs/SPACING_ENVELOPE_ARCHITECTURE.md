@@ -21,7 +21,7 @@ spacing_core/
 ├─ geometry.py          # SpacingSpec, ellipse_polygon, evaluate_conflicts, snapping
 ├─ orientation.py       # WRG → energy per sector → most energetic azimuth (stdlib only)
 ├─ envelope_manager.py  # one memory layer per model, symbology, persistence
-├─ auto_envelope.py     # CSV import helper; builds ellipses before the panel opens
+├─ auto_envelope.py     # import helper; builds or rebuilds ellipses without the panel
 ├─ map_tool.py          # EllipseDefineTool: 3-click on-screen definition (QgsMapTool)
 ├─ panel.py             # SpacingEnvelopePanel: dock group box + QSettings persistence
 ├─ controller.py        # SpacingController: glue between all of the above
@@ -48,10 +48,13 @@ controller ┘        │
 ### `aep_setup_dialog.py`
 
 - Defensive import of `SpacingController` / `SpacingConfigDialog`.
-- A **Spacing envelopes…** button at the bottom of the *Turbine models* group (right below the per-model CSV coordinate rows) calls `_open_spacing_config()`.
+- A **Spacing envelopes…** button at the bottom of the *Turbine models* group (right below the model rows) calls `_open_spacing_config()`.
 - `_ensure_spacing_controller()` lazily creates and returns THE shared `SpacingController` for the dialog session; `_teardown_spacing_controller()` is called from `closeEvent` on a real close (not when hiding for Interactive Map mode). Teardown releases Python references but deliberately keeps generated envelope layers in the QGIS project.
 - `SpacingConfigDialog` (in `spacing_core/config_dialog.py`) is non-modal and *borrows* the controller's panel widget while open, returning it (`setParent(None)`) on close. The panel exposes an explicit model/layer selector. When *Define ellipse on screen* is pressed, the config dialog and the main dialog hide via the existing `_hide_dialog_for_interactive_map()` machinery and are restored on the controller's `tool_finished` signal.
-- After a valid coordinate CSV is converted to a point layer, `spacing_core.auto_envelope.ensure_spacing_envelope_for_layer()` creates or refreshes its envelope layer immediately and rebuilds all known turbine-model layers together.
+- The envelopes managed from the dialog cover the layers of its rows only (`SpacingController._turbine_layers`), never other point layers of the project with a turbine role. A layout imported from Noise or Shadow in a CRS projected in metres gets its own envelope at import (`ui_core/layout_sources.py`), checked only against itself.
+- After *Load new layer* imports a coordinates file as a point layer, and only without the spacing controller and with the envelopes not switched off (`spacing/enabled`), `spacing_core.auto_envelope.ensure_spacing_envelope_for_layer(layer, park_layers=self._row_layers())` creates or refreshes the envelopes of the rows together.
+- Changes of the rows go through `_sync_spacing_envelopes()`. It first removes, using `drop_spacing_envelope_for_layer()`, the temporary envelope of a layer that left every row (a saved one is kept). Then the controller rebuilds the rows if its envelopes are on; otherwise the helper is called with `existing_only=True`, which rebuilds only the envelopes that already exist, against every row (`rebuild_many(create_missing=False)`: a layer without an envelope counts in the conflicts but gets none), and leaves the spacing preferences as they are.
+- While QGIS removes layers, the dialog's reaction runs inside `envelope_manager.layers_being_removed()`, so an envelope QGIS is already removing is never removed again.
 
 ### `mapa_interactivo_dock.py`
 
@@ -63,15 +66,16 @@ Because the panel is a single widget shared between the config dialog and the do
 
 ### `mapa_interactivo.py`
 
-- `_TurbineInteractiveTool` gains `_notify_spacing(layer)`, called at the end of `_handle_add` / `_handle_remove`, and a pre-insert consultation of the optional `ctl._spacing_check_candidate(layer, x, y)` hook: when the validation level is *Block insertion*, the controller tests the candidate envelope against the current envelope layer and returns `False` to veto the insert. Both hooks are looked up the same way:
+- `_TurbineInteractiveTool` gains `_notify_spacing(layer)`, called at the end of `_handle_add` / `_handle_remove`, and a pre-insert consultation of the optional `ctl._spacing_check_candidate(layer, x, y)` hook: when the validation level is *Block insertion*, the controller tests the candidate envelope against the envelope layers of the rows and returns `False` to veto the insert. Both hooks are looked up on the dialog; after an edit, the tool prefers the dialog's `_sync_spacing_envelopes`, which also updates the existing envelopes with the spacing envelopes switched off or never opened:
 
 ```python
-cb = getattr(self.ctl, "_spacing_notify_layout_changed", None)
+sync = getattr(self.ctl, "_sync_spacing_envelopes", None)
+cb = sync if callable(sync) else getattr(self.ctl, "_spacing_notify_layout_changed", None)
 if callable(cb):
     cb(layer)
 ```
 
-The attribute is published by `SpacingController.__init__` and removed in `teardown()`. This keeps the turbine-editing tool fully decoupled: no import of `spacing_core`, no behaviour change when the module is absent.
+The `_spacing_notify_layout_changed` and `_spacing_check_candidate` attributes are published by `SpacingController.__init__` and removed in `teardown()`. This keeps the turbine-editing tool fully decoupled: no import of `spacing_core`, no behaviour change when the module is absent.
 
 ---
 
@@ -146,7 +150,7 @@ Manual QGIS smoke test: see the new items in [`RELEASE_TEST_CHECKLIST.md`](RELEA
 ## Extension hooks (roadmap)
 
 - **Optimizer:** the resolved per-turbine `SpacingSpec` + status map is the natural payload for a penalty/constraint term.
-- Insertion blocking is fail-open and checks all model envelope layers. GeoPackage export writes one table per model through `EnvelopeManager.export_all_to_gpkg`, with a V3/V2 writer fallback.
+- Insertion blocking checks the envelope layers of the rows; a comparison that cannot be made blocks the insertion with a warning (`_block_uncompared`), and only an unexpected error before it lets the insertion through. GeoPackage export writes one table per model through `EnvelopeManager.export_all_to_gpkg`, with a V3/V2 writer fallback.
 
 
 ## Per-model dimensions

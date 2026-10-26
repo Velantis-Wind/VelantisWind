@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 
+from ...i18n import tr_text
 from ..noise_common import NoiseSource, apply_a_weighting, global_lwa_to_octave_spectrum, log as _log
 from ..noise_spectrum import get_template_for_model, load_spectrum_from_csv
 from ..acoustics.curves import load_acoustic_curve_csv, evaluate_acoustic_curve
@@ -74,7 +75,7 @@ def _iter_model_layers(prj: QgsProject, source_layer_ids: Optional[List[str]] = 
                     continue
                 out.append(lyr)
                 seen.add(lid)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     for lyr in prj.mapLayers().values():
         if not _is_model_layer(lyr):
@@ -120,19 +121,24 @@ def _collect_sources(
         eval_ws_m_s = cfg.get("eval_ws_m_s")
         use_curve_worst_case = bool(cfg.get("use_curve_worst_case", False))
         curve_note = ""
+        curve_note_source = None
         lwa = lwa_fixed
         if acoustic_mode == "curve" and curve_path:
             try:
                 ws_arr, lwa_arr = load_acoustic_curve_csv(curve_path)
                 lwa = evaluate_acoustic_curve(ws_arr, lwa_arr, eval_ws_m_s=eval_ws_m_s, use_worst_case=use_curve_worst_case)
-                curve_note = (
-                    f"Curva peor caso ({os.path.basename(curve_path)})"
+                curve_note_source = (
+                    {"template": "Curva peor caso ({file})", "values": {"file": os.path.basename(curve_path)}}
                     if use_curve_worst_case else
-                    f"Curva @ {float(eval_ws_m_s):.1f} m/s ({os.path.basename(curve_path)})"
+                    {"template": "Curva @ {speed} m/s ({file})",
+                     "values": {"speed": f"{float(eval_ws_m_s):.1f}", "file": os.path.basename(curve_path)}}
                 )
             except Exception as e:
-                curve_note = f"Curva inválida -> fallback LwA fijo ({e})"
+                curve_note_source = {"template": "Curva inválida -> LwA fijo de respaldo ({error})",
+                                     "values": {"error": str(e)}}
                 lwa = lwa_fixed
+            # Keep the rendered field for reports, and its source/data for live status recomposition.
+            curve_note = tr_text(curve_note_source["template"]).format(**curve_note_source["values"])
         if diameter is not None:
             try:
                 diameter = float(diameter)
@@ -221,7 +227,7 @@ def _collect_sources(
                         spectrum_source = f"{spectrum_source} · LwA(A) del espectro = {_lwa_from_spec:.1f} dB(A)"
                         _log(f"[ISO] Grupo '{source_group}': LwA operativo tomado del espectro OEM ({_lwa_from_spec:.2f} dB(A), antes {lwa:.2f}).")
                     lwa = _lwa_from_spec
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         spectrum_template_ref = None
@@ -239,7 +245,7 @@ def _collect_sources(
             try:
                 pt = feat.geometry().asPoint()
                 x, y = float(pt.x()), float(pt.y())
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             z_ground = _sample_dem(dem_layer, x, y)
 
@@ -274,6 +280,7 @@ def _collect_sources(
             "acoustic_mode": acoustic_mode,
             "curve_path": curve_path,
             "curve_note": curve_note,
+            "curve_note_source": curve_note_source,
             "eval_ws_m_s": float(eval_ws_m_s) if eval_ws_m_s is not None and math.isfinite(float(eval_ws_m_s)) else float('nan'),
             "use_curve_worst_case": bool(use_curve_worst_case),
             "spectrum_source": str(spectrum_source),

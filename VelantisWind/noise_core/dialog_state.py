@@ -13,6 +13,7 @@ from typing import List, Tuple
 from qgis.PyQt import QtCore
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer
 
+from ..i18n import tr_text
 from .domain import NoiseRunConfig
 from .noise_common import log as _log
 
@@ -25,7 +26,7 @@ def _parse_iso_levels(text: str) -> List[float]:
             continue
         try:
             levels.append(float(tok))
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return levels or [35.0, 40.0, 45.0, 50.0]
 
@@ -43,7 +44,7 @@ def _prepare_receiver_context(dialog) -> Tuple[QgsVectorLayer, str, str, str, st
     if dialog.chk_multi_receivers.isChecked():
         receiver_layer, n_multi = dialog._build_multi_receiver_layer()
         if receiver_layer is None or n_multi <= 0:
-            raise ValueError("Configura al menos una capa válida en la tabla de receptores por categoría.")
+            raise ValueError(tr_text("Configura al menos una capa válida en la tabla de receptores por categoría."))
         receiver_limit_mode = "by_field"
         receiver_limit_scenario = str(dialog.cb_limit_scenario.currentData(QtCore.Qt.UserRole) or "day")
         receiver_height_field = "grp_h_m"
@@ -57,7 +58,7 @@ def _prepare_receiver_context(dialog) -> Tuple[QgsVectorLayer, str, str, str, st
         receiver_id = dialog.cb_receivers.currentData(QtCore.Qt.UserRole)
         receiver_layer = QgsProject.instance().mapLayer(receiver_id) if receiver_id else None
         if not isinstance(receiver_layer, QgsVectorLayer):
-            raise ValueError("Selecciona una capa válida de receptores.")
+            raise ValueError(tr_text("Selecciona una capa válida de receptores."))
 
     return (
         receiver_layer,
@@ -111,7 +112,7 @@ def build_config_from_dialog(dialog) -> NoiseRunConfig:
                 f"UI model={model_name} | acoustic_mode={cfg.get('acoustic_mode')} | "
                 f"curve_path={cfg.get('curve_path','')} | fixed_lwa={cfg.get('lwa')}"
             )
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     return NoiseRunConfig(

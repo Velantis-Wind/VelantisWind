@@ -14,6 +14,7 @@ from typing import Any, Callable, List, Optional, Tuple
 import numpy as np
 
 from ..physics.common.compat import emit
+from ..log_text import log_error, log_text
 
 F32 = np.float32
 
@@ -54,7 +55,12 @@ def _log(msg: str, level: Any = None) -> None:
 def _project_crs_authid_fallback() -> Optional[str]:
     try:
         from qgis.core import QgsProject  # type: ignore
-        return QgsProject.instance().crs().authid()
+        from qgis.core import QgsCoordinateReferenceSystem  # type: ignore
+        crs = QgsProject.instance().crs()
+        authid = crs.authid()
+        return authid if authid and not authid.upper().startswith("USER:") else crs.toWkt(
+            QgsCoordinateReferenceSystem.WKT_PREFERRED
+        )
     except Exception:
         return None
 
@@ -68,29 +74,29 @@ def _xy_dims(ds):
                 dims = tuple(getattr(v, "dims", ()) or ())
                 if "x" in dims and "y" in dims:
                     return tuple(d for d in dims if d in ("x", "y"))
-    except Exception:
+    except Exception:  # nosec B110
         pass
     try:
         keys = list(getattr(ds, "dims", {}).keys())
         if "x" in keys and "y" in keys:
             return tuple(d for d in keys if d in ("x", "y"))
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return ("x", "y")
 
 def _apply_fixed_ti(site, ti: float, prefer_var: str = "TI") -> None:
     ti = float(ti)
     if not (0.0 <= ti < 1.0):
-        raise ValueError("'ti' debe ser unitario (0.10 ≡ 10%).")
+        raise log_error(ValueError, "'ti' debe ser unitario (0,10 ≡ 10%).")
     ds = getattr(site, "ds", None) or getattr(site, "dataset", None)
     if ds is None:
         if hasattr(site, "default_TI"):
             try:
                 site.default_TI = ti
                 return
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        raise RuntimeError("El 'site' no expone 'ds'/'dataset'.")
+        raise log_error(RuntimeError, "El 'site' no expone 'ds'/'dataset'.")
 
     # En PyWake, algunos modelos esperan TI en mayúsculas ('TI'), otros usan
     # 'ti' o 'ti15ms'. Además, puede venir con dims (x,y) o (x,y,h,wd).
@@ -143,7 +149,7 @@ def _apply_fixed_ti(site, ti: float, prefer_var: str = "TI") -> None:
     if hasattr(site, "default_TI"):
         try:
             site.default_TI = ti
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # Asegurar no-NaN
@@ -153,7 +159,7 @@ def _apply_fixed_ti(site, ti: float, prefer_var: str = "TI") -> None:
         ds["TI"] = (dims, a.reshape(shape))
         ds["ti"] = ds["TI"]
         ds["ti15ms"] = ds["TI"]
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 def _authid_to_wkt(authid: Optional[str]) -> Optional[str]:
@@ -162,13 +168,23 @@ def _authid_to_wkt(authid: Optional[str]) -> Optional[str]:
     txt = str(authid).strip()
     if not txt:
         return None
+    # USER: identifiers are local to QGIS and cannot be resolved by GDAL.
+    if txt.upper().startswith("USER:"):
+        try:
+            from qgis.core import QgsCoordinateReferenceSystem  # type: ignore
+            crs = QgsCoordinateReferenceSystem(txt)
+            if not crs.isValid():
+                return None
+            txt = crs.toWkt(QgsCoordinateReferenceSystem.WKT_PREFERRED)
+        except Exception:
+            return None
     srs = osr.SpatialReference()
     try:
         if txt.upper().startswith("EPSG:"):
             if srs.ImportFromEPSG(int(txt.split(":", 1)[1])) == 0:
-                return srs.ExportToWkt()
+                return srs.ExportToWkt(["FORMAT=WKT2_2019"])
         if srs.SetFromUserInput(txt) == 0:
-            return srs.ExportToWkt()
+            return srs.ExportToWkt(["FORMAT=WKT2_2019"])
     except Exception:
         return None
     return None
@@ -204,7 +220,7 @@ def _extract_height_from_ti_path(path: str) -> Optional[float]:
         if m:
             try:
                 return float(m.group(1).replace(',', '.'))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
     return None
 
@@ -245,20 +261,20 @@ def _sample_ti_raster_on_wrg_grid(ds, ti_raster_path: str, target_wkt: str, defa
     reproyección "on-the-fly" o de grids intermedios ambiguos.
     """
     if gdal is None or osr is None:
-        raise RuntimeError("GDAL/OSR no disponible para leer el raster de turbulencia")
+        raise log_error(RuntimeError, "GDAL/OSR no disponible para leer el ráster de turbulencia")
     if ds is None:
-        raise RuntimeError("Dataset WRG no disponible para inyectar TI")
+        raise log_error(RuntimeError, "Dataset WRG no disponible para inyectar TI")
     if not ti_raster_path or not os.path.isfile(ti_raster_path):
-        raise RuntimeError(f"Raster TI no válido: {ti_raster_path}")
+        raise log_error(RuntimeError, "Ráster TI no válido: {path}", path=ti_raster_path)
 
     x = np.asarray(ds["x"].values, dtype=float)
     y = np.asarray(ds["y"].values, dtype=float)
     if x.size < 1 or y.size < 1:
-        raise RuntimeError("El dataset WRG no contiene coordenadas x/y válidas")
+        raise log_error(RuntimeError, "El dataset WRG no contiene coordenadas x/y válidas")
 
     src = gdal.Open(ti_raster_path, gdal.GA_ReadOnly)
     if src is None:
-        raise RuntimeError(f"No se pudo abrir el raster TI: {ti_raster_path}")
+        raise log_error(RuntimeError, "No se pudo abrir el ráster TI: {path}", path=ti_raster_path)
 
     src_wkt = src.GetProjection() or ""
     src_label = "definido"
@@ -268,11 +284,11 @@ def _sample_ti_raster_on_wrg_grid(ds, ti_raster_path: str, target_wkt: str, defa
             srs.ImportFromEPSG(4326)
             src_wkt = srs.ExportToWkt()
             src_label = "EPSG:4326 (inferido)"
-            _log("[WRG][TI] Raster sin CRS explícito; por su cabecera parece lon/lat y se asume EPSG:4326.", Qgis.Warning)
+            _log(log_text("[WRG][TI] Ráster sin CRS explícito; por su cabecera parece lon/lat y se asume EPSG:4326."), Qgis.Warning)
         else:
             src_wkt = target_wkt
             src_label = "CRS del WRG/proyecto (inferido)"
-            _log("[WRG][TI] Raster sin CRS explícito; se asume el CRS del WRG/proyecto.", Qgis.Warning)
+            _log(log_text("[WRG][TI] Ráster sin CRS explícito; se asume el CRS del WRG/proyecto."), Qgis.Warning)
 
     nx = int(x.size)
     ny = int(y.size)
@@ -304,7 +320,7 @@ def _sample_ti_raster_on_wrg_grid(ds, ti_raster_path: str, target_wkt: str, defa
     )
     mem = gdal.Warp("", src, options=warp_opts)
     if mem is None:
-        raise RuntimeError("GDAL.Warp devolvió None al alinear el raster TI al grid WRG")
+        raise log_error(RuntimeError, "GDAL.Warp devolvió None al alinear el ráster TI al grid WRG")
 
     arr = mem.GetRasterBand(1).ReadAsArray().astype(F32)
     arr[arr == nodata] = np.nan
@@ -316,14 +332,20 @@ def _sample_ti_raster_on_wrg_grid(ds, ti_raster_path: str, target_wkt: str, defa
     if n_nan:
         if n_nan == int(arr.size):
             _log(
-                f"[WRG][TI] El raster TI ha quedado completamente fuera de cobertura tras reproyección/alineado; "
-                f"se usará TI uniforme={default_ti:.3f} en toda la malla.",
+                log_text(
+                    "[WRG][TI] El ráster TI ha quedado completamente fuera de cobertura tras reproyección/alineado; "
+                    "se usará TI uniforme={ti} en toda la malla.",
+                    ti=f"{default_ti:.3f}",
+                ),
                 Qgis.Warning,
             )
         else:
             _log(
-                f"[WRG][TI] Raster TI con {n_nan} celdas fuera de cobertura tras reproyección/alineado; "
-                f"se rellenan con {default_ti:.3f}.",
+                log_text(
+                    "[WRG][TI] Ráster TI con {n} celdas fuera de cobertura tras reproyección/alineado; "
+                    "se rellenan con {ti}.",
+                    n=n_nan, ti=f"{default_ti:.3f}",
+                ),
                 Qgis.Warning,
             )
         arr[~np.isfinite(arr)] = F32(default_ti)
@@ -334,7 +356,7 @@ def _sample_ti_raster_on_wrg_grid(ds, ti_raster_path: str, target_wkt: str, defa
             _log(
                 f"[WRG][TI] Alineado OK | src_crs={src_label} | rango_reproy=[{float(np.nanmin(finite)):.3f}, {float(np.nanmax(finite)):.3f}]"
             )
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return arr
 
@@ -343,7 +365,7 @@ def _build_ti_cube_for_site(ds, ti_raster_paths: List[str], default_ti: float, t
     try:
         import xarray as xr
     except Exception as e:
-        raise RuntimeError(f"xarray no disponible para construir TI por altura: {e}")
+        raise log_error(RuntimeError, "xarray no disponible para construir TI por altura: {error}", error=e)
 
     h_site = None
     try:
@@ -368,16 +390,16 @@ def _build_ti_cube_for_site(ds, ti_raster_paths: List[str], default_ti: float, t
         items.append((path, h, arr))
 
     if not items:
-        raise RuntimeError("No se han podido leer raster(s) TI")
+        raise log_error(RuntimeError, "No se han podido leer ráster(es) TI")
 
     valid_h = [h for _, h, _ in items if h is not None]
     if len(items) == 1 or len(set(round(h, 6) for h in valid_h)) < 2:
         path, h0, arr = items[0]
         if h_site is not None and h_site.size > 1:
             if h0 is not None:
-                _log(f"[WRG][TI] Solo hay un raster TI ({os.path.basename(path)}) a {h0:g} m; se aplicará a todas las alturas del WRG como aproximación.", Qgis.Warning)
+                _log(log_text("[WRG][TI] Solo hay un ráster TI ({file}) a {height} m; se aplicará a todas las alturas del WRG como aproximación.", file=os.path.basename(path), height=f"{h0:g}"), Qgis.Warning)
             else:
-                _log(f"[WRG][TI] Solo hay un raster TI ({os.path.basename(path)}) sin altura identificable; se aplicará a todas las alturas del WRG como aproximación.", Qgis.Warning)
+                _log(log_text("[WRG][TI] Solo hay un ráster TI ({file}) sin altura identificable; se aplicará a todas las alturas del WRG como aproximación.", file=os.path.basename(path)), Qgis.Warning)
             cube = np.repeat(arr[:, :, None], int(h_site.size), axis=2).astype(F32)
             da = xr.DataArray(cube, dims=("x", "y", "h"), coords={"x": ds["x"].values, "y": ds["y"].values, "h": h_site})
             return da, {"mode": "single_replicated", "paths": [path], "heights": [h0] if h0 is not None else []}
@@ -387,17 +409,17 @@ def _build_ti_cube_for_site(ds, ti_raster_paths: List[str], default_ti: float, t
     seen = {}
     for path, h, arr in items:
         if h is None:
-            _log(f"[WRG][TI] No se pudo inferir la altura de '{os.path.basename(path)}'; se ignora para construir TI(x,y,h).", Qgis.Warning)
+            _log(log_text("[WRG][TI] No se pudo inferir la altura de '{file}'; se ignora para construir TI(x,y,h).", file=os.path.basename(path)), Qgis.Warning)
             continue
         key = round(float(h), 6)
         if key in seen:
-            _log(f"[WRG][TI] Altura TI duplicada {h:g} m en '{os.path.basename(path)}'; se conserva el primer raster para esa altura.", Qgis.Warning)
+            _log(log_text("[WRG][TI] Altura TI duplicada {height} m en '{file}'; se conserva el primer ráster para esa altura.", height=f"{h:g}", file=os.path.basename(path)), Qgis.Warning)
             continue
         seen[key] = (float(h), path, arr)
 
     if len(seen) < 2:
         path, h0, arr = items[0]
-        _log("[WRG][TI] No se han identificado al menos dos alturas TI distintas; se usará el primer raster para todas las alturas.", Qgis.Warning)
+        _log(log_text("[WRG][TI] No se han identificado al menos dos alturas TI distintas; se usará el primer ráster para todas las alturas."), Qgis.Warning)
         if h_site is not None and h_site.size > 1:
             cube = np.repeat(arr[:, :, None], int(h_site.size), axis=2).astype(F32)
             da = xr.DataArray(cube, dims=("x", "y", "h"), coords={"x": ds["x"].values, "y": ds["y"].values, "h": h_site})
@@ -418,7 +440,7 @@ def _build_ti_cube_for_site(ds, ti_raster_paths: List[str], default_ti: float, t
             cube[ix, iy, :] = np.interp(h_site, h_in, stack[ix, iy, :], left=stack[ix, iy, 0], right=stack[ix, iy, -1]).astype(F32)
 
     if float(np.min(h_site)) < float(np.min(h_in)) or float(np.max(h_site)) > float(np.max(h_in)):
-        _log(f"[WRG][TI] Las alturas del WRG {h_site.tolist()} exceden el rango TI disponible {h_in.tolist()}; se usan valores de borde fuera del rango.", Qgis.Warning)
+        _log(log_text("[WRG][TI] Las alturas del WRG {heights} exceden el rango TI disponible {ti_heights}; se usan valores de borde fuera del rango.", heights=h_site.tolist(), ti_heights=h_in.tolist()), Qgis.Warning)
 
     da = xr.DataArray(cube, dims=("x", "y", "h"), coords={"x": ds["x"].values, "y": ds["y"].values, "h": h_site})
     return da, {"mode": "multi_interp_h", "paths": [seen[key][1] for key in sorted(seen.keys())], "heights": h_in.tolist()}
@@ -435,14 +457,14 @@ def _apply_ti_raster_to_site(site, ds, ti_raster_path: Any, project_crs_authid: 
     - Si hay huecos, se rellenan con ``default_ti``.
     """
     if ds is None:
-        raise RuntimeError("Dataset WRG no disponible para inyectar TI")
+        raise log_error(RuntimeError, "Dataset WRG no disponible para inyectar TI")
 
     if isinstance(ti_raster_path, (list, tuple)):
         ti_paths = [str(p).strip() for p in ti_raster_path if str(p).strip()]
     else:
         ti_paths = [str(ti_raster_path).strip()] if str(ti_raster_path).strip() else []
     if not ti_paths:
-        raise RuntimeError("No se han indicado raster(s) TI válidos")
+        raise log_error(RuntimeError, "No se han indicado ráster(es) TI válidos")
 
     target_wkt = _authid_to_wkt(project_crs_authid)
     target_label = project_crs_authid
@@ -464,7 +486,7 @@ def _apply_ti_raster_to_site(site, ds, ti_raster_path: Any, project_crs_authid: 
         if target_wkt:
             target_label = auth
     if not target_wkt:
-        raise RuntimeError("No se pudo resolver el CRS destino del WRG/proyecto para el raster TI")
+        raise log_error(RuntimeError, "No se pudo resolver el CRS destino del WRG/proyecto para el ráster TI")
     _log(f"[WRG][TI] CRS destino del grid WRG: {target_label or '?'}")
 
     ti_da, meta = _build_ti_cube_for_site(
@@ -480,7 +502,7 @@ def _apply_ti_raster_to_site(site, ds, ti_raster_path: Any, project_crs_authid: 
         ds["TI"].attrs["units"] = "fraction"
         if meta.get("heights"):
             ds["TI"].attrs["input_heights_m"] = list(meta.get("heights", []))
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     site = _rebuild_xrsite_if_needed(site, ds)
@@ -560,7 +582,7 @@ def _ensure_wd_dim(ds):
     if "wd" in out.dims and int(out.sizes.get("wd", 0)) == 1 and best_dim != "wd":
         try:
             out = out.squeeze("wd", drop=True)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     nsec = int(best_size)
@@ -580,7 +602,7 @@ def _ensure_wd_dim(ds):
     # Asignar coordenadas wd
     try:
         out = out.assign_coords(wd=wd)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     out.attrs["sector_width"] = float(sector_width)
@@ -588,27 +610,39 @@ def _ensure_wd_dim(ds):
 
 def _rebuild_xrsite_if_needed(site, ds):
     """
-    Si tenemos XRSite disponible y el ds ha cambiado (por ejemplo al renombrar dims),
-    recrea el site para asegurar coherencia.
+    Si tenemos XRSite disponible y el ds ha cambiado (por ejemplo al renombrar
+    dims o inyectar TI), recrea el site preservando la semántica del site
+    original: interpolación por dirección, distancia, shear y política bounds.
     """
     if XRSite is None or ds is None:
         return site
     try:
-        if StraightDistance is not None:
-            return XRSite(ds, distance=StraightDistance())
-        return XRSite(ds)
+        kwargs = {}
+        interp_method = getattr(site, "interp_method", None)
+        if interp_method is not None:
+            kwargs["interp_method"] = interp_method
+        shear = getattr(site, "shear", None)
+        if shear is not None:
+            kwargs["shear"] = shear
+        bounds = getattr(site, "bounds", None)
+        if bounds in {"check", "limit", "ignore"}:
+            kwargs["bounds"] = bounds
+        distance = getattr(site, "distance", None)
+        if distance is not None:
+            kwargs["distance"] = distance
+        elif StraightDistance is not None:
+            kwargs["distance"] = StraightDistance()
+        return XRSite(ds, **kwargs)
     except Exception:
         return site
 
 def _compute_ti_per_turbine(*args,
                            ti_cap: float = 1.00,
-                           default_ti: float = 0.10,
                            hh_per_turb: Optional[np.ndarray] = None) -> np.ndarray:
     """Compatibilidad:
-    - _compute_ti_per_turbine(sim) -> TI por turbina desde el resultado de PyWake.
-    - _compute_ti_per_turbine(site, xs, ys) -> TI por turbina desde el dataset del site.
-
-    En caso de fallo: devuelve TI=default_ti (por defecto 0.10) y limita a <= ti_cap.
+    - _compute_ti_per_turbine(sim) -> TI por turbina desde el resultado de PyWake, limitada a <= ti_cap.
+    - _compute_ti_per_turbine(site, xs, ys) -> TI ambiente por turbina desde el dataset del site (la ``ti_ambient``
+      del resultado): sin recortar, y NaN (NULL en el resultado) donde no se puede leer, nunca un valor de respaldo.
     """
     # ---- Caso 1: llamado con sim ----
     if len(args) == 1:
@@ -622,7 +656,7 @@ def _compute_ti_per_turbine(*args,
             for d in [d for d in getattr(ti, "dims", ()) if d not in ("wt",)]:
                 try:
                     ti = ti.mean(d)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
             out = np.asarray(getattr(ti, "values", ti), dtype=F32).ravel()
             return np.clip(out, 0.0, float(ti_cap)).astype(F32)
@@ -638,16 +672,19 @@ def _compute_ti_per_turbine(*args,
     if n == 0:
         return np.array([], dtype=F32)
 
-    xs = np.asarray(xs, dtype=F32).ravel()
-    ys = np.asarray(ys, dtype=F32).ravel()
+    # Preserve UTM positions in double precision for TI interpolation too:
+    # float32 rounds northings and may merge nearby but distinct turbines.
+    # TI values can remain float32.
+    xs = np.asarray(xs, dtype=np.float64).ravel()
+    ys = np.asarray(ys, dtype=np.float64).ravel()
 
     def _fallback():
-        return np.full(n, float(default_ti), dtype=F32)
+        return np.full(n, np.nan, dtype=F32)
 
     try:
         ds = getattr(site, "ds", None) or getattr(site, "dataset", None)
         if ds is None:
-            return np.clip(_fallback(), 0.0, float(ti_cap)).astype(F32)
+            return _fallback()
 
         ti_da = None
         for key in ("TI", "ti", "ti15ms", "turbulence_intensity", "turbulenceIntensity"):
@@ -655,56 +692,42 @@ def _compute_ti_per_turbine(*args,
                 ti_da = ds[key]
                 break
         if ti_da is None:
-            return np.clip(_fallback(), 0.0, float(ti_cap)).astype(F32)
+            return _fallback()
 
         dims = set(getattr(ti_da, "dims", ()))
         coords = getattr(ti_da, "coords", {})
         has_x = ("x" in dims) or ("x" in coords)
         has_y = ("y" in dims) or ("y" in coords)
 
+        # Any step that fails makes the reading fail (NaN, the outer except), never another value.
+        ti_i = ti_da
         if has_x and has_y:
-            try:
-                ti_i = ti_da.interp(x=("wt", xs), y=("wt", ys))
-            except Exception:
-                return np.clip(_fallback(), 0.0, float(ti_cap)).astype(F32)
-
-            if hh_per_turb is not None:
-                try:
-                    hhv = np.asarray(hh_per_turb, dtype=F32).ravel()
-                    has_h = ("h" in getattr(ti_i, "dims", ())) or ("h" in getattr(ti_i, "coords", {}))
-                    if has_h and hhv.size == n:
-                        try:
-                            ti_i = ti_i.interp(h=("wt", hhv))
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
-            for d in [d for d in getattr(ti_i, "dims", ()) if d != "wt"]:
-                try:
-                    ti_i = ti_i.mean(d)
-                except Exception:
-                    pass
-
-            vals = np.asarray(getattr(ti_i, "values", ti_i), dtype=F32).ravel()
+            ti_i = ti_i.interp(x=("wt", xs), y=("wt", ys))
+        if "h" in getattr(ti_i, "dims", ()):
+            if ti_i.sizes["h"] == 1:
+                # A single height: the reference for any hub height, as for the wind climate (wrg_site.py).
+                ti_i = ti_i.isel(h=0)
+            else:
+                hhv = np.asarray(hh_per_turb, dtype=np.float64).ravel()
+                if hhv.size != n:
+                    return _fallback()
+                ti_i = ti_i.interp(h=("wt", hhv))
+        if "wd" in getattr(ti_i, "dims", ()) and ti_i.sizes["wd"] > 1:
+            wd = np.asarray(ti_i["wd"].values, dtype=np.float64)
+            if wd[-1] - wd[0] == 360.0:  # the copy of the first sector that XRSite adds to interpolate, not a sector
+                ti_i = ti_i.isel(wd=slice(0, -1))
+        for d in [d for d in getattr(ti_i, "dims", ()) if d != "wt"]:
+            ti_i = ti_i.mean(d)
+        vals = np.asarray(getattr(ti_i, "values", ti_i), dtype=F32).ravel()
+        if "wt" in getattr(ti_i, "dims", ()):
             ti = vals if vals.size == n else _fallback()
         else:
-            try:
-                tmp = ti_da
-                for d in [d for d in getattr(tmp, "dims", ())]:
-                    try:
-                        tmp = tmp.mean(d)
-                    except Exception:
-                        pass
-                scalar = float(np.asarray(getattr(tmp, "values", tmp)).reshape(-1)[0])
-                ti = np.full(n, scalar, dtype=F32)
-            except Exception:
-                ti = _fallback()
+            ti = np.full(n, vals[0], dtype=F32) if vals.size == 1 else _fallback()
 
-        return np.clip(ti, 0.0, float(ti_cap)).astype(F32)
+        return np.asarray(ti, dtype=F32)
 
     except Exception:
-        return np.clip(_fallback(), 0.0, float(ti_cap)).astype(F32)
+        return _fallback()
 
 xy_dims = _xy_dims
 apply_fixed_ti = _apply_fixed_ti

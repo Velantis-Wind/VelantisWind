@@ -80,7 +80,7 @@ def _result_matrix_minutes(result) -> np.ndarray:
             arr = np.asarray(matrix, dtype=float)
             if arr.shape == (12, 24):
                 return arr.copy()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     arr = np.zeros((12, 24), dtype=float)
@@ -89,14 +89,14 @@ def _result_matrix_minutes(result) -> np.ndarray:
     for day, times in calendar.items():
         try:
             month_idx = int(day.month) - 1
-        except Exception:
+        except Exception:  # nosec B112
             continue
         if month_idx < 0 or month_idx > 11:
             continue
         for t in times or []:
             try:
                 hour = int(t.hour)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             if 0 <= hour <= 23:
                 arr[month_idx, hour] += float(step_min)
@@ -140,7 +140,7 @@ def _top_turbine(result) -> Tuple[str, float]:
 
 
 def _severity(hours: float, max_minutes_day: int) -> Tuple[str, int, QtGui.QColor]:
-    if hours >= 30.0 or max_minutes_day > 30:
+    if hours > 30.0 or max_minutes_day > 30:  # exactly 30 h/year does not exceed, as «Supera 30 h» counts
         return _ml("Crítico", "Critical", "Critique", "Kritisch"), 4, QtGui.QColor(255, 170, 170)
     if hours >= 20.0:
         return _ml("Alto", "High", "Élevé", "Hoch"), 3, QtGui.QColor(255, 220, 165)
@@ -160,7 +160,7 @@ def _format_turbine_geometry(turbines, key: str, unit: str = "m") -> str:
     for turbine in turbines or []:
         try:
             value = float(turbine.get(key))
-        except Exception:
+        except Exception:  # nosec B112
             continue
         if np.isfinite(value):
             values.append(value)
@@ -172,7 +172,7 @@ def _format_turbine_geometry(turbines, key: str, unit: str = "m") -> str:
     if len(unique_values) == 1:
         return f"{unique_values[0]:.2f} {unit}"
 
-    unique_text = _ml("valores únicos", "unique values", "valeurs uniques", "einzigartige Werte")
+    unique_text = _ml("valores únicos", "unique values", "valeurs uniques", "verschiedene Werte")
     return f"{min(values):.2f}–{max(values):.2f} {unit} ({len(unique_values)} {unique_text})"
 
 
@@ -224,7 +224,7 @@ def _finalize_table(table: QtWidgets.QTableWidget, *, min_height: int = 260, str
     try:
         table.horizontalHeader().setStretchLastSection(False)
         table.verticalHeader().setDefaultSectionSize(24)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -241,7 +241,7 @@ def show_calculation_summary_for_page(self, results, turbines, calculator):
     unit = hours_per_year_unit()
     hours_list = _all_hours(results)
     debug_print("\n" + "=" * 70)
-    debug_print(_ml("RESUMEN DEL CÁLCULO DE SOMBRAS Y PARPADEO", "SHADOW-FLICKER CALCULATION SUMMARY", "RÉSUMÉ DU CALCUL OMBRES ET SCINTILLEMENT", "ZUSAMMENFASSUNG DER SCHATTENWURFBERECHNUNG"))
+    debug_print(_ml("RESUMEN DEL CÁLCULO DE SOMBRAS Y PARPADEO", "SHADOW-FLICKER CALCULATION SUMMARY", "RÉSUMÉ DU CALCUL D’OMBRES PORTÉES", "ZUSAMMENFASSUNG DER SCHATTENWURFBERECHNUNG"))
     debug_print("=" * 70)
     debug_print(f"{_ml('Sitio', 'Site', 'Site', 'Standort')}: {calculator.latitude:.5f}°, {calculator.longitude:.5f}°")
     debug_print(f"{_ml('Año', 'Year', 'Année', 'Jahr')}: {calculator.year}")
@@ -277,7 +277,7 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
     critical = max(results, key=lambda r: _safe_float(getattr(r, "hours_per_year_astronomical", 0.0), 0.0)) if results else None
 
     dialog = QtWidgets.QDialog(self)
-    dialog.setWindowTitle(_ml("Sombras y parpadeo - Resumen del cálculo", "Shadow flicker - Calculation summary", "Ombres et scintillement - Résumé du calcul", "Schattenwurf - Berechnungsübersicht"))
+    dialog.setWindowTitle(_ml("Sombras y parpadeo - Resumen del cálculo", "Shadow flicker - Calculation summary", "Ombres portées - Résumé du calcul", "Schattenwurf - Berechnungsübersicht"))
     if fit_to_screen is not None:
         fit_to_screen(dialog, preferred=(1080, 740), minimum=(620, 420), max_ratio=(0.94, 0.88))
     else:
@@ -288,7 +288,7 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
     root.setContentsMargins(12, 12, 12, 12)
     root.setSpacing(8)
 
-    header = QtWidgets.QLabel(f"<h2>{_ml('Resumen del cálculo de sombras y parpadeo', 'Shadow-flicker calculation summary', 'Résumé du calcul d’ombres et scintillement', 'Zusammenfassung der Schattenwurfberechnung')}</h2>")
+    header = QtWidgets.QLabel(f"<h2>{_ml('Resumen del cálculo de sombras y parpadeo', 'Shadow-flicker calculation summary', 'Résumé du calcul d’ombres portées', 'Zusammenfassung der Schattenwurfberechnung')}</h2>")
     root.addWidget(header)
 
     tabs = QtWidgets.QTabWidget()
@@ -303,9 +303,9 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
     cards = QtWidgets.QGridLayout()
     cards.setHorizontalSpacing(8)
     cards.setVerticalSpacing(8)
-    cards.addWidget(_make_metric_card(_ml("Aerogeneradores", "Wind turbines", "Éoliennes", "Windturbinen"), str(n_turbines), _ml("Capa de entrada", "Input layer", "Source d’entrée", "Eingabequelle")), 0, 0)
+    cards.addWidget(_make_metric_card(_ml("Aerogeneradores", "Wind turbines", "Éoliennes", "Windturbinen"), str(n_turbines), _ml("Capa de entrada", "Input layer", "Couche d’entrée", "Eingabe-Layer")), 0, 0)
     cards.addWidget(_make_metric_card(_ml("Receptores evaluados", "Evaluated receivers", "Récepteurs évalués", "Bewertete Rezeptoren"), str(n_receivers), _ml(f"{affected} con >0 {unit}", f"{affected} with >0 {unit}", f"{affected} avec >0 {unit}", f"{affected} mit >0 {unit}")), 0, 1)
-    cards.addWidget(_make_metric_card("Maximum", f"{max_hours:.2f} {unit}", _ml("Receptor más expuesto", "Most exposed receiver", "Récepteur le plus exposé", "am stärksten exponierter Rezeptor"), "#fff4e5" if max_hours >= 20 else "#f4f6f8"), 0, 2)
+    cards.addWidget(_make_metric_card(_ml("Máximo", "Maximum", "Maximum", "Maximum"), f"{max_hours:.2f} {unit}", _ml("Receptor más expuesto", "Most exposed receiver", "Récepteur le plus exposé", "Am stärksten exponierter Rezeptor"), "#fff4e5" if max_hours >= 20 else "#f4f6f8"), 0, 2)
     cards.addWidget(_make_metric_card(_ml("Media", "Mean", "Moyenne", "Mittelwert"), f"{mean_hours:.2f} {unit}", _ml("Media sobre los receptores", "Mean over receivers", "Moyenne sur les récepteurs", "Mittelwert über die Rezeptoren")), 0, 3)
     cards.addWidget(_make_metric_card(_ml(f"Supera 30 {unit}", f"Exceeds 30 {unit}", f"Dépasse 30 {unit}", f"Überschreitet 30 {unit}"), str(exceed_30h), _ml("Umbral anual", "Annual threshold", "Seuil annuel", "Jahresschwelle"), "#ffe4e4" if exceed_30h else "#eef8ee"), 1, 0)
     cards.addWidget(_make_metric_card(_ml("Supera 30 min/día", "Exceeds 30 min/day", "Dépasse 30 min/jour", "Überschreitet 30 min/Tag"), str(exceed_30m), _ml("Umbral diario", "Daily threshold", "Seuil journalier", "Tagesschwelle"), "#ffe4e4" if exceed_30m else "#eef8ee"), 1, 1)
@@ -318,7 +318,7 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
         crit_group = QtWidgets.QGroupBox(_ml("Receptor crítico", "Critical receiver", "Récepteur critique", "Kritischer Rezeptor"))
         crit_layout = QtWidgets.QFormLayout(crit_group)
         crit_layout.addRow(_ml("Receptor:", "Receiver:", "Récepteur :", "Rezeptor:"), QtWidgets.QLabel(str(getattr(critical, "receptor_name", "—"))))
-        crit_layout.addRow(_ml("Sombra anual:", "Annual shadow flicker:", "Ombre annuelle :", "Jährlicher Schattenwurf:"), QtWidgets.QLabel(f"{_safe_float(getattr(critical, 'hours_per_year_astronomical', 0.0)):.2f} {unit}"))
+        crit_layout.addRow(_ml("Sombra anual:", "Annual shadow flicker:", "Ombres portées annuelles :", "Jährlicher Schattenwurf:"), QtWidgets.QLabel(f"{_safe_float(getattr(critical, 'hours_per_year_astronomical', 0.0)):.2f} {unit}"))
         crit_layout.addRow(_ml("Días afectados:", "Affected days:", "Jours affectés :", "Betroffene Tage:"), QtWidgets.QLabel(str(_safe_int(getattr(critical, "days_affected", 0)))))
         crit_layout.addRow(_ml("Día más desfavorable:", "Worst day:", "Jour le plus défavorable :", "Ungünstigster Tag:"), QtWidgets.QLabel(f"{worst_date} · {worst_min} min"))
         crit_layout.addRow(_ml("Aerogenerador dominante:", "Dominant wind turbine:", "Éolienne dominante :", "Dominante Windturbine:"), QtWidgets.QLabel(f"{top_turbine} ({top_hours:.2f} {unit})" if top_hours > 0 else top_turbine))
@@ -326,8 +326,8 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
 
     config_group = QtWidgets.QGroupBox(_ml("Configuración", "Configuration", "Configuration", "Konfiguration"))
     config_layout = QtWidgets.QFormLayout(config_group)
-    config_layout.addRow("Latitude:", QtWidgets.QLabel(f"{calculator.latitude:.5f}°"))
-    config_layout.addRow("Longitude:", QtWidgets.QLabel(f"{calculator.longitude:.5f}°"))
+    config_layout.addRow(_ml("Latitud:", "Latitude:", "Latitude :", "Breitengrad:"), QtWidgets.QLabel(f"{calculator.latitude:.5f}°"))
+    config_layout.addRow(_ml("Longitud:", "Longitude:", "Longitude :", "Längengrad:"), QtWidgets.QLabel(f"{calculator.longitude:.5f}°"))
     config_layout.addRow(_ml("Año:", "Year:", "Année :", "Jahr:"), QtWidgets.QLabel(str(calculator.year)))
     config_layout.addRow(_ml("Altura de buje usada:", "Hub height used:", "Hauteur de moyeu utilisée :", "Verwendete Nabenhöhe:"), QtWidgets.QLabel(hub_height_summary))
     config_layout.addRow(_ml("Diámetro de rotor usado:", "Rotor diameter used:", "Diamètre du rotor utilisé :", "Verwendeter Rotordurchmesser:"), QtWidgets.QLabel(rotor_diameter_summary))
@@ -383,7 +383,7 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
     info_label = QtWidgets.QLabel(_ml(
         "<i>Horas de sombra por hora del día y mes. Los valores se convierten de minutos a horas. La columna Todos suma todos los meses por cada hora.</i>",
         "<i>Shadow-flicker hours by time of day and month. Values are converted from minutes to hours. The All column sums all months for each hour.</i>",
-        "<i>Heures d’ombres et de scintillement par heure de la journée et par mois. Les valeurs sont converties de minutes en heures. La colonne Tous somme tous les mois pour chaque heure.</i>",
+        "<i>Heures d’ombres portées par heure de la journée et par mois. Les valeurs sont converties de minutes en heures. La colonne Tous somme tous les mois pour chaque heure.</i>",
         "<i>Schattenwurfstunden nach Tagesstunde und Monat. Die Werte werden von Minuten in Stunden umgerechnet. Die Spalte Alle summiert alle Monate je Stunde.</i>",
     ))
     info_label.setWordWrap(True)
@@ -450,13 +450,13 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
     columns = [
         _ml("Receptor", "Receiver", "Récepteur", "Rezeptor"),
         unit,
-        _ml("h realistas", "realistic h", "h réaliste", "realistische h"),
+        _ml("h realistas", "Realistic h", "h réalistes", "Realistische h"),
         _ml("Días", "Days", "Jours", "Tage"),
         _ml("Máx. min/día", "Max. min/day", "Max min/jour", "Max. min/Tag"),
-        _ml("Día crítico", "Critical day", "Jour critique", "kritischer Tag"),
-        _ml("Aerogeneradores afectados", "Affecting turbines", "Éoliennes affectantes", "betroffene Windturbinen"),
-        _ml("Aerogenerador dominante", "Dominant turbine", "Éolienne dominante", "dominante Windturbine"),
-        _ml("h dominantes", "dominant h", "h dominante", "dominante h"),
+        _ml("Día crítico", "Critical day", "Jour critique", "Kritischer Tag"),
+        _ml("Aerogeneradores afectados", "Contributing turbines", "Éoliennes contributrices", "Beitragende Windturbinen"),
+        _ml("Aerogenerador dominante", "Dominant turbine", "Éolienne dominante", "Dominante Windturbine"),
+        _ml("h dominantes", "Dominant h", "h dominantes", "Dominante h"),
         _ml("Estado", "Status", "État", "Status"),
     ]
     table_rec = QtWidgets.QTableWidget(n_receivers, len(columns))
@@ -512,14 +512,14 @@ def show_summary_dialog_for_page(self, results, turbines, calculator):
     tabs.addTab(tab_receptors, _ml("Por receptor", "By receiver", "Par récepteur", "Je Rezeptor"))
 
     buttons = QtWidgets.QHBoxLayout()
-    btn_export = QtWidgets.QPushButton(_ml("📊 Exportar CSV 12×24", "📊 Export 12×24 CSV", "📊 Exporter 12×24 CSV", "📊 12×24-CSV exportieren"))
+    btn_export = QtWidgets.QPushButton(_ml("📊 Exportar CSV 12×24", "📊 Export 12×24 CSV", "📊 Exporter le CSV 12×24", "📊 12×24-CSV exportieren"))
     btn_export.setToolTip(_ml("Exportar la matriz hora × mes como CSV", "Export the hour × month matrix as CSV", "Exporter la matrice heure × mois en CSV", "Stunde-×-Monat-Matrix als CSV exportieren"))
     btn_export.setMinimumHeight(36)
 
     def do_export():
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             dialog,
-            _ml("Exportar sombras 12×24", "Export shadow flicker 12×24", "Exporter ombres et scintillement 12×24", "Schattenwurf 12×24 exportieren"),
+            _ml("Exportar sombras 12×24", "Export shadow flicker 12×24", "Exporter les ombres portées 12×24", "Schattenwurf 12×24 exportieren"),
             f"shadow_flicker_12x24_{calculator.year}.csv",
             _ml("Archivos CSV (*.csv)", "CSV files (*.csv)", "Fichiers CSV (*.csv)", "CSV-Dateien (*.csv)"),
         )

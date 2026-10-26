@@ -1,12 +1,19 @@
 # Energy/AEP scientific dependencies for the QGIS Python environment.
 # Install these in the same Python interpreter used by QGIS/OSGeo4W.
-# Exact pins are intentionally avoided for the experimental release because
-# QGIS/OSGeo4W environments vary by platform and bundled GDAL/Qt versions.
+# PyWake is pinned to the version against which the predefined models and the
+# consistency checks of the plugin were verified; the other packages are not
+# pinned because QGIS/OSGeo4W environments vary by platform and bundled GDAL/Qt versions.
 
-py_wake
+py_wake==2.6.18
 numpy
 scipy
 xarray
 matplotlib
 pandas
 openpyxl
+
+# GaussianOverlapAvgModel (rotor average of the predefined models NiayifarGaussian and TurbOPark) reads a PyWake NetCDF lookup table.
+# On Windows, the h5py pip wheel is expected to fail to load in QGIS from OSGeo4W; see docs/INSTALL_OSGEO4W_PYWAKE.md.
+h5py; platform_system != "Windows"
+# PyWake 2.6.18 requires h5netcdf on all platforms; since 1.8, h5netcdf no longer depends on h5py.
+h5netcdf>=1.8

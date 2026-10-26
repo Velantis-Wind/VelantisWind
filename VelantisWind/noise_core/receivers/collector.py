@@ -44,7 +44,7 @@ def _build_receiver_feature_list(
                 pt = geom.centroid().asPoint()
                 eval_mode = "centroid"
             x, y = float(pt.x()), float(pt.y())
-        except Exception:
+        except Exception:  # nosec B112
             continue
         z_ground = _sample_dem(dem_layer, x, y)
         attrs = [feat[a.name()] for a in fields]

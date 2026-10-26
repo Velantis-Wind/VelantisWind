@@ -11,14 +11,20 @@ from .resource_loader import (
     ensure_ti_available,
 )
 from .layout_builder import build_layout_arrays
-from .model_config import build_physical_model_config
-from .result_builder import build_energy_result_payload
+from .resource_settings import (
+    check_speedup, effective_turbines, turbine_speed_grid, resolve_resource_settings, resource_log_line,
+    resource_note,
+)
 
 __all__ = [
     "normalize_resource_inputs",
     "load_energy_site",
     "ensure_ti_available",
     "build_layout_arrays",
-    "build_physical_model_config",
-    "build_energy_result_payload",
+    "check_speedup",
+    "effective_turbines",
+    "turbine_speed_grid",
+    "resolve_resource_settings",
+    "resource_log_line",
+    "resource_note",
 ]

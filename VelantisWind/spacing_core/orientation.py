@@ -26,11 +26,10 @@ from __future__ import annotations
 
 import math
 import os
-import re
 import zipfile
 from typing import Dict, List, Optional, Tuple
 
-_num_re = re.compile(r"^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$")
+from ..ag_core.wrg_nodes import node_tokens
 
 # cache: {(abspath, mtime): SectorEnergy}
 _CACHE: Dict[Tuple[str, float], "SectorEnergy"] = {}
@@ -75,12 +74,6 @@ def _read_wrg_lines(path: str) -> List[str]:
     return [ln for ln in text.splitlines() if ln.strip()]
 
 
-def _strip_optional_id(tokens: List[str]) -> List[str]:
-    if tokens and not _num_re.match(tokens[0]):
-        return tokens[1:]
-    return tokens
-
-
 def _sector_energy_from_lines(lines: List[str], max_nodes: int = 5000) -> SectorEnergy:
     if len(lines) < 2:
         raise ValueError("WRG vacío o sin puntos")
@@ -92,9 +85,7 @@ def _sector_energy_from_lines(lines: List[str], max_nodes: int = 5000) -> Sector
     npts = max(1, nx * ny)
 
     # nsec desde el primer nodo
-    toks0 = _strip_optional_id(lines[1].split())
-    if len(toks0) < 9:
-        raise ValueError("Línea de punto WRG inválida")
+    toks0, _ = node_tokens(lines[1].split())
     nsec = int(float(toks0[7]))
     if nsec <= 0 or nsec > 72:
         raise ValueError(f"Nº de sectores WRG fuera de rango: {nsec}")
@@ -106,13 +97,10 @@ def _sector_energy_from_lines(lines: List[str], max_nodes: int = 5000) -> Sector
     energy = [0.0] * nsec
     used = 0
     for ln in node_lines[::stride]:
-        toks = _strip_optional_id(ln.split())
-        need = 8 + 3 * nsec
-        if len(toks) < need:
-            continue
         try:
-            arr = [float(t) for t in toks[8:need]]
-        except Exception:
+            toks, _ = node_tokens(ln.split(), nsec_expected=nsec)
+            arr = [float(t) for t in toks[8:]]
+        except Exception:  # nosec B112
             continue
         ok = True
         for s in range(nsec):

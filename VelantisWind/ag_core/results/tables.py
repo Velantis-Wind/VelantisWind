@@ -45,6 +45,8 @@ def build_per_turbine_table(
     aep_wake_blk_only_wt=None,
     aep_wake_ti_blk_wt=None,
     ti_per_turb=None,
+    air_density=None,
+    hub_altitude_m=None,
 ) -> List[Dict[str, Any]]:
     """Build the per-turbine table consumed by the UI, reports and layer writer."""
     rows: List[Dict[str, Any]] = []
@@ -111,6 +113,8 @@ def build_per_turbine_table(
                 "aep_wake_blk_only_mwh": arr_val(aep_wake_blk_only_wt) if compute_variants else None,
                 "aep_wake_ti_blk_mwh": arr_val(aep_wake_ti_blk_wt) if compute_variants else None,
                 "ti_eff": float(np.asarray(ti_per_turb)[i]) if (ti_per_turb is not None and len(ti_per_turb) > i) else None,
+                "air_density_kg_m3": air_density[i] if air_density is not None else None,
+                "hub_altitude_m": hub_altitude_m[i] if hub_altitude_m is not None else None,
             }
         )
     return rows

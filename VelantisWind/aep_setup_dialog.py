@@ -3,23 +3,25 @@
 ag/aep_setup_dialog.py
 
 Diálogo para:
-- Definir modelos (turbinas) y escoger CSV de coordenadas por modelo.
-- Crear capas de puntos "{Modelo} (CSV)".
-- Calcular AEP y VOLCAR resultados en esas capas:
+- Definir modelos (turbinas) y elegir en cada fila su capa de turbinas, o importar
+  un fichero de coordenadas como capa nueva («Cargar nueva capa»).
+- Calcular AEP con las capas elegidas y VOLCAR resultados en ellas:
     * Botón normal  -> ag_core.aep_compute.compute_and_update
 """
 
+from .number_format import format_number
 from typing import List, Dict, Any, Optional, Tuple
-import os, csv, importlib, sys, re, copy, traceback
+import os, csv, importlib, sys, re, copy, traceback, contextlib, html
 
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtCore import QVariant, QUrl
 from qgis.PyQt.QtGui import QIcon, QPixmap, QDesktopServices
 
 from qgis.core import (
-    Qgis, QgsProject, QgsVectorLayer, QgsField, QgsFeature, QgsGeometry,
-    QgsPointXY, QgsLayerTreeGroup, QgsWkbTypes, edit
+    Qgis, QgsProject, QgsVectorLayer, QgsField, QgsLayerTreeGroup, QgsWkbTypes, QgsCsException,
+    QgsMapLayerProxyModel
 )
+from qgis.gui import QgsMapLayerComboBox
 from qgis.utils import iface
 
 # Mapa interactivo (click para añadir/borrar turbinas)
@@ -30,9 +32,11 @@ except Exception:
 
 try:
     from .spacing_core import SpacingConfigDialog, SpacingController
+    from .spacing_core.envelope_manager import layers_being_removed
 except Exception:
     SpacingController = None  # type: ignore
     SpacingConfigDialog = None  # type: ignore
+    layers_being_removed = None  # type: ignore
 
 # Caja de herramientas (QDockWidget) para el modo Mapa Interactivo
 try:
@@ -41,8 +45,18 @@ except Exception:
     InteractiveMapDock = None  # type: ignore
 
 from .ag_core import export_results
+from .ag_core.qgis_io.layers import layer_points_in_project_crs
 from .results_dialog import AEPResultsDialog, ScenarioComparisonDialog
-from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, current_language
+from .i18n import set_source, apply_i18n, install_runtime_i18n_patches, mark_translated, tr_text as _tr, current_language
+from .ag_core.log_text import shown
+from .ag_core.wake_setup import api as _wake_api
+from .ag_core.results.model_config_html import executed_rows
+from .ag_core.wake_setup import validation as _val
+from .ui_core.wake_group import MANUAL, WakeModelGroup, clear_consent, consent_applies, save_consent, saved_consent
+from .ui_core.dialog_keys import enter_reaches_default
+from .ag_core.orchestration.resource_settings import effective_turbines, turbine_speed_grid
+from .ag_core.resource_grid import SPEED_STEPS, WD_INTERP_METHODS, direction_options, initial_direction_count
+from .energy_core.project_density import read_project_density, write_project_density
 from .ui_core.responsive import fit_to_screen, configure_scroll_area
 
 # El flujo de cálculo AEP se delega bajo demanda en energy_core.dialog_controller
@@ -67,6 +81,33 @@ except Exception:
     show_wrg_resource_extent = None  # type: ignore
 
 _GROUP_NAME = "AEP · Coordenadas por modelo"
+
+# The help of «Parámetros del recurso». Directions, interpolation and Speedup are Velantis Optimizer's texts; the
+# speeds too, but for their last sentence: here a turbine is not prepared, it is the model of a row.
+_WD_COUNT_HELP = (
+    "Número de direcciones de viento con las que se calcula el AEP; son múltiplos del número de sectores del WRG. "
+    "Cada sector se divide en partes iguales y se calcula en el centro de cada una, así que todos los sectores "
+    "reciben el mismo número de direcciones. Más direcciones siguen mejor cómo cambian las estelas con la "
+    "dirección, a cambio de más tiempo de cálculo. La selección inicial (7 por sector, o 1 si 7 por sector pasa "
+    "de 360) es una elección práctica, no una garantía de precisión."
+)
+_WD_INTERP_HELP = (
+    "Cómo se toman la frecuencia y la Weibull del WRG en cada dirección de cálculo. nearest: cada dirección toma "
+    "los valores del sector en el que cae. linear: interpola entre los centros de los dos sectores contiguos. Solo "
+    "afecta a la dirección."
+)
+_SPEEDUP_HELP = (
+    "Fijo en none: conserva en cada punto sus parámetros Weibull (A, k) y frecuencias locales del WRG. No los "
+    "transforma en una Weibull de referencia común con factores de aceleración espacial."
+)
+_SPEEDS_HELP = (
+    'Velocidades de viento consideradas en el Site, con las que se integra el AEP. El rango se ajusta a la banda de operación de la turbina, de su arranque a su parada (con varios tipos, la unión de sus bandas): fuera de ella la turbina no produce. El paso se elige; al principio, el de su curva de potencia. Cada velocidad representa el intervalo que llega hasta la mitad de la distancia a sus vecinas. Mientras no se conozca la curva de cada turbina, «—».'
+)
+
+
+def _decimal(value: float) -> str:
+    """A number for the interface in the current plugin language."""
+    return format_number(value, "g")
 
 # Direct French translations for Energy/AEP help popups.
 # Keys intentionally use the Spanish source text of the Energy module.
@@ -324,234 +365,7 @@ _AEP_HELP_FR = {'Ayuda · Promedio sobre el rotor': 'Aide · Moyenne sur le roto
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             'domine.',
  '<i>Sin información específica para este modelo.</i>': '<i>Aucune information spécifique pour ce modèle.</i>',
  'Ayuda · Parámetros del modelo (': 'Aide · Paramètres du modèle (',
- '<b>Qué es el wake effect, en simple</b><br><br>Cuando una turbina extrae energía del viento, detrás de ella queda una zona con menos velocidad y más turbulencia. Esa zona es la <b>estela</b>. Si otra turbina cae dentro, producirá menos AEP.<br><br>El <b>wake deficit model</b> decide cuánta velocidad se pierde y cómo se recupera la estela aguas abajo.<br><br><b>Cómo elegir sin ser experto</b><br>• <b>BastankhahGaussianDeficit</b>: opción robusta para comparar layouts y parques offshore limpios.<br>• <b>NiayifarGaussianDeficit</b>: parecido a Bastankhah, pero la turbulencia TI pesa más en la expansión de la estela.<br>• <b>ZongGaussianDeficit</b>: más avanzado; útil si quieres una representación más rica del near wake y de la recuperación por TI.<br>• <b>TurboGaussianDeficit</b>: gaussiano sensible a turbulencia efectiva; interesante cuando quieres que la TI ambiente/añadida influya en el AEP.<br>• <b>NOJDeficit</b>: muy rápido y clásico; bueno para screening masivo, pero más simplificado.<br>• <b>TurboNOJDeficit</b>: mantiene la ligereza de NOJ, pero permite que la TI influya más.<br><br><b>Idea sencilla</b><br>Para más realismo cuando la turbulencia debe influir en la recuperación de estela, usa <b>Niayifar/Zong/TurboGaussian</b>. Para un cálculo rápido, usa <b>NOJ/TurboNOJ</b>. Para una base robusta de comparación, usa <b>Bastankhah</b>.<br><br>Importante: cargar un raster TI no garantiza por sí solo que cambie mucho el AEP. El efecto se ve de verdad si el modelo de estela elegido usa la TI de forma explícita.': '<b>Qu’est-ce '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'que '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'l’effet '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sillage, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'simplement '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '?</b><br><br>Lorsqu’une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'éolienne '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'extrait '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'l’énergie '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'vent, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'elle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'laisse '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'derrière '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'elle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'zone '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'où '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'vitesse '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'faible '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'turbulence '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'élevée. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Cette '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'zone '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>sillage</b>. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Si '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'autre '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'éolienne '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'se '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'trouve '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'dedans, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'elle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'produira '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'moins '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'd’AEP.<br><br>Le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>modèle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'déficit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sillage</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'décide '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'combien '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'vitesse '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'perdue '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'comment '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sillage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'se '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'rétablit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'en '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'aval.<br><br><b>Comment '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'choisir '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sans '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'être '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'expert</b><br>• '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>BastankhahGaussianDeficit</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'option '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'robuste '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'pour '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'comparer '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'des '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'layouts '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'des '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'parcs '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'offshore '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'propres.<br>• '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>NiayifarGaussianDeficit</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'proche '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Bastankhah, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'mais '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'turbulence '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'pèse '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'davantage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'dans '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'l’expansion '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sillage.<br>• '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>ZongGaussianDeficit</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'avancé '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '; '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'utile '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'si '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'vous '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'voulez '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'représentation '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'riche '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'near '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'wake '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'récupération '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'liée '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'à '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI.<br>• '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>TurboGaussianDeficit</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'gaussien '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sensible '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'à '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'turbulence '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'effective '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '; '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'intéressant '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'lorsque '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'vous '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'voulez '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'que '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'ambiante/ajoutée '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'influence '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'l’AEP.<br>• '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>NOJDeficit</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'très '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'rapide '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'classique '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '; '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'bon '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'pour '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'screening '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'massif, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'mais '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'simplifié.<br>• '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>TurboNOJDeficit</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'conserve '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'légèreté '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'NOJ, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'mais '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'permet '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'à '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'd’avoir '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'd’influence.<br><br><b>Idée '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'simple</b><br>Pour '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'réalisme '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'lorsque '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'turbulence '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'doit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'influencer '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'récupération '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sillage, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'utilisez '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>Niayifar/Zong/TurboGaussian</b>. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Pour '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'un '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'calcul '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'rapide, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'utilisez '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>NOJ/TurboNOJ</b>. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Pour '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'base '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'robuste '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'comparaison, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'utilisez '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>Bastankhah</b>.<br><br>Important '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'charger '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'un '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'raster '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'ne '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'garantit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'pas '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'à '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'lui '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'seul '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'un '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'changement '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'important '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'l’AEP. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'L’effet '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'apparaît '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'vraiment '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'si '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'modèle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sillage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'choisi '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'utilise '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'explicitement '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI.',
+ '<b>Qué es el wake effect, en simple</b><br><br>Cuando una turbina extrae energía del viento, detrás de ella queda una zona con menos velocidad y más turbulencia. Esa zona es la <b>estela</b>. Si otra turbina cae dentro, producirá menos AEP.<br><br>El <b>wake deficit model</b> decide cuánta velocidad se pierde y cómo se recupera la estela aguas abajo.<br><br><b>Cómo elegir sin ser experto</b><br>• <b>BastankhahGaussianDeficit</b>: opción robusta para comparar layouts y parques offshore limpios.<br>• <b>NiayifarGaussianDeficit</b>: parecido a Bastankhah, pero la turbulencia TI pesa más en la expansión de la estela.<br>• <b>ZongGaussianDeficit</b>: más avanzado; útil si quieres una representación más rica del near wake y de la recuperación por TI.<br>• <b>TurboGaussianDeficit</b>: gaussiano sensible a turbulencia efectiva; interesante cuando quieres que la TI ambiente/añadida influya en el AEP.<br>• <b>NOJDeficit</b>: muy rápido y clásico; bueno para screening masivo, pero más simplificado.<br>• <b>TurboNOJDeficit</b>: mantiene la ligereza de NOJ, pero permite que la TI influya más.<br><br><b>Idea sencilla</b><br>Para más realismo cuando la turbulencia debe influir en la recuperación de estela, usa <b>Niayifar/Zong/TurboGaussian</b>. Para un cálculo rápido, usa <b>NOJ/TurboNOJ</b>. Para una base robusta de comparación, usa <b>Bastankhah</b>.<br><br>Importante: cargar un raster TI no garantiza por sí solo que cambie mucho el AEP. El efecto se ve de verdad si el modelo de estela elegido usa la TI de forma explícita.': "<b>Qu’est-ce que l’effet de sillage, simplement ?</b><br><br>Lorsqu’une éolienne extrait de l’énergie du vent, elle laisse derrière elle une zone où la vitesse est plus faible et la turbulence plus élevée. Cette zone est le <b>sillage</b>. Si une autre éolienne se trouve dedans, elle produira moins d’AEP.<br><br>Le <b>modèle de déficit de sillage</b> décide combien de vitesse est perdue et comment le sillage se rétablit en aval.<br><br><b>Comment choisir sans être expert</b><br>• <b>BastankhahGaussianDeficit</b> : option robuste pour comparer des implantations et des parcs offshore propres.<br>• <b>NiayifarGaussianDeficit</b> : proche de Bastankhah, mais la turbulence TI pèse davantage dans l’expansion du sillage.<br>• <b>ZongGaussianDeficit</b> : plus avancé ; utile si vous voulez une représentation plus riche du sillage proche et de la récupération liée à la TI.<br>• <b>TurboGaussianDeficit</b> : gaussien sensible à la turbulence effective ; intéressant lorsque vous voulez que la TI ambiante/ajoutée influence l’AEP.<br>• <b>NOJDeficit</b> : très rapide et classique ; bon pour une présélection massive, mais plus simplifié.<br>• <b>TurboNOJDeficit</b> : conserve la légèreté de NOJ, mais permet à la TI d’avoir plus d’influence.<br><br><b>Idée simple</b><br>Pour plus de réalisme lorsque la turbulence doit influencer la récupération du sillage, utilisez <b>Niayifar/Zong/TurboGaussian</b>. Pour un calcul rapide, utilisez <b>NOJ/TurboNOJ</b>. Pour une base robuste de comparaison, utilisez <b>Bastankhah</b>.<br><br>Important : charger un raster TI ne garantit pas à lui seul un changement important de l’AEP. L’effet apparaît vraiment si le modèle de sillage choisi utilise explicitement la TI.",
  'Ayuda · Wake effect y modelo de estela': 'Aide · Effet de sillage et modèle de sillage',
  '<b>Qué significa la turbulencia en este plugin</b><br><br>• <b>TI raster / WRG</b>: describe la <b>turbulencia ambiente</b> del site. Es un dato de entrada del recurso.<br>• <b>Modelo de turbulencia</b>: calcula la <b>turbulencia añadida por estela</b> detrás de las turbinas.<br>• <b>Modelo de estela</b>: decide si esa TI ambiente/efectiva cambia realmente el déficit y, por tanto, el AEP.<br><br><b>Cómo leerlo físicamente</b><br>• Si solo aportas un raster TI, el plugin usa esa TI horizontal para todas las turbinas; si hay varias alturas de buje, eso es una <b>aproximación vertical</b>.<br>• Si aportas varios raster(s) TI a distintas alturas, el plugin intenta reconstruir <b>TI(x,y,h)</b> e interpolar por altura.<br>• Si no aportas raster TI en WRG, el plugin avisa y usa la <b>TI ambiente fallback definida por el usuario</b> como campo uniforme.<br><br><b>Cuándo importa mucho en el AEP</b><br>• <b>BastankhahGaussianDeficit (BG)</b> y <b>NOJDeficit</b>: la TI no cambia mucho el déficit base del wake; el impacto sobre el AEP suele ser limitado.<br>• <b>NiayifarGaussianDeficit</b>, <b>ZongGaussianDeficit</b>, <b>TurboGaussianDeficit</b> y <b>TurboNOJDeficit</b>: la TI ambiente/efectiva sí puede influir más en la apertura y recuperación de la estela.<br><br><b>Qué conviene según el parque</b><br>• <b>Offshore con viento relativamente homogéneo</b>: una sola capa TI puede ser suficiente si las alturas de buje son parecidas.<br>• <b>Onshore, terreno rugoso o alturas de buje distintas</b>: para más realismo, usa raster(s) TI y un wake model sensible a TI (Niayifar, Zong, TurboGaussian o TurboNOJ).<br>• <b>Varios modelos de aerogenerador</b>: si mezclas alturas de buje, una sola capa TI es una aproximación; varias alturas de TI representan mejor la variación vertical.<br><br><b>Qué elegir en el selector de modelo de turbulencia</b><br>• <b>STF2017</b>: buena opción general y la recomendación por defecto cuando necesitas un modelo de turbulencia añadida robusto.<br>• <b>STF2005</b>: alternativa clásica y sencilla si quieres comparar con configuraciones más antiguas o más conservadoras.<br>• <b>CrespoHernandez</b> y <b>GCLTurbulence</b>: útiles para comparativas o compatibilidad con ciertos modelos/estudios, pero el impacto final depende del wake model que elijas.<br><br><b>Regla práctica</b><br>Si tu objetivo es que la turbulencia influya físicamente en el AEP, no basta con seleccionar un modelo de turbulencia: también necesitas un <b>modelo de estela sensible a TI</b>.': '<b>Ce '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               'que '
@@ -1259,7 +1073,7 @@ _AEP_HELP_FR = {'Ayuda · Promedio sobre el rotor': 'Aide · Moyenne sur le roto
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'par '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'hauteur.',
  'Ayuda · Turbulencia TI': 'Aide · Turbulence TI',
- '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04 (default PyWake)<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.': '<b>NOJDeficit '
+ '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano. Default PyWake = 0.1.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.': '<b>NOJDeficit '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                '(Jensen)</b><br><br>Modèle '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'top-hat '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'classique '
@@ -1316,7 +1130,7 @@ _AEP_HELP_FR = {'Ayuda · Promedio sobre el rotor': 'Aide · Moyenne sur le roto
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'déficit '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'lointain '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               'faible.<br><br><b>Valeurs '
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               'faible. Valeur PyWake par défaut = 0.1.<br><br><b>Valeurs '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'de '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'référence</b><br>• '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'Offshore '
@@ -1324,11 +1138,8 @@ _AEP_HELP_FR = {'Ayuda · Promedio sobre el rotor': 'Aide · Moyenne sur le roto
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ': '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'k '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                '≈ '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               '0.04 '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               '(valeur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               'PyWake '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               'par '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               'défaut)<br>• '
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               '0.04'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               '<br>• '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'Onshore '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'typique '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ': '
@@ -1381,266 +1192,9 @@ _AEP_HELP_FR = {'Ayuda · Promedio sobre el rotor': 'Aide · Moyenne sur le roto
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'à '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'la '
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'TI.',
- '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Modèle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'gaussien '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Bastankhah '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '& '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Porté-Agel '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '(2014). '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'profil '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'radial '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'déficit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'courbe '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Gauss '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'dont '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'largeur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'σ(x) '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'augmente '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'linéairement.<br><br><b>k</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '— '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Pente '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'croissance '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'σ. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'σ(x)/D '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '= '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'k·(x/D) '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '+ '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'cεps. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Valeur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'PyWake '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'par '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'défaut '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '= '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '0.0324, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'calibrée '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'sur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'des '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'LES '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'dans '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'l’article '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'original. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'L’augmenter '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'donne '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'un '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'sillage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'qui '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   's’élargit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'se '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'rétablit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'tôt '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '; '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'réduire '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'donne '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'un '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'sillage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'étroit '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'et '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'plus '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'persistant.<br><br><b>cεps</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '— '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Taille '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'initiale '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'sillage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'près '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'rotor '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '(σ₀/D). '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Valeur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'PyWake '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'par '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'défaut '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '= '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '0.2. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'On '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'modifie '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'rarement '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '; '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'elle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'affecte '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'surtout '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'near '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'wake.<br><br><i>Note '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ':</i> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'dans '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'BG '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'standard, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'ambiante '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'n’entre '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'pas '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'dans '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'k. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Il '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'robuste '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'pour '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'benchmarking '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '(par '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'exemple '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'IEA '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'Task '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   '37), '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'mais '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'peu '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'sensible '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'à '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   'ressource.',
- '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Variante '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'gaussienne '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'où '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'pente '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'k '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'est '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'une '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'fonction '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'explicite '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '<b>TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'locale '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'effective</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '(Niayifar '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '&amp; '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Porté-Agel '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '2016) '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ': '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'k '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '≈ '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'a₁·TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '+ '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'a₂.<br><br><b>a₁/a₂</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '— '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Coefficients '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'k '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '= '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'a₁·TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '+ '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'a₂. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Valeur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'PyWake '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'par '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'défaut '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '= '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '[0.38, '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '0.004].<br><b>cεps</b> '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '— '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Taille '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'initiale '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'σ₀/D. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Valeur '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'PyWake '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'par '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'défaut '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '= '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     '0.2.<br><br>Modifier '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'la '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'TI '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'ambiante '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'du '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'WRG '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'ou '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'modèle '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'turbulence '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'ajoutée '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'reste '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'le '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'levier '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'principal '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'de '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'l’AEP. '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'Les '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'coefficients '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'sont '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'exposés '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'uniquement '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'comme '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'réglage '
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     'avancé.',
- '<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.': '<b>ZongGaussianDeficit</b><br><br>Modèle '
-                                                                                                                                                                                                                                                                                                                                                                    'gaussien '
-                                                                                                                                                                                                                                                                                                                                                                    'avancé '
-                                                                                                                                                                                                                                                                                                                                                                    '(Zong '
-                                                                                                                                                                                                                                                                                                                                                                    '&amp; '
-                                                                                                                                                                                                                                                                                                                                                                    'Porté-Agel '
-                                                                                                                                                                                                                                                                                                                                                                    '2020) '
-                                                                                                                                                                                                                                                                                                                                                                    'avec '
-                                                                                                                                                                                                                                                                                                                                                                    'near '
-                                                                                                                                                                                                                                                                                                                                                                    'wake '
-                                                                                                                                                                                                                                                                                                                                                                    'explicite '
-                                                                                                                                                                                                                                                                                                                                                                    'et '
-                                                                                                                                                                                                                                                                                                                                                                    'pente '
-                                                                                                                                                                                                                                                                                                                                                                    'k '
-                                                                                                                                                                                                                                                                                                                                                                    'dépendante '
-                                                                                                                                                                                                                                                                                                                                                                    'de '
-                                                                                                                                                                                                                                                                                                                                                                    'la '
-                                                                                                                                                                                                                                                                                                                                                                    'TI '
-                                                                                                                                                                                                                                                                                                                                                                    'locale.<br><br><b>a₁/a₂</b> '
-                                                                                                                                                                                                                                                                                                                                                                    '— '
-                                                                                                                                                                                                                                                                                                                                                                    'Coefficients '
-                                                                                                                                                                                                                                                                                                                                                                    'de '
-                                                                                                                                                                                                                                                                                                                                                                    'k '
-                                                                                                                                                                                                                                                                                                                                                                    '= '
-                                                                                                                                                                                                                                                                                                                                                                    'a₁·TI '
-                                                                                                                                                                                                                                                                                                                                                                    '+ '
-                                                                                                                                                                                                                                                                                                                                                                    'a₂. '
-                                                                                                                                                                                                                                                                                                                                                                    'Valeur '
-                                                                                                                                                                                                                                                                                                                                                                    'PyWake '
-                                                                                                                                                                                                                                                                                                                                                                    'par '
-                                                                                                                                                                                                                                                                                                                                                                    'défaut '
-                                                                                                                                                                                                                                                                                                                                                                    '= '
-                                                                                                                                                                                                                                                                                                                                                                    '[0.38, '
-                                                                                                                                                                                                                                                                                                                                                                    '0.004].<br><b>δw/D, '
-                                                                                                                                                                                                                                                                                                                                                                    'ε '
-                                                                                                                                                                                                                                                                                                                                                                    'coeff, '
-                                                                                                                                                                                                                                                                                                                                                                    'λ '
-                                                                                                                                                                                                                                                                                                                                                                    'et '
-                                                                                                                                                                                                                                                                                                                                                                    'B</b> '
-                                                                                                                                                                                                                                                                                                                                                                    '— '
-                                                                                                                                                                                                                                                                                                                                                                    'paramètres '
-                                                                                                                                                                                                                                                                                                                                                                    'avancés '
-                                                                                                                                                                                                                                                                                                                                                                    'de '
-                                                                                                                                                                                                                                                                                                                                                                    'near '
-                                                                                                                                                                                                                                                                                                                                                                    'wake. '
-                                                                                                                                                                                                                                                                                                                                                                    'Le '
-                                                                                                                                                                                                                                                                                                                                                                    'plugin '
-                                                                                                                                                                                                                                                                                                                                                                    'force '
-                                                                                                                                                                                                                                                                                                                                                                    'STF2017 '
-                                                                                                                                                                                                                                                                                                                                                                    'si '
-                                                                                                                                                                                                                                                                                                                                                                    'vous '
-                                                                                                                                                                                                                                                                                                                                                                    'laissez '
-                                                                                                                                                                                                                                                                                                                                                                    'le '
-                                                                                                                                                                                                                                                                                                                                                                    'modèle '
-                                                                                                                                                                                                                                                                                                                                                                    'de '
-                                                                                                                                                                                                                                                                                                                                                                    'turbulence '
-                                                                                                                                                                                                                                                                                                                                                                    'sur '
-                                                                                                                                                                                                                                                                                                                                                                    'Aucun.',
+ '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': "<b>BastankhahGaussianDeficit</b><br><br>Modèle gaussien de Bastankhah & Porté-Agel (2014). Le profil radial du déficit est une courbe de Gauss dont la largeur σ(x) augmente linéairement.<br><br><b>k</b> — Pente de croissance de σ. σ(x)/D = k·(x/D) + ε, avec ε = cεps·√β et β fonction du Ct. Valeur PyWake par défaut = 0.0324, calibrée sur des LES dans l’article original. L’augmenter donne un sillage qui s’élargit et se rétablit plus tôt ; la réduire donne un sillage plus étroit et plus persistant.<br><br><b>cεps</b> — Coefficient de la largeur initiale ε du sillage près du rotor. Valeur PyWake par défaut = 0.2. On la modifie rarement ; elle affecte surtout le sillage proche.<br><br><i>Note :</i> dans le BG standard, la TI ambiante n’entre pas dans k. Il est robuste pour le benchmarking (par exemple IEA Task 37), mais peu sensible à la TI de la ressource.",
+ '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussienne où la pente k est une fonction explicite de la <b>TI locale effective</b> (Niayifar &amp; Porté-Agel 2016) : k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients de k = a₁·TI + a₂. Valeur PyWake par défaut = [0.38, 0.004].<br><b>cεps</b> — Coefficient de la largeur initiale du sillage (ε = cεps·√β, avec β fonction du Ct). Valeur PyWake par défaut = 0.2.<br><br>Modifier la TI ambiante du WRG ou le modèle de turbulence ajoutée reste le levier principal de l’AEP. Les coefficients sont exposés uniquement comme réglage avancé.',
+ '<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.': "<b>ZongGaussianDeficit</b><br><br>Modèle gaussien avancé (Zong &amp; Porté-Agel 2020) avec sillage proche explicite et pente k dépendante de la TI locale.<br><br><b>a₁/a₂</b> — Coefficients de k = a₁·TI + a₂. Valeur PyWake par défaut = [0.38, 0.004].<br><b>δw/D, ε coeff, λ et B</b> — paramètres avancés de sillage proche. Le plugin force STF2017 si vous laissez le modèle de turbulence sur Aucun.",
  '<b>TurboNOJDeficit</b><br><br>Variante TI-sensible del Jensen: la pendiente k se calcula a partir de la <b>turbulencia efectiva</b> en cada turbina.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI se exponen como ajuste avanzado y solo se pasan si tu PyWake los acepta.': '<b>TurboNOJDeficit</b><br><br>Variante '
                                                                                                                                                                                                                                                                                                                                                            'du '
                                                                                                                                                                                                                                                                                                                                                            'Jensen '
@@ -1756,9 +1310,9 @@ _AEP_HELP_EN = {
 
     "Ayuda · Parámetros del modelo (": "Help · Model parameters (",
     "<i>Sin información específica para este modelo.</i>": "<i>No specific information is available for this model.</i>",
-    "<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04 (default PyWake)<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.": "<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is represented as a cylinder that expands linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u>, it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. A higher k means faster wake recovery and a smaller far-wake deficit.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04 (PyWake default)<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to calculate k. If your site has high TI and you need this to affect AEP, use TurboNOJ or a TI-sensitive Gaussian model.",
-    "<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.": "<b>BastankhahGaussianDeficit</b><br><br>Bastankhah & Porté-Agel (2014) Gaussian model. The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, calibrated against LES in the original paper. Increasing it gives a wake that widens and recovers earlier; reducing it gives a narrower and more persistent wake.<br><br><b>cεps</b> — Initial wake size next to the rotor (σ₀/D). PyWake default = 0.2. It is rarely changed and mainly affects the near wake.<br><br><i>Note:</i> in standard BG, ambient TI does NOT enter k. It is robust for benchmarking, for example IEA Task 37, but not very sensitive to the TI resource.",
-    "<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.": "<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>local effective TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Initial σ₀/D size. PyWake default = 0.2.<br><br>Changing ambient TI from the WRG or changing the added-turbulence model remains the main AEP lever. The coefficients are exposed only as an advanced adjustment.",
+    "<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano. Default PyWake = 0.1.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.": "<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is represented as a cylinder that expands linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u>, it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. A higher k means faster wake recovery and a smaller far-wake deficit. PyWake default = 0.1.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to calculate k. If your site has high TI and you need this to affect AEP, use TurboNOJ or a TI-sensitive Gaussian model.",
+    "<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.": "<b>BastankhahGaussianDeficit</b><br><br>Bastankhah & Porté-Agel (2014) Gaussian model. The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + ε, with ε = cεps·√β and β a function of Ct. PyWake default = 0.0324, calibrated against LES in the original paper. Increasing it gives a wake that widens and recovers earlier; reducing it gives a narrower and more persistent wake.<br><br><b>cεps</b> — Coefficient of the initial wake width ε next to the rotor. PyWake default = 0.2. It is rarely changed and mainly affects the near wake.<br><br><i>Note:</i> in standard BG, ambient TI does NOT enter k. It is robust for benchmarking, for example IEA Task 37, but not very sensitive to the TI resource.",
+    "<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.": "<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>local effective TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.<br><br>Changing ambient TI from the WRG or changing the added-turbulence model remains the main AEP lever. The coefficients are exposed only as an advanced adjustment.",
     "<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.": "<b>ZongGaussianDeficit</b><br><br>Advanced Gaussian model (Zong &amp; Porté-Agel 2020) with explicit near-wake treatment and a k slope that depends on local TI.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>δw/D, ε coefficient, λ and B</b> — advanced near-wake parameters. The plugin forces STF2017 if you leave the turbulence model as None.",
     "<b>TurboNOJDeficit</b><br><br>Variante TI-sensible del Jensen: la pendiente k se calcula a partir de la <b>turbulencia efectiva</b> en cada turbina.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI se exponen como ajuste avanzado y solo se pasan si tu PyWake los acepta.": "<b>TurboNOJDeficit</b><br><br>TI-sensitive Jensen variant: the k slope is calculated from the <b>effective turbulence</b> at each turbine.<br><br>To move AEP, adjust the <b>ambient TI</b> or the <b>added-turbulence model</b>. The A/cTI coefficients are exposed as advanced settings and are only passed if your PyWake installation accepts them.",
     "<b>TurboGaussianDeficit</b><br><br>Versión TI-driven de la familia gaussiana. Tanto k como el ancho cerca del rotor se derivan de la TI efectiva.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI/cεps se exponen como ajuste avanzado para calibración controlada.": "<b>TurboGaussianDeficit</b><br><br>TI-driven version of the Gaussian family. Both k and the width close to the rotor are derived from effective TI.<br><br>To move AEP, adjust the <b>ambient TI</b> or the <b>added-turbulence model</b>. The A/cTI/cεps coefficients are exposed as advanced settings for controlled calibration.",
@@ -1789,16 +1343,16 @@ _AEP_HELP_FR_REVIEWED = {
 }
 try:
     _AEP_HELP_FR.update(_AEP_HELP_FR_REVIEWED)
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # Additional reviewed French bodies for the Energy/AEP help popups.
 _AEP_HELP_FR_EXTRA = {
     "<b>Qué es</b><br><br>Una turbina no ve exactamente el mismo viento en todo el rotor. La parte alta, baja, izquierda o derecha del disco puede recibir velocidades distintas, sobre todo si una estela solo atraviesa una parte del rotor.<br><br><b>Qué hace esta opción</b><br>• <b>Sin promedio / RotorCenter</b>: usa solo el centro del rotor. Es rápido, pero más simplificado.<br>• <b>CGIRotorAvg(7)</b>: calcula varios puntos dentro del disco. Aporta más realismo con un coste moderado.<br>• <b>CGIRotorAvg(9/21)</b>: usa más puntos. Puede aportar más fidelidad, pero aumenta el tiempo de cálculo.<br><br><b>Idea sencilla</b><br>Si una estela corta solo media turbina, mirar únicamente el centro puede ser demasiado simplificado. Promediar el rotor ayuda a representar mejor ese efecto.": "<b>Qu’est-ce que c’est ?</b><br><br>Une éolienne ne voit pas exactement le même vent sur tout le rotor. Le haut, le bas, la gauche ou la droite du disque peuvent recevoir des vitesses différentes, surtout si un sillage ne traverse qu’une partie du rotor.<br><br><b>Ce que fait cette option</b><br>• <b>Sans moyenne / RotorCenter</b> : utilise seulement le centre du rotor. C’est rapide, mais plus simplifié.<br>• <b>CGIRotorAvg(7)</b> : calcule plusieurs points dans le disque. Cela ajoute du réalisme avec un coût modéré.<br>• <b>CGIRotorAvg(9/21)</b> : utilise plus de points. Cela peut apporter plus de fidélité, mais augmente le temps de calcul.<br><br><b>Idée simple</b><br>Si un sillage coupe seulement la moitié d’une éolienne, regarder uniquement le centre peut être trop simplifié. La moyenne sur le rotor aide à mieux représenter cet effet.",
     "<b>Qué problema resuelve</b><br><br>Una turbina puede recibir la estela de varias turbinas al mismo tiempo. La superposición decide cómo se combinan esas pérdidas de velocidad antes de calcular la potencia.<br><br>• <b>Automático</b>: el plugin escoge una opción segura según la combinación de modelos.<br>• <b>LinearSum</b>: suma directa. Puede acumular muchas pérdidas en parques densos.<br>• <b>SquaredSum</b>: suma cuadrática. Suele ser una opción equilibrada cuando varias estelas se solapan.<br>• <b>MaxSum</b>: usa solo la estela más fuerte. Útil para diagnóstico, pero puede infravalorar pérdidas acumuladas.<br>• <b>WeightedSum</b>: opción avanzada para modelos gaussianos compatibles.<br><br><b>Idea sencilla</b><br>Si dos turbinas frenan el viento antes de llegar a una tercera, hay que decidir si esas pérdidas se suman mucho, poco o solo domina una de ellas.": "<b>Quel problème cela résout</b><br><br>Une éolienne peut recevoir les sillages de plusieurs éoliennes en même temps. La superposition décide comment ces pertes de vitesse sont combinées avant de calculer la puissance.<br><br>• <b>Automatique</b> : le plugin choisit une option sûre selon la combinaison de modèles.<br>• <b>LinearSum</b> : somme directe. Elle peut accumuler de fortes pertes dans les parcs denses.<br>• <b>SquaredSum</b> : somme quadratique. C’est souvent une option équilibrée lorsque plusieurs sillages se chevauchent.<br>• <b>MaxSum</b> : utilise seulement le sillage le plus fort. Utile pour le diagnostic, mais peut sous-estimer les pertes cumulées.<br>• <b>WeightedSum</b> : option avancée pour les modèles gaussiens compatibles.<br><br><b>Idée simple</b><br>Si deux éoliennes ralentissent le vent avant qu’il atteigne une troisième, il faut décider si ces pertes s’additionnent fortement, faiblement ou si un seul sillage domine.",
-    "<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04 (default PyWake)<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.": "<b>NOJDeficit (Jensen)</b><br><br>Modèle top-hat classique : le sillage est représenté comme un cylindre qui s’élargit linéairement avec une seule pente <b>k</b>.<br><br><b>k</b> — Pente d’expansion. <u>Physiquement</u>, elle représente l’augmentation du rayon du sillage par mètre en aval : r(x) = R + k·x. Plus k est élevé, plus le sillage se récupère vite et plus le déficit lointain est faible.<br><br><b>Valeurs de référence</b><br>• Offshore propre : k ≈ 0.04 (valeur par défaut PyWake)<br>• Onshore typique : k ≈ 0.075<br>• Onshore complexe / TI élevée : k ≈ 0.10<br><br><i>Note :</i> NOJ n’utilise pas la TI ambiante pour calculer k. Si votre site a une TI élevée et que vous voulez que cela se reflète dans l’AEP, utilisez TurboNOJ ou un modèle gaussien sensible à la TI.",
-    "<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.": "<b>BastankhahGaussianDeficit</b><br><br>Modèle gaussien de Bastankhah & Porté-Agel (2014). Le profil radial du déficit est une cloche gaussienne dont la largeur σ(x) augmente linéairement.<br><br><b>k</b> — Pente de croissance de σ. σ(x)/D = k·(x/D) + cεps. Valeur par défaut PyWake = 0.0324, calibrée avec des simulations LES dans l’article original. L’augmenter donne un sillage qui s’élargit et se récupère plus tôt ; la réduire donne un sillage plus étroit et plus persistant.<br><br><b>cεps</b> — Taille initiale du sillage près du rotor (σ₀/D). Valeur par défaut PyWake = 0.2. On la modifie rarement ; elle affecte surtout le near-wake.<br><br><i>Note :</i> dans le BG standard, la TI ambiante n’entre PAS dans k. Il est robuste pour le benchmarking, par exemple IEA Task 37, mais peu sensible à la ressource TI.",
-    "<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.": "<b>NiayifarGaussianDeficit</b><br><br>Variante gaussienne où la pente k est une fonction explicite de la <b>TI locale effective</b> (Niayifar &amp; Porté-Agel 2016) : k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients de k = a₁·TI + a₂. Valeur par défaut PyWake = [0.38, 0.004].<br><b>cεps</b> — Taille initiale σ₀/D. Valeur par défaut PyWake = 0.2.<br><br>Modifier la TI ambiante du WRG ou le modèle de turbulence ajoutée reste le levier principal sur l’AEP. Les coefficients sont exposés uniquement comme réglage avancé.",
+    "<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano. Default PyWake = 0.1.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.": "<b>NOJDeficit (Jensen)</b><br><br>Modèle top-hat classique : le sillage est représenté comme un cylindre qui s’élargit linéairement avec une seule pente <b>k</b>.<br><br><b>k</b> — Pente d’expansion. <u>Physiquement</u>, elle représente l’augmentation du rayon du sillage par mètre en aval : r(x) = R + k·x. Plus k est élevé, plus le sillage se récupère vite et plus le déficit lointain est faible. Valeur par défaut PyWake = 0.1.<br><br><b>Valeurs de référence</b><br>• Offshore propre : k ≈ 0.04<br>• Onshore typique : k ≈ 0.075<br>• Onshore complexe / TI élevée : k ≈ 0.10<br><br><i>Note :</i> NOJ n’utilise pas la TI ambiante pour calculer k. Si votre site a une TI élevée et que vous voulez que cela se reflète dans l’AEP, utilisez TurboNOJ ou un modèle gaussien sensible à la TI.",
+    "<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.": "<b>BastankhahGaussianDeficit</b><br><br>Modèle gaussien de Bastankhah & Porté-Agel (2014). Le profil radial du déficit est une cloche gaussienne dont la largeur σ(x) augmente linéairement.<br><br><b>k</b> — Pente de croissance de σ. σ(x)/D = k·(x/D) + ε, avec ε = cεps·√β et β fonction du Ct. Valeur par défaut PyWake = 0.0324, calibrée avec des simulations LES dans l’article original. L’augmenter donne un sillage qui s’élargit et se récupère plus tôt ; la réduire donne un sillage plus étroit et plus persistant.<br><br><b>cεps</b> — Coefficient de la largeur initiale ε du sillage près du rotor. Valeur par défaut PyWake = 0.2. On la modifie rarement ; elle affecte surtout le near-wake.<br><br><i>Note :</i> dans le BG standard, la TI ambiante n’entre PAS dans k. Il est robuste pour le benchmarking, par exemple IEA Task 37, mais peu sensible à la ressource TI.",
+    "<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.": "<b>NiayifarGaussianDeficit</b><br><br>Variante gaussienne où la pente k est une fonction explicite de la <b>TI locale effective</b> (Niayifar &amp; Porté-Agel 2016) : k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients de k = a₁·TI + a₂. Valeur par défaut PyWake = [0.38, 0.004].<br><b>cεps</b> — Coefficient de la largeur initiale du sillage (ε = cεps·√β, avec β fonction du Ct). Valeur PyWake par défaut = 0.2.<br><br>Modifier la TI ambiante du WRG ou le modèle de turbulence ajoutée reste le levier principal sur l’AEP. Les coefficients sont exposés uniquement comme réglage avancé.",
     "<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.": "<b>ZongGaussianDeficit</b><br><br>Modèle gaussien avancé (Zong &amp; Porté-Agel 2020) avec near-wake explicite et pente k dépendante de la TI locale.<br><br><b>a₁/a₂</b> — Coefficients de k = a₁·TI + a₂. Valeur par défaut PyWake = [0.38, 0.004].<br><b>δw/D, ε coefficient, λ et B</b> — paramètres avancés du near-wake. Le plugin force STF2017 si vous laissez le modèle de turbulence sur Aucun.",
     "<b>TurboNOJDeficit</b><br><br>Variante TI-sensible del Jensen: la pendiente k se calcula a partir de la <b>turbulencia efectiva</b> en cada turbina.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI se exponen como ajuste avanzado y solo se pasan si tu PyWake los acepta.": "<b>TurboNOJDeficit</b><br><br>Variante Jensen sensible à la TI : la pente k est calculée à partir de la <b>turbulence effective</b> de chaque éolienne.<br><br>Pour modifier l’AEP, ajustez la <b>TI ambiante</b> ou le <b>modèle de turbulence ajoutée</b>. Les coefficients A/cTI sont exposés comme réglage avancé et ne sont transmis que si votre installation PyWake les accepte.",
     "<b>TurboGaussianDeficit</b><br><br>Versión TI-driven de la familia gaussiana. Tanto k como el ancho cerca del rotor se derivan de la TI efectiva.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI/cεps se exponen como ajuste avanzado para calibración controlada.": "<b>TurboGaussianDeficit</b><br><br>Version TI-driven de la famille gaussienne. k et la largeur près du rotor sont tous deux dérivés de la TI effective.<br><br>Pour modifier l’AEP, ajustez la <b>TI ambiante</b> ou le <b>modèle de turbulence ajoutée</b>. Les coefficients A/cTI/cεps sont exposés comme réglage avancé pour une calibration contrôlée.",
@@ -1808,7 +1362,7 @@ _AEP_HELP_FR_EXTRA = {
 }
 try:
     _AEP_HELP_FR.update(_AEP_HELP_FR_EXTRA)
-except Exception:
+except Exception:  # nosec B110
     pass
 
 
@@ -1845,13 +1399,13 @@ def _show_help_dialog(parent, title: str, body: str) -> None:
     msg.setIcon(QtWidgets.QMessageBox.Information)
     try:
         msg.setTextFormat(QtCore.Qt.RichText)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     msg.setText(body)
     msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
     try:
         msg.button(QtWidgets.QMessageBox.Ok).setText(_help_ok_label())
-    except Exception:
+    except Exception:  # nosec B110
         pass
     msg.exec_()
 
@@ -1892,7 +1446,7 @@ def _tr_help(text):
                 return hit
             # For German help dialogs, prefer a clean source fallback over mixed fragments.
             return s.strip() or s
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return _tr(s)
 
@@ -1902,7 +1456,7 @@ def _debug_print(message: str) -> None:
     try:
         if os.environ.get("VELANTISWIND_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}:
             print(message)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 # ------------------- utils -------------------
@@ -1915,46 +1469,15 @@ def _preview_csv_header(path: str) -> List[str]:
         return []
 
 
-def _read_xy_csv(path: str) -> List[Tuple[float, float]]:
-    pts = []
-    with open(path, newline="", encoding="utf-8") as f:
-        sn = csv.Sniffer()
-        sample = f.read(2048)
-        f.seek(0)
-        try:
-            has_header = sn.has_header(sample)
-        except Exception:
-            has_header = False
-        r = csv.reader(f)
-        if has_header:
-            header = next(r, None) or []
-            norm = [str(h).strip().lower() for h in header]
-            ix = norm.index("x") if "x" in norm else (norm.index("easting") if "easting" in norm else 0)
-            iy = norm.index("y") if "y" in norm else (norm.index("northing") if "northing" in norm else 1)
-        else:
-            ix, iy = 0, 1
-        for row in r:
-            if len(row) < 2:
-                continue
-            try:
-                x = float(row[ix])
-                y = float(row[iy])
-                pts.append((x, y))
-            except Exception:
-                try:
-                    x = float(row[0])
-                    y = float(row[1])
-                    pts.append((x, y))
-                except Exception:
-                    continue
-    return pts
-
-
-def _project_crs_authid() -> str:
+def _project_crs_label() -> str:
+    """The CRS of the project as the dialog names it: its identifier, else its description, never another one (#54)."""
     try:
-        return QgsProject.instance().crs().authid() or "EPSG:25830"
+        crs = QgsProject.instance().crs()
+        if not crs.isValid():
+            return _tr("sin definir")
+        return crs.authid() or crs.description() or _tr("sin identificador")
     except Exception:
-        return "EPSG:25830"
+        return _tr("sin definir")
 
 
 def _ensure_group(root) -> QgsLayerTreeGroup:
@@ -1998,7 +1521,7 @@ def _iter_project_vector_layers() -> List[QgsVectorLayer]:
 
     try:
         walk(QgsProject.instance().layerTreeRoot())
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     try:
@@ -2012,7 +1535,7 @@ def _iter_project_vector_layers() -> List[QgsVectorLayer]:
             if lid not in seen:
                 seen.add(lid)
                 layers.append(lyr)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     return layers
@@ -2033,7 +1556,7 @@ def _find_layer_by_name(name: str) -> Optional[QgsVectorLayer]:
         try:
             if lyr.name() == name:
                 return lyr
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return None
 
@@ -2051,92 +1574,58 @@ def _unique_layer_name(base_name: str) -> str:
         n += 1
 
 
-def _create_or_refresh_point_layer(
-    layer_name: str,
-    points: List[Tuple[float, float]],
-    model_name: str,
-    hub_height: Optional[float] = None,
-    diameter: Optional[float] = None,
-    spacing_long_d: Optional[float] = None,
-    spacing_trans_d: Optional[float] = None,
-    spacing_mode: str = "",
-    spacing_angle_deg: Optional[float] = None,
-    curve_quality: str = "",
-    curve_source: str = "",
-    curve_source_url: str = "",
-    coords_csv: str = "",
-    model_index: Optional[int] = None,
-    create_new: bool = False,
-    generation: Optional[int] = None,
-) -> QgsVectorLayer:
-    # Modo clásico: reutiliza/actualiza la capa del modelo.
-    # Modo create_new: crea SIEMPRE una capa nueva con nombre único para poder
-    # construir parques multi-modelo sin machacar capas anteriores.
-    actual_layer_name = _unique_layer_name(layer_name) if create_new else layer_name
-    lyr = None if create_new else _find_layer_by_name(layer_name)
-    crs = _project_crs_authid()
+def _create_empty_point_layer(layer_name: str) -> QgsVectorLayer:
+    """Crea una capa de puntos nueva y vacía, en memoria y en el sistema completo del proyecto.
 
-    if lyr is None:
-        lyr = QgsVectorLayer(f"Point?crs={crs}", actual_layer_name, "memory")
-        prov = lyr.dataProvider()
-        prov.addAttributes([QgsField("model", QVariant.String)])
-        lyr.updateFields()
-        QgsProject.instance().addMapLayer(lyr, False)
-        _ensure_group(QgsProject.instance().layerTreeRoot()).addLayer(lyr)
-
-    # (Re)cargar geometrías
-    prov = lyr.dataProvider()
-    with edit(lyr):
-        prov.truncate()
-        feats = []
-        for (x, y) in points:
-            f = QgsFeature(lyr.fields())
-            f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(float(x), float(y))))
-            f["model"] = model_name
-            feats.append(f)
-        prov.addFeatures(feats)
-    # Metadatos ligeros para otros módulos del plugin (ruido, sombras, etc.)
-    try:
-        lyr.setCustomProperty("velantis/layer_role", "energy_turbines")
-        lyr.setCustomProperty("velantis/model_name", str(model_name or ""))
-        if model_index is not None:
-            lyr.setCustomProperty("velantis/model_index", int(model_index))
-            lyr.setCustomProperty("velantis/row_index", int(model_index))
-        if generation is not None:
-            lyr.setCustomProperty("velantis/layer_generation", int(generation))
-        if hub_height is not None:
-            lyr.setCustomProperty("velantis/hub_height_m", float(hub_height))
-        if diameter is not None:
-            lyr.setCustomProperty("velantis/diameter_m", float(diameter))
-        if spacing_long_d is not None:
-            lyr.setCustomProperty("velantis/spacing_long_d", float(spacing_long_d))
-        if spacing_trans_d is not None:
-            lyr.setCustomProperty("velantis/spacing_trans_d", float(spacing_trans_d))
-        if spacing_mode:
-            lyr.setCustomProperty("velantis/spacing_mode", str(spacing_mode))
-        if spacing_angle_deg is not None:
-            lyr.setCustomProperty("velantis/spacing_angle_deg", float(spacing_angle_deg))
-        if curve_quality:
-            lyr.setCustomProperty("velantis/curve_quality", str(curve_quality))
-        if curve_source:
-            lyr.setCustomProperty("velantis/curve_source", str(curve_source))
-        if curve_source_url:
-            lyr.setCustomProperty("velantis/curve_source_url", str(curve_source_url))
-        if coords_csv:
-            lyr.setCustomProperty("velantis/coords_csv", str(coords_csv))
-    except Exception:
-        pass
-
-    lyr.triggerRepaint()
+    El sistema se copia entero, también si no tiene identificador de autoridad. Los datos de la
+    turbina los apunta la fila al seleccionarla.
+    """
+    lyr = QgsVectorLayer("Point", _unique_layer_name(layer_name), "memory")
+    lyr.setCrs(QgsProject.instance().crs())
+    lyr.dataProvider().addAttributes([QgsField("model", QVariant.String)])
+    lyr.updateFields()
+    QgsProject.instance().addMapLayer(lyr, False)
+    _ensure_group(QgsProject.instance().layerTreeRoot()).addLayer(lyr)
     return lyr
+
+
+class _AdvancedParamSpinBox(QtWidgets.QDoubleSpinBox):
+    """Campo del panel avanzado: su mínimo representa «Valor PyWake por defecto».
+
+    El mínimo queda una unidad del último decimal por debajo de ``vmin``, así que
+    el dominio es {defecto} ∪ [vmin, vmax] al teclear, al calcular y al restaurar.
+    Las flechas pasan del defecto a ``vmin`` y de vuelta.
+    """
+
+    def __init__(self, vmin: float, decimals: int, parent=None):
+        super().__init__(parent)
+        self._vmin = float(vmin)
+        self.setDecimals(decimals)
+        self.setMinimum(self.unset_value(vmin, decimals))
+
+    @staticmethod
+    def unset_value(vmin: float, decimals: int) -> float:
+        return max(0.0, round(vmin - 10 ** -decimals, decimals))
+
+    @staticmethod
+    def step_target(value: float, steps: int, step: float, vmin: float, decimals: int) -> float:
+        unset = _AdvancedParamSpinBox.unset_value(vmin, decimals)
+        if value <= unset and steps > 0:
+            first = vmin if vmin > unset else vmin + step
+            return round(first + (steps - 1) * step, decimals)
+        target = round(value + steps * step, decimals)
+        return target if target >= vmin and target > unset else unset
+
+    def stepBy(self, steps: int) -> None:
+        self.setValue(self.step_target(self.value(), steps, self.singleStep(), self._vmin, self.decimals()))
 
 
 # ------------------- Diálogo principal -------------------
 class AEPSetupDialog(QtWidgets.QDialog):
     """
-    Devuelve:
-      - modelos: [{'name': str, 'wt': object, 'meta': dict|None, 'coords_csv': str}, ...]
-      - wasp_dir: str
+    Diálogo de Energía: un modelo de turbina por fila, con la capa de turbinas elegida en su
+    selector, el recurso eólico y el cálculo del AEP y del ráster de estelas con esas capas.
+    ``get_wasp_dir`` devuelve la carpeta WAsP elegida.
     """
 
     def __init__(self, parent=None, custom_dialog_factory=None, default_wasp_dir: Optional[str] = None):
@@ -2156,16 +1645,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self._last_csv_dir = self._qsettings.value("last_csv_dir", "", type=str)
         self._last_wrg_path = self._qsettings.value("last_wrg_path", "", type=str)
         self._last_wrg_ti_path = self._qsettings.value("last_wrg_ti_path", "", type=str)
-        self._last_wfm_engine = self._qsettings.value("last_wfm_engine", "PDW", type=str)
-        self._last_wake_deficit = self._qsettings.value("last_wake_deficit", "BG", type=str)
-        self._last_rotor_avg_model = self._qsettings.value("last_rotor_avg_model", "CGI7", type=str)
-        self._last_superposition_model = self._qsettings.value("last_superposition_model", "AUTO", type=str)
         self._last_fixed_ti_percent = self._qsettings.value("last_fixed_ti_percent", 10.0, type=float)
-        self._last_blockage_deficit = self._qsettings.value("last_blockage_deficit", "NONE", type=str)
-        self._last_turbulence_model = self._qsettings.value("last_turbulence_model", "NONE", type=str)
-
-        # estado auxiliar: restaurar bloqueo tras salir de PDW
-        self._blockage_before_pdw = self._last_blockage_deficit
 
         self._rows: List[Dict[str, Any]] = []
 
@@ -2177,14 +1657,6 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self._interactive_tool = None
         self._interactive_prev_tool = None
         self._dirty_turbine_layer_ids = set()
-        # Última capa de turbinas elegida/creada por fila del diálogo.
-        # Es importante cuando existen varias capas del mismo modelo en el
-        # proyecto: el cálculo debe usar la capa que el usuario acaba de crear
-        # o activar, no la primera capa antigua que encuentre por nombre.
-        self._interactive_layer_id_by_row: Dict[int, str] = {}
-        # Selección one-shot de capas elegidas en el dock antes de recalcular AEP.
-        self._selected_turbine_layer_ids_for_next_compute: List[str] = []
-        self._energy_layer_generation = 0
         self._interactive_msg_item = None
         self._interactive_msg_widget = None
         self._interactive_dock = None
@@ -2219,8 +1691,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self.btn_return_hub = QtWidgets.QPushButton("← Inicio")
         self.btn_return_hub.setObjectName("aepBackButton")
         self.btn_return_hub.setToolTip(
-            "Cierra el módulo de energía y vuelve al hub principal de Velantis Wind "
-            "sin borrar las capas ni los resultados cargados en el proyecto."
+            'Cierra el módulo de energía y vuelve al panel principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.'
         )
         self.btn_refresh_project = QtWidgets.QPushButton("Actualizar")
         self.btn_refresh_project.setObjectName("aepRefreshButton")
@@ -2245,10 +1716,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         hero_text.addWidget(title)
 
         subtitle = QtWidgets.QLabel(
-            "Cálculo de AEP con PyWake: define los modelos de aerogenerador, "
-            "selecciona el recurso eólico (WAsP/Surfer grids o WRG), elige los modelos físicos "
-            "(estela, turbulencia, bloqueo, rotor-average) y lanza el cálculo. "
-            "Los resultados se vuelcan automáticamente sobre las capas de coordenadas del proyecto."
+            'Cálculo de AEP con PyWake: define los modelos de aerogenerador, selecciona el recurso eólico (mallas WAsP/Surfer o WRG), elige los modelos físicos (estela, turbulencia, bloqueo, promedio sobre el rotor) y lanza el cálculo. Los resultados se vuelcan automáticamente sobre las capas de coordenadas del proyecto.'
         )
         subtitle.setWordWrap(True)
         subtitle.setObjectName("aepSubtitle")
@@ -2292,8 +1760,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self.rows_box = QtWidgets.QVBoxLayout()
         v_models.addLayout(self.rows_box)
 
-        # Botón de envolventes de separación, justo debajo de la importación
-        # de coordenadas CSV de los modelos. Abre la configuración compartida
+        # Botón de envolventes de separación, justo debajo de las filas de los
+        # modelos y sus selectores de capa. Abre la configuración compartida
         # (misma que el dock del mapa interactivo).
         if SpacingController is not None and SpacingConfigDialog is not None:
             h_spacing = QtWidgets.QHBoxLayout()
@@ -2302,7 +1770,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 "Configura la separación mínima entre turbinas: elipse "
                 "semitransparente por aerogenerador (7D/4D por defecto), "
                 "orientada al sector más energético o definida en pantalla, "
-                "con detección de conflictos de spacing."
+                "con detección de conflictos de separación."
             )
             self.btn_spacing_cfg.clicked.connect(self._open_spacing_config)
             h_spacing.addStretch(1)
@@ -2312,7 +1780,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         root.addWidget(grp_models)
 
         # --------- Recurso eólico (WAsP / WRG) ---------
-        grp_resource = QtWidgets.QGroupBox("Recurso eólico (WAsP grids / WRG)")
+        grp_resource = QtWidgets.QGroupBox('Recurso eólico (mallas WAsP / WRG)')
         v_resource = QtWidgets.QVBoxLayout(grp_resource)
 
         # WAsP / Surfer grids
@@ -2324,22 +1792,23 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self.btn_pick_dir.clicked.connect(self._pick_dir)
         self.btn_union_recurso.clicked.connect(self._open_union_recurso)
 
-        h_wasp.addWidget(QtWidgets.QLabel("Grids WAsP/Surfer:"))
+        h_wasp.addWidget(QtWidgets.QLabel('Mallas WAsP/Surfer:'))
         h_wasp.addWidget(self.ed_dir, 1)
         h_wasp.addWidget(self.btn_pick_dir, 0)
         h_wasp.addWidget(self.btn_union_recurso, 0)
         v_resource.addLayout(h_wasp)
 
         note_wasp = QtWidgets.QLabel(
-            "Selecciona una carpeta con grids WAsP/Surfer compatibles con PyWake. "
-            "Si el recurso ya viene preparado en formato pywake_compat, el plugin lo priorizará automáticamente."
+            'Selecciona una carpeta con mallas WAsP/Surfer compatibles con PyWake. Si el recurso ya viene preparado en formato pywake_compat, el complemento lo priorizará automáticamente.'
         )
         note_wasp.setWordWrap(True)
         note_wasp.setStyleSheet("color: #666;")
         v_resource.addWidget(note_wasp)
 
-        # WRG / ZIP resource grids
-        h_wrg = QtWidgets.QHBoxLayout()
+        # WRG / ZIP resource grids; the metadata line right under the row, without spacing.
+        wrg_row = QtWidgets.QWidget()
+        h_wrg = QtWidgets.QHBoxLayout(wrg_row)
+        h_wrg.setContentsMargins(0, 0, 0, 0)
         self.ed_wrg = QtWidgets.QLineEdit(self._last_wrg_path)
         self.btn_pick_wrg = QtWidgets.QPushButton("Elegir WRG/ZIP…")
         self.btn_clear_wrg = QtWidgets.QPushButton("Limpiar")
@@ -2350,20 +1819,26 @@ class AEPSetupDialog(QtWidgets.QDialog):
         h_wrg.addWidget(self.ed_wrg, 1)
         h_wrg.addWidget(self.btn_pick_wrg, 0)
         h_wrg.addWidget(self.btn_clear_wrg, 0)
-        v_resource.addLayout(h_wrg)
+        self.ed_wrg.editingFinished.connect(self._update_wrg_meta)
 
         self.lbl_wrg_meta = QtWidgets.QLabel("")
+        mark_translated(self.lbl_wrg_meta)  # composed with the WRG's data from a translated template: _update_wrg_meta
         self.lbl_wrg_meta.setWordWrap(True)
         self.lbl_wrg_meta.setStyleSheet("color: #666;")
-        v_resource.addWidget(self.lbl_wrg_meta)
+        wrg_cell = QtWidgets.QVBoxLayout()
+        wrg_cell.setSpacing(0)
+        wrg_cell.addWidget(wrg_row)
+        wrg_cell.addWidget(self.lbl_wrg_meta)
+        v_resource.addLayout(wrg_cell)
+        self.grp_resource_params = self._build_resource_params_group()
+        v_resource.addWidget(self.grp_resource_params)
 
         # Visualización GIS del dominio espacial del recurso cargado.
         h_resource_extent = QtWidgets.QHBoxLayout()
         self.cb_show_resource_extent = QtWidgets.QCheckBox("Mostrar perímetro del recurso en el mapa")
         self.cb_show_resource_extent.setChecked(True)
         self.cb_show_resource_extent.setToolTip(
-            "Dibuja una capa temporal con los límites del WRG o de los grids WAsP/Surfer. "
-            "Sirve para comprobar si el layout queda dentro del dominio del recurso."
+            'Dibuja una capa temporal con los límites del WRG o de las mallas WAsP/Surfer. Sirve para comprobar si la disposición queda dentro del dominio del recurso.'
         )
         self.btn_refresh_resource_extent = QtWidgets.QPushButton("Actualizar perímetro")
         self.btn_clear_resource_extent = QtWidgets.QPushButton("Limpiar perímetro")
@@ -2377,13 +1852,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
         v_resource.addLayout(h_resource_extent)
 
         self.lbl_resource_extent = QtWidgets.QLabel("")
+        mark_translated(self.lbl_resource_extent)  # the messages of the boundary, translated with their data
         self.lbl_resource_extent.setWordWrap(True)
         self.lbl_resource_extent.setStyleSheet("color: #666;")
         v_resource.addWidget(self.lbl_resource_extent)
 
         h_wrg_ti = QtWidgets.QHBoxLayout()
         self.ed_wrg_ti = QtWidgets.QLineEdit(self._last_wrg_ti_path)
-        self.btn_pick_wrg_ti = QtWidgets.QPushButton("Elegir raster(s) TI…")
+        self.btn_pick_wrg_ti = QtWidgets.QPushButton("Elegir ráster(s) TI…")
         self.btn_clear_wrg_ti = QtWidgets.QPushButton("Limpiar")
         self.btn_wrg_ti_help = QtWidgets.QToolButton()
         try:
@@ -2391,12 +1867,12 @@ class AEPSetupDialog(QtWidgets.QDialog):
         except Exception:
             self.btn_wrg_ti_help.setText("?")
         self.btn_wrg_ti_help.setAutoRaise(True)
-        self.btn_wrg_ti_help.setToolTip("Explica qué es la TI, cuándo usar raster de turbulencia y cómo afecta al AEP")
+        self.btn_wrg_ti_help.setToolTip("Explica qué es la TI, cuándo usar ráster de turbulencia y cómo afecta al AEP")
         self.btn_pick_wrg_ti.clicked.connect(self._pick_wrg_ti)
         self.btn_clear_wrg_ti.clicked.connect(self._clear_wrg_ti)
         self.btn_wrg_ti_help.clicked.connect(self._show_wrg_ti_help)
 
-        h_wrg_ti.addWidget(QtWidgets.QLabel("Raster(s) de turbulencia TI (opcional):"))
+        h_wrg_ti.addWidget(QtWidgets.QLabel("Ráster(s) de turbulencia TI (opcional):"))
         h_wrg_ti.addWidget(self.btn_wrg_ti_help, 0)
         h_wrg_ti.addWidget(self.ed_wrg_ti, 1)
         h_wrg_ti.addWidget(self.btn_pick_wrg_ti, 0)
@@ -2405,14 +1881,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         h_wrg_ti_h = QtWidgets.QHBoxLayout()
         self.ed_wrg_ti_heights = QtWidgets.QLineEdit()
-        self.ed_wrg_ti_heights.setPlaceholderText("Opcional: altura de cada raster TI, ej. 90;120")
+        self.ed_wrg_ti_heights.setPlaceholderText("Opcional: altura de cada ráster TI, ej. 90;120")
         self.ed_wrg_ti_heights.setToolTip(
-            "Altura manual de cada raster TI, en el mismo orden que los archivos. "
+            "Altura manual de cada ráster TI, en el mismo orden que los archivos. "
             "Útil si el nombre del archivo no indica claramente 90 m, 120 m, etc."
         )
         try:
             self.ed_wrg_ti_heights.setText(self._qsettings.value("last_wrg_ti_heights", "", type=str))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.ed_wrg_ti_heights.textChanged.connect(self._update_wrg_ti_meta)
         h_wrg_ti_h.addWidget(QtWidgets.QLabel("Alturas de TI por archivo [m]:"))
@@ -2420,6 +1896,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
         v_resource.addLayout(h_wrg_ti_h)
 
         self.lbl_wrg_ti_meta = QtWidgets.QLabel("")
+        mark_translated(self.lbl_wrg_ti_meta)  # built from templates already translated, with the CRS as it is (#54)
+        self.lbl_wrg_ti_meta.setTextFormat(QtCore.Qt.PlainText)  # and its name shown as it is, never as HTML
         self.lbl_wrg_ti_meta.setWordWrap(True)
         self.lbl_wrg_ti_meta.setStyleSheet("color: #666;")
         v_resource.addWidget(self.lbl_wrg_ti_meta)
@@ -2435,32 +1913,85 @@ class AEPSetupDialog(QtWidgets.QDialog):
             self.sp_fixed_ti.setValue(10.0)
         self.sp_fixed_ti.setSuffix(" %")
         self.sp_fixed_ti.setToolTip(
-            "Valor de turbulencia ambiente que se usa si no cargas un raster TI. "
-            "Ejemplo: 10 % significa TI = 0.10 dentro del Site de PyWake."
+            "Valor de turbulencia ambiente que se usa si no cargas un ráster TI. "
+            "Ejemplo: 10 % significa TI = 0,10 dentro del Site de PyWake."
         )
         self.sp_fixed_ti.valueChanged.connect(self._persist_fixed_ti_percent)
         self.sp_fixed_ti.valueChanged.connect(lambda *_: self._update_wrg_ti_meta())
-        h_fixed_ti.addWidget(QtWidgets.QLabel("TI ambiente manual si no hay raster:"))
+        h_fixed_ti.addWidget(QtWidgets.QLabel("TI ambiente manual si no hay ráster:"))
         h_fixed_ti.addWidget(self.sp_fixed_ti, 0)
         h_fixed_ti.addStretch(1)
         v_resource.addLayout(h_fixed_ti)
 
+        # --- Densidad del aire ---
+        # La referencia es del proyecto: sin valor guardado arranca «sin definir»
+        # (el mínimo de cada control), y el cálculo se detiene si se usa así.
+        self.chk_air_density = QtWidgets.QCheckBox("Ajustar las curvas a la densidad del aire")
+        self.chk_air_density.setToolTip(
+            "Solo actúa sobre turbinas con curvas tabuladas por densidad (.wtg, .owtg). Cada aerogenerador usa la "
+            "curva interpolada a la densidad del aire en la cota de su buje."
+        )
+        self.cb_air_density_mode = QtWidgets.QComboBox()
+        self.cb_air_density_mode.addItem("Por turbina (según la cota de su buje)", "per_turbine")
+        self.cb_air_density_mode.addItem("Uniforme en todo el parque", "uniform")
+        self.cb_air_density_mode.setToolTip(
+            "«Por turbina» lleva la densidad de referencia a la cota de cada buje con el perfil ISA. "
+            "«Uniforme» aplica la densidad de referencia a todo el parque."
+        )
+        self.sp_air_density = QtWidgets.QDoubleSpinBox()
+        self.sp_air_density.setRange(0.0, 1.5)
+        self.sp_air_density.setDecimals(4)
+        self.sp_air_density.setSingleStep(0.001)
+        self.sp_air_density.setSuffix(" kg/m³")
+        self.sp_air_density.setSpecialValueText(_tr("sin definir"))
+        self.sp_air_density.setToolTip("Densidad del aire de referencia del proyecto.")
+        self.sp_air_density_alt = QtWidgets.QDoubleSpinBox()
+        self.sp_air_density_alt.setRange(-1000.0, 9000.0)
+        self.sp_air_density_alt.setDecimals(0)
+        self.sp_air_density_alt.setSingleStep(10.0)
+        self.sp_air_density_alt.setSuffix(" m")
+        self.sp_air_density_alt.setSpecialValueText(_tr("sin definir"))
+        self.sp_air_density_alt.setToolTip(
+            "Cota sobre el nivel del mar a la que está dada la densidad de referencia."
+        )
+        # The reference of the project, not of the plugin's settings (#36).
+        self._load_air_density_from_project()
+        h_air_density = QtWidgets.QHBoxLayout()
+        h_air_density.addWidget(QtWidgets.QLabel("Densidad de referencia:"))
+        h_air_density.addWidget(self.sp_air_density, 0)
+        h_air_density.addWidget(QtWidgets.QLabel("a la cota:"))
+        h_air_density.addWidget(self.sp_air_density_alt, 0)
+        h_air_density.addWidget(self.cb_air_density_mode, 1)
+        for _w in (self.sp_air_density, self.sp_air_density_alt, self.cb_air_density_mode):
+            self.chk_air_density.toggled.connect(_w.setEnabled)
+            _w.setEnabled(self.chk_air_density.isChecked())
+        self.chk_air_density.toggled.connect(lambda *_: self._persist_air_density_settings())
+        self.sp_air_density.valueChanged.connect(lambda *_: self._persist_air_density_settings())
+        self.sp_air_density_alt.valueChanged.connect(lambda *_: self._persist_air_density_settings())
+        self.cb_air_density_mode.currentIndexChanged.connect(lambda *_: self._persist_air_density_settings())
+        v_resource.addWidget(self.chk_air_density)
+        v_resource.addLayout(h_air_density)
+        note_air_density = QtWidgets.QLabel(
+            "La potencia y el empuje dependen de la densidad del aire, y cada aerogenerador está a una cota "
+            "distinta. Con una turbina de curvas tabuladas por densidad (.wtg, .owtg), se calcula la densidad en la "
+            "cota de cada buje a partir de la referencia del proyecto y se interpola la curva que le corresponde. "
+            "La cota del terreno la aporta el recurso (WRG). Las curvas de una sola densidad no se corrigen."
+        )
+        note_air_density.setWordWrap(True)
+        note_air_density.setStyleSheet("color: #666;")
+        v_resource.addWidget(note_air_density)
+
         note_wrg = QtWidgets.QLabel(
-            "El recurso eólico describe el viento que llega al parque antes de aplicar estelas: "
-            "frecuencia por dirección, velocidades y, según el formato, parámetros Weibull. "
-            "Puedes usar WAsP/Surfer grids o WRG/ZIP. Si aportas varios WRG a distintas alturas, "
-            "PyWake podrá interpolar por altura cuando sea necesario."
+            'El recurso eólico describe el viento que llega al parque antes de aplicar estelas: frecuencia por dirección, velocidades y, según el formato, parámetros Weibull. Puedes usar mallas WAsP/Surfer o WRG/ZIP. Si aportas varios WRG a distintas alturas, PyWake podrá interpolar por altura cuando sea necesario.'
         )
         note_wrg.setWordWrap(True)
         note_wrg.setStyleSheet("color: #666;")
         v_resource.addWidget(note_wrg)
 
-        note_ti = QtWidgets.QLabel(
-            "La TI es la intensidad de turbulencia ambiente: una medida de lo variable o 'mezclado' que llega el viento al rotor. "
-            "Si no cargas raster TI, se usa el valor manual de arriba como hipótesis uniforme. "
-            "La TI no siempre cambia mucho el AEP: se nota sobre todo en modelos TI-sensitive como Niayifar, Zong, TurboGaussian o TurboNOJ. "
-            f"Los raster(s) TI se reproyectarán al CRS del proyecto actual ({_project_crs_authid()}) si hace falta."
-        )
+        self._note_ti = note_ti = QtWidgets.QLabel()
+        mark_translated(note_ti)  # the name of the CRS is the project's: not translated again as fragments
+        note_ti.setTextFormat(QtCore.Qt.PlainText)  # nor shown as HTML
+        self._update_ti_note()
         note_ti.setWordWrap(True)
         note_ti.setStyleSheet("color: #666;")
         v_resource.addWidget(note_ti)
@@ -2471,266 +2002,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         root.addWidget(grp_resource)
 
-
-        # --------- Modelo PyWake (WFM) ---------
-        grp_engine = QtWidgets.QGroupBox("Motor de cálculo PyWake")
-        v_engine = QtWidgets.QVBoxLayout(grp_engine)
-        lbl_engine = QtWidgets.QLabel("¿Cómo se calculan las interacciones entre turbinas?")
-        self.cb_wfm_engine = QtWidgets.QComboBox()
-        self.cb_wfm_engine.addItem("All2AllIterative", "A2A")
-        self.cb_wfm_engine.addItem("PropagateDownwind", "PDW")
-        self.cb_wfm_engine.addItem("PropagateUpDownIterative", "PUD")
-        v_engine.addWidget(lbl_engine)
-        v_engine.addWidget(self.cb_wfm_engine)
-        # Nota: compatibilidad PyWake
-        self.lbl_engine_note = QtWidgets.QLabel("")
-        self.lbl_engine_note.setWordWrap(True)
-        self.lbl_engine_note.setStyleSheet("color: #666;")
-        v_engine.addWidget(self.lbl_engine_note)
-        self._set_wfm_engine_combo(self._last_wfm_engine)
-        self.cb_wfm_engine.currentIndexChanged.connect(self._persist_wfm_engine)
-        self.cb_wfm_engine.currentIndexChanged.connect(self._update_blockage_lock_for_engine)
-        self.cb_wfm_engine.currentIndexChanged.connect(self._update_engine_note_for_wfm)
-        self.cb_wfm_engine.currentIndexChanged.connect(self._update_wake_turb_note)
-        root.addWidget(grp_engine)
-        self._update_engine_note_for_wfm()
-
-        # --------- Wake deficit model (PyWake) ---------
-        grp_def = QtWidgets.QGroupBox("Modelo de estela: pérdida de velocidad")
-        v_def = QtWidgets.QVBoxLayout(grp_def)
-        def_head = QtWidgets.QHBoxLayout()
-        lbl_def = QtWidgets.QLabel("¿Cómo se calcula la pérdida de velocidad detrás de cada turbina?")
-        self.btn_wake_turb_help = QtWidgets.QToolButton()
-        try:
-            self.btn_wake_turb_help.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
-        except Exception:
-            self.btn_wake_turb_help.setText("?")
-        self.btn_wake_turb_help.setAutoRaise(True)
-        self.btn_wake_turb_help.setToolTip("Explica qué es una estela y qué cambia entre modelos")
-        self.btn_wake_turb_help.clicked.connect(self._show_wake_turb_help)
-        def_head.addWidget(lbl_def)
-        def_head.addWidget(self.btn_wake_turb_help, 0)
-        def_head.addStretch(1)
-        self.cb_wake_deficit = QtWidgets.QComboBox()
-        self.cb_wake_deficit.addItem("NOJDeficit", "NOJ")
-        self.cb_wake_deficit.addItem("TurboNOJDeficit", "TNOJ")
-        self.cb_wake_deficit.addItem("BastankhahGaussianDeficit", "BG")
-        self.cb_wake_deficit.addItem("NiayifarGaussianDeficit", "NIA")
-        self.cb_wake_deficit.addItem("TurboGaussianDeficit", "TG")
-        self.cb_wake_deficit.addItem("ZongGaussianDeficit", "ZG")
-        self.cb_wake_deficit.setToolTip("Modelo que estima cuánto viento pierde una turbina cuando está dentro de la estela de otra. Algunos modelos usan la turbulencia TI y otros apenas la notan.")
-        v_def.addLayout(def_head)
-        v_def.addWidget(self.cb_wake_deficit)
-        self.lbl_wake_turb_note = QtWidgets.QLabel("")
-        self.lbl_wake_turb_note.setWordWrap(True)
-        self.lbl_wake_turb_note.setStyleSheet("color: #666;")
-        v_def.addWidget(self.lbl_wake_turb_note)
-        self._set_wake_deficit_combo(self._last_wake_deficit)
-        self.cb_wake_deficit.currentIndexChanged.connect(self._persist_wake_deficit)
-        self.cb_wake_deficit.currentIndexChanged.connect(self._update_rotor_avg_lock_for_wake_deficit)
-        self.cb_wake_deficit.currentIndexChanged.connect(self._update_turbulence_lock_for_wake_deficit)
-        self.cb_wake_deficit.currentIndexChanged.connect(self._update_wake_turb_note)
-        self.cb_wake_deficit.currentIndexChanged.connect(self._update_superposition_note)
-        # Compatibilidad: PUD fuerza use_effective_ws en el solver; no bloqueamos modelos aquí.
-        try:
-            self.cb_wfm_engine.currentIndexChanged.connect(self._update_wake_deficit_lock_for_engine)
-        except Exception:
-            pass
-        # aplicar estado inicial según el engine actual
-        self._update_wake_deficit_lock_for_engine()
-        root.addWidget(grp_def)
-
-        # --------- Parámetros avanzados del modelo de estela (opcional) ---------
-        self._build_advanced_wake_params_panel(root)
-        # Conectar el cambio de modelo para refrescar el panel avanzado
-        try:
-            self.cb_wake_deficit.currentIndexChanged.connect(self._on_wake_deficit_changed_refresh_advanced)
-        except Exception:
-            pass
-        # Aplicar estado inicial del panel avanzado (modelo persistido)
-        self._on_wake_deficit_changed_refresh_advanced()
-
-        # --------- Rotor Average model (PyWake) ---------
-        grp_rotor = QtWidgets.QGroupBox("Promedio sobre el rotor (rotor-average)")
-        v_rotor = QtWidgets.QVBoxLayout(grp_rotor)
-        rotor_head = QtWidgets.QHBoxLayout()
-        lbl_rotor = QtWidgets.QLabel("¿Cómo debe promediarse el viento dentro del disco del rotor?")
-        self.btn_rotor_avg_help = QtWidgets.QToolButton()
-        try:
-            self.btn_rotor_avg_help.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
-        except Exception:
-            self.btn_rotor_avg_help.setText("?")
-        self.btn_rotor_avg_help.setAutoRaise(True)
-        self.btn_rotor_avg_help.setToolTip("Explica por qué el rotor no debe tratarse siempre como un solo punto")
-        self.btn_rotor_avg_help.clicked.connect(self._show_rotor_avg_help)
-        rotor_head.addWidget(lbl_rotor)
-        rotor_head.addWidget(self.btn_rotor_avg_help, 0)
-        rotor_head.addStretch(1)
-        self.cb_rotor_avg = QtWidgets.QComboBox()
-        self.cb_rotor_avg.addItem("Ninguno", "NONE")
-        self.cb_rotor_avg.addItem("Rápido · RotorCenter", "RC")
-        self.cb_rotor_avg.addItem("Más realista · CGIRotorAvg(7)", "CGI7")
-        self.cb_rotor_avg.addItem("Más realista · CGIRotorAvg(9)", "CGI9")
-        self.cb_rotor_avg.addItem("Muy realista · CGIRotorAvg(21)", "CGI21")
-        self.cb_rotor_avg.addItem("Malla uniforme · EqGridRotorAvg", "EQ")
-        self.cb_rotor_avg.setToolTip(
-            "El rotor-average calcula el viento en varios puntos del disco del rotor, no solo en el centro. "
-            "Más puntos dan más realismo cuando una estela corta parte del rotor, pero aumentan el tiempo de cálculo."
-        )
-        self.lbl_rotor_avg_note = QtWidgets.QLabel("")
-        self.lbl_rotor_avg_note.setWordWrap(True)
-        self.lbl_rotor_avg_note.setStyleSheet("color: #666;")
-        v_rotor.addLayout(rotor_head)
-        v_rotor.addWidget(self.cb_rotor_avg)
-        v_rotor.addWidget(self.lbl_rotor_avg_note)
-        self._set_rotor_avg_combo(self._last_rotor_avg_model)
-        self.cb_rotor_avg.currentIndexChanged.connect(self._persist_rotor_avg_model)
-        self.cb_rotor_avg.currentIndexChanged.connect(self._update_rotor_avg_note)
-        root.addWidget(grp_rotor)
-        # aplicar restricciones rotor-average vs modelo de estela
-        self._update_rotor_avg_lock_for_wake_deficit()
-        self._update_rotor_avg_note()
-
-        # --------- Modelo de superposición (PyWake) ---------
-        grp_sup = QtWidgets.QGroupBox("Combinación de varias estelas (superposición)")
-        v_sup = QtWidgets.QVBoxLayout(grp_sup)
-        sup_head = QtWidgets.QHBoxLayout()
-        lbl_sup = QtWidgets.QLabel("Si una turbina recibe varias estelas, ¿cómo se suman sus efectos?")
-        self.btn_superposition_help = QtWidgets.QToolButton()
-        try:
-            self.btn_superposition_help.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
-        except Exception:
-            self.btn_superposition_help.setText("?")
-        self.btn_superposition_help.setAutoRaise(True)
-        self.btn_superposition_help.setToolTip("Explica qué pasa cuando varias estelas llegan a la misma turbina")
-        self.btn_superposition_help.clicked.connect(self._show_superposition_help)
-        sup_head.addWidget(lbl_sup)
-        sup_head.addWidget(self.btn_superposition_help, 0)
-        sup_head.addStretch(1)
-        self.cb_superposition_model = QtWidgets.QComboBox()
-        self.cb_superposition_model.addItem("Automático", "AUTO")
-        self.cb_superposition_model.addItem("LinearSum", "LIN")
-        self.cb_superposition_model.addItem("SquaredSum", "SQR")
-        self.cb_superposition_model.addItem("MaxSum", "MAX")
-        self.cb_superposition_model.addItem("WeightedSum (solo gaussianos)", "WGT")
-        self.cb_superposition_model.setToolTip(
-            "La superposición decide cómo sumar varias estelas sobre una misma turbina. "
-            "SquaredSum suele ser una opción equilibrada; LinearSum acumula más pérdidas; MaxSum solo toma la estela dominante."
-        )
-        self.lbl_superposition_note = QtWidgets.QLabel("")
-        self.lbl_superposition_note.setWordWrap(True)
-        self.lbl_superposition_note.setStyleSheet("color: #666;")
-        v_sup.addLayout(sup_head)
-        v_sup.addWidget(self.cb_superposition_model)
-        v_sup.addWidget(self.lbl_superposition_note)
-        self._set_superposition_combo(self._last_superposition_model)
-        self.cb_superposition_model.currentIndexChanged.connect(self._persist_superposition_model)
-        self.cb_superposition_model.currentIndexChanged.connect(self._update_superposition_note)
-        root.addWidget(grp_sup)
-        self._update_superposition_note()
-
-        # --------- Blockage deficit model (PyWake) ---------
-        grp_blk = QtWidgets.QGroupBox("Modelo de bloqueo (PyWake)")
-        v_blk = QtWidgets.QVBoxLayout(grp_blk)
-        blk_head = QtWidgets.QHBoxLayout()
-        lbl_blk = QtWidgets.QLabel("¿Qué modelo de bloqueo quieres usar?")
-        self.btn_blockage_help = QtWidgets.QToolButton()
-        try:
-            self.btn_blockage_help.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
-        except Exception:
-            self.btn_blockage_help.setText("?")
-        self.btn_blockage_help.setAutoRaise(True)
-        self.btn_blockage_help.setToolTip(
-            "Ayuda sobre cuándo conviene cada modelo de bloqueo y por qué a veces se desactiva automáticamente"
-        )
-        self.btn_blockage_help.clicked.connect(self._show_blockage_help)
-        blk_head.addWidget(lbl_blk)
-        blk_head.addWidget(self.btn_blockage_help, 0)
-        blk_head.addStretch(1)
-
-        self.cb_blockage_deficit = QtWidgets.QComboBox()
-        self.cb_blockage_deficit.addItem("Ninguno", "NONE")
-        self.cb_blockage_deficit.addItem("SelfSimilarityDeficit2020", "SS2020")
-        self.cb_blockage_deficit.addItem("SelfSimilarityDeficit", "SS")
-        self.cb_blockage_deficit.addItem("VortexCylinder", "VC")
-        self.cb_blockage_deficit.addItem("VortexDipole", "VD")
-        self.cb_blockage_deficit.addItem("HybridInduction", "HI")
-        self.cb_blockage_deficit.setToolTip(
-            "El bloqueo representa la reducción de velocidad aguas arriba del rotor. Solo se aplica con motores All2AllIterative o PropagateUpDownIterative."
-        )
-        v_blk.addLayout(blk_head)
-        v_blk.addWidget(self.cb_blockage_deficit)
-
-        # Nota gris explicativa: estado activo + interacción con el motor
-        self.lbl_blockage_note = QtWidgets.QLabel("")
-        self.lbl_blockage_note.setWordWrap(True)
-        self.lbl_blockage_note.setStyleSheet("color: #666;")
-        self.lbl_blockage_note.setTextFormat(QtCore.Qt.RichText)
-        v_blk.addWidget(self.lbl_blockage_note)
-
-        self._set_blockage_deficit_combo(self._last_blockage_deficit)
-        self.cb_blockage_deficit.currentIndexChanged.connect(self._persist_blockage_deficit)
-        # Refrescar la nota cuando cambien blockage o engine
-        self.cb_blockage_deficit.currentIndexChanged.connect(self._update_blockage_note)
-        try:
-            self.cb_wfm_engine.currentIndexChanged.connect(self._update_blockage_note)
-        except Exception:
-            pass
-        root.addWidget(grp_blk)
-
-        # --------- Modelo de turbulencia (PyWake) ---------
-        grp_turb = QtWidgets.QGroupBox("Modelo de turbulencia (PyWake)")
-        v_turb = QtWidgets.QVBoxLayout(grp_turb)
-        turb_head = QtWidgets.QHBoxLayout()
-        lbl_turb = QtWidgets.QLabel("¿Qué modelo de turbulencia quieres usar?")
-        self.btn_turbulence_help = QtWidgets.QToolButton()
-        try:
-            self.btn_turbulence_help.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
-        except Exception:
-            self.btn_turbulence_help.setText("?")
-        self.btn_turbulence_help.setAutoRaise(True)
-        self.btn_turbulence_help.setToolTip("Ayuda sobre TI ambiente, turbulencia añadida y cuándo influye realmente en el AEP")
-        self.btn_turbulence_help.clicked.connect(self._show_turbulence_model_help)
-        turb_head.addWidget(lbl_turb)
-        turb_head.addWidget(self.btn_turbulence_help, 0)
-        turb_head.addStretch(1)
-        self.cb_turbulence_model = QtWidgets.QComboBox()
-        self.cb_turbulence_model.addItem("Ninguno", "NONE")
-        self.cb_turbulence_model.addItem("STF2005TurbulenceModel", "STF2005")
-        self.cb_turbulence_model.addItem("STF2017TurbulenceModel", "STF2017")
-        self.cb_turbulence_model.addItem("GCLTurbulence", "GCL")
-        self.cb_turbulence_model.addItem("CrespoHernandez", "CH")
-        self.cb_turbulence_model.setToolTip("Este selector calcula turbulencia añadida por estela. No sustituye a la TI ambiente del site/WRG.")
-        v_turb.addLayout(turb_head)
-        v_turb.addWidget(self.cb_turbulence_model)
-
-        # Nota gris dedicada a turbulencia: muestra constantes del modelo seleccionado
-        self.lbl_turbulence_note = QtWidgets.QLabel("")
-        self.lbl_turbulence_note.setWordWrap(True)
-        self.lbl_turbulence_note.setStyleSheet("color: #666;")
-        self.lbl_turbulence_note.setTextFormat(QtCore.Qt.RichText)
-        v_turb.addWidget(self.lbl_turbulence_note)
-
-        self._set_turbulence_model_combo(self._last_turbulence_model)
-        self.cb_turbulence_model.currentIndexChanged.connect(self._persist_turbulence_model)
-        self.cb_turbulence_model.currentIndexChanged.connect(self._update_wake_turb_note)
-        self.cb_turbulence_model.currentIndexChanged.connect(self._update_turbulence_note)
-        root.addWidget(grp_turb)
-
-        # Estado inicial: si engine=PDW, bloquear selector de bloqueo
-        self._update_blockage_lock_for_engine()
-
-
-        # Estado inicial: aplicar compatibilidades wake↔rotorAvg y wake↔turbulence
-        self._update_rotor_avg_lock_for_wake_deficit()
-        self._update_turbulence_lock_for_wake_deficit()
-        self._update_wake_turb_note()
-        # Estado inicial de las notas dedicadas (bloqueo + turbulencia)
-        self._update_blockage_note()
-        self._update_turbulence_note()
-        self._update_rotor_avg_note()
-        self._update_superposition_note()
-        # La ingesta WRG/TI se muestra ahora dentro de la sección unificada de Recurso eólico.
+        # --------- Modelo de estela (#46): motor, déficit, superposición, bloqueo y turbulencia ---------
+        # The group never changes a choice by itself; what cannot be calculated is shown as a conflict and the
+        # calculation is not launched (ui_core/wake_group.py). The choices are remembered in its own keys.
+        self.wake_group = WakeModelGroup(self, settings=self._qsettings, tr=_tr)
+        self._note_old_physics_preferences()
+        self.wake_group.changed.connect(self._note_old_physics_preferences)
+        root.addWidget(self.wake_group)
 
         # --------- Acciones ---------
         actions_box = QtWidgets.QGroupBox("Acciones", self)
@@ -2750,8 +2028,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
             col0 = 1
 
         self.btn_gen_layers = QtWidgets.QPushButton("Generar capas de puntos")
-        self.btn_plot_wakes = QtWidgets.QPushButton("Graficar estelas")
-        self.btn_plot_wakes.setToolTip("Dibuja 4 mapas de estelas (N/E/S/O) usando los modelos y el recurso seleccionado (carpeta WAsP o WRG/ZIP).")
+        self.btn_plot_wakes = QtWidgets.QPushButton("Crear ráster de estelas")
+        self.btn_plot_wakes.setToolTip("Crea una capa ráster QGIS de velocidad efectiva para el sector más energético o una dirección elegida, usando el recurso seleccionado.")
         self.btn_calc_update = QtWidgets.QPushButton("Calcular AEP")
         self.btn_calc_update.setDefault(True)
 
@@ -2759,16 +2037,16 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self.btn_map_interactive = QtWidgets.QPushButton("Mapa interactivo")
         self.btn_map_interactive.setCheckable(True)
         self.btn_map_interactive.setToolTip(
-            "Activa edición en el canvas: click izq añade turbina, click der borra. "
-            "Las coordenadas editadas se usan directamente en el cálculo de AEP "
-            "(la capa en memoria es la fuente de verdad). El CSV original NO se modifica."
+            "Activa edición en el lienzo del mapa: clic izq añade turbina, clic der borra. "
+            "Las ediciones se escriben en la capa de turbinas seleccionada, y en su fichero si lo tiene; "
+            "el cálculo de AEP usa esa capa."
         )
 
-        # Exportar layout editado (acción explícita; nunca sobrescribe el CSV original sin confirmar)
-        self.btn_export_edited = QtWidgets.QPushButton("Exportar layout editado…")
+        # Exportar layout editado (acción explícita)
+        self.btn_export_edited = QtWidgets.QPushButton('Exportar disposición editada…')
         self.btn_export_edited.setToolTip(
             "Guardar a CSV los puntos editados en el mapa interactivo.\n"
-            "Default: <original>_edited.csv (no sobrescribe el CSV original)."
+            "Por defecto: <nombre de la capa>_edited.csv."
         )
 
         self.btn_store_scn_a = QtWidgets.QPushButton("Guardar escenario A")
@@ -2804,6 +2082,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
         btns = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, parent=self
         )
+        # The plugin's language, not Qt's (that of QGIS).
+        btns.button(QtWidgets.QDialogButtonBox.Ok).setText(_tr("Aceptar"))
+        btns.button(QtWidgets.QDialogButtonBox.Cancel).setText(_tr("Cancelar"))
         btns.accepted.connect(self._accept)
         btns.rejected.connect(self.reject)
         root.addWidget(btns)
@@ -2821,16 +2102,29 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self.btn_refresh_project.clicked.connect(self._refresh_project_state)
 
         # Inicializar
+        # Una fila cuya capa sale del proyecto (también al vaciarlo) vuelve a «---», no a otra capa.
+        # Se conecta antes de crear los selectores para actuar antes que ellos, que saltarían a otra capa.
+        QgsProject.instance().layersWillBeRemoved.connect(self._on_project_layers_will_be_removed)
         self._rebuild_rows()
         self._apply_style()
         apply_i18n(self)
         QtCore.QTimer.singleShot(0, self._fit_to_screen)
 
+        # The dialog can outlive its project (hidden with «← Inicio»): another project is not the continuation of this
+        # one (#36). Released when the dialog is destroyed, so no connection outlives it.
+        self._watch_project_switches()
+
         # Capturar ESC global mientras estemos en modo mapa interactivo
         try:
             iface.mainWindow().installEventFilter(self)
-        except Exception:
+        except Exception:  # nosec B110
             pass
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802 - Qt
+        # Enter in a field confirms it and does not launch the AEP («Calcular AEP» is the default button; piece E1
+        # of #64): only with no control with the focus, or the dialog itself.
+        if enter_reaches_default(self, event):
+            super().keyPressEvent(event)
 
     def _apply_style(self):
         """Aplica el estilo unificado del plugin Velantis Wind (paleta del hub)."""
@@ -2883,17 +2177,98 @@ class AEPSetupDialog(QtWidgets.QDialog):
             try:
                 iface.messageBar().pushMessage(
                     "PyWake",
-                    "No se pudo abrir el navegador. URL: https://topfarm.pages.windenergy.dtu.dk/PyWake/",
+                    _tr("No se pudo abrir el navegador. URL: https://topfarm.pages.windenergy.dtu.dk/PyWake/"),
                     level=Qgis.Warning,
                     duration=8,
                 )
-            except Exception:
+            except Exception:  # nosec B110
                 pass
+
+    def _load_air_density_from_project(self) -> None:
+        """The density controls with the reference of the current project (#36), or «sin definir» without one.
+
+        Loading writes nothing (the controls' signals are blocked), so it never marks the project as modified; and the
+        controls that depend on the box are enabled as it says.
+        """
+        values = read_project_density(QgsProject.instance())
+        controls = (self.chk_air_density, self.sp_air_density, self.sp_air_density_alt, self.cb_air_density_mode)
+        blocked = [control.blockSignals(True) for control in controls]
+        try:
+            self.chk_air_density.setChecked(values["enabled"])
+            self.sp_air_density.setValue(values["reference_density_kg_m3"])
+            self.sp_air_density_alt.setValue(values["reference_altitude_m"])
+            self.cb_air_density_mode.setCurrentIndex(max(self.cb_air_density_mode.findData(values["mode"]), 0))
+        finally:
+            for control, was_blocked in zip(controls, blocked):
+                control.blockSignals(was_blocked)
+        for control in (self.sp_air_density, self.sp_air_density_alt, self.cb_air_density_mode):
+            control.setEnabled(self.chk_air_density.isChecked())
+
+    def _watch_project_switches(self) -> None:
+        project = QgsProject.instance()
+        signals = [s for s in (getattr(project, "cleared", None), getattr(project, "readProject", None)) if s is not None]
+        slot = self._on_project_switched
+        for signal in signals:
+            signal.connect(slot)
+
+        def release(*_args) -> None:
+            for signal in signals:
+                try:
+                    signal.disconnect(slot)
+                except (RuntimeError, TypeError):
+                    pass
+
+        self.destroyed.connect(release)
+
+    def _on_project_switched(self, *_args) -> None:
+        """QGIS cleared the project or opened another one: what this dialog remembers of the last AEP is not of it (its
+        inputs, its result and the scenarios of the comparator), and its density controls take the reference of the new
+        project (#36)."""
+        self._last_aep_inputs = None
+        self._last_aep_result = None
+        self._last_aep_label = "Último cálculo"
+        self._scenario_a = None
+        self._scenario_b = None
+        self._load_air_density_from_project()
+
+    def _persist_air_density_settings(self) -> None:
+        """Save the density controls in the current project (#36): QGIS marks it as modified if they changed."""
+        try:
+            write_project_density(QgsProject.instance(), {
+                "enabled": bool(self.chk_air_density.isChecked()),
+                "mode": str(self.cb_air_density_mode.currentData() or "per_turbine"),
+                "reference_density_kg_m3": float(self.sp_air_density.value()),
+                "reference_altitude_m": float(self.sp_air_density_alt.value()),
+            })
+        except Exception:  # nosec B110
+            pass
+
+    def _get_air_density_settings(self) -> Dict[str, Any]:
+        """Tratamiento de la densidad del aire elegido en la UI; la misma lectura para el AEP y el ráster.
+
+        Un valor en el mínimo de su control está «sin definir» y se devuelve como ``None``. Si los
+        controles no se pueden leer, lanza: degradar a «apagado» seguiría sin el ajuste pedido y
+        sin que nada lo delate.
+        """
+        try:
+            if not self.chk_air_density.isChecked():
+                return {"mode": "off"}
+            density = float(self.sp_air_density.value())
+            altitude = float(self.sp_air_density_alt.value())
+            return {
+                "mode": str(self.cb_air_density_mode.currentData()),
+                "reference_density_kg_m3": None if density <= self.sp_air_density.minimum() else density,
+                "reference_altitude_m": None if altitude <= self.sp_air_density_alt.minimum() else altitude,
+            }
+        except Exception as exc:
+            raise RuntimeError(
+                _tr("No se pudieron leer los controles de densidad del aire: {error}").format(error=exc)
+            ) from exc
 
     def _persist_fixed_ti_percent(self) -> None:
         try:
             self._qsettings.setValue("last_fixed_ti_percent", float(self.sp_fixed_ti.value()))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _get_fixed_ti_fraction(self) -> float:
@@ -2906,1109 +2281,124 @@ class AEPSetupDialog(QtWidgets.QDialog):
         return val_pct / 100.0
 
     # -------------------- PyWake selectors (WFM + deficit) --------------------
-    def _normalize_wfm_engine(self, value: str) -> str:
-        v = (value or "").strip()
-        u = v.upper()
-        mapping = {
-            "AUTO": "AUTO",
-            "PDW": "PDW",
-            "PROPAGATEDOWNWIND": "PDW",
-            "A2A": "A2A",
-            "ALL2ALLITERATIVE": "A2A",
-            "PUD": "PUD",
-            "PROPAGATEUPDOWNITERATIVE": "PUD",
-            "PROPAGATEUPDOWNITEARTIVE": "PUD",  # tolera typo
-        }
-        return mapping.get(u, "PDW")
+    # The keys of the physics of the previous dialog: inactive since #46, never read nor deleted.
+    _OLD_PHYSICS_KEYS = ("last_wfm_engine", "last_wake_deficit", "last_rotor_avg_model", "last_superposition_model",
+                         "last_blockage_deficit", "last_turbulence_model")
+    _OLD_PHYSICS_NOTED = "wake_physics/old_preferences_noted"
+    OLD_PHYSICS_NOTE = ("Las preferencias de física de la versión anterior (motor, déficit, rotor, superposición, "
+                        "turbulencia, bloqueo y parámetros avanzados) ya no se usan: el grupo «Modelo de estela» se "
+                        "abre con los valores de las firmas de PyWake y recuerda sus propias elecciones.")
+    GO_MISSING_QUESTION = ("Se usará CGIRotorAvg(7) en vez de GaussianOverlapAvgModel porque no está disponible "
+                           "{libs}. Pulsa Continuar para calcular {what} con CGIRotorAvg(7).")
+    GO_MISSING_QUESTION_PLURAL = ("Se usará CGIRotorAvg(7) en vez de GaussianOverlapAvgModel porque no están disponibles "
+                                  "{libs}. Pulsa Continuar para calcular {what} con CGIRotorAvg(7).")
+    GO_MISSING_PRESET = "El resultado será una configuración adaptada a partir de {preset}."
+    GO_REMEMBER = "Recordar esta decisión para {preset} en futuros AEP y rásteres"
+    GO_REMEMBER_HELP = ("Con la casilla marcada, se usará CGIRotorAvg(7) sin preguntar mientras no estén disponibles "
+                        "estas mismas librerías y el cálculo necesite GaussianOverlapAvgModel.")
 
-    def _set_wfm_engine_combo(self, value: str) -> None:
-        eng = self._normalize_wfm_engine(value)
-        try:
-            for i in range(self.cb_wfm_engine.count()):
-                if str(self.cb_wfm_engine.itemData(i)).upper() == eng:
-                    self.cb_wfm_engine.setCurrentIndex(i)
-                    return
-        except Exception:
-            pass
+    def _note_old_physics_preferences(self) -> None:
+        """Decision 15 and #75 rows 1.3-1.8: the old preferences are inactive, said once, the first time the manual
+        mode is shown (the note is part of it; with the predefined models, when it is chosen)."""
+        s = self._qsettings
+        if self.wake_group.mode() != MANUAL or s.value(self._OLD_PHYSICS_NOTED, False, type=bool):
+            return
+        old = [k for k in self._OLD_PHYSICS_KEYS if s.contains(k)] + [k for k in s.allKeys() if k.startswith("wake_param/")]
+        if old:
+            self.wake_group.add_preference_note(self.OLD_PHYSICS_NOTE)
+            s.setValue(self._OLD_PHYSICS_NOTED, True)
 
-    def _persist_wfm_engine(self) -> None:
-        try:
-            val = self.cb_wfm_engine.currentData() or "PDW"
-            self._qsettings.setValue("last_wfm_engine", str(val))
-        except Exception:
-            pass
+    @staticmethod
+    def _libraries_text(missing: List[str]) -> str:
+        if len(missing) == 1:
+            return _tr("la librería {name}").format(name=missing[0])
+        return _tr("las librerías {names}").format(names=_tr(" y ").join(missing))
 
-    def _get_selected_wfm_engine(self) -> str:
-        try:
-            val = self.cb_wfm_engine.currentData() or self.cb_wfm_engine.currentText()
-        except Exception:
-            val = "PDW"
-        return self._normalize_wfm_engine(str(val))
+    def _wake_physics_for_run(self, what: str = "AEP", ask: bool = True,
+                              n_turbines: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """The physics of the group for a calculation (``wake_physics``), or ``None`` (nothing is calculated) when
+        it has a conflict, which is shown with its reasons, or when the user cancels the GaussianOverlap question
+        (decision 10). The answer is for one launch (decision 20 of the predefined models): ``ask`` true starts one and
+        forgets the earlier answer; with ``ask`` false (a second reading of the same launch) it is kept only for the same
+        mode, model, product, missing libraries and configuration, and asked again otherwise.
+        The question only where PyWake reads the table (R13, decision 6.1 of #64): with
+        All2AllIterative, the raster, or two turbines or more (``n_turbines``, the selected ones: the resource may leave
+        fewer, and with one the rotor average of the deficit does not change the AEP; unknown, as many as it takes).
 
-    def _normalize_wake_deficit(self, value: str) -> str:
-        v = (value or "").strip()
-        u = v.upper()
-        mapping = {
-            # La opción "Ninguno" ya no se expone en la UI. Si llega desde
-            # settings/valores antiguos, caemos al valor por defecto (BG).
-            "NONE": "BG",
-            "NINGUNO": "BG",
-            "NOJ": "NOJ",
-            "NOJDEFICIT": "NOJ",
-            "NOJ DEFICIT": "NOJ",
-            "TNOJ": "TNOJ",
-            "TURBONOJ": "TNOJ",
-            "TURBONOJDEFICIT": "TNOJ",
-            "NIA": "NIA",
-            "NIAYIFAR": "NIA",
-            "NIAYIFARGAUSSIANDEFICIT": "NIA",
-            "BG": "BG",
-            "BASTANKHAHGAUSSIANDEFICIT": "BG",
-            "BASTANKHAHGAUSSIAN": "BG",
-            "TURBOGAUSSIANDEFICIT": "TG",
-            "TG": "TG",
-            "ZONGGAUSSIANDEFICIT": "ZG",
-            "ZG": "ZG",
-        }
-        return mapping.get(u, "BG")
+        A predefined model is asked the same (decision 17 of the predefined models), saying that the result will be a
+        configuration adapted from it, with a box to remember the decision for that model (decision 21): while it
+        applies (``consent_applies``), it is not asked, and the adaptation records how it was accepted. Its provenance,
+        read here with its configuration, is ``_wake_provenance_for_run``."""
+        self._wake_run_provenance = None
+        if ask:
+            self._go_accepted = None
+        config = self.wake_group.config()
+        issues = self.wake_group.issues()
+        if config is None or issues:
+            QtWidgets.QMessageBox.warning(self, _tr("Modelo de estela"), "\n".join(
+                [_tr("No se puede calcular con esta configuración:")] + [i.translated(_tr) for i in issues]))
+            return None
+        # Asked when R13 is a reason of the first stage that stops (with another one too: the selected turbines may be
+        # more than the resource leaves, and then R13 may be the only one).
+        rules = _val.validate(config) or _val.layout_issues(config, n_turbines) or (
+            _val.map_issues(config, n_turbines) if what != "AEP" else [])
+        missing = _val.missing_gaussian_overlap_modules() if any(i.code == "R13" for i in rules) else []
+        if missing:
+            provenance = self.wake_group.provenance()
+            preset = provenance["preset"] if provenance is not None else None
+            context = (self.wake_group.mode(), provenance, what, tuple(sorted(missing)), config)
+            earlier = getattr(self, "_go_accepted", None)
+            accepted, acceptance = earlier[1:] if not ask and earlier is not None and earlier[0] == context else (
+                None, None)
+            # A predefined model: the decision the user saved for it (decision 21), while it applies.
+            saved = preset is not None and consent_applies(saved_consent(self._qsettings, preset), preset, missing)
+            if acceptance == _wake_api.ACCEPTED_SAVED and not saved:  # forgotten in between
+                accepted = None
+            if accepted is None and saved:
+                accepted, acceptance = True, _wake_api.ACCEPTED_SAVED
+            if accepted is None:
+                box = QtWidgets.QMessageBox(self)
+                box.setIcon(QtWidgets.QMessageBox.Warning)
+                box.setWindowTitle(_tr("Modelo de estela"))
+                question = self.GO_MISSING_QUESTION if len(missing) == 1 else self.GO_MISSING_QUESTION_PLURAL
+                text = _tr(question).format(
+                    libs=self._libraries_text(missing),
+                    what=_tr("el AEP") if what == "AEP" else _tr("el ráster de estelas"))
+                remember = None
+                if preset is not None:
+                    text += " " + _tr(self.GO_MISSING_PRESET).format(preset=preset)
+                    remember = QtWidgets.QCheckBox(_tr(self.GO_REMEMBER).format(preset=preset))
+                    box.setCheckBox(remember)  # never checked by default
+                    box.setInformativeText(_tr(self.GO_REMEMBER_HELP))
+                box.setText(text)
+                go_on = box.addButton(_tr("Continuar"), QtWidgets.QMessageBox.AcceptRole)
+                box.addButton(_tr("Cancelar"), QtWidgets.QMessageBox.RejectRole)
+                box.exec_()
+                accepted = box.clickedButton() is go_on
+                acceptance = _wake_api.ACCEPTED_NOW if preset is not None else None
+                if accepted and remember is not None:  # «Continuar» saves the decision or forgets the earlier one
+                    if remember.isChecked():
+                        save_consent(self._qsettings, preset, missing)
+                    else:
+                        clear_consent(self._qsettings, preset)
+            self._go_accepted = (context, accepted, acceptance)
+            if not accepted:
+                return None
+            config = _wake_api.gaussian_overlap_adaptation(config, missing, acceptance)
+        self._wake_run_provenance = self.wake_group.provenance()
+        return _wake_api.to_wake_physics(config)
 
-    def _set_wake_deficit_combo(self, value: str) -> None:
-        key = self._normalize_wake_deficit(value)
-        try:
-            for i in range(self.cb_wake_deficit.count()):
-                if str(self.cb_wake_deficit.itemData(i)).upper() == key:
-                    self.cb_wake_deficit.setCurrentIndex(i)
-                    return
-        except Exception:
-            pass
+    def _wake_provenance_for_run(self) -> Optional[Dict[str, Any]]:
+        """The provenance of the predefined model whose physics ``_wake_physics_for_run`` gave last (``None``: the
+        manual mode, or nothing given)."""
+        return getattr(self, "_wake_run_provenance", None)
 
-    def _persist_wake_deficit(self) -> None:
-        try:
-            val = self.cb_wake_deficit.currentData() or "BG"
-            self._qsettings.setValue("last_wake_deficit", str(val))
-        except Exception:
-            pass
-
-    def _get_selected_wake_deficit(self) -> str:
-        try:
-            val = self.cb_wake_deficit.currentData() or self.cb_wake_deficit.currentText()
-        except Exception:
-            val = "BG"
-        return self._normalize_wake_deficit(str(val))
-
-
-    # -------------------- Rotor-average selector (PyWake) --------------------
-    def _normalize_rotor_avg_model(self, value: str) -> str:
-        v = (value or "").strip()
-        u = v.upper().replace(" ", "").replace("-", "")
-        mapping = {
-            "NONE": "NONE",
-            "NINGUNO": "NONE",
-            "CGI": "CGI7",
-            "CGI4": "CGI7",
-            "CGI7": "CGI7",
-            "CGI9": "CGI9",
-            "CGI21": "CGI21",
-            "CGIROTORAVG": "CGI7",
-            "CGIROTORAVG(7)": "CGI7",
-            "CGIROTORAVG(9)": "CGI9",
-            "CGIROTORAVG(21)": "CGI21",
-            "GAUSSIANOVERLAPAVGMODEL": "CGI7",
-            "GO": "CGI7",
-            "EQGRIDROTORAVG": "EQ",
-            "EQ": "EQ",
-            "ROTORCENTER": "RC",
-            "RC": "RC",
-            "AUTO": "CGI7",
-        }
-        return mapping.get(u, "CGI7")
-
-    def _set_rotor_avg_combo(self, value: str) -> None:
-        key = self._normalize_rotor_avg_model(value)
-        try:
-            for i in range(self.cb_rotor_avg.count()):
-                if str(self.cb_rotor_avg.itemData(i)).upper() == key:
-                    self.cb_rotor_avg.setCurrentIndex(i)
-                    return
-        except Exception:
-            pass
-
-    def _persist_rotor_avg_model(self) -> None:
-        try:
-            val = self.cb_rotor_avg.currentData() or "CGI7"
-            self._qsettings.setValue("last_rotor_avg_model", str(val))
-        except Exception:
-            pass
-
-    def _get_selected_rotor_avg_model(self) -> str:
-        try:
-            val = self.cb_rotor_avg.currentData() or self.cb_rotor_avg.currentText()
-        except Exception:
-            val = "CGI7"
-        return self._normalize_rotor_avg_model(str(val))
-
-    # -------------------- Superposition selector (PyWake) --------------------
-    def _normalize_superposition_model(self, value: str) -> str:
-        v = (value or "").strip()
-        u = v.upper().replace(" ", "")
-        mapping = {
-            "AUTO": "AUTO",
-            "RECOMMENDED": "AUTO",
-            "LIN": "LIN",
-            "LINEAR": "LIN",
-            "LINEARSUM": "LIN",
-            "SQR": "SQR",
-            "SQUARE": "SQR",
-            "SQUAREDSUM": "SQR",
-            "RSS": "SQR",
-            "MAX": "MAX",
-            "MAXSUM": "MAX",
-            "WGT": "WGT",
-            "WEIGHTED": "WGT",
-            "WEIGHTEDSUM": "WGT",
-        }
-        return mapping.get(u, "AUTO")
-
-    def _set_superposition_combo(self, value: str) -> None:
-        key = self._normalize_superposition_model(value)
-        try:
-            for i in range(self.cb_superposition_model.count()):
-                if str(self.cb_superposition_model.itemData(i)).upper() == key:
-                    self.cb_superposition_model.setCurrentIndex(i)
-                    return
-        except Exception:
-            pass
-
-    def _persist_superposition_model(self) -> None:
-        try:
-            val = self.cb_superposition_model.currentData() or "AUTO"
-            self._qsettings.setValue("last_superposition_model", str(val))
-        except Exception:
-            pass
-
-    def _get_selected_superposition_model(self) -> str:
-        try:
-            val = self.cb_superposition_model.currentData() or self.cb_superposition_model.currentText()
-        except Exception:
-            val = "AUTO"
-        return self._normalize_superposition_model(str(val))
-
-    def _update_rotor_avg_note(self) -> None:
-        try:
-            rotor = (self._get_selected_rotor_avg_model() or "").upper()
-        except Exception:
-            rotor = "CGI7"
-        if rotor == "NONE":
-            msg = "Sin promedio de rotor: PyWake usa el viento en el centro del rotor. Es lo más simple y rápido, pero pierde detalle si una estela afecta solo a una parte del disco."
-        elif rotor == "RC":
-            msg = "RotorCenter: usa un único punto en el centro del rotor. Es rápido para pruebas y mapas, pero no representa la variación de velocidad dentro del disco."
-        elif rotor == "CGI7":
-            msg = "CGIRotorAvg(7): calcula varios puntos dentro del rotor. Aporta más realismo cuando hay estelas parciales sin aumentar demasiado el coste."
-        elif rotor == "CGI9":
-            msg = "CGIRotorAvg(9): usa más puntos que CGI7. Puede aportar algo más de realismo si el tiempo de cálculo sigue siendo asumible."
-        elif rotor == "CGI21":
-            msg = "CGIRotorAvg(21): usa muchos puntos del rotor. Es más pesado y solo compensa si buscas una sensibilidad de mayor fidelidad."
-        else:
-            msg = "Rotor-average significa promediar el viento en varios puntos del rotor en vez de mirar un único punto central. Más puntos = más realismo y más coste."
-        if str(current_language()).lower().startswith("de"):
-            _rotor_de = {
-                "NONE": "Ohne Rotormittelung: PyWake verwendet die Windgeschwindigkeit im Rotorzentrum. Das ist am einfachsten und schnellsten, verliert aber Detail, wenn ein Nachlauf nur einen Teil der Rotorscheibe trifft.",
-                "RC": "RotorCenter: verwendet einen einzigen Punkt im Rotorzentrum. Das ist schnell für Tests und Karten, bildet aber die Geschwindigkeitsverteilung innerhalb der Rotorscheibe nicht ab.",
-                "CGI7": "CGIRotorAvg(7): berechnet mehrere Punkte innerhalb des Rotors. Das erhöht den Realismus bei Teilnachläufen, ohne den Rechenaufwand stark zu erhöhen.",
-                "CGI9": "CGIRotorAvg(9): verwendet mehr Punkte als CGI7. Das kann etwas mehr Realismus bringen, wenn die Rechenzeit noch akzeptabel bleibt.",
-                "CGI21": "CGIRotorAvg(21): verwendet viele Punkte im Rotor. Das ist rechenintensiver und lohnt sich vor allem für Sensitivitätsprüfungen mit höherer Genauigkeit.",
-            }
-            msg = _rotor_de.get(rotor, "Rotor-Average bedeutet, die Windgeschwindigkeit an mehreren Punkten des Rotors zu mitteln, statt nur einen zentralen Punkt zu betrachten. Mehr Punkte bedeuten mehr Realismus und mehr Rechenaufwand.")
-        try:
-            self.lbl_rotor_avg_note.setText(_tr(msg))
-        except Exception:
-            pass
-
-    def _show_rotor_avg_help(self) -> None:
-        _show_help_dialog(
-            self,
-            _tr_help("Ayuda · Promedio sobre el rotor"),
-            _tr_help("<b>Qué es</b><br><br>"
-            "Una turbina no ve exactamente el mismo viento en todo el rotor. La parte alta, baja, izquierda o derecha del disco puede recibir velocidades distintas, sobre todo si una estela solo atraviesa una parte del rotor.<br><br>"
-            "<b>Qué hace esta opción</b><br>"
-            "• <b>Sin promedio / RotorCenter</b>: usa solo el centro del rotor. Es rápido, pero más simplificado.<br>"
-            "• <b>CGIRotorAvg(7)</b>: calcula varios puntos dentro del disco. Aporta más realismo con un coste moderado.<br>"
-            "• <b>CGIRotorAvg(9/21)</b>: usa más puntos. Puede aportar más fidelidad, pero aumenta el tiempo de cálculo.<br><br>"
-            "<b>Idea sencilla</b><br>"
-            "Si una estela corta solo media turbina, mirar únicamente el centro puede ser demasiado simplificado. Promediar el rotor ayuda a representar mejor ese efecto."
-            )
-        )
-
-    def _update_superposition_note(self) -> None:
-        try:
-            sup = (self._get_selected_superposition_model() or "AUTO").upper()
-            wake = (self._get_selected_wake_deficit() or "BG").upper()
-        except Exception:
-            sup, wake = "AUTO", "BG"
-        gaussian = wake in ("BG", "NIA", "ZG", "TG")
-        try:
-            self._set_combo_item_enabled_by_data(self.cb_superposition_model, "WGT", gaussian)
-            if (not gaussian) and sup == "WGT":
-                self._set_superposition_combo("AUTO")
-                self._persist_superposition_model()
-                sup = "AUTO"
-        except Exception:
-            pass
-
-        if sup == "AUTO":
-            msg = "Automático: el plugin escoge una opción segura según la combinación de modelos disponible."
-        elif sup == "LIN":
-            msg = "LinearSum: suma directamente varias pérdidas de velocidad. Puede aumentar las pérdidas en parques densos."
-        elif sup == "SQR":
-            msg = "SquaredSum: combina varias estelas de forma cuadrática. Suele dar un comportamiento más equilibrado cuando varias estelas se solapan."
-        elif sup == "MAX":
-            msg = "MaxSum: usa solo la estela dominante. Sirve para diagnosticar, pero puede quedarse corto si varias estelas se acumulan."
-        elif sup == "WGT":
-            msg = "WeightedSum: opción avanzada para gaussianos compatibles. Si PyWake rechaza la combinación, el plugin volverá a una opción segura."
-        else:
-            msg = "La superposición dice cómo sumar varias estelas cuando una turbina está detrás de más de una turbina."
-        if str(current_language()).lower().startswith("de"):
-            _sup_de = {
-                "AUTO": "Automatisch: Das Plugin wählt eine sichere Option entsprechend der verfügbaren Modellkombination.",
-                "LIN": "LinearSum: addiert mehrere Geschwindigkeitsdefizite direkt. In dichten Windparks kann dies die Verluste erhöhen.",
-                "SQR": "SquaredSum: kombiniert mehrere Nachläufe quadratisch. Das liefert meist ein ausgewogeneres Verhalten, wenn sich mehrere Nachläufe überlagern.",
-                "MAX": "MaxSum: verwendet nur den dominanten Nachlauf. Das ist nützlich zur Diagnose, kann aber Verluste unterschätzen, wenn sich mehrere Nachläufe addieren.",
-                "WGT": "WeightedSum: erweiterte Option für kompatible Gauß-Modelle. Wenn PyWake die Kombination ablehnt, kehrt das Plugin zu einer sicheren Option zurück.",
-            }
-            msg = _sup_de.get(sup, "Die Überlagerung legt fest, wie mehrere Nachläufe kombiniert werden, wenn eine Turbine hinter mehr als einer anderen Turbine steht.")
-        try:
-            self.lbl_superposition_note.setText(_tr(msg))
-        except Exception:
-            pass
-
-    def _show_superposition_help(self) -> None:
-        _show_help_dialog(
-            self,
-            _tr_help("Ayuda · Superposición de estelas"),
-            _tr_help("<b>Qué problema resuelve</b><br><br>"
-            "Una turbina puede recibir la estela de varias turbinas al mismo tiempo. La superposición decide cómo se combinan esas pérdidas de velocidad antes de calcular la potencia.<br><br>"
-            "• <b>Automático</b>: el plugin escoge una opción segura según la combinación de modelos.<br>"
-            "• <b>LinearSum</b>: suma directa. Puede acumular muchas pérdidas en parques densos.<br>"
-            "• <b>SquaredSum</b>: suma cuadrática. Suele ser una opción equilibrada cuando varias estelas se solapan.<br>"
-            "• <b>MaxSum</b>: usa solo la estela más fuerte. Útil para diagnóstico, pero puede infravalorar pérdidas acumuladas.<br>"
-            "• <b>WeightedSum</b>: opción avanzada para modelos gaussianos compatibles.<br><br>"
-            "<b>Idea sencilla</b><br>"
-            "Si dos turbinas frenan el viento antes de llegar a una tercera, hay que decidir si esas pérdidas se suman mucho, poco o solo domina una de ellas."
-            )
-        )
-
-    # ------------------ construir filas ------------------
     def _clear_layout(self, lay: QtWidgets.QLayout):
         while lay.count():
             it = lay.takeAt(0)
             w = it.widget()
             if w:
                 w.deleteLater()
-
-    def _normalize_blockage_deficit(self, value: str) -> str:
-        v = (value or "").strip()
-        u = v.upper()
-        mapping = {
-            "NONE": "NONE",
-            "NINGUNO": "NONE",
-            "SS2020": "SS2020",
-            "SELFSIMILARITYDEFICIT2020": "SS2020",
-            "SELF": "SS2020",
-            "VD": "VD",
-            "VORTEXDIPOLE": "VD",
-            "HI": "HI",
-            "HYBRIDINDUCTION": "HI",
-            "RATH": "RATH",
-            "RATHMANN": "RATH",
-        }
-        return mapping.get(u, mapping.get(u.replace(' ', ''), "NONE"))
-
-    def _set_blockage_deficit_combo(self, value: str) -> None:
-        key = self._normalize_blockage_deficit(value)
-        try:
-            for i in range(self.cb_blockage_deficit.count()):
-                if str(self.cb_blockage_deficit.itemData(i)).upper() == key:
-                    self.cb_blockage_deficit.setCurrentIndex(i)
-                    return
-        except Exception:
-            pass
-
-    def _persist_blockage_deficit(self) -> None:
-        try:
-            val = self.cb_blockage_deficit.currentData() or "NONE"
-            self._qsettings.setValue("last_blockage_deficit", str(val))
-        except Exception:
-            pass
-
-    def _get_selected_blockage_deficit(self) -> str:
-        try:
-            val = self.cb_blockage_deficit.currentData() or self.cb_blockage_deficit.currentText()
-        except Exception:
-            val = "NONE"
-        return self._normalize_blockage_deficit(str(val))
-
-    # -------------------- Turbulence selector (PyWake) --------------------
-    def _normalize_turbulence_model(self, value: str) -> str:
-        v = (value or "").strip()
-        u = v.upper().replace(" ", "")
-        mapping = {
-            "NONE": "NONE",
-            "NINGUNO": "NONE",
-            "AUTO": "STF2017",
-            "STF2005": "STF2005",
-            "STF2005TURBULENCEMODEL": "STF2005",
-            "STF2017": "STF2017",
-            "STF2017TURBULENCEMODEL": "STF2017",
-            "GCL": "GCL",
-            "GCLTURBULENCE": "GCL",
-            "GCLTURBULENCEMODEL": "GCL",
-            "CRESPOHERNANDEZ": "CH",
-            "CH": "CH",
-        }
-        return mapping.get(u, mapping.get(u.replace('_',''), "NONE"))
-
-    def _set_turbulence_model_combo(self, value: str) -> None:
-        key = self._normalize_turbulence_model(value)
-        try:
-            for i in range(self.cb_turbulence_model.count()):
-                if str(self.cb_turbulence_model.itemData(i)).upper() == key:
-                    self.cb_turbulence_model.setCurrentIndex(i)
-                    return
-        except Exception:
-            pass
-
-    def _persist_turbulence_model(self) -> None:
-        try:
-            val = self.cb_turbulence_model.currentData() or "NONE"
-            self._qsettings.setValue("last_turbulence_model", str(val))
-        except Exception:
-            pass
-
-    def _get_selected_turbulence_model(self) -> str:
-        try:
-            val = self.cb_turbulence_model.currentData() or self.cb_turbulence_model.currentText()
-        except Exception:
-            val = "NONE"
-        return self._normalize_turbulence_model(str(val))
-
-    def _update_engine_note_for_wfm(self) -> None:
-        """Muestra una nota cuando el motor requiere WS efectiva."""
-        try:
-            eng = (self._get_selected_wfm_engine() or "").upper()
-        except Exception:
-            eng = ""
-        txt = ""
-        if eng == "PUD":
-            txt = "Nota sencilla: este motor calcula interacciones hacia abajo y hacia arriba. Para que PyWake no falle con algunas combinaciones, el plugin activa automáticamente use_effective_ws=True en estelas y bloqueo."
-            if str(current_language()).lower().startswith("de"):
-                txt = "Einfacher Hinweis: Dieser Rechenkern berechnet Wechselwirkungen stromabwärts und stromaufwärts. Damit PyWake bei manchen Kombinationen nicht fehlschlägt, aktiviert das Plugin automatisch use_effective_ws=True für Nachlauf und Blockage."
-        try:
-            self.lbl_engine_note.setText(txt)
-        except Exception:
-            pass
-
-    # --------- Restricción: PDW no soporta bloqueo ---------
-    def _update_blockage_lock_for_engine(self) -> None:
-        """Si el motor WFM es PDW, fuerza bloqueo=NONE y deshabilita el combo.
-        Al salir de PDW, restaura la última selección previa.
-        """
-        try:
-            eng = (self._get_selected_wfm_engine() or "").upper()
-        except Exception:
-            eng = "PDW"
-
-        if eng == "PDW":
-            # guardar selección actual para poder restaurarla
-            try:
-                cur = self.cb_blockage_deficit.currentData() or "NONE"
-                cur_u = str(cur).upper()
-                if cur_u not in ("NONE", "NINGUNO"):
-                    self._blockage_before_pdw = str(cur)
-            except Exception:
-                pass
-            # forzar NONE y bloquear
-            try:
-                self._set_blockage_deficit_combo("NONE")
-                self.cb_blockage_deficit.setEnabled(False)
-                self._persist_blockage_deficit()
-            except Exception:
-                pass
-        else:
-            try:
-                self.cb_blockage_deficit.setEnabled(True)
-                restore = getattr(self, "_blockage_before_pdw", None) or self._last_blockage_deficit
-                self._set_blockage_deficit_combo(restore)
-                self._persist_blockage_deficit()
-            except Exception:
-                pass
-
-    
-
-    def _update_wake_deficit_lock_for_engine(self) -> None:
-        """PropagateUpDownIterative (PUD) requiere modelos que escalen con WS efectiva.
-
-        En PyWake esto se resuelve, para la mayoría de deficit models, pasando
-        use_effective_ws=True al constructor. El solver ya lo fuerza cuando engine==PUD,
-        así que aquí no bloqueamos modelos de estela; solo actualizamos notas/compatibilidades.
-        Si una instalación concreta de PyWake no acepta una combinación, el runner robusto
-        degradará automáticamente y lo reportará en el resumen.
-        """
-        if not hasattr(self, "cb_wake_deficit") or not hasattr(self, "cb_wfm_engine"):
-            return
-        try:
-            for key in ("NOJ", "TNOJ", "BG", "NIA", "TG", "ZG"):
-                self._set_combo_item_enabled_by_data(self.cb_wake_deficit, key, True)
-        except Exception:
-            pass
-        try:
-            self._update_rotor_avg_lock_for_wake_deficit()
-            self._update_turbulence_lock_for_wake_deficit()
-            self._update_wake_turb_note()
-        except Exception:
-            pass
-
-    # -------------------- Compatibilidad WakeDeficit vs RotorAvg --------------------
-    def _set_combo_item_enabled_by_data(self, combo: QtWidgets.QComboBox, data_key: str, enabled: bool) -> None:
-        """Habilita/deshabilita un item de un QComboBox buscando por itemData()."""
-        try:
-            dk = str(data_key).upper()
-            mdl = combo.model()
-            for i in range(combo.count()):
-                if str(combo.itemData(i)).upper() == dk:
-                    try:
-                        it = mdl.item(i)  # QStandardItemModel
-                        if it is not None:
-                            it.setEnabled(bool(enabled))
-                    except Exception:
-                        # fallback: no-op si el modelo no expone items editables
-                        pass
-                    return
-        except Exception:
-            return
-
-    def _update_rotor_avg_lock_for_wake_deficit(self) -> None:
-        """Compatibilidad wake↔rotor-average.
-
-        La versión experimental ya no expone GaussianOverlapAvgModel, porque es una opción avanzada
-        que puede depender de clases internas/compatibilidad de PyWake. Los modelos
-        que quedan en la UI son opciones estándar de rotor-average y no dependen del
-        wake deficit seleccionado.
-        """
-        try:
-            self._update_rotor_avg_note()
-        except Exception:
-            pass
-
-    def _update_turbulence_lock_for_wake_deficit(self) -> None:
-        """Compatibilidad entre wake deficit y turbulencia añadida.
-
-        No todos los modelos necesitan un turbulenceModel añadido. Todos reciben la
-        TI ambiente del Site, pero solo algunos wake deficits la usan de forma fuerte.
-        En esta versión experimental mantenemos una restricción práctica: Zong funciona mejor/espera
-        turbulencia añadida, así que se fuerza STF2017 si el usuario dejó Ninguno.
-        """
-        try:
-            wake = (self._get_selected_wake_deficit() or "").upper()
-        except Exception:
-            wake = "BG"
-
-        requires_turb = wake in ("ZG", "ZONGGAUSSIANDEFICIT")
-
-        # Deshabilitar/rehabilitar el item NONE en turbulencia
-        try:
-            self._set_combo_item_enabled_by_data(self.cb_turbulence_model, "NONE", not requires_turb)
-        except Exception:
-            pass
-
-        if requires_turb:
-            try:
-                cur = self.cb_turbulence_model.currentData() or "NONE"
-                if str(cur).strip().upper() in ("NONE", "NINGUNO", "NO", "OFF"):
-                    # STF2017 es la opción segura por defecto
-                    self._set_turbulence_model_combo("STF2017")
-                    self._persist_turbulence_model()
-            except Exception:
-                pass
-
-
-    # ============================================================
-    # Panel de parámetros avanzados del modelo de estela
-    # ============================================================
-    # Definiciones canónicas. La clave del modelo coincide con itemData del combo.
-    # Cada parámetro: (kw, etiqueta UI, default PyWake, mínimo, máximo, paso, decimales,
-    #                  tooltip corto)
-    _ADVANCED_PARAMS = {
-        "NOJ": [
-            ("k", "k (expansión de estela)", 0.04, 0.005, 0.30, 0.005, 4,
-             "Pendiente de expansión del cono de estela top-hat. Subir k acelera la recuperación; bajarlo alarga la estela."),
-        ],
-        "BG": [
-            ("k", "k (pendiente gaussiana)", 0.0324555, 0.005, 0.20, 0.001, 5,
-             "Pendiente del ancho σ(x) de la estela gaussiana. Default PyWake ≈ 0.0324555."),
-            ("ceps", "cεps (semilla σ₀)", 0.20, 0.05, 1.0, 0.01, 3,
-             "Tamaño inicial de la estela en la base (σ₀/D). Default PyWake = 0.2."),
-        ],
-        "NIA": [
-            ("a1", "a₁ en k = a₁·TI + a₂", 0.38, 0.0, 2.0, 0.01, 3,
-             "Coeficiente que convierte la TI local/efectiva en expansión de estela."),
-            ("a2", "a₂ en k = a₁·TI + a₂", 0.004, 0.0, 0.05, 0.001, 4,
-             "Offset mínimo de expansión cuando la TI tiende a cero."),
-            ("ceps", "cεps (semilla σ₀)", 0.20, 0.05, 1.0, 0.01, 3,
-             "Tamaño inicial σ₀/D. Default PyWake = 0.2."),
-        ],
-        "ZG": [
-            ("a1", "a₁ en k = a₁·TI + a₂", 0.38, 0.0, 2.0, 0.01, 3,
-             "Coeficiente de expansión dependiente de TI en la formulación Zong."),
-            ("a2", "a₂ en k = a₁·TI + a₂", 0.004, 0.0, 0.05, 0.001, 4,
-             "Offset mínimo de expansión de la estela."),
-            ("deltawD", "δw/D (longitud fuente near-wake)", 0.70710678, 0.1, 3.0, 0.05, 4,
-             "Escala longitudinal de la fuente gaussiana en near-wake. Default 1/sqrt(2)."),
-            ("eps_coeff", "ε coeff", 0.35355339, 0.05, 1.5, 0.01, 4,
-             "Coeficiente de anchura inicial. Default conservador PyWake = 1/sqrt(8)."),
-            ("lam", "λ tip-speed ratio", 7.5, 1.0, 15.0, 0.1, 2,
-             "Parámetro λ usado en la longitud near-wake de Vermeulen."),
-            ("B", "B número de palas", 3.0, 1.0, 5.0, 1.0, 0,
-             "Número de palas usado en la longitud near-wake. Normalmente 3."),
-        ],
-        "TG": [
-            ("A", "A expansión TurbOPark", 0.04, 0.005, 0.20, 0.005, 4,
-             "Constante principal de expansión de TurboGaussian/TurbOPark."),
-            ("cTI1", "cTI[0]", 1.5, 0.1, 5.0, 0.05, 3,
-             "Primer coeficiente que multiplica la TI en la formulación TurboGaussian."),
-            ("cTI2", "cTI[1]", 0.8, 0.1, 5.0, 0.05, 3,
-             "Segundo coeficiente TI/CT en la formulación TurboGaussian."),
-            ("ceps", "cεps (semilla σ₀)", 0.25, 0.05, 1.0, 0.01, 3,
-             "Tamaño inicial de la estela. Default PyWake = 0.25."),
-        ],
-        "TNOJ": [
-            ("A", "A expansión TurboNOJ", 0.04, 0.005, 0.20, 0.005, 4,
-             "Constante principal de expansión para la familia TurboNOJ cuando la versión de PyWake la expone."),
-            ("cTI1", "cTI[0]", 1.5, 0.1, 5.0, 0.05, 3,
-             "Primer coeficiente de sensibilidad a TI. Solo se aplicará si la clase PyWake acepta cTI."),
-            ("cTI2", "cTI[1]", 0.8, 0.1, 5.0, 0.05, 3,
-             "Segundo coeficiente de sensibilidad a TI. Solo se aplicará si la clase PyWake acepta cTI."),
-        ],
-    }
-
-    # Texto explicativo por modelo (mostrado en el botón ℹ️)
-    _ADVANCED_HELP = {
-        "NOJ": (
-            "<b>NOJDeficit (Jensen)</b><br><br>"
-            "Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con "
-            "una sola pendiente <b>k</b>.<br><br>"
-            "<b>k</b> — Pendiente de expansión. "
-            "<u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado "
-            "aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más "
-            "pequeño el déficit lejano.<br><br>"
-            "<b>Valores de referencia</b><br>"
-            "• Offshore limpio: k ≈ 0.04 (default PyWake)<br>"
-            "• Onshore típico: k ≈ 0.075<br>"
-            "• Onshore complejo / alta TI: k ≈ 0.10<br><br>"
-            "<i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y "
-            "necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible."
-        ),
-        "BG": (
-            "<b>BastankhahGaussianDeficit</b><br><br>"
-            "Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es "
-            "una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br>"
-            "<b>k</b> — Pendiente del crecimiento de σ. "
-            "σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el "
-            "paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela "
-            "más estrecha y persistente.<br><br>"
-            "<b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). "
-            "Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br>"
-            "<i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para "
-            "benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI."
-        ),
-        "NIA": (
-            "<b>NiayifarGaussianDeficit</b><br><br>"
-            "Variante gaussiana donde la pendiente k es función explícita de la <b>TI local "
-            "efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br>"
-            "<b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br>"
-            "<b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>"
-            "Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la "
-            "palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado."
-        ),
-        "ZG": (
-            "<b>ZongGaussianDeficit</b><br><br>"
-            "Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y "
-            "pendiente k dependiente de TI local.<br><br>"
-            "<b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br>"
-            "<b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. "
-            "El plugin fuerza STF2017 si lo dejas en Ninguno."
-        ),
-        "TNOJ": (
-            "<b>TurboNOJDeficit</b><br><br>"
-            "Variante TI-sensible del Jensen: la pendiente k se calcula a partir de la "
-            "<b>turbulencia efectiva</b> en cada turbina.<br><br>"
-            "Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. "
-            "Los coeficientes A/cTI se exponen como ajuste avanzado y solo se pasan si tu PyWake los acepta."
-        ),
-        "TG": (
-            "<b>TurboGaussianDeficit</b><br><br>"
-            "Versión TI-driven de la familia gaussiana. Tanto k como el ancho cerca del rotor "
-            "se derivan de la TI efectiva.<br><br>"
-            "Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. "
-            "Los coeficientes A/cTI/cεps se exponen como ajuste avanzado para calibración controlada."
-        ),
-    }
-
-    def _build_advanced_wake_params_panel(self, parent_layout) -> None:
-        """Panel colapsable con los parámetros avanzados del wake deficit seleccionado."""
-        self._adv_params_widgets = {}   # {model_key: {kw: QDoubleSpinBox}}
-        self._adv_params_pages = {}     # {model_key: QWidget}
-
-        grp = QtWidgets.QGroupBox("Parámetros avanzados del modelo (opcional · dejar por defecto salvo calibración)")
-        grp.setCheckable(True)
-        grp.setChecked(False)
-        v = QtWidgets.QVBoxLayout(grp)
-
-        head = QtWidgets.QHBoxLayout()
-        self.lbl_adv_params_intro = QtWidgets.QLabel(
-            "Estos parámetros modifican la forma de la estela. Déjalos en "
-            "«Valor PyWake por defecto» salvo que estés haciendo una sensibilidad, "
-            "validación contra otro software o calibración técnica."
-        )
-        self.lbl_adv_params_intro.setWordWrap(True)
-        self.lbl_adv_params_intro.setStyleSheet("color: #666;")
-        self.btn_adv_params_help = QtWidgets.QToolButton()
-        try:
-            self.btn_adv_params_help.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
-        except Exception:
-            self.btn_adv_params_help.setText("?")
-        self.btn_adv_params_help.setAutoRaise(True)
-        self.btn_adv_params_help.setToolTip("Explica qué cambia cada parámetro sin asumir conocimiento previo")
-        self.btn_adv_params_help.clicked.connect(self._show_advanced_params_help)
-        head.addWidget(self.lbl_adv_params_intro, 1)
-        head.addWidget(self.btn_adv_params_help, 0)
-        v.addLayout(head)
-
-        self.stk_adv_params = QtWidgets.QStackedWidget()
-        # Construir una página por modelo conocido
-        for key, params in self._ADVANCED_PARAMS.items():
-            page = QtWidgets.QWidget()
-            grid = QtWidgets.QFormLayout(page)
-            grid.setContentsMargins(0, 0, 0, 0)
-            self._adv_params_widgets[key] = {}
-            if not params:
-                lbl = QtWidgets.QLabel(
-                    "<i>Este modelo no expone parámetros físicos manualmente. "
-                    "Pulsa el botón ℹ️ para ver por qué.</i>"
-                )
-                lbl.setWordWrap(True)
-                grid.addRow(lbl)
-            for (kw, label, default, vmin, vmax, step, decimals, tip) in params:
-                spin = QtWidgets.QDoubleSpinBox()
-                spin.setDecimals(decimals)
-                spin.setSingleStep(step)
-                # Truco: el valor mínimo "especial" muestra "Default PyWake"
-                spin.setMinimum(0.0)  # 0.0 representa "no override"
-                spin.setMaximum(vmax)
-                spin.setSpecialValueText(f"Valor PyWake por defecto ({default:g})")
-                spin.setToolTip(tip)
-                # Restaurar valor persistido (0 = default)
-                stored = self._qsettings.value(
-                    f"wake_param/{key}/{kw}", 0.0, type=float
-                )
-                # Validar contra el rango mínimo positivo del parámetro
-                if stored > 0 and stored < vmin:
-                    stored = 0.0
-                spin.setValue(float(stored))
-                # Persistir en cada cambio
-                spin.valueChanged.connect(
-                    lambda val, k=key, p=kw: self._qsettings.setValue(
-                        f"wake_param/{k}/{p}", float(val)
-                    )
-                )
-                # Refrescar la nota inferior con el k activo cuando cambie
-                spin.valueChanged.connect(self._update_wake_turb_note)
-                self._adv_params_widgets[key][kw] = spin
-                row_lbl = QtWidgets.QLabel(label)
-                row_lbl.setToolTip(tip)
-                grid.addRow(row_lbl, spin)
-
-            page.setLayout(grid)
-            self.stk_adv_params.addWidget(page)
-            self._adv_params_pages[key] = page
-
-        v.addWidget(self.stk_adv_params)
-        parent_layout.addWidget(grp)
-        self._grp_adv_params = grp
-
-    def _on_wake_deficit_changed_refresh_advanced(self) -> None:
-        """Cambia la página visible del panel avanzado según el modelo seleccionado."""
-        if not hasattr(self, "stk_adv_params"):
-            return
-        try:
-            key = (self._get_selected_wake_deficit() or "BG").upper()
-        except Exception:
-            key = "BG"
-        page = self._adv_params_pages.get(key)
-        if page is not None:
-            self.stk_adv_params.setCurrentWidget(page)
-
-    def _show_advanced_params_help(self) -> None:
-        """Muestra el texto de ayuda específico del modelo seleccionado."""
-        try:
-            key = (self._get_selected_wake_deficit() or "BG").upper()
-        except Exception:
-            key = "BG"
-        txt = self._ADVANCED_HELP.get(
-            key,
-            "<i>Sin información específica para este modelo.</i>"
-        )
-        _show_help_dialog(
-            self, f"{_tr_help('Ayuda · Parámetros del modelo (')}{key})", _tr_help(txt)
-        )
-
-    def _get_wake_deficit_kwargs(self) -> Dict[str, Any]:
-        """Devuelve los overrides físicos del usuario para el modelo activo.
-
-        Solo se incluyen kwargs con valor > 0 (0 = «Default PyWake»).
-        """
-        kwargs: Dict[str, Any] = {}
-        if not hasattr(self, "_adv_params_widgets"):
-            return kwargs
-        try:
-            grp = getattr(self, "_grp_adv_params", None)
-            if grp is not None and not grp.isChecked():
-                return kwargs
-        except Exception:
-            pass
-        try:
-            key = (self._get_selected_wake_deficit() or "BG").upper()
-        except Exception:
-            key = "BG"
-        for kw, spin in self._adv_params_widgets.get(key, {}).items():
-            try:
-                v = float(spin.value())
-            except Exception:
-                continue
-            if v > 0:  # 0 = no override
-                kwargs[kw] = v
-
-        # PyWake espera algunos parámetros como listas, mientras que la UI los
-        # muestra como spinboxes separados para que el usuario entienda qué toca.
-        if key in ("NIA", "ZG") and ("a1" in kwargs or "a2" in kwargs):
-            a1 = float(kwargs.pop("a1", 0.38))
-            a2 = float(kwargs.pop("a2", 0.004))
-            kwargs["a"] = [a1, a2]
-        if key in ("TG", "TNOJ") and ("cTI1" in kwargs or "cTI2" in kwargs):
-            c1 = float(kwargs.pop("cTI1", 1.5))
-            c2 = float(kwargs.pop("cTI2", 0.8))
-            kwargs["cTI"] = [c1, c2]
-        return kwargs
-
-    def _show_wake_turb_help(self):
-        txt = (
-            "<b>Qué es el wake effect, en simple</b><br><br>"
-            "Cuando una turbina extrae energía del viento, detrás de ella queda una zona con menos velocidad y más turbulencia. "
-            "Esa zona es la <b>estela</b>. Si otra turbina cae dentro, producirá menos AEP.<br><br>"
-            "El <b>wake deficit model</b> decide cuánta velocidad se pierde y cómo se recupera la estela aguas abajo.<br><br>"
-            "<b>Cómo elegir sin ser experto</b><br>"
-            "• <b>BastankhahGaussianDeficit</b>: opción robusta para comparar layouts y parques offshore limpios.<br>"
-            "• <b>NiayifarGaussianDeficit</b>: parecido a Bastankhah, pero la turbulencia TI pesa más en la expansión de la estela.<br>"
-            "• <b>ZongGaussianDeficit</b>: más avanzado; útil si quieres una representación más rica del near wake y de la recuperación por TI.<br>"
-            "• <b>TurboGaussianDeficit</b>: gaussiano sensible a turbulencia efectiva; interesante cuando quieres que la TI ambiente/añadida influya en el AEP.<br>"
-            "• <b>NOJDeficit</b>: muy rápido y clásico; bueno para screening masivo, pero más simplificado.<br>"
-            "• <b>TurboNOJDeficit</b>: mantiene la ligereza de NOJ, pero permite que la TI influya más.<br><br>"
-            "<b>Idea sencilla</b><br>"
-            "Para más realismo cuando la turbulencia debe influir en la recuperación de estela, usa <b>Niayifar/Zong/TurboGaussian</b>. Para un cálculo rápido, usa <b>NOJ/TurboNOJ</b>. Para una base robusta de comparación, usa <b>Bastankhah</b>.<br><br>"
-            "Importante: cargar un raster TI no garantiza por sí solo que cambie mucho el AEP. El efecto se ve de verdad si el modelo de estela elegido usa la TI de forma explícita."
-        )
-        _show_help_dialog(self, _tr_help("Ayuda · Wake effect y modelo de estela"), _tr_help(txt))
-
-    def _show_turbulence_model_help(self):
-        txt = (
-            "<b>Qué significa la turbulencia en este plugin</b><br><br>"
-            "• <b>TI raster / WRG</b>: describe la <b>turbulencia ambiente</b> del site. Es un dato de entrada del recurso.<br>"
-            "• <b>Modelo de turbulencia</b>: calcula la <b>turbulencia añadida por estela</b> detrás de las turbinas.<br>"
-            "• <b>Modelo de estela</b>: decide si esa TI ambiente/efectiva cambia realmente el déficit y, por tanto, el AEP.<br><br>"
-            "<b>Cómo leerlo físicamente</b><br>"
-            "• Si solo aportas un raster TI, el plugin usa esa TI horizontal para todas las turbinas; si hay varias alturas de buje, eso es una <b>aproximación vertical</b>.<br>"
-            "• Si aportas varios raster(s) TI a distintas alturas, el plugin intenta reconstruir <b>TI(x,y,h)</b> e interpolar por altura.<br>"
-            "• Si no aportas raster TI en WRG, el plugin avisa y usa la <b>TI ambiente fallback definida por el usuario</b> como campo uniforme.<br><br>"
-            "<b>Cuándo importa mucho en el AEP</b><br>"
-            "• <b>BastankhahGaussianDeficit (BG)</b> y <b>NOJDeficit</b>: la TI no cambia mucho el déficit base del wake; el impacto sobre el AEP suele ser limitado.<br>"
-            "• <b>NiayifarGaussianDeficit</b>, <b>ZongGaussianDeficit</b>, <b>TurboGaussianDeficit</b> y <b>TurboNOJDeficit</b>: la TI ambiente/efectiva sí puede influir más en la apertura y recuperación de la estela.<br><br>"
-            "<b>Qué conviene según el parque</b><br>"
-            "• <b>Offshore con viento relativamente homogéneo</b>: una sola capa TI puede ser suficiente si las alturas de buje son parecidas.<br>"
-            "• <b>Onshore, terreno rugoso o alturas de buje distintas</b>: para más realismo, usa raster(s) TI y un wake model sensible a TI (Niayifar, Zong, TurboGaussian o TurboNOJ).<br>"
-            "• <b>Varios modelos de aerogenerador</b>: si mezclas alturas de buje, una sola capa TI es una aproximación; varias alturas de TI representan mejor la variación vertical.<br><br>"
-            "<b>Qué elegir en el selector de modelo de turbulencia</b><br>"
-            "• <b>STF2017</b>: buena opción general y la recomendación por defecto cuando necesitas un modelo de turbulencia añadida robusto.<br>"
-            "• <b>STF2005</b>: alternativa clásica y sencilla si quieres comparar con configuraciones más antiguas o más conservadoras.<br>"
-            "• <b>CrespoHernandez</b> y <b>GCLTurbulence</b>: útiles para comparativas o compatibilidad con ciertos modelos/estudios, pero el impacto final depende del wake model que elijas.<br><br>"
-            "<b>Regla práctica</b><br>"
-            "Si tu objetivo es que la turbulencia influya físicamente en el AEP, no basta con seleccionar un modelo de turbulencia: también necesitas un <b>modelo de estela sensible a TI</b>."
-        )
-        _show_help_dialog(self, _tr_help("Ayuda · Turbulencia"), _tr_help(txt))
-
-    def _show_blockage_help(self):
-        txt = (
-            "<b>Qué es el bloqueo</b><br><br>"
-            "Además de crear una estela detrás, una turbina también puede frenar ligeramente el viento antes de que el flujo llegue al rotor. Ese efecto aguas arriba se llama <b>bloqueo</b> o <i>blockage</i>.<br><br>"
-            "<b>Compatibilidad</b><br>"
-            "• No depende del recurso WRG/GRD: depende del motor de PyWake y del modelo de bloqueo.<br>"
-            "• Con <b>PropagateDownwind</b> se desactiva, porque ese motor solo calcula efectos aguas abajo.<br>"
-            "• Con <b>All2AllIterative</b> o <b>PropagateUpDownIterative</b> el plugin puede intentar incluirlo con los wake models disponibles.<br><br>"
-            "<b>Parámetros</b><br>"
-            "En esta versión experimental no se exponen parámetros internos de bloqueo. Son calibraciones propias del modelo de PyWake; para comparar sensibilidad, cambia de modelo en lugar de tocar constantes internas.<br><br>"
-            "<b>Qué opción usar</b><br>"
-            "SelfSimilarityDeficit2020 es la opción principal. VortexCylinder/VortexDipole/HybridInduction se dejan como alternativas si tu instalación de PyWake las soporta."
-        )
-        _show_help_dialog(self, _tr_help("Ayuda · Bloqueo"), _tr_help(txt))
-
-    def _update_blockage_note(self) -> None:
-        """Nota inferior del bloque de bloqueo: estado activo + interacción con engine."""
-        if not hasattr(self, 'lbl_blockage_note'):
-            return
-        try:
-            eng = (self._get_selected_wfm_engine() or '').upper()
-        except Exception:
-            eng = ''
-        try:
-            blk = (self._get_selected_blockage_deficit() or 'NONE').upper()
-        except Exception:
-            blk = 'NONE'
-
-        # Caso 1: PDW desactiva el bloqueo automáticamente. Es el caso «más confuso»
-        # de la UI (combo en gris) y el que más merece explicación.
-        if eng == 'PDW':
-            if str(current_language()).lower().startswith("de"):
-                msg = (
-                    "<b>Blockage deaktiviert</b>, weil der Rechenkern <b>PropagateDownwind</b> ist "
-                    "(er propagiert Nachläufe nur stromabwärts und unterstützt kein Blockage). "
-                    "Wenn Sie Blockage berücksichtigen möchten, wechseln Sie zu <b>All2AllIterative</b> oder "
-                    "<b>PropagateUpDownIterative</b>."
-                )
-                self.lbl_blockage_note.setText(msg)
-            else:
-                msg = (
-                    "<b>Bloqueo desactivado</b> porque el motor es <b>PropagateDownwind</b> "
-                    "(solo propaga estelas hacia abajo, no soporta bloqueo). "
-                    "Si quieres incluir bloqueo, cambia el motor a <b>All2AllIterative</b> o "
-                    "<b>PropagateUpDownIterative</b>."
-                )
-                self.lbl_blockage_note.setText(_tr(msg))
-            return
-
-        # Caso 2: motor compatible pero el usuario ha elegido «Ninguno»
-        if blk in ('NONE', 'NINGUNO', 'NO', 'OFF', ''):
-            if str(current_language()).lower().startswith("de"):
-                self.lbl_blockage_note.setText("<b>Ohne Blockage:</b> Die Berechnung berücksichtigt keine stromaufwärtige Geschwindigkeitsreduktion. In großen Offshore-Windparks kann dies die Verluste typischerweise um etwa 1–3 % AEP unterschätzen.")
-            else:
-                msg = (
-                    "<b>Sin bloqueo:</b> el cálculo no incluirá la reducción de velocidad upstream. "
-                    "En parques offshore grandes esto suele subestimar las pérdidas en ~1–3 % AEP."
-                )
-                self.lbl_blockage_note.setText(_tr(msg))
-            return
-
-        # Caso 3: bloqueo activo. Mostrar modelo + nota de constantes.
-        descr = {
-            'SS2020': "SelfSimilarityDeficit2020 — opción principal para bloqueo. No requiere parámetros de usuario en esta versión experimental.",
-            'SELFSIMILARITYDEFICIT2020': "SelfSimilarityDeficit2020 — opción principal para bloqueo. No requiere parámetros de usuario en esta versión experimental.",
-            'SS': "SelfSimilarityDeficit — formulación self-similarity clásica. No requiere parámetros de usuario en esta versión experimental.",
-            'SELFSIMILARITYDEFICIT': "SelfSimilarityDeficit — formulación self-similarity clásica. No requiere parámetros de usuario en esta versión experimental.",
-            'VC': "VortexCylinder — modelo de inducción/bloqueo basado en cilindro de vorticidad. Sin parámetros de usuario en esta versión experimental.",
-            'VORTEXCYLINDER': "VortexCylinder — modelo de inducción/bloqueo basado en cilindro de vorticidad. Sin parámetros de usuario en esta versión experimental.",
-            'VD': "VortexDipole — alternativa de inducción. Sin parámetros de usuario en esta versión experimental.",
-            'VORTEXDIPOLE': "VortexDipole — alternativa de inducción. Sin parámetros de usuario en esta versión experimental.",
-            'HI': "HybridInduction — combina aproximaciones de inducción. Sin parámetros de usuario en esta versión experimental.",
-            'HYBRIDINDUCTION': "HybridInduction — combina aproximaciones de inducción. Sin parámetros de usuario en esta versión experimental.",
-            'RATH': "Rathmann — modelo de compatibilidad para configuraciones antiguas. Sin parámetros de usuario en esta versión experimental.",
-            'RATHMANN': "Rathmann — modelo de compatibilidad para configuraciones antiguas. Sin parámetros de usuario en esta versión experimental.",
-        }.get(blk, f"{blk} — modelo no estándar; revisar disponibilidad en esta versión de PyWake.")
-
-        if str(current_language()).lower().startswith("de"):
-            descr_de = {
-                'SS2020': "SelfSimilarityDeficit2020 — Hauptoption für Blockage. In dieser experimentellen Version sind keine Benutzerparameter erforderlich.",
-                'SELFSIMILARITYDEFICIT2020': "SelfSimilarityDeficit2020 — Hauptoption für Blockage. In dieser experimentellen Version sind keine Benutzerparameter erforderlich.",
-                'SS': "SelfSimilarityDeficit — klassische Self-Similarity-Formulierung. In dieser experimentellen Version sind keine Benutzerparameter erforderlich.",
-                'SELFSIMILARITYDEFICIT': "SelfSimilarityDeficit — klassische Self-Similarity-Formulierung. In dieser experimentellen Version sind keine Benutzerparameter erforderlich.",
-                'VC': "VortexCylinder — Induktions-/Blockage-Modell auf Basis eines Wirbelzylinders. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'VORTEXCYLINDER': "VortexCylinder — Induktions-/Blockage-Modell auf Basis eines Wirbelzylinders. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'VD': "VortexDipole — alternative Induktionsmethode. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'VORTEXDIPOLE': "VortexDipole — alternative Induktionsmethode. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'HI': "HybridInduction — kombiniert Induktionsansätze. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'HYBRIDINDUCTION': "HybridInduction — kombiniert Induktionsansätze. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'RATH': "Rathmann — Kompatibilitätsmodell für ältere Konfigurationen. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-                'RATHMANN': "Rathmann — Kompatibilitätsmodell für ältere Konfigurationen. In dieser experimentellen Version gibt es keine Benutzerparameter.",
-            }.get(blk, f"{blk} — nicht standardmäßiges Modell; prüfen Sie die Verfügbarkeit in dieser PyWake-Version.")
-            msg = "<b>Aktives Modell:</b> " + descr_de
-            if eng == 'PUD':
-                msg += " <i>Bei PUD wird use_effective_ws=True erzwungen, um PyWake-Fehler zu vermeiden.</i>"
-            self.lbl_blockage_note.setText(msg)
-        else:
-            msg = "<b>Modelo activo:</b> " + descr
-            if eng == 'PUD':
-                msg += " <i>Con PUD se fuerza use_effective_ws=True para evitar errores de PyWake.</i>"
-            self.lbl_blockage_note.setText(_tr(msg))
-
-    def _update_turbulence_note(self) -> None:
-        """Nota inferior dedicada al modelo de turbulencia añadida."""
-        if not hasattr(self, 'lbl_turbulence_note'):
-            return
-        try:
-            turb = (self._get_selected_turbulence_model() or 'NONE').upper()
-        except Exception:
-            turb = 'NONE'
-
-        if turb in ('NONE', 'NINGUNO', 'NO', 'OFF', ''):
-            msg = (
-                "<b>Sin turbulencia añadida:</b> el cálculo usa la TI ambiente del recurso "
-                "(WRG/raster TI o valor manual), pero no suma la turbulencia creada por las estelas. "
-                "Esto es válido para modelos poco sensibles a TI; si usas Niayifar, Zong, TurboGaussian o TurboNOJ, la turbulencia añadida puede afectar más al AEP."
-            )
-            self.lbl_turbulence_note.setText(_tr(msg))
-            return
-
-        descr = {
-            'STF2017': "STF2017 — Frandsen 2007 / IEC 61400-1 ed.3. Coeficientes empíricos fijos del paper. <b>Recomendado por defecto</b>.",
-            'STF2005': "STF2005 — Frandsen original. Coeficientes empíricos fijos. Útil para comparar con configuraciones antiguas o más conservadoras.",
-            'GCL': "GCLTurbulence — derivado Frandsen, formulación clásica. Constantes fijas.",
-            'CH': "CrespoHernandez — Crespo &amp; Hernández 1996, ajuste empírico clásico. Constantes fijas del paper.",
-            'CRESPOHERNANDEZ': "CrespoHernandez — Crespo &amp; Hernández 1996, ajuste empírico clásico. Constantes fijas del paper.",
-        }.get(turb, f"{turb} — modelo no estándar; revisar disponibilidad en esta versión de PyWake.")
-
-        msg = (
-            "<b>Modelo activo:</b> " + descr +
-            "<br>La TI ambiente siempre viene del recurso/raster o del valor manual. Este selector añade turbulencia generada por estelas. "
-            "Su impacto en AEP será mayor si el wake model usa TI de forma explícita, como Niayifar, Zong, TurboGaussian o TurboNOJ."
-        )
-        self.lbl_turbulence_note.setText(_tr(msg))
-
-    def _update_wake_turb_note(self) -> None:
-        if not hasattr(self, 'lbl_wake_turb_note'):
-            return
-        try:
-            wake = (self._get_selected_wake_deficit() or '').upper()
-        except Exception:
-            wake = 'BG'
-        try:
-            turb = (self._get_selected_turbulence_model() or '').upper()
-        except Exception:
-            turb = 'NONE'
-        try:
-            eng = (self._get_selected_wfm_engine() or '').upper()
-        except Exception:
-            eng = ''
-
-        if wake in ('BG', 'BASTANKHAHGAUSSIANDEFICIT'):
-            msg = 'Bastankhah: opción robusta para comparar layouts. Usa una formulación gaussiana con parámetros fijos; la TI ambiente no cambia mucho el déficit base.'
-        elif wake in ('NOJ', 'NOJDEFICIT'):
-            msg = 'NOJ/Jensen: modelo clásico y muy rápido. Usa una expansión fija; la TI ambiente suele tener poco efecto directo en el déficit.'
-        elif wake in ('TNOJ', 'TURBONOJ', 'TURBONOJDEFICIT'):
-            msg = 'TurboNOJ: versión ligera tipo NOJ, pero con más sensibilidad a turbulencia y recuperación de estela.'
-        elif wake in ('NIA', 'NIAYIFARGAUSSIANDEFICIT'):
-            msg = 'Niayifar: gaussiano TI-sensitive. Recomendable si quieres que el raster TI o la TI manual influyan en la recuperación de estela.'
-        elif wake in ('ZG', 'ZONGGAUSSIANDEFICIT'):
-            msg = 'Zong: avanzado y sensible a TI. Útil para estudiar near wake y recuperación por turbulencia con más detalle.'
-        elif wake in ('TG', 'TURBOGAUSSIANDEFICIT'):
-            msg = 'TurboGaussian: gaussiano sensible a TI efectiva. Tiene sentido cuando la turbulencia ambiente y añadida deben influir en el AEP.'
-        else:
-            msg = 'El wake effect reduce el viento disponible detrás de cada turbina. Cada modelo aproxima esa pérdida de forma distinta.'
-
-        if turb in ('NONE', 'NINGUNO', 'NO', 'OFF') and wake in ('NIA', 'NIAYIFARGAUSSIANDEFICIT', 'ZG', 'ZONGGAUSSIANDEFICIT', 'TG', 'TURBOGAUSSIANDEFICIT', 'TNOJ', 'TURBONOJ', 'TURBONOJDEFICIT'):
-            msg += ' Aviso: el modelo es sensible a TI, pero has dejado la turbulencia añadida en Ninguno; se usará la TI ambiente, pero no se sumará TI generada por estelas.'
-        if eng == 'PDW':
-            msg += ' Con PropagateDownwind, el bloqueo se desactiva automáticamente.'
-
-        try:
-            param_line = self._format_active_param_line(wake)
-            if param_line:
-                msg += "<br><span style='color:#444;'>" + param_line + "</span>"
-                self.lbl_wake_turb_note.setTextFormat(QtCore.Qt.RichText)
-        except Exception:
-            pass
-
-        if str(current_language()).lower().startswith("de"):
-            _wake_de = {
-                'BG': 'Bastankhah: robuste Option zum Layout-Vergleich. Nutzt eine Gauß-Formulierung mit festen Parametern; die Umgebungs-TI verändert das Basisdefizit nur begrenzt.',
-                'BASTANKHAHGAUSSIANDEFICIT': 'Bastankhah: robuste Option zum Layout-Vergleich. Nutzt eine Gauß-Formulierung mit festen Parametern; die Umgebungs-TI verändert das Basisdefizit nur begrenzt.',
-                'NOJ': 'NOJ/Jensen: klassisches und sehr schnelles Modell. Nutzt eine feste Ausbreitung; die Umgebungs-TI hat meist nur geringen direkten Einfluss auf das Defizit.',
-                'NOJDEFICIT': 'NOJ/Jensen: klassisches und sehr schnelles Modell. Nutzt eine feste Ausbreitung; die Umgebungs-TI hat meist nur geringen direkten Einfluss auf das Defizit.',
-                'TNOJ': 'TurboNOJ: leichte NOJ-ähnliche Variante, aber mit stärkerer Sensitivität gegenüber Turbulenz und Nachlauferholung.',
-                'TURBONOJ': 'TurboNOJ: leichte NOJ-ähnliche Variante, aber mit stärkerer Sensitivität gegenüber Turbulenz und Nachlauferholung.',
-                'TURBONOJDEFICIT': 'TurboNOJ: leichte NOJ-ähnliche Variante, aber mit stärkerer Sensitivität gegenüber Turbulenz und Nachlauferholung.',
-                'NIA': 'Niayifar: TI-sensitives Gauß-Modell. Empfehlenswert, wenn TI-Raster oder manuelle TI die Nachlauferholung beeinflussen sollen.',
-                'NIAYIFARGAUSSIANDEFICIT': 'Niayifar: TI-sensitives Gauß-Modell. Empfehlenswert, wenn TI-Raster oder manuelle TI die Nachlauferholung beeinflussen sollen.',
-                'ZG': 'Zong: fortgeschrittenes, TI-sensitives Modell. Nützlich für Near-Wake- und Turbulenz-Erholungsstudien mit mehr Detail.',
-                'ZONGGAUSSIANDEFICIT': 'Zong: fortgeschrittenes, TI-sensitives Modell. Nützlich für Near-Wake- und Turbulenz-Erholungsstudien mit mehr Detail.',
-                'TG': 'TurboGaussian: Gauß-Modell mit Sensitivität gegenüber effektiver TI. Sinnvoll, wenn Umgebungs- und Zusatz-Turbulenz die AEP beeinflussen sollen.',
-                'TURBOGAUSSIANDEFICIT': 'TurboGaussian: Gauß-Modell mit Sensitivität gegenüber effektiver TI. Sinnvoll, wenn Umgebungs- und Zusatz-Turbulenz die AEP beeinflussen sollen.',
-            }
-            base_de = _wake_de.get(wake, 'Der Nachlaufeffekt reduziert den verfügbaren Wind hinter jeder Turbine. Jedes Modell nähert diesen Verlust anders an.')
-            if turb in ('NONE', 'NINGUNO', 'NO', 'OFF') and wake in ('NIA', 'NIAYIFARGAUSSIANDEFICIT', 'ZG', 'ZONGGAUSSIANDEFICIT', 'TG', 'TURBOGAUSSIANDEFICIT', 'TNOJ', 'TURBONOJ', 'TURBONOJDEFICIT'):
-                base_de += ' Hinweis: Das Modell ist TI-sensitiv, aber die Zusatz-Turbulenz steht auf Keine; die Umgebungs-TI wird verwendet, aber keine durch Nachläufe erzeugte TI addiert.'
-            if eng == 'PDW':
-                base_de += ' Bei PropagateDownwind wird Blockage automatisch deaktiviert.'
-            try:
-                param_line = self._format_active_param_line(wake)
-                if param_line:
-                    base_de += "<br><span style='color:#444;'>" + _tr(param_line) + "</span>"
-                    self.lbl_wake_turb_note.setTextFormat(QtCore.Qt.RichText)
-            except Exception:
-                pass
-            self.lbl_wake_turb_note.setText(base_de)
-        else:
-            self.lbl_wake_turb_note.setText(_tr(msg))
-
-    def _format_active_param_line(self, wake_key: str) -> str:
-        """Construye la línea «Parámetros activos…» para la nota inferior."""
-        defaults = {
-            "NOJ": [("k", 0.04)],
-            "BG":  [("k", 0.0324555), ("ceps", 0.20)],
-            "NIA": [("a1", 0.38), ("a2", 0.004), ("ceps", 0.20)],
-            "ZG":  [("a1", 0.38), ("a2", 0.004), ("deltawD", 0.70710678), ("eps_coeff", 0.35355339), ("lam", 7.5), ("B", 3.0)],
-            "TG":  [("A", 0.04), ("cTI1", 1.5), ("cTI2", 0.8), ("ceps", 0.25)],
-            "TNOJ": [("A", 0.04), ("cTI1", 1.5), ("cTI2", 0.8)],
-        }
-        key = wake_key
-        norm = {
-            "NOJDEFICIT": "NOJ",
-            "BASTANKHAHGAUSSIANDEFICIT": "BG",
-            "NIAYIFARGAUSSIANDEFICIT": "NIA",
-            "ZONGGAUSSIANDEFICIT": "ZG",
-            "TURBONOJDEFICIT": "TNOJ",
-            "TURBOGAUSSIANDEFICIT": "TG",
-        }
-        key = norm.get(key, key)
-        if key not in defaults:
-            return ""
-
-        # Leer valores visibles, aunque el groupbox no esté activado, para que
-        # la nota distinga claramente default vs override.
-        active_kw = self._get_wake_deficit_kwargs()
-        raw_widgets = getattr(self, "_adv_params_widgets", {}).get(key, {})
-        bits = []
-        for kw, defval in defaults[key]:
-            user_override = False
-            shown_val = defval
-            try:
-                spin = raw_widgets.get(kw)
-                if spin is not None and float(spin.value()) > 0 and getattr(self, "_grp_adv_params", None) is not None and self._grp_adv_params.isChecked():
-                    user_override = True
-                    shown_val = float(spin.value())
-            except Exception:
-                pass
-            # Casos agrupados en PyWake: a=[a1,a2], cTI=[cTI1,cTI2]
-            if kw in ("a1", "a2") and "a" in active_kw:
-                idx = 0 if kw == "a1" else 1
-                try:
-                    shown_val = float(active_kw["a"][idx]); user_override = True
-                except Exception:
-                    pass
-            if kw in ("cTI1", "cTI2") and "cTI" in active_kw:
-                idx = 0 if kw == "cTI1" else 1
-                try:
-                    shown_val = float(active_kw["cTI"][idx]); user_override = True
-                except Exception:
-                    pass
-            suffix = "<i>(valor editado por usuario)</i>" if user_override else "<i>(valor PyWake por defecto)</i>"
-            bits.append(f"{kw} = {shown_val:g} {suffix}")
-        return "<b>Parámetros activos:</b> " + " · ".join(bits)
 
     def _rebuild_rows(self):
         # Conservar el estado de filas ya definidas cuando cambia el número de
@@ -4017,6 +2407,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         # botón «Generar capas de puntos»: cada click puede añadir un modelo
         # nuevo sin borrar los anteriores.
         old_rows = list(getattr(self, "_rows", []) or [])
+        old_layers = [self._find_interactive_layer_for_row(i) for i in range(len(old_rows))]
         self._clear_layout(self.rows_box)
         self._rows.clear()
         for i in range(self.sp_n.value()):
@@ -4026,17 +2417,16 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
             # Encabezado
             top = QtWidgets.QHBoxLayout()
-            name_lbl = QtWidgets.QLabel(_tr(f"Modelo {i+1}: <i>(sin definir)</i>"))
+            name_lbl = QtWidgets.QLabel(_tr("Modelo {n}: <i>(sin definir)</i>").format(n=i + 1))
+            mark_translated(name_lbl)  # with the model's name, never translated: _refresh_model_row_header composes it
             name_lbl.setMinimumWidth(180)
             name_lbl.setWordWrap(True)
-            # Badge: «(editado, sin guardar)» — solo visible cuando la capa de este
+            # Badge: «editado en el mapa» — solo visible cuando la capa de este
             # modelo se ha modificado en el mapa interactivo y no se ha exportado.
-            dirty_badge = QtWidgets.QLabel(_tr("● editado en mapa, sin guardar"))
+            dirty_badge = QtWidgets.QLabel(_tr("● editado en el mapa"))
             dirty_badge.setStyleSheet("color: #b8860b; font-style: italic;")
             dirty_badge.setToolTip(_tr(
-                "Has movido/añadido/borrado turbinas en el mapa interactivo.\n"
-                "El cálculo de AEP usa esas coordenadas vivas (no el CSV original).\n"
-                "Pulsa «Exportar layout editado…» si quieres persistirlas a CSV."
+                'Has movido/añadido/borrado turbinas en el mapa interactivo.\nLos cambios están en la capa seleccionada en esta fila, y en su fichero si lo tiene.\nPulsa «Exportar disposición editada…» si quieres guardarlos en un CSV.'
             ))
             dirty_badge.setVisible(False)
             btn_define = QtWidgets.QPushButton(_tr("Definir…"))
@@ -4054,22 +2444,22 @@ class AEPSetupDialog(QtWidgets.QDialog):
             top.addWidget(btn_view_curve, 0)
             top.addWidget(btn_define, 0)
 
-            # CSV de coordenadas
+            # Capa de turbinas de la fila: la única que usan el AEP, el ráster y el mapa.
             bot = QtWidgets.QHBoxLayout()
-            lbl_csv = QtWidgets.QLabel(_tr("Coordenadas (CSV X,Y):"))
-            ed_csv = QtWidgets.QLineEdit()
-            ed_csv.setPlaceholderText(_tr("Selecciona CSV con columnas X,Y para este modelo"))
-            btn_csv = QtWidgets.QPushButton(_tr("Coords CSV…"))
-            btn_csv.clicked.connect(lambda _, idx=i, le=ed_csv: self._pick_coords_csv(idx, le))
+            lbl_layer = QtWidgets.QLabel()
+            set_source(lbl_layer, "text", "Capa de turbinas:")
+            cb_layer = QgsMapLayerComboBox()
+            cb_layer.setFilters(QgsMapLayerProxyModel.PointLayer)
+            cb_layer.setAllowEmptyLayer(True, "---")
+            # QGIS selecciona la primera capa del proyecto al crear el selector: la fila empieza en «---».
+            cb_layer.setCurrentIndex(0)
+            btn_load_layer = QtWidgets.QPushButton(_tr("Cargar nueva capa"))
+            btn_load_layer.setToolTip(_tr("Importar un fichero de coordenadas como capa nueva y elegirla en esta fila"))
+            btn_load_layer.clicked.connect(lambda _, idx=i: self._load_new_layer(idx))
 
-            btn_make_layer = QtWidgets.QPushButton(_tr("Cargar capa"))
-            btn_make_layer.setToolTip(_tr("Crear/actualizar la capa de puntos para este modelo"))
-            btn_make_layer.clicked.connect(lambda _, idx=i: self._generate_point_layer_one(idx, force_reload_csv=True, activate_interactive=False))
-
-            bot.addWidget(lbl_csv)
-            bot.addWidget(ed_csv, 1)
-            bot.addWidget(btn_csv, 0)
-            bot.addWidget(btn_make_layer, 0)
+            bot.addWidget(lbl_layer)
+            bot.addWidget(cb_layer, 1)
+            bot.addWidget(btn_load_layer, 0)
 
             vrow.addLayout(top)
             vrow.addLayout(bot)
@@ -4080,31 +2470,176 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 "wt": None,
                 "name": None,
                 "meta": None,
-                "coords_csv_le": ed_csv,
+                "layer_cb": cb_layer,
+                "layer_id": "",
                 "dirty_badge": dirty_badge,
                 "btn_view_curve": btn_view_curve,
             }
 
             # Restaurar datos anteriores de esta fila, si existían. No copiamos
-            # widgets viejos; solo estado de negocio y texto del CSV.
+            # widgets viejos; solo estado de negocio y la capa seleccionada.
             if i < len(old_rows):
                 old = old_rows[i] or {}
                 row_state["wt"] = old.get("wt")
                 row_state["name"] = old.get("name")
                 row_state["meta"] = old.get("meta")
-                try:
-                    old_le = old.get("coords_csv_le")
-                    if old_le is not None:
-                        ed_csv.setText(old_le.text())
-                except Exception:
-                    pass
+                if old_layers[i] is not None:
+                    cb_layer.setLayer(old_layers[i])
+                    row_state["layer_id"] = old_layers[i].id()
+            cb_layer.layerChanged.connect(self._on_row_layer_changed)
 
             self._rows.append(row_state)
             try:
                 self._refresh_model_row_header(i)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
+        self._update_wind_speeds()
         apply_i18n(self)
+        self._update_ti_note()
+        self._update_wrg_ti_meta()
+        self._refresh_interactive_panel()
+        # Las capas de las filas quitadas salen del parque de las separaciones, y su selector de modelos se pone al día
+        # aunque no tuvieran capa.
+        if len(self._rows) < len(old_rows):
+            self._sync_spacing_envelopes(left=[lyr for lyr in old_layers[len(self._rows):] if lyr is not None])
+
+    def _on_row_layer_changed(self, *_args) -> None:
+        """Una fila cambia de capa: datos de la turbina en la nueva, separaciones y panel al día.
+
+        La fila sale del selector que emite: un método del diálogo, y no una lambda por fila,
+        porque Qt corta sus conexiones cuando el diálogo se destruye.
+        """
+        idx = next((i for i, r in enumerate(self._rows) if r.get("layer_cb") is self.sender()), None)
+        if idx is not None:
+            self._row_layer_changed(idx)
+
+    def _row_layer_changed(self, idx: int) -> None:
+        row = self._rows[idx]
+        old_id = row.get("layer_id") or ""
+        layer = self._find_interactive_layer_for_row(idx)
+        row["layer_id"] = layer.id() if layer is not None else ""
+        # Una elipse que se estaba definiendo sobre la capa anterior no se guarda en la nueva.
+        self._cancel_spacing_definition(old_id)
+        self._write_rows_metadata()
+        old = QgsProject.instance().mapLayer(old_id) if old_id else None
+        self._sync_spacing_envelopes(layer, left=[old] if isinstance(old, QgsVectorLayer) else [])
+        self._refresh_dirty_indicators()
+        self._refresh_interactive_panel()
+
+    def _on_project_layers_will_be_removed(self, layer_ids) -> None:
+        ids = {str(x) for x in (layer_ids or [])}
+        # Las separaciones no deben quitar otra vez las envolventes que QGIS está quitando (#96).
+        with layers_being_removed(ids) if layers_being_removed is not None else contextlib.nullcontext():
+            emptied = []
+            for idx, row in enumerate(list(getattr(self, "_rows", []) or [])):
+                try:
+                    cb = row.get("layer_cb")
+                    if cb is not None and cb.currentLayer() is not None and cb.currentLayer().id() in ids:
+                        # setCurrentIndex no emite layerChanged: la fila y el panel se ponen al día aquí, después de
+                        # vaciar todas, para que las separaciones vean ya el parque que queda.
+                        cb.setCurrentIndex(0)
+                        emptied.append(idx)
+                except RuntimeError:  # selector ya destruido
+                    continue
+            for idx in emptied:
+                self._row_layer_changed(idx)
+        for layer_id in ids:
+            self._cancel_spacing_definition(layer_id)
+
+    def _cancel_spacing_definition(self, layer_id: str) -> None:
+        ctl = getattr(self, "_spacing_ctl", None)
+        try:
+            if layer_id and ctl is not None and ctl.alive:
+                ctl.cancel_definition(layer_id)
+        except Exception:  # nosec B110
+            pass
+
+    def _refresh_interactive_panel(self) -> None:
+        try:
+            if getattr(self, "_interactive_dock", None) is not None:
+                self._interactive_dock._refresh_layer_status()
+        except Exception:  # nosec B110
+            pass
+
+    def _write_rows_metadata(self) -> None:
+        """Apunta en cada capa elegida los datos de la turbina de la primera fila que la tiene.
+
+        Una capa elegida en varias filas pertenece a la primera, también para separaciones,
+        que leen de la capa el diámetro y la separación.
+        """
+        for lyr in self._row_layers():
+            self._write_row_metadata(self._row_index_for_layer(lyr), lyr)
+
+    def _write_row_metadata(self, idx: int, layer: QgsVectorLayer) -> None:
+        """Apunta en la capa los datos de la turbina de la fila, sin renombrarla.
+
+        Se guardan en el proyecto, no en el fichero de la capa. Sin turbina definida no hay
+        nada que apuntar: se apuntan al definirla.
+        """
+        r = self._rows[idx]
+        if r.get("wt") is None:
+            return
+        meta = r.get("meta")
+        try:
+            props = {
+                "velantis/layer_role": "energy_turbines",
+                "velantis/model_name": str(r.get("name") or ""),
+                "velantis/model_index": int(idx),
+            }
+            if isinstance(meta, dict):
+                for key, prop in (("hh", "hub_height_m"), ("diam", "diameter_m"), ("spacing_long_d", "spacing_long_d"),
+                                  ("spacing_trans_d", "spacing_trans_d"), ("spacing_angle_deg", "spacing_angle_deg")):
+                    if meta.get(key) is not None:
+                        props[f"velantis/{prop}"] = float(meta.get(key))
+                for key in ("spacing_mode", "curve_quality", "curve_source", "curve_source_url"):
+                    if meta.get(key):
+                        props[f"velantis/{key}"] = str(meta.get(key))
+            changed = False
+            for name, value in props.items():
+                # What QGIS keeps after writing, not a Python comparison: "120" stored as text and 120.0 compare
+                # different, and QGIS leaves the property as it was.
+                before = layer.customProperty(name)
+                layer.setCustomProperty(name, value)
+                changed = changed or layer.customProperty(name) != before
+            # Se guardan en el proyecto: cerrarlo sin guardar tiene que preguntar, como cuando se renombraba la capa.
+            if changed:
+                QgsProject.instance().setDirty(True)
+        except Exception:  # nosec B110
+            pass
+
+    def _load_new_layer(self, idx: int) -> None:
+        """«Cargar nueva capa»: importa un fichero de coordenadas como capa nueva y la elige en la fila."""
+        try:
+            from .ui_core.layout_sources import import_energy_layout
+        except Exception:
+            from ui_core.layout_sources import import_energy_layout  # type: ignore
+        try:
+            lyr = import_energy_layout(self)
+        except (ValueError, RuntimeError) as e:
+            QtWidgets.QMessageBox.warning(self, _tr("Cargar nueva capa"), str(e))
+            return
+        if lyr is None:
+            return
+        coords_csv = str(lyr.customProperty("velantis/coords_csv", "") or "")
+        if coords_csv:
+            self._last_csv_dir = os.path.dirname(coords_csv)
+        self._rows[idx]["layer_cb"].setLayer(lyr)
+        # Sin las separaciones abiertas, las elipses con el sector más energético del recurso, como al cargar un CSV,
+        # junto con las demás filas, salvo que el usuario las haya desactivado. Con ellas abiertas, ya las ha puesto al
+        # día al elegir la capa, si están activas (#96).
+        if getattr(self, "_spacing_notify_layout_changed", None) is not None:
+            return
+        if not self._qsettings.value("spacing/enabled", True, type=bool):
+            return
+        try:
+            from .spacing_core.auto_envelope import ensure_spacing_envelope_for_layer
+            try:
+                wrg_path = str(self.ed_wrg.text() or "").strip()
+            except Exception:
+                wrg_path = str(getattr(self, "_last_wrg_path", "") or "").strip()
+            ensure_spacing_envelope_for_layer(lyr, park_layers=self._row_layers(), wrg_path=wrg_path or None)
+        except Exception:  # nosec B110
+            pass
 
     def _refresh_model_row_header(self, idx: int) -> None:
         """Refresca etiqueta y botón de curva de una fila de modelo."""
@@ -4119,13 +2654,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if not name:
             try:
                 if name_lbl is not None:
-                    name_lbl.setText(_tr(f"Modelo {idx+1}: <i>(sin definir)</i>"))
-            except Exception:
+                    name_lbl.setText(_tr("Modelo {n}: <i>(sin definir)</i>").format(n=idx + 1))
+            except Exception:  # nosec B110
                 pass
             try:
                 if btn_curve is not None:
                     btn_curve.setEnabled(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
@@ -4137,7 +2672,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             if d_val:
                 extras.append(f"D={float(d_val):.0f} m")
             if h_val:
-                extras.append(f"Hub={float(h_val):.0f} m")
+                extras.append(f"HH={float(h_val):.0f} m")
             if p_val:
                 extras.append(f"P={float(p_val)/1000:.2f} MW")
             long_val = (meta or {}).get("spacing_long_d") if isinstance(meta, dict) else None
@@ -4149,13 +2684,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
             extra_txt = ""
         try:
             if name_lbl is not None:
-                name_lbl.setText(_tr(f"Modelo {idx+1}: <b>{name}</b>{extra_txt}"))
-        except Exception:
+                name_lbl.setText(_tr("Modelo {n}: <b>{name}</b>{extra}").format(
+                    n=idx + 1, name=html.escape(str(name)), extra=extra_txt))
+        except Exception:  # nosec B110
             pass
         try:
             if btn_curve is not None:
                 btn_curve.setEnabled(True)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ------------------ helpers UI ------------------
@@ -4168,8 +2704,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
             except Exception:
                 QtWidgets.QMessageBox.critical(
                     self,
-                    "Modelos",
-                    "No se pudo abrir el diálogo de turbina:\n" + traceback.format_exc(),
+                    _tr("Modelos"),
+                    _tr("No se pudo abrir el diálogo de turbina:\n{error}").format(error=traceback.format_exc()),
                 )
                 return
         else:
@@ -4204,7 +2740,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                         if t:
                             name = t
                             break
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
         if not name:
             name = "Custom WT"
@@ -4215,64 +2751,60 @@ class AEPSetupDialog(QtWidgets.QDialog):
             if path and os.path.isfile(path):
                 hdr = _preview_csv_header(path)
                 _debug_print(f"[Energy UI] Turbine curve CSV ({os.path.basename(path)}) header: {hdr}")
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         self._rows[idx]["wt"] = wt
         self._rows[idx]["name"] = name
         self._rows[idx]["meta"] = meta
+        self._update_wind_speeds()
 
-        # Si ya existía una capa vacía creada desde «Generar capas de puntos»
-        # con el nombre por defecto (Modelo N), conservarla y asociarla al nuevo
-        # modelo en lugar de obligar al usuario a volver a crear/seleccionar layouts.
-        lyr = None
-        try:
-            lyr = self._find_interactive_layer_for_row(idx)
-            if lyr is not None:
-                target_name = f"{name} (CSV)"
-                if lyr.name() != target_name:
-                    # Evitar choque si ya existe una capa distinta con ese nombre.
-                    other = _find_layer_by_name(target_name)
-                    if other is None or other.id() == lyr.id():
-                        lyr.setName(target_name)
-                lyr.setCustomProperty("velantis/layer_role", "energy_turbines")
-                lyr.setCustomProperty("velantis/model_name", str(name or ""))
-                lyr.setCustomProperty("velantis/model_index", int(idx))
-                if isinstance(meta, dict):
-                    if meta.get("hh") is not None:
-                        lyr.setCustomProperty("velantis/hub_height_m", float(meta.get("hh")))
-                    if meta.get("diam") is not None:
-                        lyr.setCustomProperty("velantis/diameter_m", float(meta.get("diam")))
-                    if meta.get("spacing_long_d") is not None:
-                        lyr.setCustomProperty("velantis/spacing_long_d", float(meta.get("spacing_long_d")))
-                    if meta.get("spacing_trans_d") is not None:
-                        lyr.setCustomProperty("velantis/spacing_trans_d", float(meta.get("spacing_trans_d")))
-                    if meta.get("spacing_mode"):
-                        lyr.setCustomProperty("velantis/spacing_mode", str(meta.get("spacing_mode")))
-                    if meta.get("spacing_angle_deg") is not None:
-                        lyr.setCustomProperty("velantis/spacing_angle_deg", float(meta.get("spacing_angle_deg")))
-                    if meta.get("curve_quality"):
-                        lyr.setCustomProperty("velantis/curve_quality", str(meta.get("curve_quality")))
-                    if meta.get("curve_source"):
-                        lyr.setCustomProperty("velantis/curve_source", str(meta.get("curve_source")))
-                    if meta.get("curve_source_url"):
-                        lyr.setCustomProperty("velantis/curve_source_url", str(meta.get("curve_source_url")))
-        except Exception:
-            pass
+        # La capa elegida en la fila conserva su nombre y recibe los datos de la turbina.
+        self._write_rows_metadata()
+        lyr = self._find_interactive_layer_for_row(idx)
 
         # Etiqueta enriquecida: nombre + D + Hub + P_nom (si hay)
         self._refresh_model_row_header(idx)
 
-        # Si las envolventes están activas, un cambio de modelo/diámetro debe
-        # actualizar inmediatamente la capa elíptica asociada a esta fila.
+        # Un cambio de modelo/diámetro actualiza las envolventes de las filas. Con las separaciones abiertas se avisa
+        # también cuando el modelo todavía no tiene capa: el selector muestra la fila como «sin capa» y permite dejar
+        # configurada su elipse antes de elegir su capa de turbinas.
+        self._sync_spacing_envelopes(lyr)
+
+    def _sync_spacing_envelopes(self, layer: Optional[QgsVectorLayer] = None, left=()) -> None:
+        """Pone al día las envolventes de separación cuando cambia el parque de las filas (#96).
+
+        ``left`` son capas que pueden haber salido de las filas: si ya no están en ninguna, se cancela una definición
+        en pantalla sobre ellas y se retira su envolvente temporal (la guardada en fichero se conserva). Después, con
+        las separaciones activas, el controlador rehace las de todas las filas (``layer`` es la que cambió). Sin
+        controlador, o con él desactivado, se rehacen frente a todas las filas las envolventes que ya existen, por
+        ejemplo la que creó «Cargar nueva capa» antes de definir la turbina, o la de una capa elegida en una fila con
+        otra turbina; las capas sin envolvente cuentan en los conflictos, pero siguen sin ella.
+        """
         try:
+            from .spacing_core.auto_envelope import (
+                drop_spacing_envelope_for_layer,
+                ensure_spacing_envelope_for_layer,
+                has_spacing_envelope,
+            )
+            rows = self._row_layers()
+            row_ids = {lyr.id() for lyr in rows}
+            ctl = getattr(self, "_spacing_ctl", None)
+            ctl = ctl if ctl is not None and ctl.alive else None
+            for lyr in left:
+                if lyr.id() not in row_ids:
+                    self._cancel_spacing_definition(lyr.id())
+                    drop_spacing_envelope_for_layer(lyr, manager=ctl.manager if ctl else None)
             cb = getattr(self, "_spacing_notify_layout_changed", None)
             if callable(cb):
-                # Refrescar también cuando el modelo todavía no tiene capa. El
-                # selector de spacing mostrará la fila como «sin capa» y permite
-                # dejar configurada su elipse antes de cargar el CSV.
-                cb(lyr if lyr is not None else None)
-        except Exception:
+                cb(layer)
+            if callable(cb) and ctl is not None and ctl.panel.is_enabled():
+                return
+            existing = next((lyr for lyr in rows if has_spacing_envelope(lyr)), None)
+            if existing is not None:
+                wrg_path = str(self.ed_wrg.text() or "").strip()
+                ensure_spacing_envelope_for_layer(existing, park_layers=rows, wrg_path=wrg_path or None, existing_only=True)
+        except Exception:  # nosec B110
             pass
 
     def _show_curve_for_model(self, idx: int) -> None:
@@ -4294,7 +2826,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             return
         try:
             self._open_curve_dialog(
-                title=r.get("name") or f"Modelo {idx+1}",
+                title=r.get("name") or _tr("Modelo {n}").format(n=idx + 1),
                 ws=list(ws), pw_kw=list(pw_kw), ct=list(ct) if ct else None,
                 meta=meta,
             )
@@ -4310,7 +2842,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             try:
                 if not matplotlib.get_backend().lower().startswith(("qt", "module://")):
                     matplotlib.use("Qt5Agg")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -4334,9 +2866,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if d_val:
             bits.append(f"D = {float(d_val):.1f} m")
         if h_val:
-            bits.append(f"Hub = {float(h_val):.1f} m")
+            bits.append(f"{_tr('Altura de buje')} = {float(h_val):.1f} m")
         if p_val:
-            bits.append(f"P_nom = {float(p_val)/1000:.2f} MW")
+            bits.append(f"{_tr('Potencia nominal')} = {float(p_val)/1000:.2f} MW")
         bits.append(f"{len(ws)} {_tr('puntos')}")
         header.setText("  ·  ".join(bits))
         header.setStyleSheet("color: #4f5d6b;")
@@ -4385,7 +2917,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             if m:
                 try:
                     return float(m.group(1).replace(',', '.'))
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         return None
 
@@ -4400,7 +2932,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                     try:
                         vals.append(float(meta.get(key)))
                         break
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
         out: List[float] = []
         for v in vals:
@@ -4414,16 +2946,16 @@ class AEPSetupDialog(QtWidgets.QDialog):
             "TI significa <b>turbulence intensity</b>. En simple: mide cuánto fluctúa el viento alrededor de su velocidad media. "
             "Más TI suele significar más mezcla del flujo y una recuperación de estela distinta.<br><br>"
             "<b>Dos turbulencias diferentes</b><br>"
-            "• <b>TI ambiente</b>: viene del recurso eólico o de un raster TI. Es el viento que llega al parque antes de las turbinas.<br>"
+            "• <b>TI ambiente</b>: viene del recurso eólico o de un ráster TI. Es el viento que llega al parque antes de las turbinas.<br>"
             "• <b>TI añadida por estela</b>: la genera cada turbina detrás de sí. La calcula el modelo de turbulencia de PyWake, si lo activas.<br><br>"
             "<b>Qué hace el plugin</b><br>"
-            "• Si cargas raster TI, se usa como turbulencia ambiente espacial.<br>"
-            "• Si no cargas raster TI, se usa el valor manual de la interfaz como hipótesis uniforme.<br>"
-            "• Si tienes varios raster a distintas alturas, puedes indicar 90;120;... para interpolar por altura de buje.<br><br>"
+            "• Si cargas ráster TI, se usa como turbulencia ambiente espacial.<br>"
+            "• Si no cargas ráster TI, se usa el valor manual de la interfaz como hipótesis uniforme.<br>"
+            "• Si tienes varios ráster a distintas alturas, puedes indicar 90;120;... para interpolar por altura de buje.<br><br>"
             "<b>Cuándo importa más</b><br>"
             "BG/NOJ son robustos pero poco sensibles a TI. Niayifar, Zong, TurboGaussian y TurboNOJ hacen que la TI afecte más a la recuperación de estela y al AEP.<br><br>"
             "<b>Idea sencilla</b><br>"
-            "Si no tienes datos de turbulencia, una TI manual uniforme permite correr el cálculo. Para más realismo en onshore, terreno complejo o varias alturas de buje, usa raster TI, idealmente por altura."
+            "Si no tienes datos de turbulencia, una TI manual uniforme permite ejecutar el cálculo. Para más realismo en tierra, terreno complejo o varias alturas de buje, usa ráster TI, idealmente por altura."
         )
         _show_help_dialog(self, _tr_help("Ayuda · Turbulencia TI"), _tr_help(txt))
 
@@ -4436,9 +2968,11 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if not wrg_ti_paths:
             QtWidgets.QMessageBox.information(
                 self,
-                "Turbulencia TI",
-                "Has definido varios hub heights pero no has seleccionado raster(s) TI. "
-                f"El cálculo seguirá con TI uniforme = {self.sp_fixed_ti.value():.1f} %. Es válido para una prueba, pero no representa variación vertical de turbulencia."
+                _tr("Turbulencia TI"),
+                _tr(
+                    "Has definido varias alturas de buje pero no has seleccionado ráster(s) TI. "
+                    "El cálculo seguirá con TI uniforme = {ti} %. Es válido para una prueba, pero no representa variación vertical de turbulencia."
+                ).format(ti=f"{self.sp_fixed_ti.value():.1f}")
             )
             return
         overrides = list(wrg_ti_heights_m or [])
@@ -4448,31 +2982,37 @@ class AEPSetupDialog(QtWidgets.QDialog):
         ]
         valid = [h for h in heights if h is not None]
         if len(wrg_ti_paths) == 1:
-            htxt = f" a {valid[0]:g} m" if valid else ""
-            QtWidgets.QMessageBox.information(
-                self,
-                "Turbulencia WRG",
-                "Has definido varios hub heights pero solo un raster TI" + htxt + ". "
-                "El plugin aplicará esa TI a todas las alturas como aproximación."
-            )
+            if valid:
+                text = _tr(
+                    "Has definido varias alturas de buje pero solo un ráster TI a {height} m. "
+                    "El plugin aplicará esa TI a todas las alturas como aproximación."
+                ).format(height=f"{valid[0]:g}")
+            else:
+                text = _tr(
+                    "Has definido varias alturas de buje pero solo un ráster TI. "
+                    "El plugin aplicará esa TI a todas las alturas como aproximación."
+                )
+            QtWidgets.QMessageBox.information(self, _tr("Turbulencia WRG"), text)
             return
         if len(set(round(h, 6) for h in valid)) < 2:
             QtWidgets.QMessageBox.information(
                 self,
-                "Turbulencia WRG",
-                "Se han seleccionado varios raster(s) TI, pero no he podido identificar al menos dos alturas distintas en sus nombres. "
-                "El plugin no podrá reconstruir una TI vertical fiable; revisa nombres como TImean.90.asc o TI_120m.tif."
+                _tr("Turbulencia WRG"),
+                _tr(
+                    "Se han seleccionado varios ráster(s) TI, pero no he podido identificar al menos dos alturas distintas en sus nombres. "
+                    "El plugin no podrá reconstruir una TI vertical fiable; revisa nombres como TImean.90.asc o TI_120m.tif."
+                )
             )
 
     def _pick_dir(self):
         start_dir = self.ed_dir.text().strip() or self._last_wasp_dir or os.path.expanduser("~")
-        d = QtWidgets.QFileDialog.getExistingDirectory(self, "Selecciona carpeta con grids WAsP", start_dir)
+        d = QtWidgets.QFileDialog.getExistingDirectory(self, _tr("Selecciona carpeta con grids WAsP"), start_dir)
         if d:
             self.ed_dir.setText(d)
             self._last_wasp_dir = d
             try:
                 self._qsettings.setValue("last_wasp_dir", d)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             self._draw_current_resource_extent(zoom=False, manual=False)
 
@@ -4493,9 +3033,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
-            "Selecciona WRG/ZIP",
+            _tr("Selecciona WRG/ZIP"),
             start_dir,
-            "WRG/ZIP (*.wrg *.zip);;Todos (*.*)",
+            "WRG/ZIP (*.wrg *.zip);;" + _tr("Todos (*.*)"),
         )
         if paths:
             txt = ";".join(paths)
@@ -4505,7 +3045,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             try:
                 self._qsettings.setValue("last_wrg_path", paths[0])
                 self._qsettings.setValue("last_wrg_dir", os.path.dirname(paths[0]))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             self._update_wrg_meta()
             self._draw_current_resource_extent(zoom=False, manual=False)
@@ -4515,7 +3055,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self._last_wrg_path = ""
         try:
             self._qsettings.setValue("last_wrg_path", "")
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._update_wrg_meta()
         self._clear_resource_extent()
@@ -4537,9 +3077,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
-            "Selecciona raster(s) de turbulencia (TI)",
+            _tr("Selecciona ráster(s) de turbulencia (TI)"),
             start_dir,
-            "Rasters (*.asc *.tif *.tiff *.vrt);;Todos (*.*)",
+            _tr("Rásteres (*.asc *.tif *.tiff *.vrt)") + ";;" + _tr("Todos (*.*)"),
         )
         if paths:
             txt = ";".join(paths)
@@ -4550,7 +3090,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 self._qsettings.setValue("last_wrg_ti_dir", os.path.dirname(paths[0]))
                 if hasattr(self, "ed_wrg_ti_heights"):
                     self._qsettings.setValue("last_wrg_ti_heights", self.ed_wrg_ti_heights.text().strip())
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             self._update_wrg_ti_meta()
 
@@ -4559,7 +3099,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         self._last_wrg_ti_path = ""
         try:
             self._qsettings.setValue("last_wrg_ti_path", "")
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._update_wrg_ti_meta()
 
@@ -4588,10 +3128,41 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 out.append(None)
         try:
             self._qsettings.setValue("last_wrg_ti_heights", txt)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return out
 
+
+    def retranslate_ui(self):
+        """Translate the live dialog without rebuilding model rows or wake drafts."""
+        apply_i18n(self)
+        # This transient action message has no retained source; do not leave it in the old language.
+        self.lbl_resource_extent.clear()
+        self._update_ti_note()
+        self._update_wrg_ti_meta()
+        self._update_wrg_meta(sync_parameters=False)
+        self._update_wind_speeds()
+        self.lbl_wind_speeds.setToolTip(_tr(_SPEEDS_HELP))
+        for idx in range(len(self._rows)):
+            self._refresh_model_row_header(idx)
+        self.wake_group.retranslate()
+        spacing = getattr(self, "_spacing_ctl", None)
+        if spacing is not None:
+            spacing.retranslate()
+        dock = getattr(self, "_interactive_dock", None)
+        if dock is not None:
+            dock.retranslate()
+
+    def _update_ti_note(self):
+        """The note on the TI rasters, in the current language as the rest of the dialog, and its CRS as it is (#54)."""
+        note = getattr(self, "_note_ti", None)
+        if note is not None:
+            note.setText(_tr(
+                "La TI es la intensidad de turbulencia ambiente: una medida de lo variable o 'mezclado' que llega el viento al rotor. "
+                "Si no cargas ráster TI, se usa el valor manual de arriba como hipótesis uniforme. "
+                "La TI no siempre cambia mucho el AEP: se nota sobre todo en modelos sensibles a la TI como Niayifar, Zong, TurboGaussian o TurboNOJ. "
+                "Los ráster(s) TI se reproyectarán al CRS del proyecto actual ({crs}) si hace falta."
+            ).format(crs=_project_crs_label()))
 
     def _update_wrg_ti_meta(self):
         try:
@@ -4601,12 +3172,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         paths = [p.strip() for p in txt.split(";") if p.strip()]
         if not paths:
-            self.lbl_wrg_ti_meta.setText(f"Raster(s) TI no seleccionado(s) → fallback automático a {self.sp_fixed_ti.value():.1f}% si usas WRG.")
+            self.lbl_wrg_ti_meta.setText(
+                _tr("Ráster(s) TI no seleccionado(s) → respaldo automático a {ti}% si usas WRG.").format(ti=f"{self.sp_fixed_ti.value():.1f}")
+            )
             return
 
         missing = [os.path.basename(p) for p in paths if not os.path.isfile(p)]
         if missing:
-            self.lbl_wrg_ti_meta.setText("Raster(s) TI no encontrado(s): " + ", ".join(missing))
+            self.lbl_wrg_ti_meta.setText(_tr("Ráster(s) TI no encontrado(s): {files}").format(files=", ".join(missing)))
             return
 
         overrides = self._parse_wrg_ti_height_overrides()
@@ -4614,19 +3187,20 @@ class AEPSetupDialog(QtWidgets.QDialog):
         for i, p in enumerate(paths):
             ext = os.path.splitext(p)[1].lower()
             h = overrides[i] if i < len(overrides) and overrides[i] is not None else self._extract_height_from_filename(p)
-            src = "override" if i < len(overrides) and overrides[i] is not None else "nombre"
             if h is None:
-                parts.append(f"{os.path.basename(p)} ({ext or 'sin extensión'}, sin altura)")
+                parts.append(_tr("{file} ({ext}, sin altura)").format(file=os.path.basename(p), ext=ext or _tr("sin extensión")))
+            elif i < len(overrides) and overrides[i] is not None:
+                parts.append(_tr("{file} ({height} m, manual)").format(file=os.path.basename(p), height=f"{h:g}"))
             else:
-                parts.append(f"{os.path.basename(p)} ({h:g} m, {src})")
+                parts.append(_tr("{file} ({height} m, nombre)").format(file=os.path.basename(p), height=f"{h:g}"))
         extra = ""
         if overrides and len(overrides) != len(paths):
-            extra = f" · Aviso: {len(overrides)} altura(s) para {len(paths)} raster(s)"
+            extra = _tr(" · Aviso: {n} altura(s) para {count} ráster(s)").format(n=len(overrides), count=len(paths))
         self.lbl_wrg_ti_meta.setText(
-            f"Raster(s) TI: {' ; '.join(parts)} · CRS destino previsto: {_project_crs_authid()}{extra}"
+            _tr("Ráster(s) TI: {files} · CRS destino previsto: {crs}").format(files=" ; ".join(parts), crs=_project_crs_label()) + extra
         )
 
-    def _update_wrg_meta(self):
+    def _update_wrg_meta(self, sync_parameters=True):
         """Actualiza el texto de metadatos WRG."""
         try:
             path = self.ed_wrg.text().strip()
@@ -4635,10 +3209,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         if not path:
             self.lbl_wrg_meta.setText("")
+            if sync_parameters:
+                self._show_wrg_parameters(path, None)
             return
 
         if read_wrg_meta is None:
-            self.lbl_wrg_meta.setText("(Lector WRG no disponible en esta instalación)")
+            self.lbl_wrg_meta.setText(_tr("(Lector WRG no disponible en esta instalación)"))
+            if sync_parameters:
+                self._show_wrg_parameters(path, None)
             return
 
         # soportar múltiples rutas separadas por ';'
@@ -4654,36 +3232,195 @@ class AEPSetupDialog(QtWidgets.QDialog):
             for m in metas:
                 hlist = m.get("height_m_list")
                 if isinstance(hlist, (list, tuple)) and hlist:
-                    hs.extend([str(h) for h in hlist])
+                    hs.extend(format_number(h, ",") for h in hlist)
                 else:
-                    hs.append(str(m.get("height_m")))
+                    hs.append(format_number(m.get("height_m"), ","))
             hs_txt = ", ".join(hs)
             self.lbl_wrg_meta.setText(
-                f"Malla: {nx}×{ny} | cellsize={cell} m | h={hs_txt} m | sectores={nsec} | "
-                f"extent=({xmin:.0f},{ymin:.0f})–({xmax:.0f},{ymax:.0f})"
+                _tr("Malla: {nx}×{ny} | celda={cell} m | h={heights} m | sectores={sectors} | extensión={extent}").format(
+                    nx=format_number(nx, ",.0f"), ny=format_number(ny, ",.0f"),
+                    cell=format_number(cell, ","), heights=hs_txt, sectors=format_number(nsec, ",.0f"),
+                    extent=f"({format_number(xmin, ',.0f')}, "
+                           f"{format_number(ymin, ',.0f')})–"
+                           f"({format_number(xmax, ',.0f')}, "
+                           f"{format_number(ymax, ',.0f')})",
+                )
             )
         except Exception as e:
-            self.lbl_wrg_meta.setText(f"WRG inválido o no legible: {e}")
+            # The reason translated from its template when the reader gives one (S1-9); else as it is.
+            message = e.args[0] if e.args else None
+            error = shown(message, _tr) if getattr(message, "template_item", None) else e
+            self.lbl_wrg_meta.setText(_tr("WRG inválido o no legible: {error}").format(error=error))
+            nsec = None
+        if sync_parameters:
+            self._show_wrg_parameters(path, nsec if isinstance(nsec, int) and nsec > 0 else None)
+
+    def _build_resource_params_group(self) -> QtWidgets.QWidget:
+        """«Parámetros del recurso» of a WRG, folded; its button shows the choice (as in Velantis Optimizer).
+
+        Inside, 2×2: interpolation and the fixed Speedup on the left; directions and the
+        wind speeds (the band of the models and the step) on the right. Nothing is saved.
+        """
+        group = QtWidgets.QWidget()
+        box = QtWidgets.QVBoxLayout(group)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.setSpacing(0)
+        self.btn_resource_params = QtWidgets.QToolButton()
+        mark_translated(self.btn_resource_params)  # the choice inside a translated template: _update_resource_params_view
+        self.btn_resource_params.setCheckable(True)
+        self.btn_resource_params.setAutoRaise(True)
+        self.btn_resource_params.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.resource_params = QtWidgets.QWidget()
+        grid = QtWidgets.QGridLayout(self.resource_params)
+        grid.setContentsMargins(16, 0, 0, 0)
+        self.cb_wd_interp = QtWidgets.QComboBox()
+        for method in WD_INTERP_METHODS:
+            self.cb_wd_interp.addItem(method, method)
+        self.cb_wd_count = QtWidgets.QComboBox()
+        for title, widget, help_text, column in (
+            (_tr("Interpolación direccional"), self.cb_wd_interp, _tr(_WD_INTERP_HELP), 0),
+            (_tr("Direcciones de cálculo"), self.cb_wd_count, _tr(_WD_COUNT_HELP), 1),
+        ):
+            label = QtWidgets.QLabel(title)
+            label.setToolTip(help_text)
+            widget.setToolTip(help_text)
+            grid.addWidget(label, 0, column)
+            grid.addWidget(widget, 1, column)
+        self.lbl_speedup = QtWidgets.QLabel(_tr('Aceleración: ninguna ⓘ'))
+        self.lbl_speedup.setToolTip(_tr(_SPEEDUP_HELP))
+        grid.addWidget(self.lbl_speedup, 2, 0)
+        speeds_label = QtWidgets.QLabel(_tr("Velocidades de cálculo:"))
+        self.lbl_wind_speeds = QtWidgets.QLabel("—")
+        mark_translated(self.lbl_wind_speeds)  # the band inside a translated template: _update_wind_speeds
+        self.cb_ws_step = QtWidgets.QComboBox()
+        for step in SPEED_STEPS:
+            self.cb_ws_step.addItem(_decimal(step), step)
+        speeds_row = QtWidgets.QHBoxLayout()
+        speeds_row.addWidget(speeds_label)
+        speeds_row.addWidget(self.lbl_wind_speeds)
+        speeds_row.addWidget(self.cb_ws_step)
+        speeds_row.addWidget(QtWidgets.QLabel("m/s"))
+        speeds_row.addStretch(1)
+        for widget in (speeds_label, self.lbl_wind_speeds, self.cb_ws_step):
+            widget.setToolTip(_tr(_SPEEDS_HELP))
+        grid.addLayout(speeds_row, 2, 1)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
+        box.addWidget(self.btn_resource_params)
+        box.addWidget(self.resource_params)
+        self._wrg_params_path = None  # the WRG the shown directions and interpolation belong to
+        self._turbine_speeds = None  # (band, initial step) of the models, None without all of them readable
+        self._speeds_models = None  # the turbines the shown step belongs to
+        self.btn_resource_params.toggled.connect(self._update_resource_params_view)
+        self.cb_wd_count.currentIndexChanged.connect(self._update_resource_params_view)
+        self.cb_wd_interp.currentIndexChanged.connect(self._update_resource_params_view)
+        self.cb_ws_step.currentIndexChanged.connect(self._update_resource_params_view)
+        self._update_wind_speeds()
+        group.setVisible(False)
+        return group
+
+    def _update_resource_params_view(self, *_args) -> None:
+        """The fold button shows the current choice and its arrow; the parameters show only unfolded."""
+        speeds = ""
+        if self._turbine_speeds is not None:
+            (low, high), _step = self._turbine_speeds
+            speeds = _tr(", {low}–{high} m/s cada {step} m/s").format(
+                low=_decimal(low), high=_decimal(high), step=_decimal(self.cb_ws_step.currentData()))
+        self.btn_resource_params.setText(_tr("Parámetros del recurso ({interp}, {count} direcciones{speeds})").format(
+            interp=self.cb_wd_interp.currentData(),
+            count=self.cb_wd_count.currentData() if self.cb_wd_count.currentData() is not None else "—",
+            speeds=speeds))
+        expanded = self.btn_resource_params.isChecked()
+        self.btn_resource_params.setArrowType(QtCore.Qt.DownArrow if expanded else QtCore.Qt.RightArrow)
+        self.resource_params.setVisible(expanded)
+
+    def _show_wrg_parameters(self, path: str, n_sectors: Optional[int]) -> None:
+        """The group for the WRG in ``path`` with ``n_sectors`` sectors: hidden without a readable one.
+
+        A new path gives the directions and the interpolation their initial choice; the
+        same path keeps them (Enter on the field, for instance).
+        """
+        if n_sectors is not None and (path != self._wrg_params_path or self.cb_wd_count.count() == 0):
+            for combo in (self.cb_wd_count, self.cb_wd_interp):
+                combo.blockSignals(True)
+            self.cb_wd_count.clear()
+            for count in direction_options(n_sectors):
+                self.cb_wd_count.addItem(str(count), count)
+            self.cb_wd_count.setCurrentIndex(self.cb_wd_count.findData(initial_direction_count(n_sectors)))
+            self.cb_wd_interp.setCurrentIndex(self.cb_wd_interp.findData("nearest"))
+            for combo in (self.cb_wd_count, self.cb_wd_interp):
+                combo.blockSignals(False)
+        self._wrg_params_path = path if n_sectors is not None else None
+        if n_sectors is None:
+            self.cb_wd_count.clear()
+        self._update_resource_params_view()
+        self.grp_resource_params.setVisible(n_sectors is not None)
+
+    def _update_wind_speeds(self) -> None:
+        """The speeds row for the models of the rows: their band and initial step, as the calculation finds them.
+
+        With a row not yet defined or a curve that cannot give its band, «—» and no
+        step. Other models than those the shown step belongs to go back to their
+        initial step.
+        """
+        rows = getattr(self, "_rows", []) or []
+        turbines = [row.get("wt") for row in rows]
+        speeds = None
+        if turbines and all(wt is not None for wt in turbines):
+            try:
+                # The types the calculation will take (``dialog_state`` builds its models the same way).
+                models = [{"name": row.get("name") or "Custom WT", "wt": row.get("wt"), "meta": row.get("meta"),
+                           "source_row_index": idx, "source_type_index": idx} for idx, row in enumerate(rows)]
+                grid = turbine_speed_grid(effective_turbines(models))
+                speeds = (grid["band"], grid["ws_step"])
+            except Exception:  # an unreadable curve: no band to show; the calculation says why
+                speeds = None
+        self._turbine_speeds = speeds
+        key = tuple(id(wt) for wt in turbines)
+        self.cb_ws_step.blockSignals(True)
+        for index in range(self.cb_ws_step.count()):
+            self.cb_ws_step.setItemText(index, _decimal(self.cb_ws_step.itemData(index)))
+        if speeds is None:
+            self.lbl_wind_speeds.setText("—")
+            self.cb_ws_step.setEnabled(False)
+        else:
+            (low, high), step = speeds
+            self.lbl_wind_speeds.setText(_tr("{low}–{high} m/s, cada").format(low=_decimal(low), high=_decimal(high)))
+            if key != self._speeds_models:
+                self.cb_ws_step.setCurrentIndex(self.cb_ws_step.findData(step))
+            self.cb_ws_step.setEnabled(True)
+        self.cb_ws_step.blockSignals(False)
+        self._speeds_models = key if speeds is not None else None
+        self._update_resource_params_view()
+
+    def _get_resource_params(self) -> Dict[str, Any]:
+        """The resource parameters for the calculation: those of the group, or the initial ones without it."""
+        shown = self.grp_resource_params.isVisibleTo(self)
+        return {
+            "direction_count": self.cb_wd_count.currentData() if shown else None,
+            "wd_interp": self.cb_wd_interp.currentData() if shown else "nearest",
+            "ws_step": self.cb_ws_step.currentData() if shown and self._turbine_speeds is not None else None,
+        }
 
     def _clear_resource_extent(self):
         """Elimina del proyecto el perímetro temporal del recurso eólico."""
         if clear_resource_extent_layers is None:
             try:
-                self.lbl_resource_extent.setText("Perímetro del recurso no disponible en esta instalación.")
-            except Exception:
+                self.lbl_resource_extent.setText(_tr("Perímetro del recurso no disponible en esta instalación."))
+            except Exception:  # nosec B110
                 pass
             return
         try:
             n = clear_resource_extent_layers()
             if hasattr(self, "lbl_resource_extent"):
                 if n:
-                    self.lbl_resource_extent.setText("Perímetro del recurso eliminado del mapa.")
+                    self.lbl_resource_extent.setText(_tr("Perímetro del recurso eliminado del mapa."))
                 else:
-                    self.lbl_resource_extent.setText("No había perímetro del recurso que limpiar.")
+                    self.lbl_resource_extent.setText(_tr("No había perímetro del recurso que limpiar."))
         except Exception as e:
             try:
-                self.lbl_resource_extent.setText(f"No se pudo limpiar el perímetro del recurso: {e}")
-            except Exception:
+                self.lbl_resource_extent.setText(_tr("No se pudo limpiar el perímetro del recurso: {error}").format(error=e))
+            except Exception:  # nosec B110
                 pass
 
     def _draw_current_resource_extent(self, zoom: bool = False, manual: bool = False):
@@ -4696,14 +3433,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
         try:
             if hasattr(self, "cb_show_resource_extent") and not self.cb_show_resource_extent.isChecked():
                 if manual and hasattr(self, "lbl_resource_extent"):
-                    self.lbl_resource_extent.setText("Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.")
+                    self.lbl_resource_extent.setText(_tr("Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo."))
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         if show_wrg_resource_extent is None or show_wasp_resource_extent is None:
             if hasattr(self, "lbl_resource_extent"):
-                self.lbl_resource_extent.setText("Perímetro del recurso no disponible en esta instalación.")
+                self.lbl_resource_extent.setText(_tr("Perímetro del recurso no disponible en esta instalación."))
             return
 
         try:
@@ -4720,39 +3457,27 @@ class AEPSetupDialog(QtWidgets.QDialog):
         try:
             if wrg_txt:
                 if read_wrg_meta is None:
-                    ok, msg = False, "Lector WRG no disponible; no se puede dibujar el perímetro WRG."
+                    ok, msg = False, _tr("Lector WRG no disponible; no se puede dibujar el perímetro WRG.")
                 else:
                     paths = [p.strip() for p in wrg_txt.split(";") if p.strip()]
                     ok, msg = show_wrg_resource_extent(paths, read_wrg_meta_func=read_wrg_meta, zoom=zoom)
             elif wasp_dir:
                 ok, msg = show_wasp_resource_extent(wasp_dir, zoom=zoom)
             else:
-                ok, msg = False, "Selecciona una carpeta WAsP/Surfer o un WRG/ZIP para dibujar el perímetro."
+                ok, msg = False, _tr("Selecciona una carpeta WAsP/Surfer o un WRG/ZIP para dibujar el perímetro.")
         except Exception as e:
-            ok, msg = False, f"No se pudo dibujar el perímetro del recurso: {e}"
+            ok, msg = False, _tr("No se pudo dibujar el perímetro del recurso: {error}").format(error=e)
 
         try:
             if hasattr(self, "lbl_resource_extent"):
                 self.lbl_resource_extent.setText(msg)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         if manual and not ok:
             try:
-                QtWidgets.QMessageBox.warning(self, "Perímetro del recurso", msg)
-            except Exception:
+                QtWidgets.QMessageBox.warning(self, _tr("Perímetro del recurso"), msg)
+            except Exception:  # nosec B110
                 pass
-
-    def _pick_coords_csv(self, idx: int, line_edit: QtWidgets.QLineEdit):
-        start_dir = self._last_csv_dir or os.path.expanduser("~")
-        fpath, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self,
-            "Selecciona CSV con coordenadas X,Y del modelo",
-            start_dir,
-            "CSV (*.csv);;Todos (*.*)",
-        )
-        if fpath:
-            line_edit.setText(fpath)
-            self._last_csv_dir = os.path.dirname(fpath)
 
     def _on_generate_layers_clicked(self):
         """Botón principal: crea una capa editable o añade un modelo nuevo.
@@ -4760,7 +3485,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
         Primer click: si ya hay un modelo definido sin capa, crea su capa.
         Siguientes clicks: si todos los modelos definidos ya tienen capa, añade
         una fila nueva, vuelve a pedir el modelo de turbina y crea una capa
-        asociada a esa nueva familia de aerogeneradores.
+        asociada a esa nueva familia de aerogeneradores. La capa nueva es vacía
+        y queda seleccionada en la fila; «sin capa» es el selector en «---».
         """
         try:
             rows = list(getattr(self, "_rows", []) or [])
@@ -4798,9 +3524,11 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 if old_count >= max_models:
                     QtWidgets.QMessageBox.warning(
                         self,
-                        "Modelos",
-                        f"Ya has alcanzado el máximo de {max_models} modelos. "
-                        "Aumenta el límite en el código si necesitas más familias de aerogeneradores.",
+                        _tr("Modelos"),
+                        _tr(
+                            "Ya has alcanzado el máximo de {n} modelos. "
+                            "Aumenta el límite en el código si necesitas más familias de aerogeneradores."
+                        ).format(n=max_models),
                     )
                     return
                 target_idx = old_count
@@ -4820,21 +3548,26 @@ class AEPSetupDialog(QtWidgets.QDialog):
                     if created_new_row:
                         try:
                             self.sp_n.setValue(old_count)
-                        except Exception:
+                        except Exception:  # nosec B110
                             pass
                     return
 
-            lyr = self._generate_point_layer_one(
-                target_idx,
-                force_reload_csv=True,
-                activate_interactive=False,
-                quiet=False,
-                create_new_layer=True,
-            )
+            name = self._rows[target_idx].get("name") or f"Modelo {target_idx+1}"
+            lyr = _create_empty_point_layer(f"{name} (CSV)")
+            self._rows[target_idx]["layer_cb"].setLayer(lyr)
+            try:
+                iface.messageBar().pushMessage(
+                    _tr("Capas"),
+                    _tr("Capa «{layer}» lista para editar en el mapa ({n} puntos).").format(layer=lyr.name(), n=0),
+                    level=Qgis.Info,
+                    duration=5,
+                )
+            except Exception:  # nosec B110
+                pass
             if lyr is not None:
                 try:
                     self._activate_qgis_layer(lyr)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
 
                 # Si el modo interactivo ya estaba activo, setChecked(True) no
@@ -4844,7 +3577,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 # mostrando/validando la capa anterior.
                 self._enter_or_refresh_interactive_after_layer_created(lyr)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Capas", f"No se pudo generar la capa de puntos:\n{e}")
+            QtWidgets.QMessageBox.warning(self, _tr("Capas"), _tr("No se pudo generar la capa de puntos:\n{error}").format(error=e))
 
 
     def _enter_or_refresh_interactive_after_layer_created(self, layer: QgsVectorLayer) -> None:
@@ -4858,14 +3591,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         """
         try:
             self._activate_qgis_layer(layer)
-        except Exception:
-            pass
-
-        try:
-            row_idx = self._row_index_for_layer(layer)
-            if row_idx is not None:
-                self._interactive_layer_id_by_row[int(row_idx)] = layer.id()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
@@ -4876,7 +3602,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if not already_interactive:
             try:
                 self.btn_map_interactive.setChecked(True)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
@@ -4884,325 +3610,61 @@ class AEPSetupDialog(QtWidgets.QDialog):
         try:
             if self._interactive_tool is None and self.btn_map_interactive.isChecked():
                 self._activate_map_interactive()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
             if self._interactive_dock is not None:
                 self._interactive_dock._refresh_layer_status()
                 self._interactive_dock.raise_()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Mismo comportamiento que el primer click: se queda visible solo el mapa
         # y el dock. No se destruye el diálogo; solo se oculta para preservar estado.
         try:
             self._hide_dialog_for_interactive_map()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
-
-    # ------------------ generar capas (uno / todos) ------------------
-    def _generate_point_layer_one(
-        self,
-        idx: int,
-        force_reload_csv: bool = True,
-        activate_interactive: bool = False,
-        quiet: bool = False,
-        create_new_layer: bool = False,
-    ):
-        """Crea la capa de puntos de un modelo.
-
-        - Con CSV: carga los puntos del CSV cuando `force_reload_csv=True` o la capa no existe.
-        - Sin CSV: crea una capa vacía para poder introducir el layout desde el mapa.
-        - En modo cálculo (`force_reload_csv=False`) nunca pisa una capa existente, para no
-          borrar puntos editados en el mapa interactivo.
-        - Con `create_new_layer=True` crea siempre una capa nueva con nombre único.
-          Es el flujo del botón global «Generar capas de puntos», pensado para
-          parques con varios modelos de aerogenerador o varias versiones de layout.
-        """
-        r = self._rows[idx]
-
-        # Si se crea una capa de forma explícita desde la UI y aún no hay
-        # turbina definida, abrir primero el diálogo de modelo. En cálculos o
-        # asegurados silenciosos (`quiet=True`) no se pregunta nada.
-        if (not quiet) and r.get("wt") is None:
-            self._define_model(idx)
-            r = self._rows[idx]
-            if r.get("wt") is None:
-                return None
-
-        name = r.get("name") or f"Modelo {idx+1}"
-        csv_path = r.get("coords_csv_le").text().strip() if r.get("coords_csv_le") else ""
-        layer_name = f"{name} (CSV)"
-        existing = None
-        if not create_new_layer:
-            existing = self._find_interactive_layer_for_row(idx) or _find_layer_by_name(layer_name)
-            # Si la capa se creó antes de definir/renombrar el modelo, venía como
-            # «Modelo N (CSV)». La reutilizamos y la renombramos para no crear una
-            # segunda capa ni perder los puntos ya dibujados.
-            try:
-                if existing is not None and existing.name() != layer_name:
-                    other = _find_layer_by_name(layer_name)
-                    if other is None or other.id() == existing.id():
-                        existing.setName(layer_name)
-                    else:
-                        existing = other
-            except Exception:
-                pass
-
-        meta = r.get("meta") if isinstance(r, dict) else None
-        hub_h = None
-        diam = None
-        spacing_long_d = None
-        spacing_trans_d = None
-        spacing_mode = ""
-        spacing_angle_deg = None
-        curve_quality = ""
-        curve_source = ""
-        curve_source_url = ""
-        if isinstance(meta, dict):
-            try:
-                if meta.get("hh") is not None:
-                    hub_h = float(meta.get("hh"))
-            except Exception:
-                hub_h = None
-            try:
-                if meta.get("diam") is not None:
-                    diam = float(meta.get("diam"))
-            except Exception:
-                diam = None
-            try:
-                if meta.get("spacing_long_d") is not None:
-                    spacing_long_d = float(meta.get("spacing_long_d"))
-            except Exception:
-                spacing_long_d = None
-            try:
-                if meta.get("spacing_trans_d") is not None:
-                    spacing_trans_d = float(meta.get("spacing_trans_d"))
-            except Exception:
-                spacing_trans_d = None
-            spacing_mode = str(meta.get("spacing_mode") or "")
-            try:
-                if meta.get("spacing_angle_deg") is not None:
-                    spacing_angle_deg = float(meta.get("spacing_angle_deg"))
-            except Exception:
-                spacing_angle_deg = None
-            curve_quality = str(meta.get("curve_quality") or "")
-            curve_source = str(meta.get("curve_source") or "")
-            curve_source_url = str(meta.get("curve_source_url") or "")
-
-        # No pisar capas vivas durante cálculo/asegurado.
-        if existing is not None and not force_reload_csv:
-            lyr = existing
-        else:
-            pts: List[Tuple[float, float]] = []
-            if csv_path:
-                if os.path.isfile(csv_path):
-                    pts = _read_xy_csv(csv_path)
-                elif force_reload_csv and not quiet:
-                    QtWidgets.QMessageBox.warning(self, "Coordenadas", f"El archivo no existe:\n{csv_path}")
-                    return None
-            # Si no hay CSV, se crea capa vacía: el usuario añadirá turbinas con el mapa.
-            generation = None
-            if create_new_layer:
-                try:
-                    self._energy_layer_generation = int(getattr(self, "_energy_layer_generation", 0)) + 1
-                    generation = self._energy_layer_generation
-                except Exception:
-                    generation = None
-            lyr = _create_or_refresh_point_layer(
-                layer_name,
-                pts,
-                model_name=name,
-                hub_height=hub_h,
-                diameter=diam,
-                spacing_long_d=spacing_long_d,
-                spacing_trans_d=spacing_trans_d,
-                spacing_mode=spacing_mode,
-                spacing_angle_deg=spacing_angle_deg,
-                curve_quality=curve_quality,
-                curve_source=curve_source,
-                curve_source_url=curve_source_url,
-                coords_csv=csv_path,
-                model_index=idx,
-                create_new=create_new_layer,
-                generation=generation,
-            )
-            if csv_path and os.path.isfile(csv_path):
-                # Re-cargar desde CSV = volver a estado de preload: limpiar dirty flag
-                try:
-                    self._dirty_turbine_layer_ids.discard(lyr.id())
-                    self._refresh_dirty_indicators()
-                except Exception:
-                    pass
-
-        try:
-            # Mantener metadatos también cuando reutilizamos una capa existente
-            # generada anteriormente por el botón «Generar capas de puntos».
-            lyr.setCustomProperty("velantis/layer_role", "energy_turbines")
-            lyr.setCustomProperty("velantis/model_name", str(name or ""))
-            lyr.setCustomProperty("velantis/model_index", int(idx))
-            lyr.setCustomProperty("velantis/row_index", int(idx))
-            if create_new_layer:
-                lyr.setCustomProperty("velantis/layer_generation", int(getattr(self, "_energy_layer_generation", 0)))
-            if hub_h is not None:
-                lyr.setCustomProperty("velantis/hub_height_m", float(hub_h))
-            if diam is not None:
-                lyr.setCustomProperty("velantis/diameter_m", float(diam))
-            if spacing_long_d is not None:
-                lyr.setCustomProperty("velantis/spacing_long_d", float(spacing_long_d))
-            if spacing_trans_d is not None:
-                lyr.setCustomProperty("velantis/spacing_trans_d", float(spacing_trans_d))
-            if spacing_mode:
-                lyr.setCustomProperty("velantis/spacing_mode", str(spacing_mode))
-            if spacing_angle_deg is not None:
-                lyr.setCustomProperty("velantis/spacing_angle_deg", float(spacing_angle_deg))
-            if curve_quality:
-                lyr.setCustomProperty("velantis/curve_quality", str(curve_quality))
-            if curve_source:
-                lyr.setCustomProperty("velantis/curve_source", str(curve_source))
-            if curve_source_url:
-                lyr.setCustomProperty("velantis/curve_source_url", str(curve_source_url))
-            if csv_path:
-                lyr.setCustomProperty("velantis/coords_csv", str(csv_path))
-        except Exception:
-            pass
-
-        try:
-            self._interactive_layer_id_by_row[int(idx)] = lyr.id()
-        except Exception:
-            pass
-
-        try:
-            self._activate_qgis_layer(lyr)
-        except Exception:
-            pass
-        try:
-            if not quiet:
-                n_pts = len(self._collect_layer_points_for_row(idx) or [])
-                suffix = "lista para editar en el mapa" if not csv_path else "creada/actualizada"
-                iface.messageBar().pushMessage(
-                    "Capas",
-                    f"Capa «{lyr.name()}» {suffix} ({n_pts} puntos).",
-                    level=Qgis.Info,
-                    duration=5,
-                )
-        except Exception:
-            pass
-
-        # Cualquier carga desde CSV crea/refresca inmediatamente la capa de
-        # elipses, incluso aunque el panel de spacing todavía no se haya abierto.
-        if csv_path and os.path.isfile(csv_path):
-            try:
-                from .spacing_core.auto_envelope import ensure_spacing_envelope_for_layer
-                try:
-                    wrg_path = str(self.ed_wrg.text() or "").strip()
-                except Exception:
-                    wrg_path = str(getattr(self, "_last_wrg_path", "") or "").strip()
-                ensure_spacing_envelope_for_layer(lyr, wrg_path=wrg_path or None)
-            except Exception:
-                pass
-        try:
-            cb = getattr(self, "_spacing_notify_layout_changed", None)
-            if callable(cb):
-                cb(lyr)
-        except Exception:
-            pass
-
-        if activate_interactive:
-            try:
-                self.btn_map_interactive.setChecked(True)
-            except Exception:
-                pass
-        return lyr
-
-    def _generate_point_layers_all(
-        self,
-        force_reload_csv: bool = True,
-        activate_interactive: bool = False,
-        create_new_layer: bool = False,
-    ):
-        any_done = False
-        first_layer = None
-        for i in range(len(self._rows)):
-            try:
-                lyr = self._generate_point_layer_one(
-                    i,
-                    force_reload_csv=force_reload_csv,
-                    activate_interactive=(activate_interactive and i == 0),
-                    quiet=(not force_reload_csv),
-                    create_new_layer=create_new_layer,
-                )
-                if lyr is not None:
-                    any_done = True
-                    if first_layer is None:
-                        first_layer = lyr
-            except Exception as e:
-                try:
-                    iface.messageBar().pushMessage(
-                        "Capas",
-                        f"No se pudo crear la capa del modelo {i+1}: {e}",
-                        level=Qgis.Warning,
-                        duration=8,
-                    )
-                except Exception:
-                    pass
-        if any_done:
-            grp = _ensure_group(QgsProject.instance().layerTreeRoot())
-            grp.setExpanded(True)
-            if activate_interactive and first_layer is not None:
-                try:
-                    self._activate_qgis_layer(first_layer)
-                except Exception:
-                    pass
-        return first_layer
 
     # ------------------ cálculo + actualización ------------------
     
     def _run_plot_wakes(self):
-        """Dibuja mapas de estelas (N/E/S/O) a partir de capas vivas/CSV y recurso eólico."""
-        # Asegurar capas sin pisar posibles ediciones vivas del mapa.
-        self._generate_point_layers_all(force_reload_csv=False, activate_interactive=False)
-
-        # Igual que en el cálculo AEP desde mapa interactivo: preguntar qué
-        # capas de aerogeneradores entran en la operación. Así las estelas se
-        # dibujan para el parque completo cuando hay varios modelos/capas.
-        selected_models = None
+        """Crea un ráster QGIS de estelas a partir de las capas elegidas en cada fila y del recurso eólico."""
         try:
-            if self._candidate_turbine_layers_for_compute():
-                ok = self._ask_turbine_layers_for_compute(
-                    title="Capas para graficar estelas",
-                    intro=(
-                        "Selecciona las capas de aerogeneradores que quieres incluir en los mapas de estelas.\n"
-                        "Marca varias capas si el parque combina distintos modelos de turbina."
-                    ),
-                    ok_text="Graficar con capas seleccionadas",
-                )
-                if not ok:
-                    return
-                selected_models = self._consume_selected_models_from_turbine_layers()
-                if not selected_models:
-                    return
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Capas para estelas", f"No se pudo preparar la selección de capas:\n{e}")
+            from .energy_core.dialog_state import (
+                DialogStateError, check_unique_model_names, layers_used_message, missing_row_points,
+            )
+        except Exception:
+            from energy_core.dialog_state import (  # type: ignore
+                DialogStateError, check_unique_model_names, layers_used_message, missing_row_points,
+            )
+        try:
+            check_unique_model_names(self._rows)
+        except DialogStateError as exc:
+            QtWidgets.QMessageBox.warning(self, exc.title, exc.message)
+            return
+        # Como el AEP: sin turbina definida, el motor tomaría una de ejemplo sin que nadie la haya elegido.
+        if any(r.get("wt") is None for r in self._rows):
+            QtWidgets.QMessageBox.warning(self, _tr("Faltan modelos"), _tr("Define todos los modelos antes de continuar."))
             return
 
-        # Si no hay capas seleccionables, conservamos el flujo clásico basado en
-        # CSV/filas del diálogo.
-        if selected_models is None:
-            for idx, r in enumerate(self._rows):
-                live_pts = self._collect_layer_points_for_row(idx)
-                csv_path = r["coords_csv_le"].text().strip() if r.get("coords_csv_le") else ""
-                if live_pts:
-                    continue
-                if csv_path and os.path.isfile(csv_path):
-                    continue
-                QtWidgets.QMessageBox.warning(
-                    self, "Coordenadas",
-                    f"Añade turbinas en la capa del Modelo {idx+1} o selecciona un CSV X,Y válido."
-                )
-                return
+        try:
+            rows_pts = [self._collect_layer_points_for_row(idx) for idx in range(len(self._rows))]
+            for idx, live_pts in enumerate(rows_pts):
+                if not live_pts:
+                    raise missing_row_points(idx, self._find_interactive_layer_for_row(idx))
+        except DialogStateError as exc:
+            QtWidgets.QMessageBox.warning(self, exc.title, exc.message)
+            return
+
+        # The physics of the AEP, from the same group: with a conflict, or a cancelled GaussianOverlap question, the
+        # raster is not calculated (#75, rows 5.1-5.3).
+        wake_physics = self._wake_physics_for_run(what="ráster", n_turbines=sum(len(p) for p in rows_pts))
+        if wake_physics is None:
+            return
+        wake_config = _wake_api.resolve_request(wake_physics)[0]
 
         # Recurso eólico: WAsP (carpeta) o WRG (archivo/zip)
         wasp_dir = self.ed_dir.text().strip()
@@ -5218,58 +3680,45 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if use_wrg:
             for p in wrg_paths:
                 if not os.path.isfile(p):
-                    QtWidgets.QMessageBox.warning(self, "WRG", f"El archivo no existe:\n{p}")
+                    QtWidgets.QMessageBox.warning(self, "WRG", _tr("El archivo no existe:\n{path}").format(path=p))
                     return
                 if not p.lower().endswith((".wrg", ".zip")):
-                    QtWidgets.QMessageBox.warning(self, "WRG", f"Extensión no soportada (use .wrg o .zip):\n{p}")
+                    QtWidgets.QMessageBox.warning(self, "WRG", _tr("Extensión no soportada (use .wrg o .zip):\n{path}").format(path=p))
                     return
             try:
                 _debug_print(f"[Energy plot] Wake plot with WRG: {wrg_paths}")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         else:
             if not wasp_dir or not os.path.isdir(wasp_dir):
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Recurso eólico",
-                    "Selecciona una carpeta WAsP válida o un WRG/ZIP antes de graficar.",
+                    _tr("Recurso eólico"),
+                    _tr("Selecciona una carpeta WAsP válida o un WRG/ZIP antes de crear el ráster."),
                 )
                 return
             try:
                 _debug_print(f"[Energy plot] Wake plot with WAsP/GridSite: {wasp_dir}")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
-        # Estructura 'models' esperada por graficar.py
-        if selected_models is not None:
-            models = selected_models
-        else:
-            models = []
-            for idx, r in enumerate(self._rows):
-                live_pts = self._collect_layer_points_for_row(idx)
-                models.append(
-                    {
-                        "name": r.get("name") or "Custom WT",
-                        "wt": r.get("wt"),
-                        "meta": r.get("meta"),
-                        "coords_csv": r.get("coords_csv_le").text().strip() if r.get("coords_csv_le") else "",
-                        "coords_xy": live_pts,
-                    }
-                )
-
-        # Import robusto del módulo de gráficas
-        graficar_fn = None
-        try:
-            from .graficar import graficar as graficar_fn
-        except Exception:
-            try:
-                plugin_dir = os.path.dirname(__file__)
-                if plugin_dir not in sys.path:
-                    sys.path.insert(0, plugin_dir)
-                graficar_fn = importlib.import_module("graficar").graficar
-            except Exception as e:
-                QtWidgets.QMessageBox.critical(self, "Graficar estelas", f"No se pudo importar 'graficar.py':\n{e}")
-                return
+        # Snapshot de modelos/coordenadas que recibirá el motor en segundo plano
+        models = []
+        for idx, r in enumerate(self._rows):
+            live_layer = self._find_interactive_layer_for_row(idx)
+            models.append(
+                {
+                    "name": r.get("name") or "Custom WT",
+                    "wt": r.get("wt"),
+                    "meta": r.get("meta"),
+                    "coords_csv": "",
+                    "coords_xy": rows_pts[idx],
+                    "source_layer_id": live_layer.id(),
+                    "source_layer_name": live_layer.name(),
+                    "source_row_index": int(idx),
+                    "source_type_index": int(idx),
+                }
+            )
 
         # Preguntar resolución del grid (m)
         try:
@@ -5279,8 +3728,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         res_m, ok = QtWidgets.QInputDialog.getInt(
             self,
-            "Graficar estelas",
-            "Resolución del grid [m] (menor = más detalle, más lento):",
+            _tr("Crear ráster de estelas"),
+            _tr("Resolución del ráster [m] (menor = más detalle, más lento):"),
             int(default_res),
             10,
             10000,
@@ -5290,21 +3739,111 @@ class AEPSetupDialog(QtWidgets.QDialog):
             return
         try:
             self._qsettings.setValue("last_plot_resolution_m", int(res_m))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
+        # Crear una sola capa por ejecución para no saturar el proyecto.
+        direction_options = [
+            _tr("Sector más energético (recomendado)"),
+            _tr("Norte (0°)"),
+            _tr("Este (90°)"),
+            _tr("Sur (180°)"),
+            _tr("Oeste (270°)"),
+            _tr("Dirección manual…"),
+        ]
+        direction_choice, ok = QtWidgets.QInputDialog.getItem(
+            self,
+            _tr("Crear ráster de estelas"),
+            _tr("Dirección de viento del ráster:"),
+            direction_options,
+            0,
+            False,
+        )
+        if not ok:
+            return
+        direction_map = {
+            direction_options[0]: None,
+            direction_options[1]: 0.0,
+            direction_options[2]: 90.0,
+            direction_options[3]: 180.0,
+            direction_options[4]: 270.0,
+        }
+        wd_target = direction_map.get(direction_choice)
+        if direction_choice == direction_options[5]:
+            wd_target, ok = QtWidgets.QInputDialog.getDouble(
+                self,
+                _tr("Crear ráster de estelas"),
+                _tr("Dirección de viento [°] (0–359,9):"),
+                0.0,
+                0.0,
+                359.9,
+                1,
+            )
+            if not ok:
+                return
+
         try:
-            graficar_fn(
+            # Every input from the dialog, the density too, as the AEP (#36); the final window says which differ
+            # from the last AEP.
+            air_density = self._get_air_density_settings()
+            try:
+                from .wake_core.controller import start_wake_raster_from_dialog
+            except Exception:
+                from wake_core.controller import start_wake_raster_from_dialog  # type: ignore
+
+            # The resource inputs of the AEP: its TI (rasters or the fixed one) and its WRG settings (row 5.5).
+            try:
+                from .energy_core.dialog_state import _read_resource_inputs
+            except Exception:
+                from energy_core.dialog_state import _read_resource_inputs  # type: ignore
+            _w, _p, wrg_ti_paths, wrg_ti_heights_m = _read_resource_inputs(self, False)
+            params = self._get_resource_params()
+            fixed_ti = self._get_fixed_ti_fraction() if use_wrg and not wrg_ti_paths else None
+            try:
+                from .energy_core import aep_inputs
+                from .energy_core.dialog_controller import _project_crs_authid as _run_crs
+            except Exception:
+                from energy_core import aep_inputs  # type: ignore
+                from energy_core.dialog_controller import _project_crs_authid as _run_crs  # type: ignore
+            last_aep = getattr(self, "_last_aep_inputs", None)
+            changed = aep_inputs.differences(last_aep, aep_inputs.summarise(
+                models=models, wasp_dir=wasp_dir, wrg_paths=(wrg_paths if use_wrg else None),
+                wrg_ti_paths=wrg_ti_paths, wrg_ti_heights_m=wrg_ti_heights_m, fixed_ti=fixed_ti,
+                direction_count=params.get("direction_count"), wd_interp=params["wd_interp"],
+                wake_physics=wake_physics, density=air_density, project_crs=_run_crs()))
+            previous_task = getattr(self, "_wake_raster_task", None)
+            task = start_wake_raster_from_dialog(
+                self,
                 models=models,
-                wasp_dir=(wrg_paths[0] if use_wrg and wrg_paths else wasp_dir),
-                parent=self,
+                wasp_dir=wasp_dir,
                 resolution_m=float(res_m),
                 wrg_paths=(wrg_paths if use_wrg else None),
-                superposition_model=self._get_selected_superposition_model(),
+                wake_config=wake_config,
+                wake_provenance=self._wake_provenance_for_run(),
+                wd_target=wd_target,
+                air_density=air_density,
+                changed_aep_inputs=changed,
+                last_aep_available=last_aep is not None,
+                wd_interp=params["wd_interp"],
+                wrg_direction_count=params.get("direction_count"),
+                wrg_ti_paths=(wrg_ti_paths if use_wrg and wrg_ti_paths else None),
+                wrg_ti_heights_m=(wrg_ti_heights_m if use_wrg and wrg_ti_paths else None),
+                fixed_ti=fixed_ti,
             )
+            # Solo si arranca una tarea nueva: el controlador puede rechazarla o devolver la que ya corre.
+            if task is not None and task is not previous_task:
+                try:
+                    iface.messageBar().pushMessage(
+                        _tr("Crear ráster de estelas"), layers_used_message(models), level=Qgis.Info, duration=10
+                    )
+                except Exception:  # nosec B110
+                    pass
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Graficar estelas", f"Error al generar las gráficas:\n{e}")
-            return
+            QtWidgets.QMessageBox.critical(
+                self,
+                _tr("Crear ráster de estelas"),
+                _tr("No se pudo iniciar la tarea de estelas:") + f"\n{e}",
+            )
 
     def _run_compute_and_update(self):
         """Lanza el cálculo AEP delegando en el controlador del módulo Energía."""
@@ -5333,6 +3872,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
             executed = (res or {}).get("selection_executed", {}) or {}
             wake = executed.get("wake_deficit") or (res or {}).get("wake_deficit_class") or ""
             engine = executed.get("engine") or (res or {}).get("engine") or ""
+            if (res or {}).get("wake_config"):  # schema 2: the classes read from the built objects
+                classes = executed_rows(res)
+                wake, engine = classes.get("deficit") or "", classes.get("engine") or ""
+                preset = ((res or {}).get("wake_config").get("provenance") or {}).get("preset")
+                if preset:  # a predefined model, by its name; adapted, by its identification (decision 19)
+                    wake, engine = preset, ""
+                    if (res or {}).get("wake_config").get("adaptations"):
+                        wake = str(shown((res or {}).get("wake_config").get("identification") or preset, _tr))
             stamp = QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm")
             bits = [str(mode_label or "AEP"), stamp]
             extra = " / ".join(str(x) for x in (engine, wake) if x)
@@ -5340,29 +3887,29 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 bits.append(extra)
             self._last_aep_label = " · ".join(bits)
         except Exception:
-            self._last_aep_label = str(mode_label or "Último cálculo")
+            self._last_aep_label = str(mode_label or _tr("Último cálculo"))
 
     def _store_current_scenario(self, slot: str) -> None:
         """Guarda el último cálculo como escenario A o B."""
         if not self._last_aep_result:
             QtWidgets.QMessageBox.information(
                 self,
-                "Comparador de escenarios",
-                "Primero lanza un cálculo AEP. Después podrás guardarlo como escenario A o B."
+                _tr("Comparador de escenarios"),
+                _tr("Primero lanza un cálculo AEP. Después podrás guardarlo como escenario A o B.")
             )
             return
-        default_label = self._last_aep_label or f"Escenario {slot}"
+        default_label = self._last_aep_label or _tr("Escenario {slot}").format(slot=slot)
         label, ok = QtWidgets.QInputDialog.getText(
             self,
-            f"Guardar escenario {slot}",
-            "Nombre del escenario:",
+            _tr("Guardar escenario {slot}").format(slot=slot),
+            _tr("Nombre del escenario:"),
             QtWidgets.QLineEdit.Normal,
             default_label,
         )
         if not ok:
             return
         payload = {
-            "label": (label.strip() or f"Escenario {slot}"),
+            "label": (label.strip() or _tr("Escenario {slot}").format(slot=slot)),
             "result": copy.deepcopy(self._last_aep_result),
         }
         if str(slot).upper() == "A":
@@ -5372,11 +3919,11 @@ class AEPSetupDialog(QtWidgets.QDialog):
         try:
             iface.messageBar().pushMessage(
                 "AEP",
-                f"Escenario {str(slot).upper()} guardado: {payload['label']}",
+                _tr("Escenario {slot} guardado: {label}").format(slot=str(slot).upper(), label=payload["label"]),
                 level=Qgis.Success,
                 duration=5,
             )
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _compare_scenarios(self) -> None:
@@ -5384,10 +3931,12 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if not self._scenario_a or not self._scenario_b:
             QtWidgets.QMessageBox.information(
                 self,
-                "Comparador de escenarios",
-                "Guarda primero un escenario A y un escenario B.\n\n"
-                "Flujo recomendado: calcula el caso base → Guardar escenario A → cambia layout/modelo/física → "
-                "calcula otra vez → Guardar escenario B → Comparar A/B."
+                _tr("Comparador de escenarios"),
+                _tr(
+                    "Guarda primero un escenario A y un escenario B.\n\n"
+                    "Flujo recomendado: calcula el caso base → Guardar escenario A → cambia layout/modelo/física → "
+                    "calcula otra vez → Guardar escenario B → Comparar A/B."
+                )
             )
             return
         try:
@@ -5395,12 +3944,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 self,
                 self._scenario_a.get("result") or {},
                 self._scenario_b.get("result") or {},
-                label_a=self._scenario_a.get("label") or "Escenario A",
-                label_b=self._scenario_b.get("label") or "Escenario B",
+                label_a=self._scenario_a.get("label") or _tr("Escenario {slot}").format(slot="A"),
+                label_b=self._scenario_b.get("label") or _tr("Escenario {slot}").format(slot="B"),
             )
             dlg.exec_()
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Comparador de escenarios", f"No se pudo abrir la comparación:\n{e}")
+            QtWidgets.QMessageBox.warning(
+                self, _tr("Comparador de escenarios"), _tr("No se pudo abrir la comparación:\n{error}").format(error=e)
+            )
 
     # ------------------ mapa interactivo (editar turbinas en el canvas) ------------------
     def _snap50(self, v: float) -> float:
@@ -5423,13 +3974,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
             return
         try:
             iface.setActiveLayer(layer)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             view = iface.layerTreeView()
             if view is not None:
                 view.setCurrentLayer(layer)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         # Expandir grupos padres para que la selección sea visible.
         try:
@@ -5438,299 +3989,69 @@ class AEPSetupDialog(QtWidgets.QDialog):
             while parent is not None:
                 try:
                     parent.setExpanded(True)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 parent = parent.parent()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
-    def _get_interactive_target_layer(self, allow_auto_pick: bool = True) -> Optional[QgsVectorLayer]:
-        """Devuelve una capa de turbinas válida para el mapa interactivo.
+    def _row_layers(self) -> List[QgsVectorLayer]:
+        """Las capas seleccionadas en las filas, sin repetir, en el orden de las filas."""
+        layers: List[QgsVectorLayer] = []
+        for idx in range(len(getattr(self, "_rows", []) or [])):
+            lyr = self._find_interactive_layer_for_row(idx)
+            if lyr is not None and all(lyr.id() != other.id() for other in layers):
+                layers.append(lyr)
+        return layers
 
-        Primero respeta la capa activa si ya es una capa «{Modelo} (CSV)» del
-        diálogo. Si no lo es, puede auto-seleccionar una capa generada por el
-        botón «Generar capas de puntos».
+    def _get_interactive_target_layer(self) -> Optional[QgsVectorLayer]:
+        """Capa que edita el mapa interactivo.
+
+        La capa activa de QGIS si está seleccionada en alguna fila; si no, la de la primera
+        fila con capa. El combo del panel muestra siempre esta misma capa.
         """
-        try:
-            lyr = iface.activeLayer()
-        except Exception:
-            lyr = None
-        if _is_point_vector_layer(lyr) and self._row_index_for_layer(lyr) is not None:
-            return lyr
-        if allow_auto_pick:
-            return self._auto_pick_interactive_layer()
-        return None
-
-    def _layer_visible_model_name(self, layer: QgsVectorLayer) -> str:
-        """Extrae el nombre de modelo que muestra una capa de turbinas.
-
-        Soporta nombres tipo:
-        - ``Vestas V80-2.0 (CSV)``
-        - ``Vestas V80-2.0 (CSV) #2``
-        - ``Modelo 1 (CSV)``
-        """
-        try:
-            lname = str(layer.name() or "").strip()
-        except Exception:
-            lname = ""
-        if not lname:
-            return ""
-        try:
-            lname = re.sub(r"\s*#\d+\s*$", "", lname).strip()
-        except Exception:
-            pass
-        for suffix in (" (CSV)", "(CSV)"):
-            if lname.endswith(suffix):
-                lname = lname[: -len(suffix)].strip()
-                break
-        return lname
-
-    def _row_index_from_model_name(self, model_name: str) -> Optional[int]:
-        """Busca una fila por nombre visible de modelo de forma exacta."""
-        name = str(model_name or "").strip()
-        if not name:
-            return None
-        rows = list(getattr(self, "_rows", []) or [])
-        matches = []
-        for i, r in enumerate(rows):
-            row_name = str(r.get("name") or f"Modelo {i+1}").strip()
-            if row_name and name == row_name:
-                matches.append(i)
-        if len(matches) == 1:
-            return int(matches[0])
-        return None
-
-    def _repair_layer_model_metadata(self, layer: QgsVectorLayer, idx: int) -> None:
-        """Repara metadatos de capas antiguas cuando el nombre visible indica otra fila.
-
-        Algunas capas antiguas podían quedarse con ``model_index=0`` aunque el
-        nombre visible fuese, por ejemplo, ``Vestas V100-2.0 (CSV)``. Si no se
-        corrige, cálculo/estelas tratan esa capa como el modelo equivocado.
-        """
-        try:
-            if idx is None or idx < 0 or idx >= len(getattr(self, "_rows", []) or []):
-                return
-            r = self._rows[int(idx)]
-            model_name = str(r.get("name") or f"Modelo {int(idx)+1}")
-            layer.setCustomProperty("velantis/layer_role", "energy_turbines")
-            layer.setCustomProperty("velantis/model_index", int(idx))
-            layer.setCustomProperty("velantis/row_index", int(idx))
-            layer.setCustomProperty("velantis/model_name", model_name)
-            meta = r.get("meta") if isinstance(r, dict) else None
-            if isinstance(meta, dict):
-                if meta.get("hh") is not None:
-                    layer.setCustomProperty("velantis/hub_height_m", float(meta.get("hh")))
-                if meta.get("diam") is not None:
-                    layer.setCustomProperty("velantis/diameter_m", float(meta.get("diam")))
-                if meta.get("spacing_long_d") is not None:
-                    layer.setCustomProperty("velantis/spacing_long_d", float(meta.get("spacing_long_d")))
-                if meta.get("spacing_trans_d") is not None:
-                    layer.setCustomProperty("velantis/spacing_trans_d", float(meta.get("spacing_trans_d")))
-                if meta.get("spacing_mode"):
-                    layer.setCustomProperty("velantis/spacing_mode", str(meta.get("spacing_mode")))
-                if meta.get("spacing_angle_deg") is not None:
-                    layer.setCustomProperty("velantis/spacing_angle_deg", float(meta.get("spacing_angle_deg")))
-                if meta.get("curve_quality"):
-                    layer.setCustomProperty("velantis/curve_quality", str(meta.get("curve_quality")))
-                if meta.get("curve_source"):
-                    layer.setCustomProperty("velantis/curve_source", str(meta.get("curve_source")))
-                if meta.get("curve_source_url"):
-                    layer.setCustomProperty("velantis/curve_source_url", str(meta.get("curve_source_url")))
-        except Exception:
-            pass
-
-    def _row_index_for_layer(self, layer: QgsVectorLayer) -> Optional[int]:
-        """Encuentra la fila asociada a una capa «{Modelo} (CSV)».
-
-        Preferimos el nombre visible o el ``velantis/model_name`` cuando encaja
-        de forma exacta con una fila. Esto es deliberado: si una capa antigua
-        arrastra un ``model_index`` incorrecto, el usuario ve el nombre correcto
-        en el panel de capas y esa debe ser la fuente de verdad. El índice
-        persistido queda como fallback para capas con nombres genéricos.
-        """
-        if not _is_point_vector_layer(layer):
-            return None
-
-        rows = list(getattr(self, "_rows", []) or [])
-
-        # 1) Nombre visible de capa: más fiable para reparar capas antiguas con
-        # model_index equivocado.
-        visible_name = self._layer_visible_model_name(layer)
-        idx_by_visible = self._row_index_from_model_name(visible_name)
-        if idx_by_visible is not None:
-            try:
-                self._repair_layer_model_metadata(layer, int(idx_by_visible))
-            except Exception:
-                pass
-            return int(idx_by_visible)
-
-        # 2) Metadato explícito de nombre de modelo.
-        try:
-            stored_name = str(layer.customProperty("velantis/model_name", "") or "").strip()
-        except Exception:
-            stored_name = ""
-        idx_by_stored_name = self._row_index_from_model_name(stored_name)
-        if idx_by_stored_name is not None:
-            try:
-                self._repair_layer_model_metadata(layer, int(idx_by_stored_name))
-            except Exception:
-                pass
-            return int(idx_by_stored_name)
-
-        # 3) Índice persistido. Lo usamos solo si no hay nombre exacto mejor.
-        for key in ("velantis/model_index", "velantis/row_index"):
-            try:
-                raw = layer.customProperty(key, None)
-            except Exception:
-                raw = None
-            if raw is None or raw == "":
-                continue
-            try:
-                idx = int(raw)
-            except Exception:
-                continue
-            if 0 <= idx < len(rows):
-                return idx
-
-        # 4) Último fallback por nombre genérico antiguo.
-        if visible_name:
-            for i, _r in enumerate(rows):
-                if visible_name == f"Modelo {i+1}":
-                    return i
-
-        return None
-
-    def _find_interactive_layer_for_row(self, idx: int) -> Optional[QgsVectorLayer]:
-        """Busca la capa de turbinas de una fila, incluyendo capas generadas vacías.
-
-        Si hay varias capas para el mismo modelo/fila, prioriza:
-        1) la última capa que el diálogo ha creado o activado para esa fila;
-        2) la capa activa si pertenece a esa fila;
-        3) la capa con mayor `velantis/layer_generation`;
-        4) el nombre base histórico como fallback.
-        """
-        try:
-            r = self._rows[idx]
-        except Exception:
-            return None
-        current_name = r.get("name") or f"Modelo {idx+1}"
-        preferred_names = [f"{current_name} (CSV)"]
-        default_name = f"Modelo {idx+1} (CSV)"
-        if default_name not in preferred_names:
-            preferred_names.append(default_name)
-
-        layers = [lyr for lyr in _iter_project_vector_layers() if _is_point_vector_layer(lyr)]
-
-        # 0) Capa recordada por esta sesión del diálogo.
-        try:
-            remembered_id = (getattr(self, "_interactive_layer_id_by_row", {}) or {}).get(int(idx))
-        except Exception:
-            remembered_id = None
-        if remembered_id:
-            for lyr in layers:
-                try:
-                    if lyr.id() == remembered_id and self._row_index_for_layer(lyr) == idx:
-                        return lyr
-                except Exception:
-                    continue
-
-        # 1) Si la capa activa pertenece a esta fila, respétala.
+        layers = self._row_layers()
         try:
             active = iface.activeLayer()
         except Exception:
             active = None
-        if _is_point_vector_layer(active) and self._row_index_for_layer(active) == idx:
-            try:
-                self._interactive_layer_id_by_row[int(idx)] = active.id()
-            except Exception:
-                pass
+        if active is not None and any(lyr.id() == active.id() for lyr in layers):
             return active
+        return layers[0] if layers else None
 
-        # 2) Capas con metadatos de fila/modelo. Si hay varias, usar la más reciente.
-        candidates = []
-        for lyr in layers:
-            try:
-                if self._row_index_for_layer(lyr) != idx:
-                    continue
-                gen_raw = lyr.customProperty("velantis/layer_generation", -1)
-                try:
-                    gen = int(gen_raw)
-                except Exception:
-                    gen = -1
-                candidates.append((gen, lyr))
-            except Exception:
-                continue
-        if candidates:
-            candidates.sort(key=lambda x: x[0], reverse=True)
-            chosen = candidates[0][1]
-            try:
-                self._interactive_layer_id_by_row[int(idx)] = chosen.id()
-            except Exception:
-                pass
-            return chosen
-
-        # 3) Nombre exacto, primero nombre actual y luego nombre por defecto.
-        for wanted in preferred_names:
-            for lyr in layers:
-                try:
-                    if lyr.name() == wanted:
-                        return lyr
-                except Exception:
-                    continue
-        return None
-
-    def _auto_pick_interactive_layer(self) -> Optional[QgsVectorLayer]:
-        """Auto-selecciona la primera capa «{Modelo} (CSV)» válida del proyecto.
-
-        Orden de preferencia: modelo 0 → resto de modelos en orden. Cuando la
-        encuentra, la activa con `setActiveLayer()` y con
-        `layerTreeView().setCurrentLayer()` para que funcione también si está
-        dentro de grupos.
-        """
-        active = self._get_interactive_target_layer(allow_auto_pick=False)
-        if active is not None:
-            try:
-                row_idx = self._row_index_for_layer(active)
-                if row_idx is not None:
-                    self._interactive_layer_id_by_row[int(row_idx)] = active.id()
-            except Exception:
-                pass
-            self._activate_qgis_layer(active)
-            return active
-
-        n_rows = len(getattr(self, "_rows", []) or [])
-        order = list(range(n_rows))
-        if 0 in order:
-            order.remove(0)
-            order.insert(0, 0)
-
-        for idx in order:
+    def _row_index_for_layer(self, layer: QgsVectorLayer) -> Optional[int]:
+        """Primera fila que tiene la capa seleccionada en su selector."""
+        try:
+            layer_id = layer.id()
+        except Exception:
+            return None
+        for idx in range(len(getattr(self, "_rows", []) or [])):
             lyr = self._find_interactive_layer_for_row(idx)
-            if lyr is None:
-                continue
-            if self._row_index_for_layer(lyr) is None:
-                continue
-            try:
-                self._interactive_layer_id_by_row[int(idx)] = lyr.id()
-            except Exception:
-                pass
-            self._activate_qgis_layer(lyr)
-            return lyr
+            if lyr is not None and lyr.id() == layer_id:
+                return idx
         return None
+
+    def _find_interactive_layer_for_row(self, idx: int) -> Optional[QgsVectorLayer]:
+        """Capa seleccionada en el selector «Capa de turbinas» de la fila, o None en «---»."""
+        try:
+            lyr = self._rows[idx]["layer_cb"].currentLayer()
+        except Exception:
+            return None
+        return lyr if isinstance(lyr, QgsVectorLayer) else None
 
     def _mark_turbines_layer_dirty(self, layer: QgsVectorLayer) -> None:
         try:
             self._dirty_turbine_layer_ids.add(layer.id())
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             self._refresh_dirty_indicators()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             if getattr(self, "_interactive_dock", None) is not None:
                 self._interactive_dock._refresh_layer_status()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _export_layer_points_to_csv(self, layer: QgsVectorLayer, csv_path: str) -> int:
@@ -5738,147 +4059,51 @@ class AEPSetupDialog(QtWidgets.QDialog):
 
         NOTA: solo se llama desde la acción explícita «Exportar layout editado…».
         El cálculo de AEP NO usa esta función: lee los puntos directamente de la capa
-        en memoria a través de `_collect_layer_points_for_row`.
+        elegida en cada fila a través de `_collect_layer_points_for_row`.
         """
-        n = 0
+        # Todas las entidades antes de abrir el fichero: una sin un único punto (sin geometría, o un multipunto de
+        # varias partes) se saltaba sin avisar y el CSV salía incompleto.
+        points = []
+        unreadable = 0
+        for feat in layer.getFeatures():
+            geom = feat.geometry()
+            parts = [] if geom is None or geom.isEmpty() else (geom.asMultiPoint() if geom.isMultipart() else [geom.asPoint()])
+            if len(parts) != 1:
+                unreadable += 1
+                continue
+            points.append(parts[0])
+        if unreadable:
+            raise ValueError(_tr("{n} entidad(es) de la capa no tienen un único punto: no se ha exportado nada.").format(n=unreadable))
         os.makedirs(os.path.dirname(csv_path), exist_ok=True) if os.path.dirname(csv_path) else None
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["x", "y"])
-            for feat in layer.getFeatures():
-                try:
-                    p = feat.geometry().asPoint()
-                except Exception:
-                    continue
+            for p in points:
                 w.writerow([f"{p.x():.3f}", f"{p.y():.3f}"])
-                n += 1
-        return n
+        return len(points)
 
-    def _collect_points_from_layer(self, layer: QgsVectorLayer) -> List[Tuple[float, float]]:
-        """Lee los puntos vivos de una capa concreta de aerogeneradores."""
-        pts: List[Tuple[float, float]] = []
-        if layer is None or not isinstance(layer, QgsVectorLayer):
-            return pts
-        for feat in layer.getFeatures():
-            try:
-                geom = feat.geometry()
-                if geom is None or geom.isEmpty():
-                    continue
-                p = geom.asPoint()
-                pts.append((float(p.x()), float(p.y())))
-            except Exception:
-                continue
-        return pts
+    def _candidate_turbine_layers_for_edit(self) -> List[Dict[str, Any]]:
+        """Capas que puede editar el mapa interactivo: las seleccionadas en las filas.
 
-    def _candidate_turbine_layers_for_compute(self) -> List[Dict[str, Any]]:
-        """Capas de aerogeneradores seleccionables para un cálculo interactivo.
-
-        Se listan solo capas de puntos asociadas a una fila/modelo ya definido.
-        Así el cálculo puede combinar varias familias de aerogeneradores cargadas
-        en el panel de capas, sin depender únicamente de la capa activa.
+        Con o sin turbina definida; una capa elegida en varias filas pertenece a la primera.
         """
-        rows = list(getattr(self, "_rows", []) or [])
-        out: List[Dict[str, Any]] = []
         try:
             active_id = iface.activeLayer().id() if iface.activeLayer() is not None else ""
         except Exception:
             active_id = ""
-        remembered = set()
-        try:
-            remembered = set((getattr(self, "_interactive_layer_id_by_row", {}) or {}).values())
-        except Exception:
-            remembered = set()
-
-        for lyr in _iter_project_vector_layers():
-            if not _is_point_vector_layer(lyr):
-                continue
+        out: List[Dict[str, Any]] = []
+        for lyr in self._row_layers():
             idx = self._row_index_for_layer(lyr)
-            if idx is None or idx < 0 or idx >= len(rows):
-                continue
-            r = rows[idx] or {}
-            if r.get("wt") is None:
-                continue
-            pts = self._collect_points_from_layer(lyr)
-            if not pts:
-                continue
-            try:
-                gen_raw = lyr.customProperty("velantis/layer_generation", -1)
-                gen = int(gen_raw)
-            except Exception:
-                gen = -1
-            model_name = r.get("name") or f"Modelo {idx+1}"
+            r = self._rows[int(idx)] or {}
             out.append({
                 "layer": lyr,
                 "layer_id": lyr.id(),
                 "layer_name": lyr.name(),
                 "row_index": int(idx),
-                "model_name": model_name,
-                "n_points": len(pts),
-                "generation": gen,
+                "model_name": r.get("name") or _tr("Modelo {n}").format(n=int(idx) + 1),
+                "n_points": int(lyr.featureCount()),
                 "active": bool(lyr.id() == active_id),
-                "remembered": bool(lyr.id() in remembered),
             })
-
-        # Orden estable: modelo/fila, generación más reciente primero dentro de cada modelo.
-        out.sort(key=lambda d: (int(d.get("row_index", 0)), -int(d.get("generation", -1)), str(d.get("layer_name", ""))))
-        return out
-
-    def _candidate_turbine_layers_for_edit(self) -> List[Dict[str, Any]]:
-        """Capas de aerogeneradores disponibles para edición en mapa.
-
-        A diferencia del selector de cálculo, aquí también se listan capas
-        vacías para poder elegir el modelo al que se añadirán nuevas turbinas.
-        """
-        rows = list(getattr(self, "_rows", []) or [])
-        out: List[Dict[str, Any]] = []
-        try:
-            active_id = iface.activeLayer().id() if iface.activeLayer() is not None else ""
-        except Exception:
-            active_id = ""
-        remembered = set()
-        try:
-            remembered = set((getattr(self, "_interactive_layer_id_by_row", {}) or {}).values())
-        except Exception:
-            remembered = set()
-
-        seen = set()
-        for lyr in _iter_project_vector_layers():
-            if not _is_point_vector_layer(lyr):
-                continue
-            idx = self._row_index_for_layer(lyr)
-            if idx is None or idx < 0 or idx >= len(rows):
-                continue
-            r = rows[int(idx)] or {}
-            if r.get("wt") is None:
-                continue
-            try:
-                lid = lyr.id()
-            except Exception:
-                lid = ""
-            if not lid or lid in seen:
-                continue
-            seen.add(lid)
-            try:
-                gen_raw = lyr.customProperty("velantis/layer_generation", -1)
-                gen = int(gen_raw)
-            except Exception:
-                gen = -1
-            pts = self._collect_points_from_layer(lyr)
-            model_name = r.get("name") or f"Modelo {int(idx)+1}"
-            out.append({
-                "layer": lyr,
-                "layer_id": lid,
-                "layer_name": lyr.name(),
-                "row_index": int(idx),
-                "model_name": model_name,
-                "n_points": len(pts),
-                "generation": gen,
-                "active": bool(lid == active_id),
-                "remembered": bool(lid in remembered),
-            })
-
-        # Activa primero; después por fila y generación reciente.
-        out.sort(key=lambda d: (0 if d.get("active") else 1, int(d.get("row_index", 0)), -int(d.get("generation", -1)), str(d.get("layer_name", ""))))
         return out
 
     def _set_interactive_edit_layer(self, layer_id: str) -> bool:
@@ -5893,17 +4118,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if idx is None:
             return False
         try:
-            self._interactive_layer_id_by_row[int(idx)] = lyr.id()
-        except Exception:
-            pass
-        try:
             self._activate_qgis_layer(lyr)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             if getattr(self, "_interactive_dock", None) is not None:
                 self._interactive_dock._refresh_layer_status()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         # Mantener sincronizado el selector del menú de envolventes con la capa
         # elegida para editar en el mapa interactivo.
@@ -5911,183 +4132,22 @@ class AEPSetupDialog(QtWidgets.QDialog):
             cb = getattr(self, "_spacing_notify_layout_changed", None)
             if callable(cb):
                 cb(lyr)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return True
 
-    def _ask_turbine_layers_for_compute(
-        self,
-        title: str = "Capas para calcular AEP",
-        intro: Optional[str] = None,
-        ok_text: str = "Calcular con capas seleccionadas",
-    ) -> bool:
-        """Pregunta qué capas de aerogeneradores usar en la próxima operación.
-
-        Se usa tanto para recalcular AEP como para graficar estelas desde el
-        mapa interactivo. Devuelve True si el usuario aceptó una selección
-        válida. La selección se consume una sola vez por
-        ``_consume_selected_models_from_turbine_layers``.
-        """
-        candidates = self._candidate_turbine_layers_for_compute()
-        if not candidates:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Capas de aerogeneradores",
-                "No hay capas de turbinas válidas con puntos para calcular.\n\n"
-                "Crea una capa con «Generar capas de puntos», define su modelo de turbina "
-                "y añade al menos un aerogenerador en el mapa.",
-            )
-            return False
-
-        # Por defecto marcamos la capa más reciente/recordada de cada modelo.
-        default_ids = set()
-        by_row: Dict[int, Dict[str, Any]] = {}
-        for c in candidates:
-            idx = int(c.get("row_index", -1))
-            prev = by_row.get(idx)
-            if prev is None:
-                by_row[idx] = c
-                continue
-            score_prev = (1 if prev.get("remembered") else 0, 1 if prev.get("active") else 0, int(prev.get("generation", -1)))
-            score_cur = (1 if c.get("remembered") else 0, 1 if c.get("active") else 0, int(c.get("generation", -1)))
-            if score_cur > score_prev:
-                by_row[idx] = c
-        for c in by_row.values():
-            default_ids.add(str(c.get("layer_id")))
-
-        try:
-            dlg_parent = iface.mainWindow()
-        except Exception:
-            dlg_parent = self
-        dlg = QtWidgets.QDialog(dlg_parent)
-        dlg.setWindowTitle(str(title or "Capas de aerogeneradores"))
-        dlg.setMinimumSize(560, 420)
-        lay = QtWidgets.QVBoxLayout(dlg)
-        lay.setContentsMargins(10, 10, 10, 10)
-        lay.setSpacing(8)
-
-        if intro is None:
-            intro = (
-                "Selecciona las capas de aerogeneradores que quieres incluir en este cálculo.\n"
-                "Puedes marcar varias capas para simular un parque con varios modelos de turbina."
-            )
-        lbl = QtWidgets.QLabel(str(intro))
-        lbl.setWordWrap(True)
-        lay.addWidget(lbl)
-
-        lst = QtWidgets.QListWidget(dlg)
-        lst.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        for c in candidates:
-            row_idx = int(c.get("row_index", 0))
-            gen = int(c.get("generation", -1))
-            gen_txt = f" · gen {gen}" if gen >= 0 else ""
-            active_txt = " · activa" if c.get("active") else ""
-            txt = (
-                f"Modelo {row_idx+1}: {c.get('model_name')}  |  "
-                f"{c.get('layer_name')}  |  {c.get('n_points')} turbinas{gen_txt}{active_txt}"
-            )
-            item = QtWidgets.QListWidgetItem(txt)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-            item.setData(QtCore.Qt.UserRole, str(c.get("layer_id")))
-            item.setCheckState(QtCore.Qt.Checked if str(c.get("layer_id")) in default_ids else QtCore.Qt.Unchecked)
-            lst.addItem(item)
-        lay.addWidget(lst, 1)
-
-        h_select = QtWidgets.QHBoxLayout()
-        btn_all = QtWidgets.QPushButton("Marcar todas")
-        btn_none = QtWidgets.QPushButton("Desmarcar")
-        h_select.addWidget(btn_all)
-        h_select.addWidget(btn_none)
-        h_select.addStretch(1)
-        lay.addLayout(h_select)
-
-        def _set_all(state):
-            for i in range(lst.count()):
-                lst.item(i).setCheckState(state)
-        btn_all.clicked.connect(lambda *_: _set_all(QtCore.Qt.Checked))
-        btn_none.clicked.connect(lambda *_: _set_all(QtCore.Qt.Unchecked))
-
-        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
-        buttons.button(QtWidgets.QDialogButtonBox.Ok).setText(str(ok_text or "Aceptar"))
-        buttons.button(QtWidgets.QDialogButtonBox.Cancel).setText("Cancelar")
-        lay.addWidget(buttons)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-
-        while True:
-            if dlg.exec_() != QtWidgets.QDialog.Accepted:
-                self._selected_turbine_layer_ids_for_next_compute = []
-                return False
-            selected_ids = []
-            for i in range(lst.count()):
-                item = lst.item(i)
-                if item.checkState() == QtCore.Qt.Checked:
-                    selected_ids.append(str(item.data(QtCore.Qt.UserRole)))
-            if selected_ids:
-                self._selected_turbine_layer_ids_for_next_compute = selected_ids
-                return True
-            QtWidgets.QMessageBox.warning(dlg, "Capas", "Selecciona al menos una capa para calcular.")
-
-    def _consume_selected_models_from_turbine_layers(self) -> Optional[List[Dict[str, Any]]]:
-        """Convierte la selección de capas del diálogo interactivo en modelos AEP.
-
-        La selección se consume una sola vez para que el botón normal de cálculo
-        conserve el comportamiento histórico si el usuario no viene del mapa
-        interactivo.
-        """
-        selected_ids = list(getattr(self, "_selected_turbine_layer_ids_for_next_compute", []) or [])
-        self._selected_turbine_layer_ids_for_next_compute = []
-        if not selected_ids:
-            return None
-
-        rows = list(getattr(self, "_rows", []) or [])
-        models: List[Dict[str, Any]] = []
-        selected_count_by_row: Dict[int, int] = {}
-        for lid in selected_ids:
-            try:
-                lyr = QgsProject.instance().mapLayer(str(lid))
-            except Exception:
-                lyr = None
-            if not _is_point_vector_layer(lyr):
-                continue
-            idx = self._row_index_for_layer(lyr)
-            if idx is None or idx < 0 or idx >= len(rows):
-                continue
-            r = rows[idx] or {}
-            if r.get("wt") is None:
-                continue
-            pts = self._collect_points_from_layer(lyr)
-            if not pts:
-                continue
-            selected_count_by_row[int(idx)] = selected_count_by_row.get(int(idx), 0) + 1
-            base_name = r.get("name") or f"Modelo {idx+1}"
-            models.append({
-                "name": base_name,
-                "wt": r.get("wt"),
-                "meta": r.get("meta"),
-                "coords_csv": "",
-                "coords_xy": pts,
-                "source_layer_id": lyr.id(),
-                "source_layer_name": lyr.name(),
-                "source_row_index": int(idx),
-            })
-
-        # Si el usuario seleccionó varias capas del mismo modelo, distinguir el
-        # nombre para que los resultados no aparezcan como duplicados exactos.
-        if models:
-            for m in models:
-                idx = int(m.get("source_row_index", -1))
-                if selected_count_by_row.get(idx, 0) > 1:
-                    m["name"] = f"{m.get('name')} · {m.get('source_layer_name')}"
-        return models or None
-
     def _collect_layer_points_for_row(self, idx: int) -> Optional[List[Tuple[float, float]]]:
-        """Devuelve los puntos vivos de la capa «{Modelo} (CSV)» del modelo idx.
+        """Devuelve los puntos vivos de la capa seleccionada en la fila idx, en el sistema del proyecto.
 
-        Es la fuente de verdad para el cálculo de AEP cuando el usuario ha editado el
-        layout en el mapa interactivo. Devuelve None si la capa no existe (en cuyo
-        caso el core caerá al CSV en disco).
+        Es la fuente de verdad para el cálculo de AEP y del ráster. Devuelve None si la
+        fila no tiene capa o la capa no tiene puntos. Lanza ``DialogStateError`` si la capa
+        no tiene un sistema válido, si falla la transformación o si alguna entidad no tiene
+        un punto legible.
         """
+        try:
+            from .energy_core.dialog_state import DialogStateError
+        except Exception:
+            from energy_core.dialog_state import DialogStateError  # type: ignore
         try:
             r = self._rows[idx]
         except Exception:
@@ -6095,13 +4155,23 @@ class AEPSetupDialog(QtWidgets.QDialog):
         lyr = self._find_interactive_layer_for_row(idx)
         if lyr is None or not isinstance(lyr, QgsVectorLayer):
             return None
-        pts: List[Tuple[float, float]] = []
-        for feat in lyr.getFeatures():
-            try:
-                p = feat.geometry().asPoint()
-                pts.append((float(p.x()), float(p.y())))
-            except Exception:
-                continue
+        reason = ""
+        try:
+            points, unreadable = layer_points_in_project_crs(lyr)
+            if unreadable:
+                reason = _tr(
+                    "{n} entidad(es) sin un punto legible (sin geometría o multipunto de varias partes)."
+                ).format(n=unreadable)
+        except ValueError:
+            reason = _tr("no tiene un sistema de coordenadas válido.")
+        except QgsCsException as exc:
+            reason = _tr("no se pudieron transformar sus coordenadas al sistema del proyecto: {error}").format(error=exc)
+        if reason:
+            raise DialogStateError(
+                _tr("Coordenadas"),
+                _tr("Modelo {n}, capa «{layer}»: {reason}").format(n=idx + 1, layer=lyr.name(), reason=reason),
+            )
+        pts = [(float(p.x()), float(p.y())) for p in points.values()]
         return pts if pts else None
 
     def _layer_is_dirty_for_row(self, idx: int) -> bool:
@@ -6127,7 +4197,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 continue
             try:
                 badge.setVisible(self._layer_is_dirty_for_row(i))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     def _sync_dirty_layers_to_csv(self) -> None:
@@ -6136,16 +4206,16 @@ class AEPSetupDialog(QtWidgets.QDialog):
         Antes esta función sobrescribía el CSV que el usuario había seleccionado
         desde disco con las coordenadas editadas en el mapa interactivo, lo que
         destruía el archivo original sin aviso. Ahora el cálculo de AEP lee las
-        coordenadas vivas directamente de la capa en memoria, así que NO hace
-        falta volcar nada al CSV. Si el usuario quiere persistir el layout
-        editado a disco, debe usar explícitamente «Exportar layout editado…».
+        coordenadas vivas directamente de la capa elegida en cada fila, así que NO hace
+        falta volcar nada al CSV. Si el usuario quiere una copia del layout
+        editado en un CSV, usa «Exportar layout editado…».
 
         Se conserva el método (vacío) por compatibilidad con llamadas existentes.
         """
         # Refrescar indicadores «(editado)» por si la capa cambió desde el último render
         try:
             self._refresh_dirty_indicators()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return
 
@@ -6153,69 +4223,51 @@ class AEPSetupDialog(QtWidgets.QDialog):
         """Acción explícita: el usuario decide guardar el layout editado a CSV.
 
         Para cada modelo cuya capa esté marcada como editada, pregunta destino
-        con default `<original>_edited.csv` y NUNCA sobrescribe el CSV original
-        salvo que el usuario lo confirme manualmente seleccionando ese mismo
-        archivo en el diálogo de guardado.
+        con default `<carpeta del último CSV>/<nombre de la capa>_edited.csv`.
         """
         if not hasattr(self, "_rows"):
             return
         any_dirty = any(self._layer_is_dirty_for_row(i) for i in range(len(self._rows)))
         if not any_dirty:
             QtWidgets.QMessageBox.information(
-                self, "Exportar layout editado",
-                "No hay layouts editados pendientes de exportar."
+                self, _tr('Exportar disposición editada'),
+                _tr("No hay layouts editados pendientes de exportar.")
             )
             return
 
         for i, r in enumerate(self._rows):
             if not self._layer_is_dirty_for_row(i):
                 continue
-            name = r.get("name") or f"Modelo {i+1}"
+            name = r.get("name") or _tr("Modelo {n}").format(n=i + 1)
             lyr = self._find_interactive_layer_for_row(i)
             if lyr is None:
                 continue
-            orig = r.get("coords_csv_le").text().strip() if r.get("coords_csv_le") else ""
-            # Default sugerido: <original>_edited.csv (NO sobrescribe el original)
-            if orig:
-                base, ext = os.path.splitext(orig)
-                suggested = base + "_edited" + (ext or ".csv")
-            else:
-                suggested = os.path.join(self._last_csv_dir or os.path.expanduser("~"),
-                                         f"{name}_edited.csv")
+            # El nombre propuesto sale de la capa; el de fichero no depende del idioma de la interfaz.
+            suggested = os.path.join(self._last_csv_dir or os.path.expanduser("~"), f"{lyr.name()}_edited.csv")
             fpath, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
-                f"Exportar layout editado · {name}",
+                _tr("Exportar layout editado · {name}").format(name=name),
                 suggested,
-                "CSV (*.csv);;Todos (*.*)",
+                "CSV (*.csv);;" + _tr("Todos (*.*)"),
             )
             if not fpath:
                 continue
-            # Aviso explícito si el usuario apunta al archivo original
-            if orig and os.path.abspath(fpath) == os.path.abspath(orig):
-                ok = QtWidgets.QMessageBox.question(
-                    self, "Sobrescribir CSV original",
-                    f"Vas a sobrescribir el CSV original:\n{orig}\n\n¿Continuar?",
-                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                    QtWidgets.QMessageBox.No,
-                )
-                if ok != QtWidgets.QMessageBox.Yes:
-                    continue
             try:
                 n = self._export_layer_points_to_csv(lyr, fpath)
                 # Quitar el flag dirty para esta capa
                 try:
                     self._dirty_turbine_layer_ids.discard(lyr.id())
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 iface.messageBar().pushMessage(
-                    "Exportar layout editado",
-                    f"«{name}» → {os.path.basename(fpath)} ({n} puntos)",
+                    _tr('Exportar disposición editada'),
+                    _tr("«{name}» → {file} ({n} puntos)").format(name=name, file=os.path.basename(fpath), n=n),
                     level=Qgis.Info, duration=5,
                 )
             except Exception as e:
                 QtWidgets.QMessageBox.warning(
-                    self, "Exportar layout editado",
-                    f"No se pudo escribir el CSV de «{name}»:\n{e}"
+                    self, _tr('Exportar disposición editada'),
+                    _tr("No se pudo escribir el CSV de «{name}»:\n{error}").format(name=name, error=e)
                 )
 
         self._refresh_dirty_indicators()
@@ -6224,21 +4276,21 @@ class AEPSetupDialog(QtWidgets.QDialog):
         """Refresca capas/modelos visibles en el proyecto sin cambiar el flujo actual."""
         try:
             self._refresh_dirty_indicators()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             if getattr(self, "_interactive_dock", None) is not None:
                 self._interactive_dock._refresh_layer_status()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             iface.messageBar().pushMessage(
-                "Energía",
-                "Estado de capas/modelos refrescado.",
+                _tr("Energía"),
+                _tr("Estado de capas/modelos refrescado."),
                 level=Qgis.Info,
                 duration=3,
             )
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _return_to_hub(self):
@@ -6257,19 +4309,19 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 self.btn_map_interactive.setChecked(False)
             elif getattr(self, "_interactive_tool", None) is not None:
                 self._deactivate_map_interactive()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
             self._hidden_for_interactive = False
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Refrescar badges/selectores antes de esconder, por si se vuelve a abrir
         # inmediatamente desde el hub.
         try:
             self._refresh_project_state()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Mostrar el hub padre.
@@ -6279,21 +4331,21 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 try:
                     if hasattr(parent, "_refresh_summary"):
                         parent._refresh_summary()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 parent.show()
                 try:
                     parent.raise_(); parent.activateWindow()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Importante: ocultar, NO reject()/close(). Así no se pierde la memoria
         # de modelos ni la asociación con capas creadas en esta sesión.
         try:
             self.hide()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def closeEvent(self, event):
@@ -6308,13 +4360,13 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 event.ignore()
                 self._hide_dialog_for_interactive_map()
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         # Cierre real del diálogo: limpiar envolventes de separación (capa,
         # hooks y map tool de dibujo) para no dejar restos en el proyecto.
         try:
             self._teardown_spacing_controller()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             super().closeEvent(event)
@@ -6327,7 +4379,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             if getattr(self, "_interactive_tool", None) is not None or bool(self.btn_map_interactive.isChecked()):
                 self._hide_dialog_for_interactive_map()
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             super().reject()
@@ -6354,7 +4406,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         try:
             if ctl is not None and ctl.alive:
                 return ctl
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             canvas = iface.mapCanvas()
@@ -6374,8 +4426,8 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if ctl is None:
             QtWidgets.QMessageBox.warning(
                 self,
-                "Envolvente de separación",
-                "No se pudo inicializar el módulo de envolventes (spacing_core).",
+                _tr("Envolvente de separación"),
+                _tr("No se pudo inicializar el módulo de envolventes (spacing_core)."),
             )
             return
         dlg = getattr(self, "_spacing_cfg_dlg", None)
@@ -6384,14 +4436,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 dlg.raise_()
                 dlg.activateWindow()
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             self._spacing_cfg_dlg = SpacingConfigDialog(ctl, main_dialog=self, parent=self)
             self._spacing_cfg_dlg.show()
         except Exception as e:
             QtWidgets.QMessageBox.warning(
-                self, "Envolvente de separación", f"No se pudo abrir la configuración:\n{e}"
+                self, _tr("Envolvente de separación"), _tr("No se pudo abrir la configuración:\n{error}").format(error=e)
             )
 
     def _teardown_spacing_controller(self):
@@ -6400,14 +4452,14 @@ class AEPSetupDialog(QtWidgets.QDialog):
             dlg = getattr(self, "_spacing_cfg_dlg", None)
             if dlg is not None:
                 dlg.close()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._spacing_cfg_dlg = None
         try:
             ctl = getattr(self, "_spacing_ctl", None)
             if ctl is not None:
                 ctl.teardown()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._spacing_ctl = None
 
@@ -6415,12 +4467,12 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if _TurbineInteractiveTool is None:
             QtWidgets.QMessageBox.warning(
                 self,
-                "Mapa interactivo",
-                "No se pudo cargar la herramienta de mapa interactivo (import fallido).",
+                _tr("Mapa interactivo"),
+                _tr("No se pudo cargar la herramienta de mapa interactivo (import fallido)."),
             )
             try:
                 self.btn_map_interactive.setChecked(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
@@ -6430,27 +4482,27 @@ class AEPSetupDialog(QtWidgets.QDialog):
             except Exception:
                 self._canvas = None
         if self._canvas is None:
-            QtWidgets.QMessageBox.warning(self, "Mapa interactivo", "No se pudo obtener el map canvas de QGIS.")
+            QtWidgets.QMessageBox.warning(self, _tr("Mapa interactivo"), _tr("No se pudo obtener el lienzo del mapa de QGIS."))
             try:
                 self.btn_map_interactive.setChecked(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
-        # Validar/autoseleccionar capa activa. Si el usuario viene de
-        # «Generar capas de puntos», puede existir una capa válida dentro de un
-        # grupo aunque QGIS no la tenga marcada como activa en `iface`.
-        layer = self._get_interactive_target_layer(allow_auto_pick=True)
+        # La capa que se edita sale de los selectores de las filas.
+        layer = self._get_interactive_target_layer()
         if layer is None:
             QtWidgets.QMessageBox.information(
                 self,
-                "Mapa interactivo",
-                "No encuentro una capa de turbinas «{Modelo} (CSV)» para editar.\n\n"
-                "Pulsa primero «Generar capas de puntos» o carga una capa del modelo en el proyecto.",
+                _tr("Mapa interactivo"),
+                _tr(
+                    "Ninguna fila tiene una capa de turbinas para editar.\n\n"
+                    "Elige una capa en el selector «Capa de turbinas» de una fila o pulsa «Generar capas de puntos»."
+                ),
             )
             try:
                 self.btn_map_interactive.setChecked(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
@@ -6464,17 +4516,19 @@ class AEPSetupDialog(QtWidgets.QDialog):
             self._interactive_tool = _TurbineInteractiveTool(self, self._canvas, tol_m=120.0)
             self._canvas.setMapTool(self._interactive_tool)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Mapa interactivo", f"No se pudo activar el modo interactivo:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, _tr("Mapa interactivo"), _tr("No se pudo activar el modo interactivo:\n{error}").format(error=e)
+            )
             try:
                 self.btn_map_interactive.setChecked(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
         # Capturar ESC global mientras esté activo
         try:
             iface.mainWindow().installEventFilter(self)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Mostrar caja de herramientas (dock) con física PyWake + acciones.
@@ -6490,7 +4544,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         # Sync antes de salir, para que el botón de cálculo use coords actualizadas
         try:
             self._sync_dirty_layers_to_csv()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Quitar widget de messagebar
@@ -6511,9 +4565,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 # fallback: activar pan
                 try:
                     iface.actionPan().trigger()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         self._interactive_tool = None
@@ -6522,7 +4576,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
         # Dejar de capturar ESC global
         try:
             iface.mainWindow().removeEventFilter(self)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Reabrir diálogo si estaba oculto
@@ -6536,7 +4590,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             # Si no existe el botón por alguna razón, al menos desactivamos.
             try:
                 self._deactivate_map_interactive()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     def eventFilter(self, obj, event):
@@ -6546,7 +4600,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 if event.key() == QtCore.Qt.Key_Escape:
                     self._exit_map_interactive_via_esc()
                     return True
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return super().eventFilter(obj, event)
 
@@ -6555,37 +4609,39 @@ class AEPSetupDialog(QtWidgets.QDialog):
             if self.isVisible():
                 self._hidden_for_interactive = True
                 self.hide()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _show_dialog_after_interactive_map(self):
         try:
             if getattr(self, "_hidden_for_interactive", False):
                 self._hidden_for_interactive = False
+                # Hidden while minimized with its window controls (#87): bring it back, keeping it maximized if it was.
+                self.setWindowState(self.windowState() & ~QtCore.Qt.WindowMinimized)
                 self.show()
                 try:
                     self.raise_(); self.activateWindow()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _show_interactive_messagebar(self):
         try:
             self._hide_interactive_messagebar()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
             msg = iface.messageBar().createMessage(
-                "Mapa interactivo",
-                "Click izq: añadir turbina · Click der: borrar · ESC: salir",
+                _tr("Mapa interactivo"),
+                _tr("Clic izq: añadir turbina · Clic der: borrar · ESC: salir"),
             )
-            btn_recalc = QtWidgets.QPushButton("Recalcular AEP")
+            btn_recalc = QtWidgets.QPushButton(_tr("Recalcular AEP"))
             btn_recalc.clicked.connect(self._recalc_aep_from_interactive)
-            btn_dialog = QtWidgets.QPushButton("Volver al diálogo")
+            btn_dialog = QtWidgets.QPushButton(_tr("Volver al diálogo"))
             btn_dialog.clicked.connect(self._show_dialog_after_interactive_map)
-            btn_exit = QtWidgets.QPushButton("Salir")
+            btn_exit = QtWidgets.QPushButton(_tr("Salir"))
             btn_exit.clicked.connect(lambda: self.btn_map_interactive.setChecked(False))
 
             msg.layout().addWidget(btn_recalc)
@@ -6607,7 +4663,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             try:
                 if self._interactive_msg_widget is not None:
                     iface.messageBar().popWidget(self._interactive_msg_widget)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         self._interactive_msg_item = None
         self._interactive_msg_widget = None
@@ -6640,26 +4696,26 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 try:
                     if hasattr(dock, "_teardown"):
                         dock._teardown()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     iface.removeDockWidget(dock)
                 except Exception:
                     try:
                         main.removeDockWidget(dock)
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
                 try:
                     dock.setParent(None)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     dock.deleteLater()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
             except RuntimeError:
                 continue
-            except Exception:
+            except Exception:  # nosec B112
                 continue
 
     def _show_interactive_dock(self) -> bool:
@@ -6676,7 +4732,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
                     self._interactive_dock.closed.connect(
                         lambda: self.btn_map_interactive.setChecked(False)
                     )
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     iface.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._interactive_dock)
@@ -6694,7 +4750,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             try:
                 self._interactive_dock._sync_from_dialog()
                 self._interactive_dock._refresh_layer_status()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return True
         except Exception:
@@ -6710,43 +4766,36 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 # deleteLater() y los slots fallan con "QLineEdit deleted".
                 try:
                     self._interactive_dock._teardown()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     iface.removeDockWidget(self._interactive_dock)
                 except Exception:
                     try:
                         iface.mainWindow().removeDockWidget(self._interactive_dock)
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
                 try:
                     self._interactive_dock.setParent(None)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     self._interactive_dock.deleteLater()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
         finally:
             self._interactive_dock = None
 
     def _recalc_aep_from_interactive(self):
         """Recalcula AEP desde el messagebar (sin tener que abrir el diálogo)."""
-        # 1) sincronizar/registrar coords actuales y preguntar qué capas entran
-        # en el cálculo. Esto permite combinar varias capas/modelos de aerogenerador
-        # cargados en el panel de capas, no solo la capa activa.
+        # 1) sincronizar/registrar coords actuales. El cálculo usa la capa de
+        # cada fila, como el botón del diálogo.
         try:
             self._sync_dirty_layers_to_csv()
-        except Exception:
+        except Exception:  # nosec B110
             pass
-        try:
-            if not self._ask_turbine_layers_for_compute():
-                return
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Capas para AEP", f"No se pudo preparar la selección de capas:\n{e}")
-            return
 
         # 2) pausar el map tool durante el cálculo
         was_interactive = self._interactive_tool is not None
@@ -6757,9 +4806,9 @@ class AEPSetupDialog(QtWidgets.QDialog):
                 else:
                     try:
                         iface.actionPan().trigger()
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # 3) ejecutar el cálculo normal
@@ -6770,7 +4819,7 @@ class AEPSetupDialog(QtWidgets.QDialog):
             try:
                 if was_interactive and self._canvas is not None and self._interactive_tool is not None:
                     self._canvas.setMapTool(self._interactive_tool)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     # ------------------ botones OK/Cancel ------------------
@@ -6778,37 +4827,20 @@ class AEPSetupDialog(QtWidgets.QDialog):
         if any(r["wt"] is None for r in self._rows):
             msg = QtWidgets.QMessageBox(self)
             msg.setIcon(QtWidgets.QMessageBox.Warning)
-            _lang = str(current_language()).lower()
-            if _lang.startswith("de"):
-                msg.setWindowTitle("Modelle fehlen")
-                msg.setText("Definieren Sie alle Modelle, bevor Sie fortfahren.")
-            elif _lang.startswith("fr"):
-                msg.setWindowTitle("Modèles manquants")
-                msg.setText("Définissez tous les modèles avant de continuer.")
-            elif _lang.startswith("en"):
-                msg.setWindowTitle("Missing models")
-                msg.setText("Define all models before continuing.")
-            else:
-                msg.setWindowTitle("Faltan modelos")
-                msg.setText("Define todos los modelos antes de continuar.")
+            msg.setWindowTitle(_tr("Faltan modelos"))
+            msg.setText(_tr("Define todos los modelos antes de continuar."))
             msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
             try:
                 msg.button(QtWidgets.QMessageBox.Ok).setText(_help_ok_label())
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             msg.exec_()
             return
-        for i, r in enumerate(self._rows, start=1):
-            csv_path = r["coords_csv_le"].text().strip()
-            if not csv_path or not os.path.isfile(csv_path):
-                if str(current_language()).lower().startswith("de"):
-                    QtWidgets.QMessageBox.warning(self, "Koordinaten", f"Prüfen Sie die CSV-Datei von Modell {i}.")
-                elif str(current_language()).lower().startswith("fr"):
-                    QtWidgets.QMessageBox.warning(self, "Coordonnées", f"Vérifiez le CSV du modèle {i}.")
-                elif str(current_language()).lower().startswith("en"):
-                    QtWidgets.QMessageBox.warning(self, "Coordinates", f"Check the CSV for model {i}.")
-                else:
-                    QtWidgets.QMessageBox.warning(self, "Coordenadas", f"Revisa el CSV del Modelo {i}.")
+        for i in range(len(self._rows)):
+            if self._find_interactive_layer_for_row(i) is None:
+                QtWidgets.QMessageBox.warning(
+                    self, _tr("Coordenadas"), _tr("Elige la capa de turbinas del Modelo {n}.").format(n=i + 1)
+                )
                 return
         d = self.ed_dir.text().strip()
         w = ""
@@ -6819,24 +4851,11 @@ class AEPSetupDialog(QtWidgets.QDialog):
         use_wrg = bool([p.strip() for p in w.split(";") if p.strip()])
         if not use_wrg:
             if not d or not os.path.isdir(d):
-                QtWidgets.QMessageBox.warning(self, "Recurso eólico", "Selecciona una carpeta WAsP válida o un WRG/ZIP.")
+                QtWidgets.QMessageBox.warning(self, _tr("Recurso eólico"), _tr("Selecciona una carpeta WAsP válida o un WRG/ZIP."))
                 return
         self.accept()
 
     # ------------------ compat / util externas ------------------
-    def get_models(self):
-        models = []
-        for r in getattr(self, "_rows", []):
-            models.append(
-                {
-                    "name": r.get("name"),
-                    "wt": r.get("wt"),
-                    "meta": r.get("meta"),
-                    "coords_csv": r.get("coords_csv_le").text().strip() if r.get("coords_csv_le") else "",
-                }
-            )
-        return models
-
     def get_wasp_dir(self) -> str:
         try:
             return self.ed_dir.text().strip()
@@ -6853,6 +4872,6 @@ class AEPSetupDialog(QtWidgets.QDialog):
         except Exception as e:
             QtWidgets.QMessageBox.critical(
                 self,
-                "Unión Recurso",
-                f"No se pudo iniciar la utilidad:\n{e}",
+                _tr("Unir recurso"),
+                _tr("No se pudo iniciar la utilidad:\n{error}").format(error=e),
             )

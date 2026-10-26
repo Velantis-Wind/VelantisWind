@@ -8,16 +8,18 @@ elimina ni reutiliza la capa de otro modelo.
 
 Cada capa de envolventes guarda, además del ``fid`` de la turbina, el ID de la
 capa fuente y los metadatos de modelo. Los conflictos se calculan de forma
-conjunta entre todas las capas/modelos que comparten CRS.
+conjunta entre las capas que recibe ``rebuild_many`` y comparten CRS.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from contextlib import contextmanager
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from qgis.PyQt.QtCore import QVariant
+from ..crs_utils import portable_crs_definition
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
@@ -37,6 +39,11 @@ try:
 except Exception:  # pragma: no cover
     def tr_text(text):
         return text
+
+try:
+    from ..wake_core.controller import is_projected_in_metres
+except Exception:  # pragma: no cover
+    from wake_core.controller import is_projected_in_metres  # type: ignore
 
 from .geometry import (
     MODE_AUTO,
@@ -76,9 +83,9 @@ _STYLE = {
 }
 
 _STATUS_LABELS = {
-    STATUS_OK: "OK",
+    STATUS_OK: "Sin conflicto",
     STATUS_NEAR: "Cerca del límite",
-    STATUS_CONFLICT: "Conflicto de spacing",
+    STATUS_CONFLICT: "Conflicto de separación",
 }
 
 _REQUIRED_FIELDS = (
@@ -105,18 +112,28 @@ def read_overrides(turbine_layer: QgsVectorLayer) -> Dict[int, SpacingSpec]:
         for k, v in (data or {}).items():
             try:
                 out[int(k)] = SpacingSpec.from_dict(v)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return out
+
+
+def set_spacing_property(layer: QgsVectorLayer, key: str, value) -> bool:
+    """Persist an actual configuration change and request project saving."""
+    if layer.customProperty(key, None) == value:
+        return False
+    layer.setCustomProperty(key, value)
+    QgsProject.instance().setDirty(True)
+    return True
 
 
 def write_overrides(turbine_layer: QgsVectorLayer, overrides: Dict[int, SpacingSpec]) -> None:
     try:
         data = {str(int(k)): v.to_dict() for k, v in (overrides or {}).items()}
-        turbine_layer.setCustomProperty(OVERRIDES_PROP, json.dumps(data))
-    except Exception:
+        if read_overrides(turbine_layer) != (overrides or {}):
+            set_spacing_property(turbine_layer, OVERRIDES_PROP, json.dumps(data))
+    except Exception:  # nosec B110
         pass
 
 
@@ -127,7 +144,7 @@ def layer_diameter_m(turbine_layer: Optional[QgsVectorLayer], fallback: float = 
             f = float(v)
             if f > 0:
                 return f
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return float(fallback)
 
@@ -155,26 +172,26 @@ def layer_spacing_spec(
             value = float(raw)
             if value > 0:
                 long_d = value
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             raw = turbine_layer.customProperty(MODEL_TRANS_D_PROP, None)
             value = float(raw)
             if value > 0:
                 trans_d = value
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             raw = str(turbine_layer.customProperty(MODEL_MODE_PROP, "") or "").strip()
             if raw:
                 mode = raw
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             raw = turbine_layer.customProperty(MODEL_ANGLE_PROP, None)
             if raw is not None and raw != "":
                 angle_deg = float(raw)
-        except Exception:
+        except Exception:  # nosec B110
             pass
     return SpacingSpec(
         long_d=long_d,
@@ -204,7 +221,7 @@ def layer_model_name(turbine_layer: Optional[QgsVectorLayer]) -> str:
             lambda match: f" {match.group(1)}" if match.group(1) else "",
             name,
         ).strip()
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return name or "Modelo"
 
@@ -217,9 +234,31 @@ def layer_model_index(turbine_layer: Optional[QgsVectorLayer]) -> int:
             raw = turbine_layer.customProperty(key, None)
             if raw is not None and raw != "":
                 return int(raw)
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return -1
+
+
+# Las capas que QGIS está quitando del proyecto mientras el diálogo de Energía reacciona a esa retirada. Al reaccionar
+# (filas que salen del parque, el gancho de las separaciones) puede pedir retirar una envolvente que está en la misma
+# lista: quitarla otra vez desde dentro rompe QGIS.
+_BEING_REMOVED: set = set()
+
+
+@contextmanager
+def layers_being_removed(layer_ids):
+    """Mientras dura, no se quita del proyecto ninguna de ``layer_ids``: QGIS ya las está quitando."""
+    ids = {str(layer_id) for layer_id in layer_ids or []}
+    _BEING_REMOVED.update(ids)
+    try:
+        yield
+    finally:
+        _BEING_REMOVED.difference_update(ids)
+
+
+def _remove_from_project(layer: QgsVectorLayer) -> None:
+    if layer.id() not in _BEING_REMOVED:
+        QgsProject.instance().removeMapLayer(layer.id())
 
 
 class EnvelopeManager:
@@ -242,6 +281,11 @@ class EnvelopeManager:
             )
         except Exception:
             return False
+
+    @staticmethod
+    def _is_regenerable(layer: Optional[QgsVectorLayer]) -> bool:
+        # Provider identity, not the URI: saved memory layers can keep their ID.
+        return layer is not None and layer.providerType() == "memory"
 
     def _find_existing_layer(self, turbine_layer: QgsVectorLayer) -> Optional[QgsVectorLayer]:
         source_id = turbine_layer.id()
@@ -275,7 +319,7 @@ class EnvelopeManager:
             try:
                 role = str(layer.customProperty(ENVELOPE_ROLE_PROP, "") or "")
                 linked = str(layer.customProperty(ENVELOPE_SOURCE_LAYER_PROP, "") or "")
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             if role == ENVELOPE_ROLE and linked == source_id:
                 return layer
@@ -307,7 +351,7 @@ class EnvelopeManager:
         if not inserted:
             try:
                 root.addLayer(layer)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     def _ensure_fields(self, layer: QgsVectorLayer) -> None:
@@ -317,7 +361,7 @@ class EnvelopeManager:
             if missing:
                 layer.dataProvider().addAttributes(missing)
                 layer.updateFields()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _bind_layer(self, envelope_layer: QgsVectorLayer, turbine_layer: QgsVectorLayer) -> None:
@@ -326,7 +370,7 @@ class EnvelopeManager:
         model_index = layer_model_index(turbine_layer)
         try:
             envelope_layer.setName(f"{tr_text(LAYER_PREFIX)} · {model_name}")
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             envelope_layer.setCustomProperty(ENVELOPE_ROLE_PROP, ENVELOPE_ROLE)
@@ -351,7 +395,7 @@ class EnvelopeManager:
                 turbine_layer.customProperty(MODEL_ANGLE_PROP, 0.0),
             )
             turbine_layer.setCustomProperty(TURBINE_ENVELOPE_LAYER_PROP, envelope_layer.id())
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._layers[source_id] = envelope_layer
         self._sources[source_id] = turbine_layer
@@ -360,31 +404,52 @@ class EnvelopeManager:
     # ------------------------------------------------------------ capa
     def _ensure_layer(self, turbine_layer: QgsVectorLayer) -> Optional[QgsVectorLayer]:
         source_id = turbine_layer.id()
-        crs = turbine_layer.crs().authid() or "EPSG:4326"
+        # El sistema completo de la capa, también si no tiene identificador de autoridad.
+        crs = turbine_layer.crs()
 
         layer = self._layers.get(source_id)
         if not self._layer_alive(layer):
             layer = self._find_existing_layer(turbine_layer)
 
+        if layer is not None and not self._is_regenerable(layer):
+            # Keep the saved snapshot intact, including fields and symbology.
+            # Hide it, so that its old ellipses are not drawn over the update.
+            try:
+                node = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
+                if node is not None:
+                    node.setItemVisibilityChecked(False)
+            except Exception:  # nosec B110
+                pass
+            try:
+                from qgis.utils import iface
+                if iface is not None:
+                    iface.messageBar().pushWarning("VelantisWind", tr_text(
+                        "La envolvente guardada se conserva sin cambios; la actualización se genera en una capa temporal."
+                    ))
+            except Exception:  # nosec B110
+                pass
+            layer = None
+
         # Si el CRS ha cambiado, la capa antigua no es reutilizable.
         try:
-            crs_matches = layer is not None and layer.crs().authid() == crs
+            crs_matches = layer is not None and layer.crs() == crs
         except Exception:
             crs_matches = False
         if layer is not None and not crs_matches:
             try:
-                QgsProject.instance().removeMapLayer(layer.id())
-            except Exception:
+                _remove_from_project(layer)
+            except Exception:  # nosec B110
                 pass
             layer = None
 
         if layer is None:
             try:
                 layer = QgsVectorLayer(
-                    f"Polygon?crs={crs}",
+                    "Polygon",
                     f"{tr_text(LAYER_PREFIX)} · {layer_model_name(turbine_layer)}",
                     "memory",
                 )
+                layer.setCrs(crs)
                 provider = layer.dataProvider()
                 provider.addAttributes([QgsField(name, typ) for name, typ in _REQUIRED_FIELDS])
                 layer.updateFields()
@@ -412,7 +477,7 @@ class EnvelopeManager:
                 })
                 try:
                     symbol.setColor(fill)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 categories.append(
                     QgsRendererCategory(status, symbol, tr_text(_STATUS_LABELS.get(status, status)))
@@ -420,9 +485,9 @@ class EnvelopeManager:
             layer.setRenderer(QgsCategorizedSymbolRenderer("spacing_status", categories))
             try:
                 layer.setFlags(layer.flags() & ~QgsVectorLayer.Identifiable)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ------------------------------------------------------------ rebuild
@@ -472,11 +537,14 @@ class EnvelopeManager:
         auto_angle_deg: Optional[float],
         fallback_diameter_m: float = 120.0,
         spec_resolver: Optional[Callable] = None,
+        create_missing: bool = True,
     ) -> Dict[str, Dict[int, str]]:
         """Reconstruye las capas de todos los modelos y valida el conjunto.
 
         Los conflictos se evalúan entre modelos siempre que sus capas fuente
-        compartan CRS. Devuelve ``{source_layer_id: {fid: estado}}``.
+        compartan CRS. Con ``create_missing`` falso, una fuente sin envolvente
+        cuenta en los conflictos de las demás, pero no se le crea (#96).
+        Devuelve ``{source_layer_id: {fid: estado}}``.
         """
         valid_sources: List[QgsVectorLayer] = []
         seen = set()
@@ -484,8 +552,12 @@ class EnvelopeManager:
             try:
                 if not isinstance(source, QgsVectorLayer) or not source.isValid():
                     continue
+                # Los semiejes están en metros y la elipse se construye en el sistema de la capa.
+                if not is_projected_in_metres(source.crs()):
+                    self._drop_envelope(source)
+                    continue
                 source_id = source.id()
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             if source_id in seen:
                 continue
@@ -505,12 +577,12 @@ class EnvelopeManager:
         next_key = 1
 
         for source in valid_sources:
-            envelope_layer = self._ensure_layer(source)
-            if envelope_layer is None:
-                continue
+            if create_missing or self._layer_alive(self._layers.get(source.id())) or self._find_existing_layer(source):
+                if self._ensure_layer(source) is None:
+                    continue
             source_id = source.id()
             try:
-                crs_key = source.crs().authid() or source.crs().toWkt()
+                crs_key = portable_crs_definition(source.crs())
             except Exception:
                 crs_key = source_id
             diameter = layer_diameter_m(source, fallback_diameter_m)
@@ -523,7 +595,7 @@ class EnvelopeManager:
                 try:
                     point = feature.geometry().asPoint()
                     fid = int(feature.id())
-                except Exception:
+                except Exception:  # nosec B112
                     continue
                 spec = self._resolve_spec(source, fid, model_defaults, overrides, spec_resolver)
                 angle = spec.angle_deg
@@ -582,7 +654,7 @@ class EnvelopeManager:
                 feature.setAttribute("spacing_mode", str(spec.mode))
                 feature.setAttribute("spacing_status", status)
                 features_by_source.setdefault(source_id, []).append(feature)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
 
         # Volcado independiente: una capa por modelo/capa fuente.
@@ -592,6 +664,8 @@ class EnvelopeManager:
             if layer is None:
                 continue
             try:
+                if not self._is_regenerable(layer):
+                    continue
                 provider = layer.dataProvider()
                 provider.truncate()
                 features = features_by_source.get(source_id, [])
@@ -599,7 +673,7 @@ class EnvelopeManager:
                     provider.addFeatures(features)
                 layer.updateExtents()
                 layer.triggerRepaint()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         self.last_status = nested_status
@@ -695,7 +769,7 @@ class EnvelopeManager:
                 if overwrite_file
                 else QgsVectorFileWriter.CreateOrOverwriteLayer
             )
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             context = QgsProject.instance().transformContext()
@@ -735,9 +809,11 @@ class EnvelopeManager:
     def clear(self) -> None:
         for layer in self.envelope_layers():
             try:
+                if not self._is_regenerable(layer):
+                    continue
                 layer.dataProvider().truncate()
                 layer.triggerRepaint()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         self.last_status = {}
 
@@ -752,18 +828,29 @@ class EnvelopeManager:
         layer = self._layers.pop(source_id, None)
         source = self._sources.pop(source_id, None)
         try:
-            if layer is not None:
-                QgsProject.instance().removeMapLayer(layer.id())
-        except Exception:
+            if self._is_regenerable(layer):
+                _remove_from_project(layer)
+        except Exception:  # nosec B110
             pass
         try:
             if source is not None:
                 source.removeCustomProperty(TURBINE_ENVELOPE_LAYER_PROP)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.last_status.pop(source_id, None)
         if self._last_source_id == source_id:
             self._last_source_id = next(iter(self._layers), None)
+
+    def _drop_envelope(self, turbine_layer: QgsVectorLayer) -> None:
+        """Quita la envolvente de una capa que no lleva elipses, también si la creó otra sesión."""
+        source_id = turbine_layer.id()
+        layer = self._layers.get(source_id) if self._layer_alive(self._layers.get(source_id)) else None
+        layer = layer or self._find_existing_layer(turbine_layer)
+        if layer is None:
+            return
+        self._layers[source_id] = layer
+        self._sources[source_id] = turbine_layer
+        self.remove_for_source(source_id)
 
     def remove_missing_sources(self, source_ids: Iterable[str]) -> None:
         keep = set(source_ids or [])
@@ -779,3 +866,4 @@ class EnvelopeManager:
         self._sources = {}
         self._last_source_id = None
         self.last_status = {}
+

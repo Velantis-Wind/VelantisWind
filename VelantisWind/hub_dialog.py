@@ -3,7 +3,7 @@
 Hub principal del plugin Velantis Wind.
 
 Objetivos:
-- Mantener la interfaz nueva del hub: título centrado, selector de idioma, tarjetas de módulo, logo central, bloque de optimización, resumen y botón de apoyo inferior.
+- Mantener la interfaz nueva del hub: título centrado, selector de idioma, tarjetas de módulo, logo central, bloque de optimización, resumen y botón «♥ Sponsors» arriba a la derecha.
 - Pantalla inicial estable con tres módulos: Energía, Ruido y Sombras/parpadeo.
 - Conectar inmediatamente con el módulo de Energía ya existente.
 - Mantener la misma estructura visual al cambiar entre ES/EN/FR/DE: solo cambia el texto, nunca se reconstruye la página.
@@ -19,10 +19,12 @@ from qgis.PyQt import QtCore, QtGui, QtWidgets
 from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
 from .noise_page import NoisePage
 from .shadow_page import ShadowPage
-from .i18n import apply_i18n, current_language, install_runtime_i18n_patches, set_language, tr_text as _tr
+from .i18n import apply_i18n, current_language, install_runtime_i18n_patches, mark_translated, set_language, tr_text as _tr
 from .i18n import SUPPORTED_LANGUAGES, language_label
-from .support_dialog import show_support_dialog
 from .ui_core.responsive import fit_to_screen, configure_scroll_area
+from .ui_core.sponsor_button import SponsorButton
+from .ui_core.window_controls import (ModuleWindowControls, attach_dialog_window_controls,
+                                      enable_native_window_controls)
 
 _GROUP_NAME = "AEP · Coordenadas por modelo"
 _CONTACT_EMAIL = "info@velantiswind.com"
@@ -53,10 +55,14 @@ class _ClickableLabel(QtWidgets.QLabel):
 
 
 class VelantisHubDialog(QtWidgets.QDialog):
+    # Emitted after the hub has changed the plugin language, for what lives outside it (the plugin's QGIS action).
+    languageChanged = QtCore.pyqtSignal()
+
     def __init__(self, parent=None, energy_dialog_factory: Optional[Callable[[QtWidgets.QWidget], QtWidgets.QDialog]] = None, iface=None):
         install_runtime_i18n_patches()
         super().__init__(parent)
-        self.setWindowTitle(_tr("Velantis Wind · Hub principal"))
+        enable_native_window_controls(self)
+        self.setWindowTitle(_tr('Velantis Wind · Panel principal'))
         self._fit_to_screen()
         self._energy_dialog_factory = energy_dialog_factory
         self.iface = iface
@@ -76,7 +82,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
     def _fit_to_screen(self):
         # Keep the hub usable on laptops and split-screen QGIS sessions.
         # The home page now scrolls internally, so the dialog can safely be
-        # smaller without cutting the lower VelantisWind/support button.
+        # smaller without cutting its lower part.
         fit_to_screen(self, preferred=(980, 680), minimum=(620, 420), max_ratio=(0.94, 0.92))
 
     # --------------------------- UI ---------------------------
@@ -84,6 +90,18 @@ class VelantisHubDialog(QtWidgets.QDialog):
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
+
+        # Noise and Shadow are pages of this hub, not separate native windows.
+        # Give both pages the same visible min/max/restore/close buttons, after
+        # the «♥ Sponsors» button that the three pages share.
+        top_bar = QtWidgets.QHBoxLayout()
+        top_bar.setSpacing(6)
+        top_bar.addStretch(1)
+        self.module_window_controls = ModuleWindowControls(self, target=self)
+        self.module_window_controls.setObjectName("velantisModuleWindowControls")
+        top_bar.addWidget(self.module_window_controls)
+        root.addLayout(top_bar)
+        self.module_window_controls.hide()
 
         self.stack = QtWidgets.QStackedWidget(self)
         root.addWidget(self.stack, 1)
@@ -95,6 +113,17 @@ class VelantisHubDialog(QtWidgets.QDialog):
         self.stack.addWidget(self.page_noise)
         self.stack.addWidget(self.page_flicker)
         self.stack.setCurrentWidget(self.page_home)
+        # Created after the pages, it is last in the tab order: the hub does not open with the focus on it.
+        self.btn_support_velantis = SponsorButton(self)
+        top_bar.insertWidget(1, self.btn_support_velantis)
+        self.stack.currentChanged.connect(self._sync_module_window_controls)
+        self._sync_module_window_controls()
+
+    def _sync_module_window_controls(self, *_args):
+        """Show the hub's window actions on Noise and Shadow, never on the home page."""
+        self.module_window_controls.setVisible(self.stack.currentWidget() in
+                                               (self.page_noise, self.page_flicker))
+        self.module_window_controls.refresh_labels()
 
     def _build_home_page(self) -> QtWidgets.QWidget:
         page = QtWidgets.QWidget(self)
@@ -122,7 +151,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
 
         self.lbl_hub_subtitle = QtWidgets.QLabel(_tr(
             "Selecciona el módulo de trabajo. Los módulos están operativos: "
-            "Energía (AEP y wakes), Ruido y Sombras y parpadeo."
+            "Energía (AEP y estelas), Ruido y Sombras y parpadeo."
         ))
         self.lbl_hub_subtitle.setAlignment(QtCore.Qt.AlignCenter)
         self.lbl_hub_subtitle.setWordWrap(True)
@@ -134,7 +163,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         lang_lay = QtWidgets.QHBoxLayout(self.lang_box)
         lang_lay.setContentsMargins(10, 6, 10, 6)
         lang_lay.setSpacing(8)
-        self.lbl_language_caption = QtWidgets.QLabel(_tr("Idioma del plugin:"), self)
+        self.lbl_language_caption = QtWidgets.QLabel(_tr('Idioma del complemento:'), self)
         lang_lay.addWidget(self.lbl_language_caption)
         self.cb_language = QtWidgets.QComboBox(self)
         self.cb_language.setObjectName("languageSelector")
@@ -144,7 +173,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         self.cb_language.setCurrentIndex(idx_lang if idx_lang >= 0 else 0)
         self.cb_language.currentIndexChanged.connect(self._on_language_changed)
         lang_lay.addWidget(self.cb_language, 0)
-        self.lbl_language_note = QtWidgets.QLabel(_tr("El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados."))
+        self.lbl_language_note = QtWidgets.QLabel(_tr('El idioma seleccionado se aplicará al panel principal, módulos, avisos y resúmenes generados.'))
         self.lbl_language_note.setObjectName("hubMinor")
         self.lbl_language_note.setWordWrap(True)
         lang_lay.addWidget(self.lbl_language_note, 1)
@@ -156,7 +185,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         cards.setSpacing(10)
         cards.addStretch(1)
 
-        self.btn_energy = self._make_card_button("Energía\nAEP y wakes")
+        self.btn_energy = self._make_card_button("Energía\nAEP y estelas")
         self.btn_noise = self._make_card_button("Ruido")
         self.btn_flicker = self._make_card_button("Sombras y\nparpadeo")
 
@@ -181,10 +210,10 @@ class VelantisHubDialog(QtWidgets.QDialog):
         optimization_row.setContentsMargins(0, 0, 0, 0)
         optimization_row.setSpacing(8)
         self.lbl_layout_optimization_hint = QtWidgets.QLabel(_ml(
-            "Optimización avanzada de layout y wake steering para capturar más energía",
+            'Optimización avanzada de disposición y orientación de estelas para capturar más energía',
             "Advanced layout and wake-steering optimization to capture more energy",
             "Optimisation avancée de l’implantation et du pilotage des sillages pour capter plus d’énergie",
-            "Erweiterte Layout- und Wake-Steering-Optimierung für mehr Energieertrag",
+            "Erweiterte Layout-Optimierung und Nachlaufsteuerung (Wake Steering) für mehr Energieertrag",
         ), self)
         self.lbl_layout_optimization_hint.setObjectName("layoutOptimizationHint")
         self.lbl_layout_optimization_hint.setWordWrap(True)
@@ -192,7 +221,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         optimization_row.addWidget(self.lbl_layout_optimization_hint, 1, QtCore.Qt.AlignVCenter)
 
         self.btn_layout_optimization_info = QtWidgets.QPushButton(_ml(
-            "⚡ Optimizar layout",
+            '⚡ Optimizar disposición',
             "⚡ Optimize layout",
             "⚡ Optimiser l’implantation",
             "⚡ Layout optimieren",
@@ -200,7 +229,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         self.btn_layout_optimization_info.setObjectName("layoutOptimizationCtaButton")
         self.btn_layout_optimization_info.setCursor(QtCore.Qt.PointingHandCursor)
         self.btn_layout_optimization_info.setToolTip(_ml(
-            "Ver propuesta comercial, contacto y white paper de optimización.",
+            'Ver propuesta comercial, contacto y documento técnico de optimización.',
             "View the commercial proposal, contact details and optimization white paper.",
             "Voir la proposition commerciale, le contact et le livre blanc d’optimisation.",
             "Kommerzielle Kurzinfo, Kontakt und Optimierungs-Whitepaper anzeigen.",
@@ -215,22 +244,17 @@ class VelantisHubDialog(QtWidgets.QDialog):
         panel_lay.setContentsMargins(12, 10, 12, 10)
         panel_lay.setSpacing(7)
 
-        self.lbl_layout_optimization_title = QtWidgets.QLabel(_ml(
-            "Motor avanzado de layout + wake steering",
-            "Advanced layout + wake steering engine",
-            "Moteur avancé implantation + pilotage des sillages",
-            "Erweiterter Motor für Layout + Wake Steering",
-        ), self)
+        self.lbl_layout_optimization_title = QtWidgets.QLabel(_tr('Motor avanzado de disposición + orientación de estelas'), self)
         self.lbl_layout_optimization_title.setObjectName("layoutOptimizationTitle")
         self.lbl_layout_optimization_title.setWordWrap(True)
         panel_lay.addWidget(self.lbl_layout_optimization_title)
 
         self.lbl_layout_optimization_text = QtWidgets.QLabel(
             _ml(
-                "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.",
+                'VelantisWind permite explorar disposiciones desde recurso, restricciones y objetivos del proyecto, y cooptimizar la orientación de estelas junto a la disposición para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.',
                 "VelantisWind can explore layouts from wind resource, constraints and project targets, and co-optimize wake steering together with the layout to reduce wake losses, lift net production and improve asset returns. Built to compare defensible alternatives and speed up design decisions.",
                 "VelantisWind permet d’explorer des implantations à partir de la ressource éolienne, des contraintes et des objectifs du projet, et de cooptimiser le pilotage des sillages avec l’implantation afin de réduire les pertes de sillage, augmenter la production nette et améliorer le rendement de l’actif. Conçu pour comparer des variantes défendables et accélérer les décisions de conception.",
-                "VelantisWind kann Layouts aus Windressource, Einschränkungen und Projektzielen entwickeln und Wake Steering gemeinsam mit dem Layout co-optimieren, um Nachlaufverluste zu reduzieren, die Nettoproduktion zu erhöhen und die Rendite des Assets zu verbessern. Entwickelt, um belastbare Alternativen zu vergleichen und Designentscheidungen zu beschleunigen.",
+                "VelantisWind kann Layouts aus Windressource, Einschränkungen und Projektzielen entwickeln und die Nachlaufsteuerung (Wake Steering) gemeinsam mit dem Layout optimieren, um Nachlaufverluste zu reduzieren, die Nettoproduktion zu erhöhen und die Rendite des Assets zu verbessern. Entwickelt, um belastbare Alternativen zu vergleichen und Designentscheidungen zu beschleunigen.",
             ),
             self,
         )
@@ -240,7 +264,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
 
         self.lbl_layout_optimization_contact = QtWidgets.QLabel(
             _ml(
-                "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com",
+                'Solicita una revisión del caso: info@velantiswind.com · Documento técnico en velantiswind.com',
                 "Request a case review: info@velantiswind.com · White paper at velantiswind.com",
                 "Demander une revue du cas : info@velantiswind.com · Livre blanc sur velantiswind.com",
                 "Fallprüfung anfragen: info@velantiswind.com · Whitepaper auf velantiswind.com",
@@ -259,20 +283,23 @@ class VelantisHubDialog(QtWidgets.QDialog):
         self.btn_copy_optimization_contact = QtWidgets.QPushButton(_tr("Copiar contacto"), self)
         self.btn_copy_optimization_contact.setObjectName("layoutOptimizationSecondaryButton")
         self.btn_copy_optimization_contact.setCursor(QtCore.Qt.PointingHandCursor)
-        self.btn_copy_optimization_contact.setToolTip(_tr("Copia el email de contacto al portapapeles."))
+        self.btn_copy_optimization_contact.setToolTip(_tr('Copia el correo electrónico de contacto al portapapeles.'))
         self.btn_copy_optimization_contact.clicked.connect(self._copy_optimization_contact)
         panel_buttons.addWidget(self.btn_copy_optimization_contact)
 
-        self.btn_open_white_paper = QtWidgets.QPushButton(_tr("Ver white paper"), self)
+        self.btn_open_white_paper = QtWidgets.QPushButton(_tr('Ver documento técnico'), self)
         self.btn_open_white_paper.setObjectName("layoutOptimizationPrimaryButton")
         self.btn_open_white_paper.setCursor(QtCore.Qt.PointingHandCursor)
-        self.btn_open_white_paper.setToolTip(_tr("Abre la web de VelantisWind, donde está disponible el white paper."))
+        self.btn_open_white_paper.setToolTip(_tr('Abre la web de VelantisWind, donde está disponible el documento técnico.'))
         self.btn_open_white_paper.clicked.connect(self._open_white_paper)
         panel_buttons.addWidget(self.btn_open_white_paper)
         panel_lay.addLayout(panel_buttons)
 
         self.layout_optimization_panel.setVisible(False)
         optimization_lay.addWidget(self.layout_optimization_panel)
+        # Its texts are set in the active language (``_ml``, ``_tr``) and set again by ``_apply_home_texts``: a second
+        # translation would read them back as Spanish fragments («Wake Steering» → «Nachlauf Steering»).
+        mark_translated(optimization_wrap)
 
 
         logo_wrap = QtWidgets.QWidget(self)
@@ -326,9 +353,13 @@ class VelantisHubDialog(QtWidgets.QDialog):
         self.lbl_status = QtWidgets.QLabel(_tr("Energía: operativa · Ruido: operativo · Sombras: operativo"))
         for w in [self.lbl_project, self.lbl_crs, self.lbl_layout, self.lbl_resource, self.lbl_ti, self.lbl_status]:
             w.setWordWrap(True)
+        # The project name, the CRS and the resource and TI files are the user's: _refresh_summary sets them, also on a
+        # change of language.
+        for w in [self.lbl_project, self.lbl_crs, self.lbl_resource, self.lbl_ti]:
+            mark_translated(w)
         self.lbl_project_caption = QtWidgets.QLabel(_tr("Proyecto:"), self)
         self.lbl_crs_caption = QtWidgets.QLabel(_tr("CRS:"), self)
-        self.lbl_layout_caption = QtWidgets.QLabel(_tr("Layout activo:"), self)
+        self.lbl_layout_caption = QtWidgets.QLabel(_tr('Disposición activa:'), self)
         self.lbl_resource_caption = QtWidgets.QLabel(_tr("Recurso:"), self)
         self.lbl_ti_caption = QtWidgets.QLabel(_tr("TI WRG:"), self)
         self.lbl_status_caption = QtWidgets.QLabel(_tr("Estado módulos:"), self)
@@ -345,22 +376,6 @@ class VelantisHubDialog(QtWidgets.QDialog):
 
         scroll.setWidget(content)
         outer.addWidget(scroll, 1)
-
-        # Sticky footer: keep this visible even when the main content scrolls.
-        # This fixes the clipped/barely-visible VelantisWind button on short screens.
-        support_footer = QtWidgets.QHBoxLayout()
-        support_footer.setContentsMargins(6, 0, 6, 2)
-        support_footer.addStretch(1)
-        self.btn_support_velantis = QtWidgets.QPushButton(_tr("♡ Apoyar VelantisWind"), self)
-        self.btn_support_velantis.setObjectName("supportVelantisButton")
-        self.btn_support_velantis.setCursor(QtCore.Qt.PointingHandCursor)
-        self.btn_support_velantis.setMinimumHeight(34)
-        self.btn_support_velantis.setMinimumWidth(190)
-        self.btn_support_velantis.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        self.btn_support_velantis.setToolTip(_tr("Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro."))
-        self.btn_support_velantis.clicked.connect(self._open_support_dialog)
-        support_footer.addWidget(self.btn_support_velantis, 0, QtCore.Qt.AlignRight)
-        outer.addLayout(support_footer)
 
         return page
 
@@ -397,21 +412,6 @@ class VelantisHubDialog(QtWidgets.QDialog):
             QPushButton#moduleCardButton:hover {
                 background: #eaf3fb;
                 border-color: #1f7dc2;
-            }
-            QPushButton#supportVelantisButton {
-                background: #ffffff;
-                border: 1.5px solid #b8cad8;
-                border-radius: 11px;
-                color: #103b67;
-                font-size: 12px;
-                font-weight: 600;
-                padding: 7px 16px;
-                min-height: 30px;
-            }
-            QPushButton#supportVelantisButton:hover {
-                background: #eaf3fb;
-                border-color: #1f7dc2;
-                color: #0d345c;
             }
             QFrame#layoutOptimizationWrap {
                 background: #ffffff;
@@ -514,68 +514,63 @@ class VelantisHubDialog(QtWidgets.QDialog):
         the exact same widgets and geometry as the selected clean hub layout.
         """
         try:
-            self.setWindowTitle(_tr("Velantis Wind · Hub principal"))
+            self.setWindowTitle(_tr('Velantis Wind · Panel principal'))
+            self.module_window_controls.refresh_labels()
             self.hub_title.setText("Velantis Wind")
-            self.lbl_hub_subtitle.setText(_tr("Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo."))
+            self.lbl_hub_subtitle.setText(_tr("Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y estelas), Ruido y Sombras y parpadeo."))
             self.lang_box.setTitle(_tr("Idioma"))
-            self.lbl_language_caption.setText(_tr("Idioma del plugin:"))
-            self.lbl_language_note.setText(_tr("El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados."))
-            self.btn_energy.setText(_tr("Energía\nAEP y wakes"))
+            self.lbl_language_caption.setText(_tr('Idioma del complemento:'))
+            self.lbl_language_note.setText(_tr('El idioma seleccionado se aplicará al panel principal, módulos, avisos y resúmenes generados.'))
+            self.btn_energy.setText(_tr("Energía\nAEP y estelas"))
             self.btn_noise.setText(_tr("Ruido"))
             self.btn_flicker.setText(_tr("Sombras y\nparpadeo"))
             self.logo_label.setToolTip(_tr("Inicio"))
             self.lbl_logo_info.setText(_tr("Pulsa el logo para volver al inicio desde los módulos preparados."))
             self.lbl_layout_optimization_hint.setText(_ml(
-                "Optimización avanzada de layout y wake steering para capturar más energía",
+                'Optimización avanzada de disposición y orientación de estelas para capturar más energía',
                 "Advanced layout and wake-steering optimization to capture more energy",
                 "Optimisation avancée de l’implantation et du pilotage des sillages pour capter plus d’énergie",
-                "Erweiterte Layout- und Wake-Steering-Optimierung für mehr Energieertrag",
+                "Erweiterte Layout-Optimierung und Nachlaufsteuerung (Wake Steering) für mehr Energieertrag",
             ))
             is_open = bool(getattr(self, "layout_optimization_panel", None) and self.layout_optimization_panel.isVisible())
             self.btn_layout_optimization_info.setText(
                 _ml("Ocultar información", "Hide information", "Masquer les informations", "Informationen ausblenden")
                 if is_open else
-                _ml("⚡ Optimizar layout", "⚡ Optimize layout", "⚡ Optimiser l’implantation", "⚡ Layout optimieren")
+                _ml('⚡ Optimizar disposición', "⚡ Optimize layout", "⚡ Optimiser l’implantation", "⚡ Layout optimieren")
             )
             self.btn_layout_optimization_info.setToolTip(_ml(
-            "Ver propuesta comercial, contacto y white paper de optimización.",
+            'Ver propuesta comercial, contacto y documento técnico de optimización.',
             "View the commercial proposal, contact details and optimization white paper.",
             "Voir la proposition commerciale, le contact et le livre blanc d’optimisation.",
             "Kommerzielle Kurzinfo, Kontakt und Optimierungs-Whitepaper anzeigen.",
         ))
-            self.lbl_layout_optimization_title.setText(_ml(
-                "Motor avanzado de layout + wake steering",
-                "Advanced layout + wake steering engine",
-                "Moteur avancé implantation + pilotage des sillages",
-                "Erweiterter Motor für Layout + Wake Steering",
-            ))
+            self.lbl_layout_optimization_title.setText(_tr('Motor avanzado de disposición + orientación de estelas'))
             self.lbl_layout_optimization_text.setText(_ml(
-                "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.",
+                'VelantisWind permite explorar disposiciones desde recurso, restricciones y objetivos del proyecto, y cooptimizar la orientación de estelas junto a la disposición para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.',
                 "VelantisWind can explore layouts from wind resource, constraints and project targets, and co-optimize wake steering together with the layout to reduce wake losses, lift net production and improve asset returns. Built to compare defensible alternatives and speed up design decisions.",
                 "VelantisWind permet d’explorer des implantations à partir de la ressource éolienne, des contraintes et des objectifs du projet, et de cooptimiser le pilotage des sillages avec l’implantation afin de réduire les pertes de sillage, augmenter la production nette et améliorer le rendement de l’actif. Conçu pour comparer des variantes défendables et accélérer les décisions de conception.",
-                "VelantisWind kann Layouts aus Windressource, Einschränkungen und Projektzielen entwickeln und Wake Steering gemeinsam mit dem Layout co-optimieren, um Nachlaufverluste zu reduzieren, die Nettoproduktion zu erhöhen und die Rendite des Assets zu verbessern. Entwickelt, um belastbare Alternativen zu vergleichen und Designentscheidungen zu beschleunigen.",
+                "VelantisWind kann Layouts aus Windressource, Einschränkungen und Projektzielen entwickeln und die Nachlaufsteuerung (Wake Steering) gemeinsam mit dem Layout optimieren, um Nachlaufverluste zu reduzieren, die Nettoproduktion zu erhöhen und die Rendite des Assets zu verbessern. Entwickelt, um belastbare Alternativen zu vergleichen und Designentscheidungen zu beschleunigen.",
             ))
             self.lbl_layout_optimization_contact.setText(_ml(
-                "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com",
+                'Solicita una revisión del caso: info@velantiswind.com · Documento técnico en velantiswind.com',
                 "Request a case review: info@velantiswind.com · White paper at velantiswind.com",
                 "Demander une revue du cas : info@velantiswind.com · Livre blanc sur velantiswind.com",
                 "Fallprüfung anfragen: info@velantiswind.com · Whitepaper auf velantiswind.com",
             ))
             self.btn_copy_optimization_contact.setText(_tr("Copiar contacto"))
-            self.btn_copy_optimization_contact.setToolTip(_tr("Copia el email de contacto al portapapeles."))
-            self.btn_open_white_paper.setText(_tr("Ver white paper"))
-            self.btn_open_white_paper.setToolTip(_tr("Abre la web de VelantisWind, donde está disponible el white paper."))
+            self.btn_copy_optimization_contact.setToolTip(_tr('Copia el correo electrónico de contacto al portapapeles.'))
+            self.btn_open_white_paper.setText(_tr('Ver documento técnico'))
+            self.btn_open_white_paper.setToolTip(_tr('Abre la web de VelantisWind, donde está disponible el documento técnico.'))
             self.grp_summary.setTitle(_tr("Resumen del proyecto"))
             self.lbl_project_caption.setText(_tr("Proyecto:"))
             self.lbl_crs_caption.setText(_tr("CRS:"))
-            self.lbl_layout_caption.setText(_tr("Layout activo:"))
+            self.lbl_layout_caption.setText(_tr('Disposición activa:'))
             self.lbl_resource_caption.setText(_tr("Recurso:"))
             self.lbl_ti_caption.setText(_tr("TI WRG:"))
             self.lbl_status_caption.setText(_tr("Estado módulos:"))
             self.lbl_status.setText(_tr("Energía: operativa · Ruido: operativo · Sombras: operativo"))
-            self.btn_support_velantis.setText(_tr("♡ Apoyar VelantisWind"))
-            self.btn_support_velantis.setToolTip(_tr("Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro."))
-        except Exception:
+            self.btn_support_velantis.refresh_labels()
+        except Exception:  # nosec B110
             pass
 
     def _toggle_layout_optimization_info(self):
@@ -585,9 +580,9 @@ class VelantisHubDialog(QtWidgets.QDialog):
             self.btn_layout_optimization_info.setText(
                 _ml("Ocultar información", "Hide information", "Masquer les informations", "Informationen ausblenden")
                 if visible else
-                _ml("⚡ Optimizar layout", "⚡ Optimize layout", "⚡ Optimiser l’implantation", "⚡ Layout optimieren")
+                _ml('⚡ Optimizar disposición', "⚡ Optimize layout", "⚡ Optimiser l’implantation", "⚡ Layout optimieren")
             )
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _copy_optimization_contact(self):
@@ -618,12 +613,6 @@ class VelantisHubDialog(QtWidgets.QDialog):
                 _WHITE_PAPER_URL,
             )
 
-    def _open_support_dialog(self):
-        try:
-            show_support_dialog(self)
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, _tr("Apoyar VelantisWind"), str(e))
-
     def _on_language_changed(self):
         try:
             lang = self.cb_language.currentData() or "es"
@@ -634,16 +623,21 @@ class VelantisHubDialog(QtWidgets.QDialog):
 
             for page in (getattr(self, "page_noise", None), getattr(self, "page_flicker", None)):
                 try:
-                    apply_i18n(page)
-                    if hasattr(page, "refresh_from_project"):
-                        page.refresh_from_project()
-                        apply_i18n(page)
-                except Exception:
+                    if page is not None:
+                        page.retranslate()
+                except Exception:  # nosec B110
                     pass
+            energy = getattr(self, "_energy_dialog", None)
+            if energy is not None:
+                energy.retranslate_ui()
+                # The window bar the hub attached to Energy (#87), also while Energy is hidden.
+                for bar in energy.findChildren(ModuleWindowControls):
+                    bar.refresh_labels()
             self._refresh_summary()
             self._sync_language_selector()
-        except Exception:
+        except Exception:  # nosec B110
             pass
+        self.languageChanged.emit()
 
     def _sync_language_selector(self):
         try:
@@ -652,20 +646,20 @@ class VelantisHubDialog(QtWidgets.QDialog):
                 return
             try:
                 cb.blockSignals(True)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             for i, code in enumerate(SUPPORTED_LANGUAGES):
                 try:
                     cb.setItemText(i, language_label(code))
                     cb.setItemData(i, code)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
             idx_lang = cb.findData(current_language())
             cb.setCurrentIndex(idx_lang if idx_lang >= 0 else 0)
         finally:
             try:
                 cb.blockSignals(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     # --------------------------- acciones ---------------------------
@@ -673,7 +667,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         try:
             if hasattr(self.page_noise, "refresh_from_project"):
                 self.page_noise.refresh_from_project()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.stack.setCurrentWidget(self.page_noise)
 
@@ -708,14 +702,16 @@ class VelantisHubDialog(QtWidgets.QDialog):
                 try:
                     if hasattr(dlg, "_refresh_project_state"):
                         dlg._refresh_project_state()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
+                dlg.retranslate_ui()
                 self.hide()
+                attach_dialog_window_controls(dlg)
                 dlg.show()
                 try:
                     dlg.raise_()
                     dlg.activateWindow()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 return
         except RuntimeError:
@@ -731,15 +727,16 @@ class VelantisHubDialog(QtWidgets.QDialog):
             self._energy_dialog = dlg
             try:
                 dlg.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             dlg.finished.connect(self._on_energy_closed)
+            attach_dialog_window_controls(dlg)
             self.hide()
             dlg.show()
             try:
                 dlg.raise_()
                 dlg.activateWindow()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         except Exception as e:
             QtWidgets.QMessageBox.critical(
@@ -755,7 +752,7 @@ class VelantisHubDialog(QtWidgets.QDialog):
         try:
             self.raise_()
             self.activateWindow()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def keyPressEvent(self, event):  # type: ignore[override]
@@ -793,9 +790,9 @@ class VelantisHubDialog(QtWidgets.QDialog):
             wrg = (self._qsettings.value("last_wrg_path", "", type=str) or "").strip()
             wasp = (self._qsettings.value("last_wasp_dir", "", type=str) or "").strip()
             if wrg:
-                self.lbl_resource.setText(f"WRG: {os.path.basename(wrg)}")
+                self.lbl_resource.setText(f"{_tr('WRG:')} {os.path.basename(wrg)}")
             elif wasp:
-                self.lbl_resource.setText(f"WAsP grids: {wasp}")
+                self.lbl_resource.setText(_tr("Rejillas WAsP:") + f" {wasp}")
             else:
                 self.lbl_resource.setText(_tr("Sin recurso seleccionado todavía"))
 
@@ -804,42 +801,34 @@ class VelantisHubDialog(QtWidgets.QDialog):
                 parts = [os.path.basename(p.strip()) for p in ti.split(";") if p.strip()]
                 self.lbl_ti.setText(", ".join(parts[:3]) + (" …" if len(parts) > 3 else ""))
             else:
-                self.lbl_ti.setText(_tr("No seleccionado (fallback previsto a TI=10% en flujo WRG)"))
-        except Exception:
+                self.lbl_ti.setText(_tr("No seleccionado (TI=10% por defecto en el flujo WRG)"))
+        except Exception:  # nosec B110
             pass
 
     def _count_layout_layers_and_turbines(self, prj: QgsProject):
+        """Capas de turbinas de Energía: las que tienen sus datos de turbina (elegidas en una fila con la turbina
+        definida, con cualquier nombre y en cualquier grupo) y las de versiones anteriores (en el grupo
+        «AEP · Coordenadas por modelo» o con el nombre «… (CSV)»)."""
+        grouped = set()
+        try:
+            group = prj.layerTreeRoot().findGroup(_GROUP_NAME)
+            if group is not None:
+                grouped = {node.layerId() for node in group.findLayers()}
+        except Exception:  # nosec B110
+            pass
         n_layers = 0
         n_turbines = 0
-        try:
-            root = prj.layerTreeRoot()
-            group = None
-            for child in root.children():
-                if getattr(child, 'name', lambda: None)() == _GROUP_NAME:
-                    group = child
-                    break
-            if group is not None:
-                for child in group.children():
-                    try:
-                        lyr = child.layer()
-                    except Exception:
-                        lyr = None
-                    if isinstance(lyr, QgsVectorLayer) and QgsWkbTypes.geometryType(lyr.wkbType()) == QgsWkbTypes.PointGeometry:
-                        n_layers += 1
-                        try:
-                            n_turbines += int(lyr.featureCount())
-                        except Exception:
-                            pass
-                return n_layers, n_turbines
-        except Exception:
-            pass
-
-        # fallback: escanear proyecto entero si el grupo no existe
         for lyr in prj.mapLayers().values():
             try:
-                if isinstance(lyr, QgsVectorLayer) and QgsWkbTypes.geometryType(lyr.wkbType()) == QgsWkbTypes.PointGeometry and lyr.name().endswith("(CSV)"):
+                if not isinstance(lyr, QgsVectorLayer) or QgsWkbTypes.geometryType(lyr.wkbType()) != QgsWkbTypes.PointGeometry:
+                    continue
+                role = str(lyr.customProperty("velantis/layer_role", "") or "")
+                # Los layouts de Ruido y Sombras (turbine_layout) no son capas de Energía, aunque tengan un nombre antiguo.
+                if role == "turbine_layout":
+                    continue
+                if role == "energy_turbines" or lyr.id() in grouped or lyr.name().endswith("(CSV)"):
                     n_layers += 1
                     n_turbines += int(lyr.featureCount())
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         return n_layers, n_turbines

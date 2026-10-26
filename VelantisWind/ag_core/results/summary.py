@@ -7,7 +7,7 @@ be reused by the dialog, report exporters and scenario comparison tools.
 """
 from __future__ import annotations
 
-import csv
+from ..curve_text import read_power_pairs
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -156,25 +156,13 @@ def _read_curve_from_model_dict(m: Dict[str, Any]) -> Optional[Tuple[np.ndarray,
     except Exception:
         ws_col, power_col, delimiter, skip_header = 0, 1, ",", 1
 
-    ws, power = [], []
     try:
-        with open(str(path), newline="", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            for _ in range(max(skip_header, 0)):
-                next(reader, None)
-            for row in reader:
-                if len(row) <= max(ws_col, power_col):
-                    continue
-                try:
-                    ws.append(float(row[ws_col]))
-                    power.append(float(row[power_col]))
-                except Exception:
-                    continue
+        curve = read_power_pairs(str(path), ws_col, power_col, delimiter, skip_header)
     except Exception:
         return None
-
-    if len(ws) < 2:
+    if curve is None:
         return None
+    ws, power = curve
     return np.asarray(ws, dtype=np.float32), np.asarray(power, dtype=np.float32)
 
 
@@ -188,7 +176,7 @@ def _estimate_p_rated_mw(model: Dict[str, Any]) -> float:
                 value = float(meta[key])
                 if value > 0:
                     return value
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     for key in ("p_rated_kw", "p_nom_kw", "rated_kw", "p_kw"):
@@ -197,7 +185,7 @@ def _estimate_p_rated_mw(model: Dict[str, Any]) -> float:
                 value = float(meta[key]) / 1000.0
                 if value > 0:
                     return value
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     try:
@@ -208,7 +196,7 @@ def _estimate_p_rated_mw(model: Dict[str, Any]) -> float:
                 peak_kw = float(np.nanmax(arr))
                 if peak_kw > 0:
                     return peak_kw / 1000.0
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     try:
@@ -221,7 +209,7 @@ def _estimate_p_rated_mw(model: Dict[str, Any]) -> float:
                     return peak / 1e6
                 if peak > 0:
                     return peak / 1000.0
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     try:
@@ -234,21 +222,30 @@ def _estimate_p_rated_mw(model: Dict[str, Any]) -> float:
                 return peak / 1e6
             if peak > 0:
                 return peak / 1000.0
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     try:
         wt_obj = model.get("wt")
         if wt_obj is not None:
             ws_test = np.linspace(4.0, 25.0, 50)
-            try:
-                power = wt_obj.power(ws_test, type_i=0)
-            except TypeError:
-                power = wt_obj.power(ws_test)
-            arr = np.asarray(power, dtype=float)
-            if arr.size > 0:
-                return float(np.nanmax(arr)) / 1e6
-    except Exception:
+            # PyWake's public turbine-type selector is ``type``; some older or
+            # wrapped builds expose ``type_i``. Passing the wrong one raises
+            # KeyError rather than TypeError, so each form is tried on its own
+            # instead of relying on a single TypeError fallback — otherwise the
+            # rated power silently comes back as zero.
+            power = None
+            for call_kwargs in ({"type": 0}, {"type_i": 0}, {}):
+                try:
+                    power = wt_obj.power(ws_test, **call_kwargs)
+                    break
+                except Exception:  # nosec B112
+                    continue
+            if power is not None:
+                arr = np.asarray(power, dtype=float)
+                if arr.size > 0:
+                    return float(np.nanmax(arr)) / 1e6
+    except Exception:  # nosec B110
         pass
 
     return 0.0
@@ -478,3 +475,4 @@ __all__ = [
     "compute_global_losses",
     "log_result_summary",
 ]
+

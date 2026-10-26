@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import os
+from html import escape
+from .number_format import format_number
 from typing import Callable, Dict, List, Optional
 
 from qgis.PyQt import QtCore, QtWidgets, QtGui
@@ -27,57 +29,12 @@ from .noise_core.noise_common import OCTAVE_BANDS, A_WEIGHTING, apply_a_weightin
 from .noise_core.noise_spectrum import load_spectrum_from_csv
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from .noise_results_dialog import NoiseResultsDialog
-from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish, current_language
+from .i18n import set_source, apply_i18n, install_runtime_i18n_patches, mark_data, mark_translated, translate_fragment, tr_text as _tr, is_spanish, current_language
 from .ui_core.responsive import configure_scroll_area, configure_table
 from .ui_core.layout_sources import import_turbine_layout_from_csv
+from .crs_utils import memory_layer_with_crs
 
 _GROUP_NAME = "AEP · Coordenadas por modelo"
-
-
-# Direct helper for long help popups. It bypasses the generic fragment cache so
-# clickable ℹ dialogs do not end up half Spanish / half French.
-def _tr_help(text):
-    if text is None:
-        return text
-    s = str(text)
-    try:
-        if current_language() in {"fr", "de"}:
-            lang = current_language()
-            if lang == "de":
-                try:
-                    from . import i18n_de as _vw_i18n_lang  # type: ignore
-                except Exception:
-                    import i18n_de as _vw_i18n_lang  # type: ignore
-                table = getattr(_vw_i18n_lang, "TO_DE", {}) or {}
-            else:
-                try:
-                    from . import i18n_fr as _vw_i18n_lang  # type: ignore
-                except Exception:
-                    import i18n_fr as _vw_i18n_lang  # type: ignore
-                table = getattr(_vw_i18n_lang, "TO_FR", {}) or {}
-            if s in table:
-                return table[s]
-            st = s.strip()
-            if st in table:
-                return table[st]
-            try:
-                import re as _re
-                norm_s = _re.sub(r"\s+", " ", st.replace("\u00a0", " ")).strip()
-                if not hasattr(_tr_help, "_norm_%s" % current_language()):
-                    setattr(_tr_help, "_norm_%s" % current_language(), {
-                        _re.sub(r"\s+", " ", str(k).replace("\u00a0", " ")).strip(): v
-                        for k, v in table.items()
-                    })
-                hit = getattr(_tr_help, "_norm_%s" % current_language(), {}).get(norm_s)
-                if hit is not None:
-                    return hit
-            except Exception:
-                pass
-            # For translated help dialogs, prefer a clean source fallback over mixed fragments.
-            return st or s
-    except Exception:
-        pass
-    return _tr(s)
 
 
 def _help_ok_label() -> str:
@@ -94,7 +51,7 @@ def _help_ok_label() -> str:
 def _set_help_ok_text(msg) -> None:
     try:
         msg.button(QtWidgets.QMessageBox.Ok).setText(_help_ok_label())
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -159,7 +116,8 @@ class SpectrumEditorDialog(QtWidgets.QDialog):
         self._group_lwa = float(group_lwa)
         lay = QtWidgets.QVBoxLayout(self)
 
-        title = QtWidgets.QLabel(f"<b>{_tr('Grupo fuente')}:</b> {group_name}")
+        title = QtWidgets.QLabel(_tr("<b>Grupo fuente:</b> {name}").format(name=escape(group_name)))
+        mark_translated(title)
         lay.addWidget(title)
         info = QtWidgets.QLabel(_tr(
             "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). "
@@ -201,6 +159,9 @@ class SpectrumEditorDialog(QtWidgets.QDialog):
         lay.addWidget(btn_template)
 
         btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, parent=self)
+        # The standard buttons follow the language of Qt, not the one of the plugin.
+        btns.button(QtWidgets.QDialogButtonBox.Ok).setText(_tr("Aceptar"))
+        btns.button(QtWidgets.QDialogButtonBox.Cancel).setText(_tr("Cancelar"))
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
@@ -296,13 +257,13 @@ class NoisePage(QtWidgets.QWidget):
                     "Hilfe · Akustische Quellen",
                     """
                     <b>Was hier ausgewählt wird</b><br><br>
-                    Diese Liste enthält die in VelantisWind erkannten oder importierten Turbinen-Layer. Jeder Layer steht normalerweise für ein Turbinenmodell oder ein vorbereitetes akustisches Layout.<br><br>
+                    Diese Liste enthält die in VelantisWind erkannten oder importierten Windturbinen-Layer. Jeder Layer steht normalerweise für ein Windturbinenmodell oder ein vorbereitetes akustisches Layout.<br><br>
                     <b>Verwendung</b><br>
                     • Markieren Sie einen oder mehrere Quellen-Layer, wenn der kumulierte Schall des gesamten Windparks berechnet werden soll.<br>
-                    • Wenn mehrere Turbinenmodelle vorhanden sind, sollten diese normalerweise alle aktiviert bleiben.<br>
+                    • Wenn mehrere Windturbinenmodelle vorhanden sind, sollten diese normalerweise alle aktiviert bleiben.<br>
                     • In der darunterliegenden Tabelle der Quellgruppen kann jedem Modell ein fester LwA-Wert oder eine akustische Kennlinie zugewiesen werden.<br><br>
                     <b>Hinweis</b><br>
-                    Wenn das Ergebnis zu niedrig erscheint, prüfen Sie, ob versehentlich ein Turbinen-Layer abgewählt wurde.
+                    Wenn das Ergebnis zu niedrig erscheint, prüfen Sie, ob versehentlich ein Windturbinen-Layer abgewählt wurde.
                     """,
                 ),
                 "receivers": (
@@ -330,13 +291,13 @@ class NoisePage(QtWidgets.QWidget):
                     """,
                 ),
                 "terrain": (
-                    "Hilfe · DGM/DSM, Abstand und Rezeptorhöhe",
+                    "Hilfe · DGM/DOM, Abstand und Rezeptorhöhe",
                     """
                     <b>Rezeptorhöhe</b><br><br>
                     Höhe, in der der Schall am Rezeptor bewertet wird. Für Wohnrezeptoren ist 4 m ein üblicher Wert, kann aber an das Kriterium der Studie angepasst werden.<br><br>
                     <b>Maximaler Radius</b><br>
-                    Begrenzt, welche Turbinen zu jedem Rezeptor beitragen. Ein zu kleiner Radius kann relevante Quellen ausschließen; ein sehr großer Radius erhöht die Rechenzeit.<br><br>
-                    <b>DGM/DSM</b><br>
+                    Begrenzt, welche Windturbinen zu jedem Rezeptor beitragen. Ein zu kleiner Radius kann relevante Quellen ausschließen; ein sehr großer Radius erhöht die Rechenzeit.<br><br>
+                    <b>DGM/DOM</b><br>
                     Wenn ein Geländeraster ausgewählt wird, kann die Berechnung 3D-Abstände verwenden und spätere topografische Korrekturen besser vorbereiten. Wenn kein Raster ausgewählt wird, wird ebenes Gelände angenommen.
                     """,
                 ),
@@ -344,14 +305,14 @@ class NoisePage(QtWidgets.QWidget):
                     "Hilfe · Dämpfung, Boden und Landnutzung",
                     """
                     <b>Lineare Dämpfung α</b><br><br>
-                    Im schnellen Rechenkern fasst α die atmosphärische Absorption über die Entfernung vereinfacht zusammen. Es ersetzt nicht die frequenzbandweise Berechnung des ISO-orientierten Rechenkerns.<br><br>
+                    Im schnellen Rechenkern fasst α die atmosphärische Absorption über die Entfernung vereinfacht zusammen. Es ersetzt nicht die frequenzbandweise Berechnung des ISO-Rechenkerns.<br><br>
                     <b>Bodenfaktor G</b><br>
                     G=0 steht für harten oder reflektierenden Boden; G=1 für porösen oder absorbierenden Boden. Zwischenwerte mischen beide Verhaltensweisen.<br><br>
                     <b>Landnutzung</b><br>
                     Wenn ein Landnutzungs-Layer gewählt wird, kann das Plugin für jeden Pfad einen effektiven G-Wert abschätzen. Andernfalls wird der manuell definierte globale G-Wert verwendet.<br><br>
                     <b>Erwartetes Layer-Format</b><br>
                     • Es muss ein <b>polygonaler Vektor-Layer</b> in QGIS sein, z. B. GeoPackage oder Shapefile. Raster, Linien und Punkte werden nicht als Landnutzung gelesen.<br>
-                    • Er sollte im <b>gleichen CRS wie das Projekt</b> liegen. Wenn das nicht der Fall ist, reprojizieren Sie ihn vor der Berechnung.<br>
+                    • Er sollte im <b>gleichen KBS wie das Projekt</b> liegen. Wenn das nicht der Fall ist, reprojizieren Sie ihn vor der Berechnung.<br>
                     • Jedes Polygon sollte einen Geländebereich mit einem G-Wert oder einer Landnutzungsklasse abdecken.<br><br>
                     <b>Empfohlene Felder</b><br>
                     Bevorzugt wird ein numerisches Feld mit Werten zwischen 0 und 1, z. B. <code>g_factor</code>, <code>g</code>, <code>ground_g</code>, <code>g_value</code> oder <code>G</code>.<br>
@@ -367,21 +328,21 @@ class NoisePage(QtWidgets.QWidget):
                     """
                     <b>Schneller Rechenkern</b><br><br>
                     Verwendet einen vereinfachten Quelle-Rezeptor-Ansatz mit globalem LwA, geometrischer Divergenz, linearer Absorption und Bodenkorrektur. Er ist schnell und für Screening geeignet.<br><br>
-                    <b>ISO-orientierter Rechenkern</b><br>
+                    <b>ISO-Rechenkern</b><br>
                     Arbeitet mit Oktavbändern und nähert die Struktur der ISO 9613-2 mit Adiv, Aatm und Agr an. Er benötigt mehr Informationen, z. B. atmosphärische Bedingungen und akustische Spektren, sofern verfügbar.<br><br>
                     <b>Empfehlung</b><br>
-                    Verwenden Sie den schnellen Rechenkern für Iterationen und den ISO-orientierten Rechenkern für Rezeptoren nahe am Grenzwert oder für belastbarere technische Vergleiche.
+                    Verwenden Sie den schnellen Rechenkern für Iterationen und den ISO-Rechenkern für Rezeptoren nahe am Grenzwert oder für belastbarere technische Vergleiche.
                     """,
                 ),
                 "atmos": (
                     "Hilfe · Atmosphärische Bedingungen",
                     """
                     <b>Wofür diese Werte verwendet werden</b><br><br>
-                    Im ISO-orientierten Rechenkern beeinflussen Temperatur, relative Luftfeuchte und Luftdruck die atmosphärische Absorption nach Frequenzband.<br><br>
+                    Im ISO-Rechenkern beeinflussen Temperatur, relative Luftfeuchte und Luftdruck die atmosphärische Absorption nach Frequenzband.<br><br>
                     <b>Wahl der Werte</b><br>
                     Verwenden Sie repräsentative Standortbedingungen oder das regulatorische Szenario, das untersucht werden soll. Wenn kein gemessener Druck vorliegt, ist 101,325 kPa ein Referenzwert auf Meereshöhe; in höheren Lagen ist er normalerweise geringer.<br><br>
                     <b>Wichtig</b><br>
-                    Diese Parameter ändern nicht die akustische Emission der Turbine; sie ändern, wie sich der Schall bis zu den Rezeptoren ausbreitet.
+                    Diese Parameter ändern nicht die akustische Emission der Windturbine; sie ändern, wie sich der Schall bis zu den Rezeptoren ausbreitet.
                     """,
                 ),
                 "acoustic": (
@@ -399,14 +360,14 @@ class NoisePage(QtWidgets.QWidget):
                     "Hilfe · Akustische Quellgruppen",
                     """
                     <b>Was jede Zeile darstellt</b><br><br>
-                    Jede Zeile fasst eine Turbinengruppe zusammen, die als akustische Quelle verwendet wird. Normalerweise stammt sie aus einem in VelantisWind erkannten oder importierten Turbinenmodell.<br><br>
+                    Jede Zeile fasst eine Windturbinengruppe zusammen, die als akustische Quelle verwendet wird. Normalerweise stammt sie aus einem in VelantisWind erkannten oder importierten Windturbinenmodell.<br><br>
                     <b>Wichtige Spalten</b><br>
                     • Quellgruppe und Windpark: Namen, damit Berichte und Exporte lesbar bleiben.<br>
                     • HH und D: Nabenhöhe und Durchmesser für die Ausbreitungsgeometrie.<br>
                     • Fester LwA: globale akustische Emission, wenn keine Kennlinie verwendet wird.<br>
                     • CSV-Kennlinie: importierte ws/LwA-Datei für diese Gruppe.<br><br>
                     <b>Hinweis</b><br>
-                    Wenn mehrere Turbinenmodelle vorhanden sind, prüfen Sie vor der Berechnung, ob jede Gruppe die richtige akustische Emission hat.
+                    Wenn mehrere Windturbinenmodelle vorhanden sind, prüfen Sie vor der Berechnung, ob jede Gruppe die richtige akustische Emission hat.
                     """,
                 ),
             }
@@ -442,11 +403,11 @@ class NoisePage(QtWidgets.QWidget):
                 "Ayuda · Mapa de ruido e isófonas",
                 """
                 <b>Mapa GIS de ruido</b><br><br>
-                Genera una malla raster con el nivel sonoro estimado alrededor del parque. Es útil para visualizar zonas de influencia acústica, pero aumenta el tiempo de cálculo.<br><br>
+                Genera una malla ráster con el nivel sonoro estimado alrededor del parque. Es útil para visualizar zonas de influencia acústica, pero aumenta el tiempo de cálculo.<br><br>
                 <b>Resolución</b><br>
                 Una resolución pequeña da más detalle pero tarda más. Para pruebas rápidas usa 100–200 m; para salidas más finas puedes bajar la celda si el área no es muy grande.<br><br>
                 <b>Isófonas</b><br>
-                Las isófonas son líneas de igual nivel sonoro, por ejemplo 35, 40, 45 y 50 dB(A). El plugin las genera a partir del raster de ruido.
+                Las isófonas son líneas de igual nivel sonoro, por ejemplo 35, 40, 45 y 50 dB(A). El plugin las genera a partir del ráster de ruido.
                 """,
             ),
             "terrain": (
@@ -457,20 +418,20 @@ class NoisePage(QtWidgets.QWidget):
                 <b>Radio máximo</b><br>
                 Limita qué turbinas contribuyen a cada receptor. Un radio demasiado pequeño puede excluir fuentes relevantes; uno muy grande aumenta el coste de cálculo.<br><br>
                 <b>MDT/DSM</b><br>
-                Si seleccionas un raster de terreno, el cálculo puede usar distancias 3D y preparar mejor futuras correcciones topográficas. Si no lo seleccionas, se asume terreno plano.
+                Si seleccionas un ráster de terreno, el cálculo puede usar distancias 3D y preparar mejor futuras correcciones topográficas. Si no lo seleccionas, se asume terreno plano.
                 """,
             ),
             "ground": (
-                "Ayuda · Atenuación, suelo y land-use",
+                "Ayuda · Atenuación, suelo y uso del suelo",
                 """
                 <b>Atenuación lineal α</b><br><br>
                 En el motor rápido, α resume de forma simplificada la absorción atmosférica por distancia. No sustituye al cálculo por bandas del motor ISO.<br><br>
                 <b>Factor de suelo G</b><br>
                 G=0 representa suelo duro o reflectante; G=1 representa suelo poroso/absorbente. Valores intermedios mezclan ambos comportamientos.<br><br>
                 <b>Uso del suelo</b><br>
-                Si eliges una capa de land-use, el plugin puede estimar un G efectivo por trayecto. Si no, usa el G global definido manualmente.<br><br>
+                Si eliges una capa de uso del suelo, el plugin puede estimar un G efectivo por trayecto. Si no, usa el G global definido manualmente.<br><br>
                 <b>Formato de capa esperado</b><br>
-                • Debe ser una <b>capa vectorial poligonal</b> cargada en QGIS, por ejemplo GeoPackage o Shapefile. No se leen rasters, líneas ni puntos como uso del suelo.<br>
+                • Debe ser una <b>capa vectorial poligonal</b> cargada en QGIS, por ejemplo GeoPackage o Shapefile. No se leen rásteres, líneas ni puntos como uso del suelo.<br>
                 • Debe estar en el <b>mismo CRS que el proyecto</b>. Si no coincide, reproyéctala antes de calcular.<br>
                 • Cada polígono debe cubrir una zona de terreno con un valor G o una clase de uso del suelo.<br><br>
                 <b>Campos recomendados</b><br>
@@ -486,20 +447,20 @@ class NoisePage(QtWidgets.QWidget):
                 "Ayuda · Motor de cálculo de ruido",
                 """
                 <b>Motor rápido</b><br><br>
-                Usa un enfoque fuente–receptor simplificado con LwA global, divergencia geométrica, absorción lineal y corrección de suelo. Es rápido y útil para screening.<br><br>
-                <b>Motor ISO-aligned</b><br>
+                Usa un enfoque fuente–receptor simplificado con LwA global, divergencia geométrica, absorción lineal y corrección de suelo. Es rápido y útil para cribado.<br><br>
+                <b>Motor ISO</b><br>
                 Trabaja por bandas de octava y aproxima la estructura de ISO 9613-2 con Adiv, Aatm y Agr. Requiere más información, como condiciones atmosféricas y espectros acústicos si están disponibles.<br><br>
                 <b>Recomendación</b><br>
-                Usa el motor rápido para iterar y el ISO-aligned para revisar receptores cercanos al límite o preparar una comparación técnica más seria.
+                Usa el motor rápido para iterar y el motor ISO para revisar receptores cercanos al límite o preparar una comparación técnica más seria.
                 """,
             ),
             "atmos": (
                 "Ayuda · Condiciones atmosféricas",
                 """
                 <b>Para qué sirven</b><br><br>
-                En el motor ISO-aligned, temperatura, humedad relativa y presión influyen en la absorción atmosférica por bandas de frecuencia.<br><br>
+                En el motor ISO, temperatura, humedad relativa y presión influyen en la absorción atmosférica por bandas de frecuencia.<br><br>
                 <b>Cómo elegir valores</b><br>
-                Usa condiciones representativas del emplazamiento o del escenario normativo que quieras estudiar. Si no tienes presión medida, 101.325 kPa es una referencia a nivel del mar; en zonas altas suele ser menor.<br><br>
+                Usa condiciones representativas del emplazamiento o del escenario normativo que quieras estudiar. Si no tienes presión medida, 101,325 kPa es una referencia a nivel del mar; en zonas altas suele ser menor.<br><br>
                 <b>Importante</b><br>
                 Estos parámetros no cambian la emisión acústica de la turbina; cambian cómo se propaga el sonido hasta los receptores.
                 """,
@@ -606,17 +567,17 @@ class NoisePage(QtWidgets.QWidget):
                 """
                 <b>Fast engine</b><br><br>
                 Uses a simplified source-receiver approach with global LwA, geometrical divergence, linear absorption and ground correction. It is fast and useful for screening.<br><br>
-                <b>ISO-aligned engine</b><br>
+                <b>ISO engine</b><br>
                 Works by octave bands and approximates the ISO 9613-2 structure with Adiv, Aatm and Agr. It needs more information, such as atmospheric conditions and acoustic spectra when available.<br><br>
                 <b>Recommendation</b><br>
-                Use the fast engine to iterate and the ISO-aligned engine to review receivers close to the limit or to prepare a more serious technical comparison.
+                Use the fast engine to iterate and the ISO engine to review receivers close to the limit or to prepare a more serious technical comparison.
                 """,
             ),
             "atmos": (
                 "Help · Atmospheric conditions",
                 """
                 <b>What they are used for</b><br><br>
-                In the ISO-aligned engine, temperature, relative humidity and pressure affect atmospheric absorption by frequency band.<br><br>
+                In the ISO engine, temperature, relative humidity and pressure affect atmospheric absorption by frequency band.<br><br>
                 <b>How to choose values</b><br>
                 Use representative site conditions or the regulatory scenario you want to study. If you do not have measured pressure, 101.325 kPa is a sea-level reference; at high altitude it is usually lower.<br><br>
                 <b>Important</b><br>
@@ -655,7 +616,7 @@ class NoisePage(QtWidgets.QWidget):
                      'importées dans VelantisWind. Chaque couche représente généralement un modèle d’éolienne ou un layout '
                      'acoustique préparé.<br><br><b>Comment l’utiliser</b><br>• Cochez une ou plusieurs couches source si vous '
                      'voulez calculer le bruit cumulé de tout le parc.<br>• Si vous avez plusieurs modèles d’éolienne, il est '
-                     'généralement préférable de les garder tous sélectionnés.<br>• Le tableau des groupes source ci-dessous '
+                     'généralement préférable de les garder tous sélectionnés.<br>• Le tableau des groupes de sources ci-dessous '
                      'permet d’assigner un LwA fixe ou une courbe acoustique à chaque groupe.<br><br><b>Conseil</b><br>Si le '
                      'résultat semble trop bas, vérifiez qu’aucune couche d’éoliennes n’a été laissée décochée par erreur.'),
          'receivers': ('Aide · Récepteurs et limites',
@@ -669,31 +630,31 @@ class NoisePage(QtWidgets.QWidget):
                        'générale. Jour/nuit utilise les limites configurées par couche lorsque vous travaillez avec plusieurs '
                        'catégories.'),
          'map': ('Aide · Carte de bruit et isophones',
-                 '<b>Carte GIS de bruit</b><br><br>Génère une grille raster avec le niveau sonore estimé autour du parc. Elle '
+                 '<b>Carte SIG de bruit</b><br><br>Génère une grille raster avec le niveau sonore estimé autour du parc. Elle '
                  'est utile pour visualiser les zones d’influence acoustique, mais augmente le temps de '
                  'calcul.<br><br><b>Résolution</b><br>Une résolution plus fine donne plus de détail mais prend plus de temps. '
                  'Pour des tests rapides, utilisez 100–200 m ; pour des sorties plus fines, vous pouvez réduire la taille de '
                  'cellule si la zone n’est pas trop grande.<br><br><b>Isophones</b><br>Les isophones sont des lignes de niveau '
                  'sonore égal, par exemple 35, 40, 45 et 50 dB(A). Le plugin les génère à partir du raster de bruit.'),
-         'terrain': ('Aide · MDT/DSM, distance et hauteur de récepteur',
+         'terrain': ('Aide · MNT/MNS, distance et hauteur de récepteur',
                      '<b>Hauteur du récepteur</b><br><br>Elle représente la hauteur à laquelle le bruit est évalué. Une valeur '
                      'courante pour des récepteurs résidentiels est 4 m, mais elle peut être ajustée au critère de '
                      'l’étude.<br><br><b>Rayon maximal</b><br>Il limite les éoliennes qui contribuent à chaque récepteur. Un '
                      'rayon trop petit peut exclure des sources importantes ; un rayon très grand augmente le coût de '
-                     'calcul.<br><br><b>MDT/DSM</b><br>Si vous sélectionnez un raster de terrain, le calcul peut utiliser des '
+                     'calcul.<br><br><b>MNT/MNS</b><br>Si vous sélectionnez un raster de terrain, le calcul peut utiliser des '
                      'distances 3D et préparer de meilleures corrections topographiques futures. S’il n’est pas sélectionné, '
                      'le terrain est supposé plat.'),
-         'ground': ('Aide · Atténuation, sol et land-use',
+         'ground': ('Aide · Atténuation, sol et occupation du sol',
                     '<b>Atténuation linéaire α</b><br><br>Dans le moteur rapide, α résume de façon simplifiée l’absorption '
                     'atmosphérique avec la distance. Il ne remplace pas le calcul par bandes du moteur ISO.<br><br><b>Facteur '
                     'de sol G</b><br>G=0 représente un sol dur ou réfléchissant ; G=1 représente un sol poreux/absorbant. Les '
-                    'valeurs intermédiaires mélangent les deux comportements.<br><br><b>Usage du sol</b><br>Si vous choisissez '
-                    'une couche de land-use, le plugin peut estimer un G effectif pour chaque trajet. Sinon, il utilise le G '
+                    'valeurs intermédiaires mélangent les deux comportements.<br><br><b>Occupation du sol</b><br>Si vous choisissez '
+                    'une couche d’occupation du sol, le plugin peut estimer un G effectif pour chaque trajet. Sinon, il utilise le G '
                     'global défini manuellement.<br><br><b>Format de couche attendu</b><br>• Il doit s’agir d’une <b>couche '
                     'vectorielle polygonale</b> chargée dans QGIS, par exemple GeoPackage ou Shapefile. Les rasters, lignes et '
-                    'points ne sont pas lus comme couches d’usage du sol.<br>• Elle doit utiliser le <b>même CRS que le '
+                    'points ne sont pas lus comme couches d’occupation du sol.<br>• Elle doit utiliser le <b>même SCR que le '
                     'projet</b>. Si ce n’est pas le cas, reprojetez-la avant le calcul.<br>• Chaque polygone doit couvrir une '
-                    'zone de terrain avec une valeur G ou une classe d’usage du sol.<br><br><b>Champs '
+                    'zone de terrain avec une valeur G ou une classe d’occupation du sol.<br><br><b>Champs '
                     'recommandés</b><br>Option préférée : un champ numérique avec des valeurs entre 0 et 1 nommé '
                     '<code>g_factor</code>, <code>g</code>, <code>ground_g</code>, <code>g_value</code> ou '
                     '<code>G</code>.<br>• <code>0</code> = sol dur/réfléchissant : urbain, asphalte, roche, industriel.<br>• '
@@ -704,30 +665,30 @@ class NoisePage(QtWidgets.QWidget):
                     'reconnue, le G global est utilisé comme secours.'),
          'engine': ('Aide · Moteur de calcul du bruit',
                     '<b>Moteur rapide</b><br><br>Utilise une approche source–récepteur simplifiée avec LwA global, divergence '
-                    'géométrique, absorption linéaire et correction de sol. Il est rapide et utile pour le '
-                    'screening.<br><br><b>Moteur aligné ISO</b><br>Travaille par bandes d’octave et approxime la structure ISO '
+                    'géométrique, absorption linéaire et correction de sol. Il est rapide et utile pour la '
+                    'présélection.<br><br><b>Moteur ISO</b><br>Travaille par bandes d’octave et approxime la structure ISO '
                     '9613-2 avec Adiv, Aatm et Agr. Il nécessite plus d’informations, comme les conditions atmosphériques et '
                     'les spectres acoustiques lorsqu’ils sont disponibles.<br><br><b>Recommandation</b><br>Utilisez le moteur '
-                    'rapide pour itérer et le moteur aligné ISO pour vérifier les récepteurs proches de la limite ou préparer '
+                    'rapide pour itérer et le moteur ISO pour vérifier les récepteurs proches de la limite ou préparer '
                     'une comparaison technique plus sérieuse.'),
          'atmos': ('Aide · Conditions atmosphériques',
-                   '<b>À quoi elles servent</b><br><br>Dans le moteur aligné ISO, la température, l’humidité relative et la '
+                   '<b>À quoi elles servent</b><br><br>Dans le moteur ISO, la température, l’humidité relative et la '
                    'pression influencent l’absorption atmosphérique par bande de fréquence.<br><br><b>Comment choisir les '
                    'valeurs</b><br>Utilisez des conditions représentatives du site ou le scénario réglementaire que vous '
-                   'voulez étudier. Si vous n’avez pas de pression mesurée, 101.325 kPa est une référence au niveau de la mer '
+                   'voulez étudier. Si vous n’avez pas de pression mesurée, 101,325 kPa est une référence au niveau de la mer '
                    '; en altitude elle est généralement plus faible.<br><br><b>Important</b><br>Ces paramètres ne changent pas '
                    'l’émission acoustique de l’éolienne ; ils changent la façon dont le son se propage jusqu’aux récepteurs.'),
          'acoustic': ('Aide · Émission acoustique LwA et courbes',
-                      '<b>LwA fixe</b><br><br>Attribue un seul niveau de puissance acoustique à chaque groupe source. C’est '
+                      '<b>LwA fixe</b><br><br>Attribue un seul niveau de puissance acoustique à chaque groupe de sources. C’est '
                       'simple et utile lorsque vous n’avez qu’une valeur garantie ou que vous voulez créer un cas '
                       'conservateur.<br><br><b>Courbe acoustique LwA(ws)</b><br>Permet d’importer une courbe selon la vitesse '
-                      'du vent. Le plugin peut évaluer l’émission à une vitesse précise ou prendre le pire cas de la '
+                      'du vent. Le plugin peut évaluer l’émission à une vitesse précise ou prendre le cas le plus défavorable de la '
                       'courbe.<br><br><b>CSV attendu</b><br>Utilisez des colonnes de vitesse du vent et de LwA. Le format '
                       'habituel est une table de type <code>ws,LwA</code> ou des noms équivalents.'),
-         'groups': ('Aide · Groupes source acoustiques',
+         'groups': ('Aide · Groupes de sources acoustiques',
                     '<b>Ce que représente chaque ligne</b><br><br>Chaque ligne résume un groupe d’éoliennes utilisé comme '
                     'source acoustique. Il provient généralement d’un modèle d’éolienne détecté ou importé dans '
-                    'VelantisWind.<br><br><b>Colonnes clés</b><br>• Groupe source et parc : noms utilisés pour rendre les '
+                    'VelantisWind.<br><br><b>Colonnes clés</b><br>• Groupe de sources et parc : noms utilisés pour rendre les '
                     'rapports et exportations lisibles.<br>• HH et D : hauteur de moyeu et diamètre utilisés pour la géométrie '
                     'de propagation.<br>• LwA fixe : émission acoustique globale si vous n’utilisez pas de courbe.<br>• CSV de '
                     'courbe : fichier ws/LwA importé pour ce groupe.<br><br><b>Conseil</b><br>Si vous avez plusieurs modèles '
@@ -740,17 +701,12 @@ class NoisePage(QtWidgets.QWidget):
 
     def _show_noise_help(self, key: str) -> None:
         title, body = self._noise_help_text(key)
+        # The help texts are already written in the active language: they do not go through the translator.
         msg = QtWidgets.QMessageBox(self)
-        if current_language() in ("fr", "de"):
-            msg.setWindowTitle(title)
-        else:
-            msg.setWindowTitle(_tr_help(title))
+        msg.setWindowTitle(title)
         msg.setIcon(QtWidgets.QMessageBox.Information)
         msg.setTextFormat(QtCore.Qt.RichText)
-        if current_language() in ("fr", "de"):
-            msg.setText(body.strip())
-        else:
-            msg.setText(_tr_help(body.strip()))
+        msg.setText(body.strip())
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
         _set_help_ok_text(msg)
         msg.exec_()
@@ -786,14 +742,12 @@ class NoisePage(QtWidgets.QWidget):
 
         hero_text = QtWidgets.QVBoxLayout()
         hero_text.setSpacing(6)
-        title = QtWidgets.QLabel("Noise")
+        title = QtWidgets.QLabel("Ruido")
         title.setObjectName("noiseTitle")
         hero_text.addWidget(title)
 
         subtitle = QtWidgets.QLabel(
-            "Módulo de ruido: conectado al layout y modelos WT del proyecto, con cálculo sobre receptores, "
-            "tabla de emisión por modelo, motores fast e ISO-aligned, mapas raster y salidas GIS. "
-            "La física actual es un flujo de screening experimental con limitaciones documentadas."
+            'Módulo de ruido: conectado a la disposición y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores rápido e ISO, mapas ráster y salidas GIS. La física actual es un flujo de cribado experimental con limitaciones documentadas.'
         )
         subtitle.setWordWrap(True)
         subtitle.setObjectName("noiseSubtitle")
@@ -823,9 +777,11 @@ class NoisePage(QtWidgets.QWidget):
         self.lbl_receptor_info = QtWidgets.QLabel("-")
         for w in [self.lbl_project, self.lbl_crs, self.lbl_layout, self.lbl_models, self.lbl_resource, self.lbl_ti, self.lbl_receptor_info]:
             w.setWordWrap(True)
+            # Set already translated around project data (names, paths); refresh_from_project sets them again.
+            mark_translated(w)
         form_ctx.addRow("Proyecto:", self.lbl_project)
         form_ctx.addRow("CRS:", self.lbl_crs)
-        form_ctx.addRow("Layout activo:", self.lbl_layout)
+        form_ctx.addRow('Disposición activa:', self.lbl_layout)
         form_ctx.addRow("Modelos WT detectados:", self.lbl_models)
         form_ctx.addRow("Recurso:", self.lbl_resource)
         form_ctx.addRow("TI WRG:", self.lbl_ti)
@@ -835,7 +791,7 @@ class NoisePage(QtWidgets.QWidget):
         grp_inputs = QtWidgets.QGroupBox("Entradas del cálculo")
         grid_inputs = QtWidgets.QGridLayout(grp_inputs)
         row = 0
-        grid_inputs.addWidget(self._label_with_help("Fuentes / layout acústico:", "Explain which turbine layers are used as acoustic sources", "sources"), row, 0)
+        grid_inputs.addWidget(self._label_with_help('Fuentes / disposición acústica:', "Explica qué capas de turbinas se usan como fuentes acústicas", "sources"), row, 0)
         self.lst_sources = QtWidgets.QListWidget()
         self.lst_sources.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.lst_sources.setMinimumHeight(72)
@@ -849,7 +805,7 @@ class NoisePage(QtWidgets.QWidget):
         src_btns = QtWidgets.QHBoxLayout()
         self.btn_sources_all = QtWidgets.QPushButton("Marcar todas")
         self.btn_sources_none = QtWidgets.QPushButton("Desmarcar todas")
-        self.btn_import_layout = QtWidgets.QPushButton("Importar layout CSV…")
+        self.btn_import_layout = QtWidgets.QPushButton('Importar disposición CSV…')
         self.btn_sources_all.clicked.connect(lambda: self._set_all_sources_checked(True))
         self.btn_sources_none.clicked.connect(lambda: self._set_all_sources_checked(False))
         self.btn_import_layout.clicked.connect(self._import_turbine_layout_for_noise)
@@ -860,7 +816,7 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addLayout(src_btns, row, 1, 1, 3)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("Capa de receptores:", "Explain receiver layers, categories and day/night limits", "receivers"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Capa de receptores:", "Explica las capas de receptores, las categorías y los límites de día y de noche", "receivers"), row, 0)
         self.cb_receivers = QtWidgets.QComboBox()
         self.cb_receivers.currentIndexChanged.connect(self._on_receiver_changed)
         grid_inputs.addWidget(self.cb_receivers, row, 1, 1, 3)
@@ -880,7 +836,7 @@ class NoisePage(QtWidgets.QWidget):
             self.cb_limit_scenario.setCurrentIndex(idx_scn)
         self.cb_limit_scenario.currentIndexChanged.connect(lambda *_: self._qsettings.setValue("noise/receiver_limit_scenario", str(self.cb_limit_scenario.currentData(QtCore.Qt.UserRole) or 'day')))
         self.cb_limit_scenario.setToolTip("Selecciona qué campo de límite se aplica a cada receptor. No cambia la física del ruido, solo el criterio de evaluación.")
-        grid_inputs.addWidget(self._label_with_help("Criterio de límite:", "Explain manual, day and night receiver limits", "receivers"), row, 2)
+        grid_inputs.addWidget(self._label_with_help("Criterio de límite:", "Explica los límites de receptor manual, diurno y nocturno", "receivers"), row, 2)
         grid_inputs.addWidget(self.cb_limit_scenario, row, 3)
         row += 1
 
@@ -907,7 +863,7 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addLayout(btn_rg_row, row, 0, 1, 4)
         row += 1
 
-        self.chk_use_layout = QtWidgets.QCheckBox("Usar layouts de turbinas seleccionados/detectados")
+        self.chk_use_layout = QtWidgets.QCheckBox('Usar disposiciones de turbinas seleccionadas/detectadas')
         self.chk_use_layout.setChecked(True)
         self.chk_use_layout.setEnabled(False)
         grid_inputs.addWidget(self.chk_use_layout, row, 0, 1, 2)
@@ -918,7 +874,7 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addWidget(self.chk_generate_grid, row, 2, 1, 2)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("Altura de receptor [m]:", "Explain receiver height, maximum radius and DEM/DSM use", "terrain"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Altura de receptor [m]:", "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM", "terrain"), row, 0)
         self.sp_receiver_h = QtWidgets.QDoubleSpinBox()
         self.sp_receiver_h.setDecimals(1)
         self.sp_receiver_h.setRange(0.0, 50.0)
@@ -927,7 +883,7 @@ class NoisePage(QtWidgets.QWidget):
         self.sp_receiver_h.valueChanged.connect(lambda v: self._qsettings.setValue("noise/receiver_height_m", float(v)))
         grid_inputs.addWidget(self.sp_receiver_h, row, 1)
 
-        grid_inputs.addWidget(self._label_with_help("Radio máximo [m]:", "Explain receiver height, maximum radius and DEM/DSM use", "terrain"), row, 2)
+        grid_inputs.addWidget(self._label_with_help("Radio máximo [m]:", "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM", "terrain"), row, 2)
         self.sp_max_radius = QtWidgets.QDoubleSpinBox()
         self.sp_max_radius.setDecimals(0)
         self.sp_max_radius.setRange(100.0, 50000.0)
@@ -938,12 +894,12 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addWidget(self.sp_max_radius, row, 3)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("MDT / DSM (opcional):", "Explain receiver height, maximum radius and DEM/DSM use", "terrain"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("MDT / DSM (opcional):", "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM", "terrain"), row, 0)
         self.cb_dem = QtWidgets.QComboBox()
         grid_inputs.addWidget(self.cb_dem, row, 1, 1, 3)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("Resolución del mapa [m]:", "Explain the GIS noise map, raster resolution and isophones", "map"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Resolución del mapa [m]:", "Explica el mapa GIS de ruido, la resolución del ráster y las isófonas", "map"), row, 0)
         self.sp_grid_res = QtWidgets.QSpinBox()
         self.sp_grid_res.setRange(10, 5000)
         self.sp_grid_res.setSingleStep(10)
@@ -958,12 +914,12 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addWidget(self.chk_iso, row, 2, 1, 2)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("Niveles isófonas [dB(A)]:", "Explain the GIS noise map, raster resolution and isophones", "map"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Niveles isófonas [dB(A)]:", "Explica el mapa GIS de ruido, la resolución del ráster y las isófonas", "map"), row, 0)
         self.le_iso_levels = QtWidgets.QLineEdit(str(self._qsettings.value("noise/iso_levels", "35,40,45,50", type=str)))
         self.le_iso_levels.editingFinished.connect(lambda: self._qsettings.setValue("noise/iso_levels", self.le_iso_levels.text().strip()))
         grid_inputs.addWidget(self.le_iso_levels, row, 1)
 
-        grid_inputs.addWidget(self._label_with_help("Límite receptor [dB(A)]:", "Explain receiver layers, categories and day/night limits", "receivers"), row, 2)
+        grid_inputs.addWidget(self._label_with_help("Límite receptor [dB(A)]:", "Explica las capas de receptores, las categorías y los límites de día y de noche", "receivers"), row, 2)
         self.sp_limit = QtWidgets.QDoubleSpinBox()
         self.sp_limit.setDecimals(1)
         self.sp_limit.setRange(0.0, 120.0)
@@ -973,7 +929,7 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addWidget(self.sp_limit, row, 3)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("Atenuación lineal α [dB/m]:", "Explain simplified atmospheric attenuation, ground factor G and land-use layers", "ground"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Atenuación lineal α [dB/m]:", "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo", "ground"), row, 0)
         self.sp_alpha = QtWidgets.QDoubleSpinBox()
         self.sp_alpha.setDecimals(4)
         self.sp_alpha.setRange(0.0, 0.0500)
@@ -982,7 +938,7 @@ class NoisePage(QtWidgets.QWidget):
         self.sp_alpha.valueChanged.connect(lambda v: self._qsettings.setValue("noise/alpha_db_per_m", float(v)))
         grid_inputs.addWidget(self.sp_alpha, row, 1)
 
-        grid_inputs.addWidget(self._label_with_help("Factor de suelo G:", "Explain simplified atmospheric attenuation, ground factor G and land-use layers", "ground"), row, 2)
+        grid_inputs.addWidget(self._label_with_help("Factor de suelo G:", "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo", "ground"), row, 2)
         self.sp_ground_g = QtWidgets.QDoubleSpinBox()
         self.sp_ground_g.setDecimals(2)
         self.sp_ground_g.setRange(0.0, 1.0)
@@ -993,7 +949,7 @@ class NoisePage(QtWidgets.QWidget):
         grid_inputs.addWidget(self.sp_ground_g, row, 3)
         row += 1
 
-        grid_inputs.addWidget(self._label_with_help("Modo suelo:", "Explain simplified atmospheric attenuation, ground factor G and land-use layers", "ground"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Modo suelo:", "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo", "ground"), row, 0)
         self.cb_ground_mode = QtWidgets.QComboBox()
         self.cb_ground_mode.addItem("Global (G manual)", "global")
         self.cb_ground_mode.addItem("Desde capa de uso del suelo", "landuse")
@@ -1003,7 +959,7 @@ class NoisePage(QtWidgets.QWidget):
         self.cb_ground_mode.currentIndexChanged.connect(lambda *_: self._on_ground_mode_changed())
         grid_inputs.addWidget(self.cb_ground_mode, row, 1)
 
-        grid_inputs.addWidget(self._label_with_help("Capa uso del suelo (opcional):", "Explain simplified atmospheric attenuation, ground factor G and land-use layers", "ground"), row, 2)
+        grid_inputs.addWidget(self._label_with_help("Capa uso del suelo (opcional):", "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo", "ground"), row, 2)
         self.cb_landuse = QtWidgets.QComboBox()
         grid_inputs.addWidget(self.cb_landuse, row, 3)
         row += 1
@@ -1014,10 +970,10 @@ class NoisePage(QtWidgets.QWidget):
         row += 1
 
         # Acoustic engine selector
-        grid_inputs.addWidget(self._label_with_help("Motor de cálculo:", "Explain the fast and ISO-aligned noise engines", "engine"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Motor de cálculo:", "Explica los motores de ruido rápido e ISO", "engine"), row, 0)
         self.cb_engine = QtWidgets.QComboBox()
         self.cb_engine.addItem("⚡ Rápido - LwA global simplificado", "fast")
-        self.cb_engine.addItem("📊 ISO-aligned - ISO 9613-2 por bandas", "iso")
+        self.cb_engine.addItem("📊 ISO - ISO 9613-2 por bandas", "iso")
         engine_saved = self._qsettings.value("noise/calculation_engine", "fast", type=str)
         idx_engine = self.cb_engine.findData(engine_saved, QtCore.Qt.UserRole)
         if idx_engine >= 0:
@@ -1031,13 +987,13 @@ class NoisePage(QtWidgets.QWidget):
         row += 1
 
         # Contenedor parámetros atmosféricos (solo Motor ISO)
-        self.grp_atmos = QtWidgets.QGroupBox("⛅ Condiciones Atmosféricas (Motor ISO)")
+        self.grp_atmos = QtWidgets.QGroupBox("⛅ Condiciones atmosféricas (motor ISO)")
         form_atmos = QtWidgets.QFormLayout(self.grp_atmos)
         atmos_help_wrap = QtWidgets.QWidget(self.grp_atmos)
         atmos_help = QtWidgets.QHBoxLayout(atmos_help_wrap)
         atmos_help.setContentsMargins(0, 0, 0, 0)
-        atmos_help.addWidget(QtWidgets.QLabel(_tr("Temperature, humidity and pressure used by the ISO-aligned engine.")))
-        atmos_help.addWidget(self._make_help_button("Explain how atmospheric conditions affect ISO-band absorption", "atmos"), 0)
+        atmos_help.addWidget(QtWidgets.QLabel(_tr("Temperatura, humedad y presión que usa el motor ISO.")))
+        atmos_help.addWidget(self._make_help_button("Explica cómo influyen las condiciones atmosféricas en la absorción por bandas del motor ISO", "atmos"), 0)
         atmos_help.addStretch(1)
         form_atmos.addRow("", atmos_help_wrap)
 
@@ -1063,13 +1019,13 @@ class NoisePage(QtWidgets.QWidget):
         self.sp_pressure.setValue(float(self._qsettings.value("noise/pressure_kpa", 101.325, type=float)))
         self.sp_pressure.setSuffix(" kPa")
         self.sp_pressure.setToolTip(
-            "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. "
+            "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101,325 kPa. "
             "Usa un dato medido o ajustado por altitud si está disponible."
         )
         self.sp_pressure.valueChanged.connect(lambda v: self._qsettings.setValue("noise/pressure_kpa", float(v)))
         form_atmos.addRow("Presión atmosférica:", self.sp_pressure)
 
-        help_atmos = QtWidgets.QLabel("💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.")
+        help_atmos = QtWidgets.QLabel("💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101,325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.")
         help_atmos.setWordWrap(True)
         help_atmos.setObjectName("noiseMinor")
         form_atmos.addRow("", help_atmos)
@@ -1078,10 +1034,10 @@ class NoisePage(QtWidgets.QWidget):
         row += 1
         # End acoustic engine selector
 
-        grid_inputs.addWidget(self._label_with_help("Escenario acústico:", "Explain fixed LwA, acoustic curves and worst-case mode", "acoustic"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Escenario acústico:", "Explica el LwA fijo, las curvas acústicas y el modo de peor caso", "acoustic"), row, 0)
         self.cb_acoustic_mode = QtWidgets.QComboBox()
         self.cb_acoustic_mode.addItem("LwA fijo por grupo fuente", "fixed")
-        self.cb_acoustic_mode.addItem("Acoustic curve LwA(ws)", "curve")
+        self.cb_acoustic_mode.addItem("Curva acústica LwA(ws)", "curve")
         idx_mode = self.cb_acoustic_mode.findData(self._qsettings.value("noise/acoustic_mode", "fixed", type=str), QtCore.Qt.UserRole)
         if idx_mode >= 0:
             self.cb_acoustic_mode.setCurrentIndex(idx_mode)
@@ -1089,11 +1045,11 @@ class NoisePage(QtWidgets.QWidget):
         self.cb_acoustic_mode.currentTextChanged.connect(self._on_acoustic_scenario_changed)
         try:
             self.cb_acoustic_mode.activated.connect(self._on_acoustic_scenario_changed)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         grid_inputs.addWidget(self.cb_acoustic_mode, row, 1)
 
-        grid_inputs.addWidget(self._label_with_help("Velocidad eval. [m/s]:", "Explain fixed LwA, acoustic curves and worst-case mode", "acoustic"), row, 2)
+        grid_inputs.addWidget(self._label_with_help("Velocidad eval. [m/s]:", "Explica el LwA fijo, las curvas acústicas y el modo de peor caso", "acoustic"), row, 2)
         self.sp_eval_ws = QtWidgets.QDoubleSpinBox()
         self.sp_eval_ws.setDecimals(1)
         self.sp_eval_ws.setRange(0.0, 50.0)
@@ -1117,8 +1073,8 @@ class NoisePage(QtWidgets.QWidget):
         em_lay = QtWidgets.QVBoxLayout(grp_em)
         em_help = QtWidgets.QHBoxLayout()
         em_help.setContentsMargins(0, 0, 0, 0)
-        em_help.addWidget(QtWidgets.QLabel(_tr("Review the acoustic emission assigned to each source group before running the calculation.")))
-        em_help.addWidget(self._make_help_button("Explain the acoustic source-group table", "groups"), 0)
+        em_help.addWidget(QtWidgets.QLabel(_tr("Revisa la emisión acústica asignada a cada grupo fuente antes de lanzar el cálculo.")))
+        em_help.addWidget(self._make_help_button("Explica la tabla de grupos fuente acústicos", "groups"), 0)
         em_help.addStretch(1)
         em_lay.addLayout(em_help)
         self.tbl_models = QtWidgets.QTableWidget(0, 9)
@@ -1132,13 +1088,13 @@ class NoisePage(QtWidgets.QWidget):
             hh.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
             hh.setSectionResizeMode(7, QtWidgets.QHeaderView.Stretch)
             hh.setSectionResizeMode(8, QtWidgets.QHeaderView.Stretch)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.tbl_models.verticalHeader().setVisible(False)
         self.tbl_models.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tbl_models.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tbl_models.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
-        self.tbl_models.setToolTip(_tr("Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table."))
+        self.tbl_models.setToolTip(_tr("Cada fila representa un grupo fuente acústico. Puedes renombrar el grupo o el parque y editar su LwA fijo directamente en la tabla."))
         em_lay.addWidget(self.tbl_models)
 
         curve_btns = QtWidgets.QHBoxLayout()
@@ -1154,7 +1110,7 @@ class NoisePage(QtWidgets.QWidget):
         spec_btns = QtWidgets.QHBoxLayout()
         self.btn_spectrum_load = QtWidgets.QPushButton("Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…")
         self.btn_spectrum_load.clicked.connect(self._import_spectrum_for_selected_model)
-        self.btn_spectrum_load.setToolTip(_tr("CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.") + " " + _tr("También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A."))
+        set_source(self.btn_spectrum_load, "toolTip", "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador. También acepta LwA_dB / dBA / dB(A) por banda; se convierte internamente para evitar doble ponderación A.")
         self.btn_spectrum_edit = QtWidgets.QPushButton("Editar espectro del grupo seleccionado…")
         self.btn_spectrum_edit.clicked.connect(self._edit_spectrum_for_selected_model)
         self.btn_spectrum_clear = QtWidgets.QPushButton("Limpiar espectro del grupo seleccionado")
@@ -1169,7 +1125,7 @@ class NoisePage(QtWidgets.QWidget):
         self.chk_spectrum_normalize.setChecked(bool(self._qsettings.value("noise/spectrum_normalize", False, type=bool)))
         self.chk_spectrum_normalize.toggled.connect(self._on_spectrum_normalize_toggled)
         self.chk_spectrum_normalize.setToolTip(_tr(
-            "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). "
+            "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros programas). "
             "Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma."
         ))
         em_lay.addWidget(self.chk_spectrum_normalize)
@@ -1183,8 +1139,7 @@ class NoisePage(QtWidgets.QWidget):
         em_lay.addWidget(spec_help)
 
         help_lbl = QtWidgets.QLabel(
-            "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. "
-            "Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso."
+            'Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el complemento evaluará la emisión a una velocidad concreta o en peor caso.'
         )
         help_lbl.setWordWrap(True)
         help_lbl.setObjectName("noiseMinor")
@@ -1195,6 +1150,9 @@ class NoisePage(QtWidgets.QWidget):
         act_lay = QtWidgets.QVBoxLayout(grp_actions)
         self.txt_status = QtWidgets.QTextEdit()
         self.txt_status.setReadOnly(True)
+        # Configuration and result summaries are already translated, with data. retranslate() recomposes
+        # the last result; refreshing the project explicitly replaces it with the configuration.
+        mark_translated(self.txt_status)
         self.txt_status.setMinimumHeight(120)
         self.txt_status.setMaximumHeight(220)
         act_lay.addWidget(self.txt_status)
@@ -1253,7 +1211,11 @@ class NoisePage(QtWidgets.QWidget):
             engine = "fast"
         
         self._qsettings.setValue("noise/calculation_engine", engine)
-        
+        self._refresh_engine_text()
+
+    def _refresh_engine_text(self):
+        """Compose the selected engine's UI without persisting a selection."""
+        engine = self.cb_engine.currentData(QtCore.Qt.UserRole) or "fast"
         # Mostrar/ocultar parámetros atmosféricos
         is_iso = (engine == "iso")
         self.grp_atmos.setVisible(is_iso)
@@ -1261,27 +1223,27 @@ class NoisePage(QtWidgets.QWidget):
         # Actualizar label de método
         if is_iso:
             self.lbl_method.setText(
-                "Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))"
+                _tr("Método ISO: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))")
             )
             # Deshabilitar α porque se calcula automático
             try:
                 self.sp_alpha.setEnabled(False)
-                self.sp_alpha.setToolTip("α se calcula automáticamente por banda en Motor ISO")
-            except:
+                self.sp_alpha.setToolTip(_tr("α se calcula automáticamente por banda en el motor ISO"))
+            except:  # nosec B110
                 pass
         else:
             self.lbl_method.setText(
-                "Método fuente-receptor eólico (Adiv + Aatm + Aground)"
+                _tr("Método fuente-receptor eólico (Adiv + Aatm + Aground)")
             )
             try:
                 self.sp_alpha.setEnabled(True)
                 self.sp_alpha.setToolTip("")
-            except:
+            except:  # nosec B110
                 pass
         
         try:
             self._check_configuration()
-        except:
+        except:  # nosec B110
             pass
 
     def _import_turbine_layout_for_noise(self):
@@ -1289,7 +1251,7 @@ class NoisePage(QtWidgets.QWidget):
         try:
             layer = import_turbine_layout_from_csv(self, module="noise")
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Noise · Import layout", f"Could not import the turbine layout:\n{e}")
+            QtWidgets.QMessageBox.warning(self, _tr("Ruido · Importar layout"), _tr("No se pudo importar el layout de turbinas:") + f"\n{e}")
             return
         if layer is None:
             return
@@ -1299,16 +1261,50 @@ class NoisePage(QtWidgets.QWidget):
                 settings = self._load_noise_model_settings()
                 settings[str(layer.id())] = float(default_lwa)
                 self._qsettings.setValue("noise/source_group_lwa_json", json.dumps(settings, ensure_ascii=False))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.refresh_from_project()
         QtWidgets.QMessageBox.information(
             self,
-            "Noise · Import layout",
-            f"Imported '{layer.name()}' with {int(layer.featureCount())} turbine(s)."
+            _tr("Ruido · Importar layout"),
+            _tr("Se ha importado «{layer}» con {n} turbina(s).").format(layer=layer.name(), n=int(layer.featureCount()))
         )
 
+    def retranslate(self):
+        """Recompose the live page, including its last result, without rebuilding editable tables."""
+        apply_i18n(self)
+        prj = QgsProject.instance()
+        self._populate_context(prj)
+        blocker = QtCore.QSignalBlocker(self.lst_sources)
+        for i in range(self.lst_sources.count()):
+            item = self.lst_sources.item(i)
+            info = next((r for r in self._model_rows if r.get("layer_id") == item.data(QtCore.Qt.UserRole)), {})
+            item.setText(str(info.get("name") or "Modelo") + " · " +
+                         _tr("{n} turbina(s)").format(n=int(info.get("n_turbines") or 0)))
+        del blocker
+        blocker = QtCore.QSignalBlocker(self.cb_receivers)
+        for i in range(self.cb_receivers.count()):
+            layer = prj.mapLayer(self.cb_receivers.itemData(i))
+            if isinstance(layer, QgsVectorLayer):
+                self.cb_receivers.setItemText(i, f"{layer.name()} [{self._geom_label(QgsWkbTypes.geometryType(layer.wkbType()))}]")
+        del blocker
+        notes = {r["layer_id"]: r["notes"] for r in self._detect_models(prj)}
+        blocker = QtCore.QSignalBlocker(self.tbl_models)
+        for row, info in enumerate(self._model_rows):
+            info["notes"] = notes.get(info.get("layer_id"), info.get("notes"))
+            self.tbl_models.item(row, 8).setText(self._model_note(info, self._model_lwa_value(row)))
+            self.tbl_models.item(row, 6).setToolTip(_tr("Edita el LwA fijo de este grupo fuente acústico."))
+        del blocker
+        self._refresh_engine_text()
+        self._refresh_receiver_text()
+        saved = getattr(self, "_result_status", None)
+        if saved is not None:
+            from .noise_core.result_status import append_result_status
+            res, warnings, pending = saved
+            append_result_status(self, res, warnings, pending and res.get("grid_layer") is None)
+
     def refresh_from_project(self):
+        self._result_status = None
         prj = QgsProject.instance()
         self._model_rows = self._detect_models(prj)
         self._populate_context(prj)
@@ -1322,17 +1318,17 @@ class NoisePage(QtWidgets.QWidget):
         self._check_configuration()
 
     def _populate_context(self, prj: QgsProject):
-        base_name = (prj.baseName() or "Unnamed project").strip() or "Unnamed project"
+        base_name = (prj.baseName() or "").strip() or _tr("Proyecto sin nombre")
         self.lbl_project.setText(base_name)
-        self.lbl_crs.setText(prj.crs().authid() or "CRS unavailable")
+        self.lbl_crs.setText(prj.crs().authid() or _tr("CRS no disponible"))
 
         n_models = len(self._model_rows)
         n_turbs = sum(int(r.get("n_turbines", 0)) for r in self._model_rows)
         if n_models <= 0:
-            self.lbl_layout.setText("No layout detected in the coordinate-by-model group")
+            self.lbl_layout.setText(_tr("No se ha detectado ninguna disposición en el grupo de coordenadas por modelo"))
             self.lbl_models.setText("0")
         else:
-            self.lbl_layout.setText(f"{n_models} WT model(s) · {n_turbs} turbine(s)")
+            self.lbl_layout.setText(_tr("{models} modelo(s) WT · {turbines} turbina(s)").format(models=n_models, turbines=n_turbs))
             names = ", ".join(str(r.get("name", "-")) for r in self._model_rows[:5])
             if n_models > 5:
                 names += " …"
@@ -1341,18 +1337,18 @@ class NoisePage(QtWidgets.QWidget):
         wrg = (self._qsettings.value("last_wrg_path", "", type=str) or "").strip()
         wasp = (self._qsettings.value("last_wasp_dir", "", type=str) or "").strip()
         if wrg:
-            self.lbl_resource.setText(f"WRG: {os.path.basename(wrg)}")
+            self.lbl_resource.setText(f"{_tr('WRG:')} {os.path.basename(wrg)}")
         elif wasp:
-            self.lbl_resource.setText(f"WAsP grids: {wasp}")
+            self.lbl_resource.setText(_tr("Mallas WAsP: {path}").format(path=wasp))
         else:
-            self.lbl_resource.setText("No resource selected yet")
+            self.lbl_resource.setText(_tr("Todavía no hay ningún recurso seleccionado"))
 
         ti = (self._qsettings.value("last_wrg_ti_path", "", type=str) or "").strip()
         if ti:
             parts = [os.path.basename(p.strip()) for p in ti.split(";") if p.strip()]
             self.lbl_ti.setText(", ".join(parts[:3]) + (" …" if len(parts) > 3 else ""))
         else:
-            self.lbl_ti.setText("Not selected")
+            self.lbl_ti.setText(_tr("No seleccionado"))
 
     def _populate_sources_combo(self, prj: QgsProject):
         raw = self._qsettings.value("noise/source_layer_ids_json", "", type=str) or ""
@@ -1375,7 +1371,7 @@ class NoisePage(QtWidgets.QWidget):
             all_layer_ids.append(lid)
             name = str(info.get("name") or "Modelo")
             n = int(info.get("n_turbines") or 0)
-            item = QtWidgets.QListWidgetItem(f"{name} · {n} turbine(s)")
+            item = QtWidgets.QListWidgetItem(f"{name} · " + _tr("{n} turbina(s)").format(n=n))
             item.setData(QtCore.Qt.UserRole, lid)
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
             checked = True
@@ -1396,7 +1392,8 @@ class NoisePage(QtWidgets.QWidget):
         model_layer_ids = {str(r.get("layer_id")) for r in self._model_rows if r.get("layer_id")}
         self.cb_receivers.blockSignals(True)
         self.cb_receivers.clear()
-        self.cb_receivers.addItem("— Select receiver layer —", None)
+        self.cb_receivers.addItem("— Selecciona la capa de receptores —", None)
+        apply_i18n(self.cb_receivers)
         for lyr in prj.mapLayers().values():
             if not isinstance(lyr, QgsVectorLayer):
                 continue
@@ -1410,6 +1407,7 @@ class NoisePage(QtWidgets.QWidget):
             gtype = QgsWkbTypes.geometryType(lyr.wkbType())
             if gtype in (QgsWkbTypes.PointGeometry, QgsWkbTypes.PolygonGeometry):
                 self.cb_receivers.addItem(f"{lyr.name()} [{self._geom_label(gtype)}]", lyr.id())
+                mark_data(self.cb_receivers, self.cb_receivers.count() - 1)
         idx = self.cb_receivers.findData(current_id, QtCore.Qt.UserRole)
         if idx >= 0:
             self.cb_receivers.setCurrentIndex(idx)
@@ -1487,6 +1485,7 @@ class NoisePage(QtWidgets.QWidget):
         cb = QtWidgets.QComboBox()
         for lyr in self._receiver_candidate_layers():
             cb.addItem(lyr.name(), lyr.id())
+            mark_data(cb, cb.count() - 1)
         target_id = str(group.get("layer_id") or "")
         idx = cb.findData(target_id, QtCore.Qt.UserRole)
         if idx >= 0:
@@ -1558,7 +1557,7 @@ class NoisePage(QtWidgets.QWidget):
                     else:
                         pt = geom.centroid().asPoint()
                     nf.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(float(pt.x()), float(pt.y()))))
-                except Exception:
+                except Exception:  # nosec B112
                     continue
                 nf.setAttributes([
                     str(w_type.text() or "general") if w_type else "general",
@@ -1572,7 +1571,7 @@ class NoisePage(QtWidgets.QWidget):
                 total += 1
         if not feats:
             return None, 0
-        mem = QgsVectorLayer(f"Point?crs={QgsProject.instance().crs().authid() or 'EPSG:25830'}", "__noise_multi_receivers__", "memory")
+        mem = memory_layer_with_crs("Point", "__noise_multi_receivers__", QgsProject.instance().crs())
         pr = mem.dataProvider()
         pr.addAttributes(fields)
         mem.updateFields()
@@ -1583,14 +1582,15 @@ class NoisePage(QtWidgets.QWidget):
     def _populate_dem_combo(self, prj: QgsProject):
         try:
             self.cb_dem.currentIndexChanged.disconnect(self._on_dem_changed)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         current_id = self._qsettings.value("noise/dem_layer_id", self.cb_dem.currentData(QtCore.Qt.UserRole), type=str)
         self.cb_dem.clear()
-        self.cb_dem.addItem("— Sin MDT/DSM —", None)
+        self.cb_dem.addItem(_tr("— Sin MDT/DSM —"), None)
         for lyr in prj.mapLayers().values():
             if isinstance(lyr, QgsRasterLayer):
                 self.cb_dem.addItem(lyr.name(), lyr.id())
+                mark_data(self.cb_dem, self.cb_dem.count() - 1)
         idx = self.cb_dem.findData(current_id, QtCore.Qt.UserRole)
         if idx >= 0:
             self.cb_dem.setCurrentIndex(idx)
@@ -1600,11 +1600,11 @@ class NoisePage(QtWidgets.QWidget):
     def _populate_landuse_combo(self, prj: QgsProject):
         try:
             self.cb_landuse.currentIndexChanged.disconnect(self._on_landuse_changed)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         current_id = self._qsettings.value("noise/landuse_layer_id", self.cb_landuse.currentData(QtCore.Qt.UserRole), type=str)
         self.cb_landuse.clear()
-        self.cb_landuse.addItem("— Sin capa de uso del suelo —", None)
+        self.cb_landuse.addItem(_tr("— Sin capa de uso del suelo —"), None)
         for lyr in prj.mapLayers().values():
             if not isinstance(lyr, QgsVectorLayer):
                 continue
@@ -1616,6 +1616,7 @@ class NoisePage(QtWidgets.QWidget):
             if lname.startswith("ruido ·"):
                 continue
             self.cb_landuse.addItem(lyr.name(), lyr.id())
+            mark_data(self.cb_landuse, self.cb_landuse.count() - 1)
         idx = self.cb_landuse.findData(current_id, QtCore.Qt.UserRole)
         if idx >= 0:
             self.cb_landuse.setCurrentIndex(idx)
@@ -1635,11 +1636,10 @@ class NoisePage(QtWidgets.QWidget):
     def _populate_models_table(self):
         try:
             self.tbl_models.itemChanged.disconnect(self._on_model_table_item_changed)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         saved = self._load_noise_model_settings()
         saved_curves = self._load_curve_settings()
-        acoustic_mode = self._current_acoustic_mode()
         self.tbl_models.setRowCount(len(self._model_rows))
         for row, info in enumerate(self._model_rows):
             name = str(info.get("name", f"Model {row+1}"))
@@ -1649,14 +1649,7 @@ class NoisePage(QtWidgets.QWidget):
             cfg_key = str(info.get("source_group_key") or info.get("layer_id") or name)
             lwa = float(saved.get(cfg_key, saved.get(name, info.get("default_lwa", 105.0))))
             curve_path = str(saved_curves.get(cfg_key, '') or saved_curves.get(name, '') or '')
-            note = str(info.get("notes") or "Detected from project source layer")
-            if curve_path:
-                note = (note + ' · ' + self._curve_preview_text(curve_path)).strip(' ·')
-            elif acoustic_mode == 'curve':
-                note = (note + ' · no curve -> fixed LwA fallback').strip(' ·')
-            spec_note = self._spectrum_preview_text(cfg_key, group_lwa=lwa)
-            if spec_note:
-                note = (note + ' · ' + spec_note).strip(' ·')
+            note = self._model_note(info, lwa)
             park_name = str(info.get("park_name") or "")
             model_name = str(info.get("model_name") or name)
             items = [
@@ -1671,14 +1664,31 @@ class NoisePage(QtWidgets.QWidget):
                 QtWidgets.QTableWidgetItem(note),
             ]
             for col, item in enumerate(items):
+                if col in (0, 1, 2, 7, 8):
+                    mark_data(item)  # the group, park and model names, the curve file and the notes with them
                 if col in (2, 3, 4, 5, 6, 7, 8):
                     item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
                 if col == 6:
                     item.setTextAlignment(QtCore.Qt.AlignCenter)
-                    item.setToolTip(_tr("Edit the fixed LwA for this acoustic source group."))
+                    item.setToolTip(_tr("Edita el LwA fijo de este grupo fuente acústico."))
                 self.tbl_models.setItem(row, col, item)
             self.tbl_models.setCellWidget(row, 6, self._make_lwa_spinbox(lwa))
         self.tbl_models.itemChanged.connect(self._on_model_table_item_changed)
+
+    def _model_note(self, info, lwa):
+        name = str(info.get("name") or "")
+        cfg_key = str(info.get("source_group_key") or info.get("layer_id") or name)
+        curves = self._load_curve_settings()
+        curve_path = str(curves.get(cfg_key, '') or curves.get(name, '') or '')
+        note = str(info.get("notes") or _tr("Detectado desde la capa fuente del proyecto"))
+        if curve_path:
+            note = (note + ' · ' + self._curve_preview_text(curve_path)).strip(' ·')
+        elif self._current_acoustic_mode() == 'curve':
+            note = (note + ' · ' + _tr('sin curva -> LwA fijo de respaldo')).strip(' ·')
+        spec_note = self._spectrum_preview_text(cfg_key, group_lwa=lwa)
+        if spec_note:
+            note = (note + ' · ' + spec_note).strip(' ·')
+        return note
 
     def _make_lwa_spinbox(self, value: float) -> QtWidgets.QDoubleSpinBox:
         """Editable fixed LwA control embedded directly in the source-group table."""
@@ -1689,7 +1699,7 @@ class NoisePage(QtWidgets.QWidget):
         sp.setSuffix(" dB(A)")
         sp.setValue(float(value))
         sp.setKeyboardTracking(False)
-        sp.setToolTip(_tr("Fixed acoustic emission level for this source group. Edit it here before running the calculation."))
+        sp.setToolTip(_tr("Nivel de emisión acústica fijo de este grupo fuente. Edítalo aquí antes de lanzar el cálculo."))
         sp.valueChanged.connect(self._on_lwa_spinbox_changed)
         return sp
 
@@ -1699,13 +1709,13 @@ class NoisePage(QtWidgets.QWidget):
             w = self.tbl_models.cellWidget(row, 6)
             if isinstance(w, QtWidgets.QDoubleSpinBox):
                 return float(w.value())
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             item = self.tbl_models.item(row, 6)
             if item is not None:
                 return float((item.text() or '').replace(',', '.'))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return float(default)
 
@@ -1738,8 +1748,13 @@ class NoisePage(QtWidgets.QWidget):
             if diam is not None:
                 notes.append(f"D={float(diam):.1f} m")
             if lyr.customProperty("velantis/coords_csv", None):
-                source_module = str(lyr.customProperty("velantis/source_module", "") or "").strip()
-                notes.append(f"layout imported from {source_module}" if source_module else "layout imported from CSV")
+                source_module = str(lyr.customProperty("velantis/source_module", "") or "")
+                source_label = {
+                    "energy": _tr("Energía"),
+                    "noise": _tr("Ruido"),
+                    "shadow": _tr("Sombras"),
+                }.get(source_module, source_module)
+                notes.append(_tr("layout importado desde {source}").format(source=source_label) if source_module else _tr("layout importado desde CSV"))
             source_group_name = (lyr.customProperty("velantis/noise_group_name", "") or "").strip() or lname
             park_name = (lyr.customProperty("velantis/park_name", "") or "").strip()
             meta_overrides = self._load_source_group_meta_settings().get(lyr.id(), {})
@@ -1759,7 +1774,8 @@ class NoisePage(QtWidgets.QWidget):
                     "hub_height": float(hh) if hh is not None else None,
                     "diameter": float(diam) if diam is not None else None,
                     "default_lwa": float(lyr.customProperty("velantis/default_lwa_dba", 105.0) or 105.0),
-                    "notes": (("Wind farm=" + park_name + " · ") if park_name else "") + ("Model=" + base_name + (" · " + " · ".join(notes) if notes else "")),
+                    # The note is a cell of user data (mark_data): its fixed labels are translated here, around the names.
+                    "notes": ((_tr("Parque") + "=" + park_name + " · ") if park_name else "") + (_tr("Modelo") + "=" + base_name + (" · " + " · ".join(notes) if notes else "")),
                 }
             )
         rows.sort(key=lambda r: str(r.get("name", "")))
@@ -1822,7 +1838,7 @@ class NoisePage(QtWidgets.QWidget):
                     if lid and lid not in seen and self._is_model_layer(lyr):
                         out.append(lyr)
                         seen.add(lid)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         for lyr in prj.mapLayers().values():
             try:
@@ -1835,12 +1851,13 @@ class NoisePage(QtWidgets.QWidget):
         return out
 
     def _geom_label(self, gtype: int) -> str:
-
+        # Shown next to a layer name in a combo item marked as data: translated here.
+        lang = str(current_language() or "es").lower().replace("-", "_").split("_", 1)[0]
         if gtype == QgsWkbTypes.PointGeometry:
-            return "points"
+            return {"en": "points", "fr": "points", "de": "Punkte"}.get(lang, "puntos")
         if gtype == QgsWkbTypes.PolygonGeometry:
-            return "polygons"
-        return "vector"
+            return {"en": "polygons", "fr": "polygones", "de": "Polygone"}.get(lang, "polígonos")
+        return {"en": "vector", "fr": "vecteur", "de": "Vektor"}.get(lang, "vectorial")
 
     def _load_source_group_meta_settings(self) -> Dict[str, Dict[str, str]]:
         raw = self._qsettings.value("noise/source_group_meta_json", "", type=str)
@@ -1882,7 +1899,7 @@ class NoisePage(QtWidgets.QWidget):
         for k, v in obj.items():
             try:
                 out[str(k)] = float(v)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         return out
 
@@ -1895,7 +1912,7 @@ class NoisePage(QtWidgets.QWidget):
             try:
                 cfg_key = str((self._model_rows[row].get("source_group_key") or self._model_rows[row].get("layer_id") or name_item.text().strip()))
                 data[cfg_key] = float(self._model_lwa_value(row))
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         self._qsettings.setValue("noise/source_group_lwa_json", json.dumps(data, ensure_ascii=False))
 
@@ -1925,11 +1942,11 @@ class NoisePage(QtWidgets.QWidget):
             ws, lwa = load_acoustic_curve_csv(path)
             if self.chk_curve_worst.isChecked():
                 val = evaluate_acoustic_curve(ws, lwa, use_worst_case=True)
-                return f"{os.path.basename(path)} · peor caso={val:.1f} dB(A)"
+                return f"{os.path.basename(path)} · " + _tr("peor caso") + f"={val:.1f} dB(A)"
             val = evaluate_acoustic_curve(ws, lwa, eval_ws_m_s=float(self.sp_eval_ws.value()), use_worst_case=False)
             return f"{os.path.basename(path)} · {float(self.sp_eval_ws.value()):.1f} m/s → {val:.1f} dB(A)"
         except Exception as e:
-            return f"{os.path.basename(path)} · inválida ({e})"
+            return f"{os.path.basename(path)} · " + _tr("inválida") + f" ({e})"
 
     def _import_curve_for_selected_model(self):
         row = self._selected_model_row()
@@ -1941,14 +1958,14 @@ class NoisePage(QtWidgets.QWidget):
         model_name = name_item.text().strip()
         cfg_key = str((self._model_rows[row].get("source_group_key") or self._model_rows[row].get("layer_id") or model_name))
         start = self._load_curve_settings().get(cfg_key, "")
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Acoustic curve ws/LwA", start, "CSV/TXT (*.csv *.txt);;Todos (*.*)")
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, _tr("Curva acústica ws/LwA"), start, "CSV/TXT (*.csv *.txt);;" + _tr("Todos (*.*)"))
         if not path:
             return
         try:
             ws, lwa = load_acoustic_curve_csv(path)
             _ = evaluate_acoustic_curve(ws, lwa, eval_ws_m_s=float(self.sp_eval_ws.value()), use_worst_case=bool(self.chk_curve_worst.isChecked()))
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Noise · Acoustic curve", f"Could not read the acoustic curve:\n{e}")
+            QtWidgets.QMessageBox.warning(self, _tr("Ruido · Curva acústica"), _tr("No se pudo leer la curva acústica:") + f"\n{e}")
             return
         data = self._load_curve_settings()
         data[cfg_key] = path
@@ -1998,7 +2015,7 @@ class NoisePage(QtWidgets.QWidget):
                 vals = {int(float(f)): float(v) for f, v in dict(spec).items()}
                 if vals:
                     out[str(k)] = vals
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         return out
 
@@ -2038,13 +2055,13 @@ class NoisePage(QtWidgets.QWidget):
             try:
                 spectrum, meta = load_spectrum_from_csv(path, lwa_global=float(group_lwa))
                 if str(meta.get("format")) == "relative":
-                    return _tr("espectro OEM") + f": {os.path.basename(path)} · " + _tr("forma relativa")
+                    return _tr("espectro OEM: {file}").format(file=os.path.basename(path)) + " · " + _tr("forma relativa")
                 lwa = float(apply_a_weighting(spectrum))
                 if bool(getattr(self, 'chk_spectrum_normalize', None) and self.chk_spectrum_normalize.isChecked()):
-                    return _tr("espectro OEM") + f": {os.path.basename(path)} · " + _tr("normalizado a LwA")
-                return _tr("espectro OEM") + f": {os.path.basename(path)} · LwA(A)={lwa:.1f} dB(A)"
+                    return _tr("espectro OEM: {file}").format(file=os.path.basename(path)) + " · " + _tr("normalizado a LwA")
+                return _tr("espectro OEM: {file}").format(file=os.path.basename(path)) + f" · LwA(A)={lwa:.1f} dB(A)"
             except Exception as e:
-                return _tr("espectro OEM") + f": {os.path.basename(path)} · " + _tr("inválido") + f" ({e})"
+                return _tr("espectro OEM: {file}").format(file=os.path.basename(path)) + " · " + _tr("inválido") + f" ({e})"
         return ""
 
     def _import_spectrum_for_selected_model(self):
@@ -2056,7 +2073,7 @@ class NoisePage(QtWidgets.QWidget):
             self,
             _tr("Espectro OEM por bandas de octava"),
             start,
-            "CSV/TXT (*.csv *.txt);;Todos (*.*)"
+            "CSV/TXT (*.csv *.txt);;" + _tr("Todos (*.*)")
         )
         if not path:
             return
@@ -2076,7 +2093,9 @@ class NoisePage(QtWidgets.QWidget):
             del vals[cfg_key]
             self._save_spectrum_values_settings(vals)
         fmt = str(meta.get("format") or "")
-        msg = _tr("Espectro cargado correctamente.") + f"\n{os.path.basename(path)}\n" + _tr("Formato") + f": {fmt} · LwA(A)={lwa_spec:.2f} dB(A)"
+        fmt_label = {"absolute": _tr("absoluto"), "relative": _tr("relativo")}.get(fmt, fmt)
+        msg = (_tr("Espectro cargado correctamente.") + f"\n{os.path.basename(path)}\n"
+               + _tr("Formato: {format}").format(format=fmt_label) + f" · LwA(A)={lwa_spec:.2f} dB(A)")
         if meta.get("weighted_input"):
             msg += "\n" + _tr("Columna ponderada A detectada; convertida internamente a Lw por banda para evitar doble ponderación.")
         normalize_on = bool(getattr(self, 'chk_spectrum_normalize', None) and self.chk_spectrum_normalize.isChecked())
@@ -2264,7 +2283,7 @@ class NoisePage(QtWidgets.QWidget):
                 self._qsettings.setValue("noise/source_layer_id", ids[0])
             else:
                 self._qsettings.setValue("noise/source_layer_id", "__AUTO_ALL__")
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._check_configuration()
 
@@ -2272,8 +2291,13 @@ class NoisePage(QtWidgets.QWidget):
         layer_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
         try:
             self._qsettings.setValue("noise/receiver_layer_id", layer_id or "")
-        except Exception:
+        except Exception:  # nosec B110
             pass
+        self._refresh_receiver_text()
+
+    def _refresh_receiver_text(self):
+        """Compose receiver information without saving the layer selection."""
+        layer_id = self.cb_receivers.currentData(QtCore.Qt.UserRole)
         lyr = QgsProject.instance().mapLayer(layer_id) if layer_id else None
         lang = str(current_language() or "es").lower().replace("-", "_").split("_", 1)[0]
         feature_label = {"en": "feature(s)", "fr": "entité(s)", "de": "Objekt(e)"}.get(lang, "elemento(s)")
@@ -2290,7 +2314,7 @@ class NoisePage(QtWidgets.QWidget):
     def _on_dem_changed(self, *_args):
         try:
             self._qsettings.setValue("noise/dem_layer_id", self.cb_dem.currentData(QtCore.Qt.UserRole) or "")
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._check_configuration()
 
@@ -2334,7 +2358,7 @@ class NoisePage(QtWidgets.QWidget):
             n_models = len(self._model_rows)
             n_turbs = sum(int(r.get("n_turbines", 0)) for r in self._model_rows)
             msgs.append(_l(
-                f"• Layout detectado: {n_models} modelo(s) WT y {n_turbs} turbina(s).",
+                f"• Disposición detectada: {n_models} modelo(s) WT y {n_turbs} turbina(s).",
                 f"• Layout detected: {n_models} WT model(s) and {n_turbs} turbine(s).",
                 f"• Layout détecté : {n_models} modèle(s) d’éolienne et {n_turbs} éolienne(s).",
                 f"• Layout erkannt: {n_models} WT-Modell(e) und {n_turbs} Windturbine(n).",
@@ -2420,7 +2444,7 @@ class NoisePage(QtWidgets.QWidget):
                             "• La capa de receptores coincide con el layout de turbinas. Elige una capa distinta de viviendas/receptores.",
                             "• The receiver layer matches the turbine layout. Select a different dwellings/receivers layer.",
                             "• La couche de récepteurs correspond au layout des éoliennes. Sélectionnez une autre couche d’habitations/récepteurs.",
-                            "• Der Rezeptor-Layer entspricht dem Turbinenlayout. Wählen Sie einen anderen Layer für Wohngebäude/Rezeptoren.",
+                            "• Der Rezeptor-Layer entspricht dem Windturbinenlayout. Wählen Sie einen anderen Layer für Wohngebäude/Rezeptoren.",
                         ))
 
         if self.tbl_models.rowCount() > 0:
@@ -2432,7 +2456,7 @@ class NoisePage(QtWidgets.QWidget):
                     val = float(self._model_lwa_value(row))
                     if 0 < val < 200:
                         ok_rows += 1
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     gname = (self.tbl_models.item(row, 0).text() or "").strip()
@@ -2449,7 +2473,7 @@ class NoisePage(QtWidgets.QWidget):
                 msgs.append(_l(
                     f"• Grupos fuente acústicos: faltan {empty_groups} nombre(s) de grupo en la tabla.",
                     f"• Acoustic source groups: {empty_groups} group name(s) are missing from the table.",
-                    f"• Groupes source acoustiques : {empty_groups} nom(s) de groupe manquent dans le tableau.",
+                    f"• Groupes de sources acoustiques : {empty_groups} nom(s) de groupe manquent dans le tableau.",
                     f"• Akustische Quellgruppen: In der Tabelle fehlen {empty_groups} Gruppenname(n).",
                 ))
             dups = len(group_names) - len(set(group_names))
@@ -2458,13 +2482,13 @@ class NoisePage(QtWidgets.QWidget):
                 msgs.append(_l(
                     f"• Grupos fuente acústicos: hay {dups} nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.",
                     f"• Acoustic source groups: {dups} duplicate name(s) were found. Rename them for export and traceability.",
-                    f"• Groupes source acoustiques : {dups} nom(s) dupliqué(s) ont été détectés. Renommez-les pour l’export et la traçabilité.",
+                    f"• Groupes de sources acoustiques : {dups} nom(s) dupliqué(s) ont été détectés. Renommez-les pour l’export et la traçabilité.",
                     f"• Akustische Quellgruppen: {dups} doppelte Gruppenname(n) wurden gefunden. Benennen Sie sie für Export und Nachverfolgbarkeit um.",
                 ))
             msgs.append(_l(
                 f"• Grupos fuente acústicos: {ok_rows}/{self.tbl_models.rowCount()} grupo(s) con LwA válido.",
                 f"• Acoustic source groups: {ok_rows}/{self.tbl_models.rowCount()} group(s) with a valid LwA.",
-                f"• Groupes source acoustiques : {ok_rows}/{self.tbl_models.rowCount()} groupe(s) avec un LwA valide.",
+                f"• Groupes de sources acoustiques : {ok_rows}/{self.tbl_models.rowCount()} groupe(s) avec un LwA valide.",
                 f"• Akustische Quellgruppen: {ok_rows}/{self.tbl_models.rowCount()} Gruppe(n) mit gültigem LwA.",
             ))
 
@@ -2480,21 +2504,21 @@ class NoisePage(QtWidgets.QWidget):
                 msgs.append(_l(
                     f"• Escenario acústico: curvas LwA(ws) en peor caso. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).",
                     f"• Acoustic scenario: worst-case LwA(ws) curves. Available curves: {n_curves}/{len(self._model_rows)} model(s).",
-                    f"• Scénario acoustique : courbes LwA(ws) au pire cas. Courbes disponibles : {n_curves}/{len(self._model_rows)} modèle(s).",
+                    f"• Scénario acoustique : courbes LwA(ws) dans le cas le plus défavorable. Courbes disponibles : {n_curves}/{len(self._model_rows)} modèle(s).",
                     f"• Akustisches Szenario: LwA(ws)-Kurven im ungünstigsten Fall. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e).",
                 ))
             else:
                 msgs.append(_l(
-                    f"• Escenario acústico: curvas LwA(ws) a {self.sp_eval_ws.value():.1f} m/s. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).",
-                    f"• Acoustic scenario: LwA(ws) curves at {self.sp_eval_ws.value():.1f} m/s. Available curves: {n_curves}/{len(self._model_rows)} model(s).",
-                    f"• Scénario acoustique : courbes LwA(ws) à {self.sp_eval_ws.value():.1f} m/s. Courbes disponibles : {n_curves}/{len(self._model_rows)} modèle(s).",
-                    f"• Akustisches Szenario: LwA(ws)-Kurven bei {self.sp_eval_ws.value():.1f} m/s. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e).",
+                    f"• Escenario acústico: curvas LwA(ws) a {format_number(self.sp_eval_ws.value(), '.1f')} m/s. Curvas disponibles: {n_curves}/{len(self._model_rows)} modelo(s).",
+                    f"• Acoustic scenario: LwA(ws) curves at {format_number(self.sp_eval_ws.value(), '.1f')} m/s. Available curves: {n_curves}/{len(self._model_rows)} model(s).",
+                    f"• Scénario acoustique : courbes LwA(ws) à {format_number(self.sp_eval_ws.value(), '.1f')} m/s. Courbes disponibles : {n_curves}/{len(self._model_rows)} modèle(s).",
+                    f"• Akustisches Szenario: LwA(ws)-Kurven bei {format_number(self.sp_eval_ws.value(), '.1f')} m/s. Verfügbare Kurven: {n_curves}/{len(self._model_rows)} Modell(e).",
                 ))
         else:
             msgs.append(_l(
                 "• Escenario acústico: LwA fijo por grupo fuente acústico.",
                 "• Acoustic scenario: fixed LwA by acoustic source group.",
-                "• Scénario acoustique : LwA fixe par groupe source acoustique.",
+                "• Scénario acoustique : LwA fixe par groupe de sources acoustiques.",
                 "• Akustisches Szenario: fester LwA je akustischer Quellgruppe.",
             ))
 
@@ -2507,23 +2531,23 @@ class NoisePage(QtWidgets.QWidget):
             ))
         else:
             msgs.append(_l(
-                f"• Altura de receptor configurada: {self.sp_receiver_h.value():.1f} m.",
-                f"• Configured receiver height: {self.sp_receiver_h.value():.1f} m.",
-                f"• Hauteur de récepteur configurée : {self.sp_receiver_h.value():.1f} m.",
-                f"• Konfigurierte Rezeptorhöhe: {self.sp_receiver_h.value():.1f} m.",
+                f"• Altura de receptor configurada: {format_number(self.sp_receiver_h.value(), '.1f')} m.",
+                f"• Configured receiver height: {format_number(self.sp_receiver_h.value(), '.1f')} m.",
+                f"• Hauteur de récepteur configurée : {format_number(self.sp_receiver_h.value(), '.1f')} m.",
+                f"• Konfigurierte Rezeptorhöhe: {format_number(self.sp_receiver_h.value(), '.1f')} m.",
             ))
 
         msgs.append(_l(
-            f"• Radio máximo configurado: {self.sp_max_radius.value():.0f} m.",
-            f"• Configured maximum radius: {self.sp_max_radius.value():.0f} m.",
-            f"• Rayon maximal configuré : {self.sp_max_radius.value():.0f} m.",
-            f"• Konfigurierter Maximalradius: {self.sp_max_radius.value():.0f} m.",
+            f"• Radio máximo configurado: {format_number(self.sp_max_radius.value(), ',.0f')} m.",
+            f"• Configured maximum radius: {format_number(self.sp_max_radius.value(), ',.0f')} m.",
+            f"• Rayon maximal configuré : {format_number(self.sp_max_radius.value(), ',.0f')} m.",
+            f"• Konfigurierter Maximalradius: {format_number(self.sp_max_radius.value(), ',.0f')} m.",
         ))
         msgs.append(_l(
-            f"• Atenuación lineal α: {self.sp_alpha.value():.4f} dB/m (absorción atmosférica simplificada).",
-            f"• Linear attenuation α: {self.sp_alpha.value():.4f} dB/m (simplified atmospheric absorption).",
-            f"• Atténuation linéaire α : {self.sp_alpha.value():.4f} dB/m (absorption atmosphérique simplifiée).",
-            f"• Lineare Dämpfung α: {self.sp_alpha.value():.4f} dB/m (vereinfachte atmosphärische Absorption).",
+            f"• Atenuación lineal α: {format_number(self.sp_alpha.value(), '.4f')} dB/m (absorción atmosférica simplificada).",
+            f"• Linear attenuation α: {format_number(self.sp_alpha.value(), '.4f')} dB/m (simplified atmospheric absorption).",
+            f"• Atténuation linéaire α : {format_number(self.sp_alpha.value(), '.4f')} dB/m (absorption atmosphérique simplifiée).",
+            f"• Lineare Dämpfung α: {format_number(self.sp_alpha.value(), '.4f')} dB/m (vereinfachte atmosphärische Absorption).",
         ))
 
         ground_mode = str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or "global")
@@ -2532,24 +2556,24 @@ class NoisePage(QtWidgets.QWidget):
             lu = QgsProject.instance().mapLayer(lu_id) if lu_id else None
             if lu is not None:
                 msgs.append(_l(
-                    f"• Suelo/terreno: desde la capa de uso del suelo '{lu.name()}'. G global de respaldo = {self.sp_ground_g.value():.2f}.",
-                    f"• Ground/terrain: from land-use layer '{lu.name()}'. Fallback global G = {self.sp_ground_g.value():.2f}.",
-                    f"• Sol/terrain : depuis la couche d’occupation du sol « {lu.name()} ». G global de secours = {self.sp_ground_g.value():.2f}.",
-                    f"• Boden/Gelände: aus dem Landnutzungs-Layer „{lu.name()}“. Globaler G-Fallback = {self.sp_ground_g.value():.2f}.",
+                    f"• Suelo/terreno: desde la capa de uso del suelo '{lu.name()}'. G global de respaldo = {format_number(self.sp_ground_g.value(), '.2f')}.",
+                    f"• Ground/terrain: from land-use layer '{lu.name()}'. Fallback global G = {format_number(self.sp_ground_g.value(), '.2f')}.",
+                    f"• Sol/terrain : depuis la couche d’occupation du sol « {lu.name()} ». G global de secours = {format_number(self.sp_ground_g.value(), '.2f')}.",
+                    f"• Boden/Gelände: aus dem Landnutzungs-Layer „{lu.name()}“. Globaler G-Fallback = {format_number(self.sp_ground_g.value(), '.2f')}.",
                 ))
             else:
                 msgs.append(_l(
-                    f"• Suelo/terreno: el modo por capa está activo, pero no hay una capa válida; se usará G global = {self.sp_ground_g.value():.2f} como respaldo.",
-                    f"• Ground/terrain: layer mode is active, but no valid layer is selected; global G = {self.sp_ground_g.value():.2f} will be used as fallback.",
-                    f"• Sol/terrain : le mode par couche est actif, mais aucune couche valide n’est sélectionnée ; le G global = {self.sp_ground_g.value():.2f} sera utilisé en secours.",
-                    f"• Boden/Gelände: Der Layer-Modus ist aktiv, aber es ist kein gültiger Layer ausgewählt; globales G = {self.sp_ground_g.value():.2f} wird als Fallback verwendet.",
+                    f"• Suelo/terreno: el modo por capa está activo, pero no hay una capa válida; se usará G global = {format_number(self.sp_ground_g.value(), '.2f')} como respaldo.",
+                    f"• Ground/terrain: layer mode is active, but no valid layer is selected; global G = {format_number(self.sp_ground_g.value(), '.2f')} will be used as fallback.",
+                    f"• Sol/terrain : le mode par couche est actif, mais aucune couche valide n’est sélectionnée ; le G global = {format_number(self.sp_ground_g.value(), '.2f')} sera utilisé en secours.",
+                    f"• Boden/Gelände: Der Layer-Modus ist aktiv, aber es ist kein gültiger Layer ausgewählt; globales G = {format_number(self.sp_ground_g.value(), '.2f')} wird als Fallback verwendet.",
                 ))
         else:
             msgs.append(_l(
-                f"• Factor de suelo G: {self.sp_ground_g.value():.2f} (0=duro, 1=poroso).",
-                f"• Ground factor G: {self.sp_ground_g.value():.2f} (0=hard, 1=porous).",
-                f"• Facteur de sol G : {self.sp_ground_g.value():.2f} (0=dur, 1=poreux).",
-                f"• Bodenfaktor G: {self.sp_ground_g.value():.2f} (0=hart, 1=porös).",
+                f"• Factor de suelo G: {format_number(self.sp_ground_g.value(), '.2f')} (0=duro, 1=poroso).",
+                f"• Ground factor G: {format_number(self.sp_ground_g.value(), '.2f')} (0=hard, 1=porous).",
+                f"• Facteur de sol G : {format_number(self.sp_ground_g.value(), '.2f')} (0=dur, 1=poreux).",
+                f"• Bodenfaktor G: {format_number(self.sp_ground_g.value(), '.2f')} (0=hart, 1=porös).",
             ))
 
         if self.chk_multi_receivers.isChecked():
@@ -2561,10 +2585,10 @@ class NoisePage(QtWidgets.QWidget):
             ))
         else:
             msgs.append(_l(
-                f"• Límite de receptor: {self.sp_limit.value():.1f} dB(A).",
-                f"• Receiver limit: {self.sp_limit.value():.1f} dB(A).",
-                f"• Limite du récepteur : {self.sp_limit.value():.1f} dB(A).",
-                f"• Rezeptorgrenzwert: {self.sp_limit.value():.1f} dB(A).",
+                f"• Límite de receptor: {format_number(self.sp_limit.value(), '.1f')} dB(A).",
+                f"• Receiver limit: {format_number(self.sp_limit.value(), '.1f')} dB(A).",
+                f"• Limite du récepteur : {format_number(self.sp_limit.value(), '.1f')} dB(A).",
+                f"• Rezeptorgrenzwert: {format_number(self.sp_limit.value(), '.1f')} dB(A).",
             ))
 
         iso_levels = self.le_iso_levels.text().strip() or "35,40,45,50"
@@ -2581,16 +2605,16 @@ class NoisePage(QtWidgets.QWidget):
             if dem:
                 msgs.append(_l(
                     f"• MDT/DSM seleccionado: {dem.name()} (se muestreará el terreno en fuente y receptor durante el cálculo acústico).",
-                    f"• Selected DTM/DSM: {dem.name()} (source and receiver terrain will be sampled during the acoustic calculation).",
+                    f"• Selected DEM/DSM: {dem.name()} (source and receiver terrain will be sampled during the acoustic calculation).",
                     f"• MNT/MNS sélectionné : {dem.name()} (le terrain à la source et au récepteur sera échantillonné pendant le calcul acoustique).",
-                    f"• Ausgewähltes DGM/DSM: {dem.name()} (das Gelände an Quelle und Rezeptor wird während der Schallberechnung abgetastet).",
+                    f"• Ausgewähltes DGM/DOM: {dem.name()} (das Gelände an Quelle und Rezeptor wird während der Schallberechnung abgetastet).",
                 ))
         else:
             msgs.append(_l(
                 "• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.",
-                "• No DTM/DSM selected. The acoustic calculation will start with planar coordinates and relative source/receiver heights.",
+                "• No DEM/DSM selected. The acoustic calculation will start with planar coordinates and relative source/receiver heights.",
                 "• Aucun MNT/MNS sélectionné. Le calcul acoustique démarrera avec des coordonnées planes et des hauteurs relatives source/récepteur.",
-                "• Kein DGM/DSM ausgewählt. Die Schallberechnung startet mit planaren Koordinaten und relativen Quell-/Rezeptorhöhen.",
+                "• Kein DGM/DOM ausgewählt. Die Schallberechnung startet mit planaren Koordinaten und relativen Quell-/Rezeptorhöhen.",
             ))
 
         msgs.append(_l(
@@ -2696,12 +2720,8 @@ class NoisePage(QtWidgets.QWidget):
                 "Die Rasterauflösung muss größer als 0 sein.",
             ))
         if str(self.cb_ground_mode.currentData(QtCore.Qt.UserRole) or "global") == "landuse" and not self.cb_landuse.currentData(QtCore.Qt.UserRole):
-            warnings.append(_l(
-                "El modo de suelo por capa está activo sin una capa válida: se usará el G global como respaldo.",
-                "Layer-based ground mode is active without a valid layer: global G will be used as fallback.",
-                "Le mode de sol par couche est actif sans couche valide : le G global sera utilisé en secours.",
-                "Der Layer-basierte Bodenmodus ist ohne gültigen Layer aktiv: Der globale G-Wert wird als Fallback verwendet.",
-            ))
+            # Warnings survive the run: translate their Spanish source when rendering the result.
+            warnings.append("El modo de suelo por capa está activo sin una capa válida: se usará el G global como respaldo.")
         return errors, warnings
 
     def _run_noise(self):

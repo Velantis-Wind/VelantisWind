@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 
 from qgis.core import QgsProject, QgsRasterLayer, QgsWkbTypes
 
+from ...crs_utils import portable_crs_definition, preferred_wkt
+from ...i18n import tr_text
 from ..domain import NoiseRunConfig
 from ..noise_spectrum import SpectrumLibrary
 from ..sources.collector import _collect_sources
@@ -31,11 +33,11 @@ def _primitive(value: Any) -> Any:
         # QDate/QDateTime/QTime have ISO helpers.
         if hasattr(value, "toString"):
             return str(value.toString())
-    except Exception:
+    except Exception:  # nosec B110
         pass
     try:
         return value.item()  # numpy scalar
-    except Exception:
+    except Exception:  # nosec B110
         pass
     try:
         return str(value)
@@ -165,7 +167,7 @@ def _export_dem_layer_for_task(dem_layer: QgsRasterLayer) -> str:
             writer = QgsRasterFileWriter(out_path)
             try:
                 writer.setCreateOptions(["COMPRESS=LZW"])
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             res = writer.writeRaster(
                 pipe,
@@ -202,7 +204,7 @@ def _export_dem_layer_for_task(dem_layer: QgsRasterLayer) -> str:
                         if ok and _is_valid_dem_value(val, provider, 1):
                             fv = float(val)
                             arr[iy, ix] = fv
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
             driver = gdal.GetDriverByName("GTiff")
             ds = driver.Create(out_path, width, height, 1, gdal.GDT_Float32, options=["COMPRESS=LZW"])
@@ -211,9 +213,9 @@ def _export_dem_layer_for_task(dem_layer: QgsRasterLayer) -> str:
             ds.SetGeoTransform((float(ext.xMinimum()), px, 0.0, float(ext.yMaximum()), 0.0, -py))
             try:
                 srs = osr.SpatialReference()
-                srs.ImportFromWkt(str(dem_layer.crs().toWkt() or ""))
-                ds.SetProjection(srs.ExportToWkt())
-            except Exception:
+                srs.ImportFromWkt(preferred_wkt(dem_layer.crs()))
+                ds.SetProjection(srs.ExportToWkt(["FORMAT=WKT2_2019"]))
+            except Exception:  # nosec B110
                 pass
             band = ds.GetRasterBand(1)
             write_float32_band(
@@ -253,7 +255,7 @@ def build_noise_calculation_snapshot(config: NoiseRunConfig) -> Dict[str, Any]:
         source_layer_ids=config.source_layer_ids,
     )
     if not sources:
-        raise ValueError("No se han detectado turbinas/layout válidos para el cálculo acústico.")
+        raise ValueError(tr_text("No se han detectado turbinas/layout válidos para el cálculo acústico."))
 
     receivers = _build_receiver_feature_list(
         config.receiver_layer,
@@ -267,7 +269,7 @@ def build_noise_calculation_snapshot(config: NoiseRunConfig) -> Dict[str, Any]:
         receiver_source_field=config.receiver_source_field,
     )
     if not receivers:
-        raise ValueError("The receiver layer contains no valid features for calculation.")
+        raise ValueError(tr_text("La capa de receptores no contiene entidades válidas para el cálculo."))
 
     dem_path = ""
     dem_name = ""
@@ -290,8 +292,8 @@ def build_noise_calculation_snapshot(config: NoiseRunConfig) -> Dict[str, Any]:
         "field_specs": _field_specs(config.receiver_layer.fields()),
         "receiver_layer_name": str(config.receiver_layer.name() or ""),
         "geometry_type": str(QgsWkbTypes.displayString(config.receiver_layer.wkbType())),
-        "crs_authid": str(crs.authid() or "EPSG:25830"),
-        "crs_wkt": str(crs.toWkt() or ""),
+        "crs_authid": portable_crs_definition(crs),
+        "crs_wkt": preferred_wkt(crs),
         "params": {
             "receiver_height_m": float(config.receiver_height_m),
             "max_radius_m": float(config.max_radius_m),

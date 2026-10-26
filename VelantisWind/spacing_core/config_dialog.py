@@ -3,7 +3,7 @@
 
 Diálogo no modal que incrusta el panel del SpacingController compartido para
 poder configurar las envolventes de separación desde el diálogo principal
-(botón bajo la importación de coordenadas CSV), sin necesidad de entrar en el
+(botón debajo de las filas de los modelos y sus selectores de capa), sin necesidad de entrar en el
 modo Mapa interactivo.
 
 El panel es un widget único compartido con el dock del mapa interactivo, así
@@ -11,9 +11,10 @@ que este diálogo lo "toma prestado" al abrirse y lo devuelve (setParent(None))
 al cerrarse. Dock y diálogo nunca están visibles a la vez (el diálogo
 principal se oculta en modo interactivo), por lo que no compiten por él.
 
-Al pulsar «Definir elipse en pantalla», este diálogo se oculta junto con el
-diálogo principal para dejar el mapa libre, y ambos se restauran cuando la
-herramienta de dibujo termina (señal ``tool_finished`` del controller).
+Cuando arranca la herramienta de «Definir elipse en pantalla» (señal
+``tool_started`` del controller), este diálogo se oculta junto con el diálogo
+principal para dejar el mapa libre, y ambos se restauran cuando la herramienta
+de dibujo termina (señal ``tool_finished``). Si no arranca, siguen visibles.
 """
 
 from __future__ import annotations
@@ -60,7 +61,7 @@ class SpacingConfigDialog(QtWidgets.QDialog):
         self._panel = controller.panel
         try:
             self._panel.setParent(self)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         v.addWidget(self._panel)
 
@@ -72,12 +73,12 @@ class SpacingConfigDialog(QtWidgets.QDialog):
 
         # Dibujo en pantalla: ocultar ventanas y restaurar al terminar
         try:
-            self._panel.define_on_screen.connect(self._hide_for_tool)
-        except Exception:
+            controller.tool_started.connect(self._hide_for_tool)
+        except Exception:  # nosec B110
             pass
         try:
             controller.tool_finished.connect(self._restore_after_tool)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ---------------------------------------------------------------- tool
@@ -85,7 +86,7 @@ class SpacingConfigDialog(QtWidgets.QDialog):
         self._hidden_for_tool = True
         try:
             self.hide()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         md = self.main_dialog
         if md is not None:
@@ -94,7 +95,7 @@ class SpacingConfigDialog(QtWidgets.QDialog):
             except Exception:
                 try:
                     md.hide()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
 
     def _restore_after_tool(self):
@@ -108,12 +109,12 @@ class SpacingConfigDialog(QtWidgets.QDialog):
             except Exception:
                 try:
                     md.show()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         try:
             self.show()
             self.raise_()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ------------------------------------------------------------- cierre
@@ -121,17 +122,17 @@ class SpacingConfigDialog(QtWidgets.QDialog):
         # Devolver el panel al controller (queda huérfano/oculto hasta que el
         # dock del mapa interactivo o un nuevo diálogo lo reclamen).
         try:
-            self._panel.define_on_screen.disconnect(self._hide_for_tool)
-        except Exception:
+            self.controller.tool_started.disconnect(self._hide_for_tool)
+        except Exception:  # nosec B110
             pass
         try:
             self.controller.tool_finished.disconnect(self._restore_after_tool)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             self.layout().removeWidget(self._panel)
             self._panel.setParent(None)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             super().closeEvent(event)

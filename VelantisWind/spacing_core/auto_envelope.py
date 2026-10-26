@@ -2,16 +2,16 @@
 """Creación automática de envolventes al importar layouts CSV.
 
 El helper funciona aunque el dock o el diálogo de spacing no estén abiertos.
-Crea/reutiliza la capa vinculada y reconstruye conjuntamente todas las capas de
-turbinas conocidas para que la validación multimodelo quede coherente desde la
-propia importación.
+Crea/reutiliza la capa vinculada y la reconstruye junto con las capas del parque
+que le pasa quien lo llama: las de las filas de Energía, o solo la capa
+importada desde Ruido o Sombras. Nunca reúne otras capas del proyecto (#96).
 """
 from __future__ import annotations
 
 from typing import List, Optional
 
 from qgis.PyQt import QtCore
-from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
+from qgis.core import QgsVectorLayer
 
 from .envelope_manager import (
     EnvelopeManager,
@@ -25,7 +25,6 @@ from .orientation import most_energetic_angle
 
 _ORG = "VelantisWind"
 _APP = "VelantisWindPlugin"
-_TURBINE_ROLES = {"energy_turbines", "turbine_layout"}
 
 
 def _settings_spec() -> SpacingSpec:
@@ -56,71 +55,65 @@ def _ensure_properties(layer: QgsVectorLayer, defaults: SpacingSpec) -> None:
             layer.setCustomProperty(MODEL_MODE_PROP, str(defaults.mode))
         if layer.customProperty(MODEL_ANGLE_PROP, None) in (None, ""):
             layer.setCustomProperty(MODEL_ANGLE_PROP, float(defaults.angle_deg))
-    except Exception:
+    except Exception:  # nosec B110
         pass
-
-
-def _project_turbine_layers(primary: QgsVectorLayer) -> List[QgsVectorLayer]:
-    layers: List[QgsVectorLayer] = []
-    seen = set()
-    try:
-        candidates = list(QgsProject.instance().mapLayers().values())
-    except Exception:
-        candidates = []
-    candidates.insert(0, primary)
-    for candidate in candidates:
-        if not isinstance(candidate, QgsVectorLayer):
-            continue
-        try:
-            if not candidate.isValid() or candidate.geometryType() != QgsWkbTypes.PointGeometry:
-                continue
-            role = str(candidate.customProperty("velantis/layer_role", "") or "")
-            # La capa primaria se acepta aunque proceda de una integración
-            # antigua que aún no haya fijado el rol.
-            if candidate is not primary and role not in _TURBINE_ROLES:
-                continue
-            layer_id = candidate.id()
-        except Exception:
-            continue
-        if layer_id in seen:
-            continue
-        seen.add(layer_id)
-        layers.append(candidate)
-    return layers
 
 
 def ensure_spacing_envelope_for_layer(
     layer: QgsVectorLayer,
     *,
+    park_layers: Optional[List[QgsVectorLayer]] = None,
     auto_angle_deg: Optional[float] = None,
     wrg_path: Optional[str] = None,
+    existing_only: bool = False,
 ) -> Optional[QgsVectorLayer]:
-    """Crea/actualiza la envolvente de un CSV y las del resto de modelos.
+    """Crea/actualiza la envolvente de la capa de turbinas recibida y las de ``park_layers``.
 
+    ``park_layers`` son las capas del parque con las que se compara (las de las
+    filas de Energía); sin ellas, solo ``layer``.
     Si se facilita un WRG y no se ha pasado un ángulo explícito, intenta usar
     directamente su sector más energético; en caso contrario conserva el
     ángulo de respaldo de cada modelo hasta que el controlador se refresque.
+    Con ``existing_only`` solo rehace las envolventes que ya existen, frente a
+    todas las capas del parque, y no toca las preferencias de separaciones.
     """
     if not isinstance(layer, QgsVectorLayer) or not layer.isValid():
         return None
     defaults = _settings_spec()
-    sources = _project_turbine_layers(layer)
+    sources = [layer] + [source for source in park_layers or [] if source.id() != layer.id()]
+    manager = EnvelopeManager()
     for source in sources:
-        _ensure_properties(source, defaults)
-    try:
-        settings = QtCore.QSettings(_ORG, _APP)
-        settings.setValue("spacing/enabled", True)
-        settings.setValue("spacing/shape", SHAPE_ELLIPTICAL)
-    except Exception:
-        pass
+        # Con ``existing_only``, una capa del parque sin envolvente cuenta en los conflictos, pero no se toca.
+        if not existing_only or manager._find_existing_layer(source) is not None:
+            _ensure_properties(source, defaults)
+    if not existing_only:
+        try:
+            settings = QtCore.QSettings(_ORG, _APP)
+            settings.setValue("spacing/enabled", True)
+            settings.setValue("spacing/shape", SHAPE_ELLIPTICAL)
+        except Exception:  # nosec B110
+            pass
     if auto_angle_deg is None and wrg_path:
         try:
             auto_angle_deg = most_energetic_angle(str(wrg_path))
         except Exception:
             auto_angle_deg = None
-    manager = EnvelopeManager()
-    manager.rebuild_many(sources, defaults, auto_angle_deg, fallback_diameter_m=120.0)
+    manager.rebuild_many(sources, defaults, auto_angle_deg, fallback_diameter_m=120.0, create_missing=not existing_only)
     return manager.envelope_layer(layer)
 
 
-__all__ = ["ensure_spacing_envelope_for_layer"]
+def has_spacing_envelope(layer: QgsVectorLayer) -> bool:
+    """Si la capa de turbinas tiene envolvente, por su asociación o por la de la envolvente (también guardada en fichero)."""
+    return EnvelopeManager()._find_existing_layer(layer) is not None
+
+
+def drop_spacing_envelope_for_layer(layer: QgsVectorLayer, manager: Optional[EnvelopeManager] = None) -> None:
+    """Retira la envolvente temporal de una capa que ha salido de las filas, aunque la creara otro gestor (#96).
+
+    Una guardada en fichero se conserva. ``manager`` es el gestor vivo que puede conocerla (el del controlador de
+    separaciones): la retira él, para que no guarde una referencia a una capa borrada.
+    """
+    (manager or EnvelopeManager())._drop_envelope(layer)
+
+
+__all__ = ["drop_spacing_envelope_for_layer", "ensure_spacing_envelope_for_layer", "has_spacing_envelope"]

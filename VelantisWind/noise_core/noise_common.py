@@ -21,6 +21,12 @@ try:
 except ImportError:
     QgsGeometry = Any  # Type hint placeholder cuando QGIS no está disponible
 
+try:
+    from ..i18n import tr_text
+except ImportError:  # imported outside the plugin package, or without QGIS
+    def tr_text(text):
+        return text
+
 
 # ============================================================================
 # LOGGING
@@ -259,14 +265,14 @@ def validate_octave_spectrum(lw_octave: Dict[int, float]) -> List[str]:
     errors = []
     
     if not lw_octave:
-        errors.append("Espectro vacío")
+        errors.append(tr_text("Espectro vacío"))
         return errors
     
     for freq in OCTAVE_BANDS:
         if freq not in lw_octave:
-            errors.append(f"Falta banda {freq} Hz")
+            errors.append(tr_text("Falta banda {freq} Hz").format(freq=freq))
         else:
             if not is_finite_positive(lw_octave[freq], allow_zero=True):
-                errors.append(f"Valor inválido en banda {freq} Hz: {lw_octave[freq]}")
+                errors.append(tr_text("Valor inválido en banda {freq} Hz: {value}").format(freq=freq, value=lw_octave[freq]))
     
     return errors

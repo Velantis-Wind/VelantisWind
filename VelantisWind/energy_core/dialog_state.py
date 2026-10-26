@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 import os
 
 from .domain import EnergyRunConfig, TurbineModelInput
+from .translation import tr
 
 
 @dataclass(frozen=True)
@@ -34,8 +35,12 @@ class DialogStateError(RuntimeError):
 
     def __init__(self, title: str, message: str):
         self.title = str(title or "AEP")
-        self.message = str(message or "Configuración no válida.")
+        self.message = str(message or tr("Configuración no válida."))
         super().__init__(self.message)
+
+
+class DialogStateCancelled(RuntimeError):
+    """The dialog said why it does not calculate (a conflict of the physics) or the user cancelled: nothing else."""
 
 
 @dataclass
@@ -48,20 +53,19 @@ class EnergyDialogState:
     wrg_ti_paths: List[str]
     wrg_ti_heights_m: List[Optional[float]]
     compute_variants: bool
-    include_turbulence: bool
-    include_blockage: bool
-    include_rotor_avg: bool
-    rotor_avg_model: str
-    superposition_model: str
-    wfm_engine: str
-    wake_deficit_model: str
-    wake_deficit_kwargs: Dict[str, Any]
-    turbulence_model: str
-    blockage_deficit_model: str
+    # The physics of the group «Modelo de estela», as a request of the API (ag_core/wake_setup/api.py).
+    wake_physics: Dict[str, Any]
     fixed_ti: Optional[float]
     project_crs_authid: str
     tol_m: float
-    use_selected_layers: bool = False
+    wrg_direction_count: Optional[int] = None
+    wrg_wd_interp: str = "nearest"
+    energy_ws_step: Optional[float] = None
+    air_density_mode: str = "off"
+    air_density_ref_kg_m3: Optional[float] = None
+    air_density_ref_altitude_m: Optional[float] = None
+    # The provenance of the predefined model of the group, read with its physics; ``None`` in the manual mode.
+    wake_provenance: Optional[Dict[str, Any]] = None
     messages: List[DialogStateMessage] = field(default_factory=list)
 
     @property
@@ -87,27 +91,29 @@ class EnergyDialogState:
                     meta=m.get("meta"),
                     coords_csv=m.get("coords_csv") or "",
                     coords_xy=m.get("coords_xy"),
+                    source_row_index=m.get("source_row_index"),
+                    source_type_index=m.get("source_type_index", m.get("source_row_index")),
+                    source_layer_id=m.get("source_layer_id") or "",
+                    source_layer_name=m.get("source_layer_name") or "",
                 )
                 for m in self.models
             ],
             wasp_dir=self.wasp_dir if not self.use_wrg else "",
             wrg_paths=self.wrg_paths if self.use_wrg else None,
             compute_variants=self.compute_variants,
-            include_turbulence=self.include_turbulence,
-            include_blockage=self.include_blockage,
-            include_rotor_avg=self.include_rotor_avg,
-            rotor_avg_model=self.rotor_avg_model,
-            superposition_model=self.superposition_model,
-            wfm_engine=self.wfm_engine,
-            wake_deficit_model=self.wake_deficit_model,
-            wake_deficit_kwargs=dict(self.wake_deficit_kwargs or {}),
-            turbulence_model=self.turbulence_model,
-            blockage_deficit_model=self.blockage_deficit_model,
+            wake_physics=self.wake_physics,
+            wake_provenance=self.wake_provenance,
             fixed_ti=self.fixed_ti,
             wrg_ti_paths=self.wrg_ti_paths if self.use_wrg and self.wrg_ti_paths else None,
             wrg_ti_heights_m=self.wrg_ti_heights_m if self.use_wrg and self.wrg_ti_paths else None,
             project_crs_authid=self.project_crs_authid,
             tol_m=self.tol_m,
+            wrg_direction_count=self.wrg_direction_count,
+            wrg_wd_interp=self.wrg_wd_interp,
+            energy_ws_step=self.energy_ws_step,
+            air_density_mode=self.air_density_mode,
+            air_density_ref_kg_m3=self.air_density_ref_kg_m3,
+            air_density_ref_altitude_m=self.air_density_ref_altitude_m,
         )
 
 
@@ -125,73 +131,79 @@ def _line_edit_text(obj: Any, attr_name: str) -> str:
         return ""
 
 
-def _consume_selected_models(dialog: Any, messages: List[DialogStateMessage]) -> List[Dict[str, Any]]:
-    """Lee la selección puntual de capas hecha desde el mapa interactivo."""
-    try:
-        fn_selected = getattr(dialog, "_consume_selected_models_from_turbine_layers", None)
-        if callable(fn_selected):
-            return list(fn_selected() or [])
-    except Exception as exc:
-        messages.append(
-            DialogStateMessage(
-                severity="warning",
-                title="AEP",
-                message=f"No se pudo usar la selección de capas; se usará el flujo normal: {exc}",
-                duration=8,
+def check_unique_model_names(rows: List[Dict[str, Any]]) -> None:
+    """Rechaza modelos con el mismo nombre: sus resultados se agrupan por nombre.
+
+    Una fila sin nombre se llama «Modelo {n}», como en el diálogo.
+    """
+    seen = set()
+    for idx, row in enumerate(rows or []):
+        name = str((row or {}).get("name") or f"Modelo {idx + 1}").strip()
+        if name in seen:
+            raise DialogStateError(
+                tr("Nombres de modelo"),
+                tr(
+                    "Hay varios modelos llamados «{name}». Usa un nombre distinto para cada modelo: "
+                    "sus resultados se agrupan por nombre."
+                ).format(name=name),
             )
+        seen.add(name)
+
+
+def missing_row_points(idx: int, layer: Any) -> DialogStateError:
+    """Error de una fila sin capa seleccionada («---») o con su capa vacía."""
+    if layer is None:
+        return DialogStateError(
+            tr("Coordenadas"),
+            tr(
+                "El Modelo {n} no tiene capa de turbinas: elige una en su selector «Capa de turbinas» "
+                "o pulsa «Cargar nueva capa»."
+            ).format(n=idx + 1),
         )
-    return []
+    return DialogStateError(
+        tr("Coordenadas"),
+        tr("La capa «{layer}» del Modelo {n} no tiene turbinas.").format(layer=layer.name(), n=idx + 1),
+    )
 
 
-def _models_from_selected_layers(selected_models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    for idx, model in enumerate(selected_models, start=1):
-        if model.get("wt") is None:
-            raise DialogStateError("Faltan modelos", f"La capa seleccionada {idx} no tiene modelo de turbina asociado.")
-        if not model.get("coords_xy"):
-            raise DialogStateError("Coordenadas", f"La capa seleccionada {idx} no tiene aerogeneradores.")
-    return list(selected_models)
+def layers_used_message(models: List[Dict[str, Any]]) -> str:
+    """Qué capa ha usado cada fila en el cálculo."""
+    used = "; ".join(
+        tr("Modelo {n}: «{layer}»").format(n=int(m.get("source_row_index") or 0) + 1, layer=m.get("source_layer_name") or "")
+        for m in models
+    )
+    return tr("Capas de turbinas usadas: {layers}").format(layers=used)
 
 
 def _models_from_dialog_rows(dialog: Any) -> List[Dict[str, Any]]:
+    """Un modelo por fila, con los puntos de la capa seleccionada en su selector."""
     rows = list(getattr(dialog, "_rows", []) or [])
     if any(row.get("wt") is None for row in rows):
-        raise DialogStateError("Faltan modelos", "Define todos los modelos antes de continuar.")
-
-    # Asegura capas de puntos sin pisar ediciones vivas del mapa interactivo.
-    generate_layers = getattr(dialog, "_generate_point_layers_all", None)
-    if callable(generate_layers):
-        generate_layers(force_reload_csv=False, activate_interactive=False)
+        raise DialogStateError(tr("Faltan modelos"), tr("Define todos los modelos antes de continuar."))
 
     models: List[Dict[str, Any]] = []
     for idx, row in enumerate(rows):
-        collect_points = getattr(dialog, "_collect_layer_points_for_row", None)
-        live_pts = collect_points(idx) if callable(collect_points) else []
-        csv_path = ""
-        try:
-            csv_widget = row.get("coords_csv_le")
-            csv_path = csv_widget.text().strip() if csv_widget else ""
-        except Exception:
-            csv_path = ""
-
-        if not live_pts and not (csv_path and os.path.isfile(csv_path)):
-            raise DialogStateError(
-                "Coordenadas",
-                f"El Modelo {idx + 1} no tiene coordenadas. Añade turbinas en el mapa interactivo o selecciona un CSV X,Y válido.",
-            )
-
+        layer = dialog._find_interactive_layer_for_row(idx)
+        live_pts = dialog._collect_layer_points_for_row(idx) if layer is not None else None
+        if not live_pts:
+            raise missing_row_points(idx, layer)
         models.append(
             {
                 "name": row.get("name") or "Custom WT",
                 "wt": row.get("wt"),
                 "meta": row.get("meta"),
-                "coords_csv": csv_path,
+                "coords_csv": "",
                 "coords_xy": live_pts,
+                "source_layer_id": layer.id(),
+                "source_layer_name": layer.name(),
+                "source_row_index": int(idx),
+                "source_type_index": int(idx),
             }
         )
     return models
 
 
-def _read_resource_inputs(dialog: Any) -> tuple[str, List[str], List[str], List[Optional[float]]]:
+def _read_resource_inputs(dialog: Any, warn: bool = True) -> tuple[str, List[str], List[str], List[Optional[float]]]:
     wasp_dir = _line_edit_text(dialog, "ed_dir")
     wrg_paths = _split_semicolon_paths(_line_edit_text(dialog, "ed_wrg"))
     wrg_ti_paths = _split_semicolon_paths(_line_edit_text(dialog, "ed_wrg_ti"))
@@ -205,65 +217,76 @@ def _read_resource_inputs(dialog: Any) -> tuple[str, List[str], List[str], List[
     if wrg_paths:
         for path in wrg_paths:
             if not os.path.isfile(path):
-                raise DialogStateError("WRG", f"El archivo no existe:\n{path}")
+                raise DialogStateError("WRG", tr("El archivo no existe:\n{path}").format(path=path))
             if not path.lower().endswith((".wrg", ".zip")):
-                raise DialogStateError("WRG", f"Extensión no soportada (use .wrg o .zip):\n{path}")
+                raise DialogStateError("WRG", tr("Extensión no soportada (use .wrg o .zip):\n{path}").format(path=path))
 
         missing_ti = [path for path in wrg_ti_paths if not os.path.isfile(path)]
         if missing_ti:
-            raise DialogStateError("Turbulencia WRG", "El/los raster(s) TI no existen:\n" + "\n".join(missing_ti))
+            raise DialogStateError(tr("Turbulencia WRG"), tr("El/los ráster(s) TI no existen:\n{paths}").format(paths="\n".join(missing_ti)))
 
         warn_ti_setup = getattr(dialog, "_maybe_warn_about_ti_setup", None)
-        if callable(warn_ti_setup):
+        if warn and callable(warn_ti_setup):
             warn_ti_setup(use_wrg=True, wrg_ti_paths=wrg_ti_paths, wrg_ti_heights_m=wrg_ti_heights_m)
     else:
         if not wasp_dir or not os.path.isdir(wasp_dir):
-            raise DialogStateError("Recurso eólico", "Selecciona una carpeta WAsP válida o un WRG/ZIP.")
+            raise DialogStateError(tr("Recurso eólico"), tr("Selecciona una carpeta WAsP válida o un WRG/ZIP."))
 
     return wasp_dir, wrg_paths, wrg_ti_paths, wrg_ti_heights_m
 
 
-def build_energy_dialog_state(dialog: Any, project_crs_authid: str) -> EnergyDialogState:
+def build_energy_dialog_state(dialog: Any, project_crs_authid: str, warn: bool = True) -> EnergyDialogState:
     """Lee el diálogo AEP actual y devuelve un estado normalizado.
 
     No ejecuta el cálculo. Solo valida mínimos de UI/rutas que antes estaban en
     ``dialog_controller.py`` y prepara la información para ``EnergyRunner``.
+    Con ``warn`` falso no muestra los avisos informativos (una segunda lectura del mismo diálogo).
     """
     messages: List[DialogStateMessage] = []
 
-    selected_models = _consume_selected_models(dialog, messages)
-    use_selected_layers = bool(selected_models)
-    if use_selected_layers:
-        models = _models_from_selected_layers(selected_models)
-        messages.append(
-            DialogStateMessage(
-                severity="info",
-                title="AEP",
-                message=f"Cálculo con {len(models)} capa(s) seleccionada(s) desde el mapa interactivo.",
-                duration=6,
-            )
-        )
-    else:
-        models = _models_from_dialog_rows(dialog)
+    check_unique_model_names(list(getattr(dialog, "_rows", []) or []))
+    models = _models_from_dialog_rows(dialog)
 
-    wasp_dir, wrg_paths, wrg_ti_paths, wrg_ti_heights_m = _read_resource_inputs(dialog)
+    wasp_dir, wrg_paths, wrg_ti_paths, wrg_ti_heights_m = _read_resource_inputs(dialog, warn)
     use_wrg = bool(wrg_paths)
 
     compute_variants = True
-    turbulence_model = dialog._get_selected_turbulence_model()
-    wfm_engine = dialog._get_selected_wfm_engine() or "PDW"
-    blockage_selected = dialog._get_selected_blockage_deficit()
-    rotor_avg_model = dialog._get_selected_rotor_avg_model()
-
-    engine_upper = wfm_engine.upper()
-    include_turbulence = turbulence_model.upper() not in ("NONE", "NINGUNO")
-    include_blockage = engine_upper != "PDW" and blockage_selected.upper() not in ("NONE", "NINGUNO")
-    include_rotor_avg = rotor_avg_model.upper() not in ("NONE", "NINGUNO", "NONE (NOOP)")
+    # The physics of the group: a conflict, or a cancelled question, stops here (the dialog has said why).
+    wake_physics = dialog._wake_physics_for_run(
+        ask=warn, n_turbines=sum(len(m.get("coords_xy") or []) for m in models))
+    if wake_physics is None:
+        raise DialogStateCancelled()
+    provenance_fn = getattr(dialog, "_wake_provenance_for_run", None)
+    wake_provenance = provenance_fn() if callable(provenance_fn) else None
 
     fixed_ti = None
     if use_wrg and not wrg_ti_paths:
         fixed_ti_fn = getattr(dialog, "_get_fixed_ti_fraction", None)
         fixed_ti = fixed_ti_fn() if callable(fixed_ti_fn) else None
+
+    # Los parámetros del recurso de un WRG, tal como los muestra el grupo (sin él, los iniciales).
+    params_fn = getattr(dialog, "_get_resource_params", None)
+    params = dict((params_fn() if callable(params_fn) else {}) or {})
+    # Con un WRG, las velocidades de cálculo salen de las curvas de los modelos, como en el cálculo: si no se pueden
+    # deducir, no se lanza. Cualquier otro error al leerlas lo informa el cálculo, como hasta ahora.
+    if use_wrg:
+        from ..ag_core.orchestration import effective_turbines, turbine_speed_grid
+        from ..ag_core.resource_grid import WrgContractError
+
+        try:
+            turbine_speed_grid(effective_turbines(models))
+        except WrgContractError:
+            raise DialogStateError(
+                tr("Velocidades de cálculo"),
+                tr("No se pueden deducir las velocidades de cálculo de la curva de algún modelo: no tiene velocidades tabuladas válidas, su potencia es cero en todos sus nodos, su banda de operación no es válida o su tipo de curva no se admite. Revisa los modelos."),
+            ) from None
+        except Exception:  # nosec B110
+            pass
+
+    # Si el diálogo no puede leer sus controles de densidad, lanza: el cálculo no
+    # sigue en silencio como si el ajuste estuviera desactivado.
+    density_fn = getattr(dialog, "_get_air_density_settings", None)
+    density = dict((density_fn() if callable(density_fn) else {}) or {})
 
     return EnergyDialogState(
         models=models,
@@ -272,19 +295,16 @@ def build_energy_dialog_state(dialog: Any, project_crs_authid: str) -> EnergyDia
         wrg_ti_paths=wrg_ti_paths,
         wrg_ti_heights_m=wrg_ti_heights_m,
         compute_variants=compute_variants,
-        include_turbulence=include_turbulence,
-        include_blockage=include_blockage,
-        include_rotor_avg=include_rotor_avg,
-        rotor_avg_model=rotor_avg_model,
-        superposition_model=dialog._get_selected_superposition_model(),
-        wfm_engine=wfm_engine,
-        wake_deficit_model=dialog._get_selected_wake_deficit(),
-        wake_deficit_kwargs=dialog._get_wake_deficit_kwargs(),
-        turbulence_model=turbulence_model,
-        blockage_deficit_model=("NONE" if engine_upper == "PDW" else blockage_selected),
+        wake_physics=wake_physics,
+        wake_provenance=wake_provenance,
         fixed_ti=fixed_ti,
         project_crs_authid=project_crs_authid,
         tol_m=30.0,
-        use_selected_layers=use_selected_layers,
+        wrg_direction_count=params.get("direction_count"),
+        wrg_wd_interp=params.get("wd_interp") or "nearest",
+        energy_ws_step=params.get("ws_step"),
+        air_density_mode=str(density.get("mode") or "off"),
+        air_density_ref_kg_m3=density.get("reference_density_kg_m3"),
+        air_density_ref_altitude_m=density.get("reference_altitude_m"),
         messages=messages,
     )

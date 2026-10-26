@@ -13,9 +13,11 @@ from typing import Iterable, Optional, Tuple
 from qgis.PyQt import QtCore, QtWidgets
 
 try:
-    from ..i18n import apply_i18n, tr_text
+    from ..i18n import apply_i18n, mark_translated, tr_text
 except Exception:  # pragma: no cover
     def apply_i18n(_widget):
+        return None
+    def mark_translated(_widget):
         return None
     def tr_text(text):
         return text
@@ -76,11 +78,13 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
         self.cb_model = QtWidgets.QComboBox()
         self.cb_model.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.cb_model.setToolTip(
-            "Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar."
+            tr_text("Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar.")
         )
+        # Sus elementos llevan el nombre del modelo y de la capa: se ponen ya traducidos y apply_i18n no los toca.
+        mark_translated(self.cb_model)
         self.btn_refresh_models = QtWidgets.QPushButton("↻")
         self.btn_refresh_models.setMaximumWidth(34)
-        self.btn_refresh_models.setToolTip("Actualizar la lista de modelos de turbina del proyecto.")
+        self.btn_refresh_models.setToolTip("Actualizar la lista de modelos de las filas de Energía.")
         model_row = QtWidgets.QHBoxLayout()
         model_row.setContentsMargins(0, 0, 0, 0)
         model_row.setSpacing(4)
@@ -90,7 +94,8 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
         model_wrap.setLayout(model_row)
         form.addRow("Modelo de aerogenerador:", model_wrap)
 
-        self.lbl_model_info = QtWidgets.QLabel("No hay modelos cargados.")
+        self.lbl_model_info = QtWidgets.QLabel(tr_text("No hay modelos cargados."))
+        mark_translated(self.lbl_model_info)
         self.lbl_model_info.setWordWrap(True)
         self.lbl_model_info.setStyleSheet("color: #666; font-size: 10px;")
         form.addRow("", self.lbl_model_info)
@@ -143,7 +148,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
         self.cb_validation.addItem("Avisar si hay conflicto", VALIDATE_WARN)
         self.cb_validation.addItem("Bloquear inserción si hay conflicto", VALIDATE_BLOCK)
         self.cb_validation.setToolTip(
-            "La validación se aplica conjuntamente entre todos los modelos del proyecto."
+            "La validación se aplica conjuntamente entre las capas de turbinas elegidas en las filas de Energía."
         )
         form.addRow("Validación:", self.cb_validation)
         v.addLayout(form)
@@ -179,6 +184,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
         self.lbl_status = QtWidgets.QLabel("—")
         self.lbl_status.setWordWrap(True)
         self.lbl_status.setStyleSheet("color: #555; font-size: 11px;")
+        mark_translated(self.lbl_status)
         v.addWidget(self.lbl_status)
 
         apply_i18n(self)
@@ -199,7 +205,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
             idx = self.cb_validation.findData(val)
             if idx >= 0:
                 self.cb_validation.setCurrentIndex(idx)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._update_enabled_state()
 
@@ -214,7 +220,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
             s.setValue("spacing/mode", self.cb_orientation.currentData())
             s.setValue("spacing/shape", SHAPE_ELLIPTICAL)
             s.setValue("spacing/validation", self.cb_validation.currentData())
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _wire(self):
@@ -317,7 +323,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
         finally:
             try:
                 self.chk_enable.blockSignals(False)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         self._save_settings()
         self._update_enabled_state()
@@ -341,6 +347,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
             previous = selected_id or self.selected_model_id()
             self.cb_model.clear()
             if not items:
+                self._model_info = None
                 self.cb_model.addItem(tr_text("No hay modelos cargados"), "")
                 self.cb_model.setCurrentIndex(0)
                 self.lbl_model_info.setText(tr_text("No hay modelos cargados."))
@@ -361,6 +368,7 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
         diameter_m: Optional[float] = None,
         turbine_count: Optional[int] = None,
     ) -> None:
+        self._model_info = (model_name, diameter_m, turbine_count)
         self._syncing_model = True
         widgets = (self.sp_long, self.sp_trans, self.sp_angle, self.cb_orientation)
         try:
@@ -377,21 +385,43 @@ class SpacingEnvelopePanel(QtWidgets.QGroupBox):
             if diameter_m is not None:
                 pieces.append(f"D={float(diameter_m):g} m")
             if turbine_count is not None:
-                pieces.append(tr_text(f"{int(turbine_count)} turbina(s)"))
+                pieces.append(tr_text("{n} turbina(s)").format(n=int(turbine_count)))
             self.lbl_model_info.setText(" · ".join(pieces) if pieces else tr_text("Modelo seleccionado."))
         finally:
             for w in widgets:
                 try:
                     w.blockSignals(False)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
             self._syncing_model = False
         self._update_enabled_state()
 
-    def set_status(self, text: str):
+    def retranslate(self):
+        apply_i18n(self)
+        self.cb_model.setToolTip(tr_text("Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar."))
+        info = getattr(self, "_model_info", None)
+        if info is not None:
+            name, diameter, count = info
+            pieces = [str(name)] if name else []
+            if diameter is not None:
+                pieces.append(f"D={float(diameter):g} m")
+            if count is not None:
+                pieces.append(tr_text("{n} turbina(s)").format(n=int(count)))
+            self.lbl_model_info.setText(" · ".join(pieces) if pieces else tr_text("Modelo seleccionado."))
+        source = getattr(self, "_status_source", None)
+        if source is not None:
+            text, values = source
+            self.lbl_status.setText(tr_text(text or "—").format(**values) if values else tr_text(text or "—"))
+
+    def set_status(self, text: str, translated: bool = False, **values):
+        """Muestra un estado. Uno con datos (un nombre, una ruta, un número) llega ya traducido (``translated``): su
+        plantilla se traduce antes de insertarlos, para que los datos no pasen por el traductor.
+        Con ``values``, conserva la plantilla y sus datos para regenerar el último mensaje al cambiar de idioma."""
+        self._status_source = None if translated else (text, values)
         try:
-            self.lbl_status.setText(tr_text(text or "—"))
-        except Exception:
+            shown = text if translated else tr_text(text or "—")
+            self.lbl_status.setText(shown.format(**values) if values else shown)
+        except Exception:  # nosec B110
             pass
 
     def reflect_spec(self, spec: SpacingSpec):

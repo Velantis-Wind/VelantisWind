@@ -11,11 +11,11 @@ from .i18n_local import tr4 as _ml
 def inform_calculation_already_running(dialog) -> None:
     QtWidgets.QMessageBox.information(
         dialog,
-        _ml("Cálculo de sombras en curso", "Shadow calculation running", "Calcul d’ombres en cours", "Schattenwurfberechnung läuft"),
+        _ml("Cálculo de sombras en curso", "Shadow calculation running", "Calcul d’ombres portées en cours", "Schattenwurfberechnung läuft"),
         _ml(
             "Ya hay un cálculo de sombras y parpadeo en curso.",
             "A shadow flicker calculation is already running.",
-            "Un calcul d’ombres et scintillement est déjà en cours.",
+            "Un calcul d’ombres portées est déjà en cours.",
             "Eine Schattenwurfberechnung läuft bereits.",
         ),
     )
@@ -25,13 +25,13 @@ def show_validation_errors(dialog, errors) -> None:
     message = _ml(
         "No se puede iniciar el cálculo de sombras y parpadeo:\n\n",
         "The shadow flicker calculation cannot be started:\n\n",
-        "Impossible de démarrer le calcul d’ombres et scintillement :\n\n",
+        "Impossible de démarrer le calcul d’ombres portées :\n\n",
         "Die Schattenwurfberechnung kann nicht gestartet werden:\n\n",
     ) + "\n".join(f"• {e}" for e in errors)
     title = _ml(
         "Configuración de sombras no válida",
         "Invalid shadow configuration",
-        "Configuration d’ombres non valide",
+        "Configuration d’ombres portées non valide",
         "Ungültige Schattenwurfkonfiguration",
     )
     if hasattr(dialog, "txt_status"):
@@ -54,7 +54,7 @@ def show_shadow_starting_status(dialog) -> None:
             _ml(
                 "Iniciando cálculo de sombras y parpadeo…",
                 "Starting shadow flicker calculation…",
-                "Démarrage du calcul d’ombres et scintillement…",
+                "Démarrage du calcul d’ombres portées…",
                 "Schattenwurfberechnung wird gestartet…",
             )
         )

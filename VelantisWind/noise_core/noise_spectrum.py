@@ -34,6 +34,11 @@ except ImportError:
         validate_octave_spectrum,
         log,
     )
+try:
+    from ..i18n import tr_text
+except ImportError:  # imported outside the plugin package
+    def tr_text(text):
+        return text
 
 
 # ============================================================================
@@ -211,7 +216,7 @@ def load_spectrum_from_csv(
     3. Relativo (forma):      freq_hz, Lw_dB_rel (requiere lwa_global)
     """
     if not os.path.exists(filepath):
-        raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
+        raise FileNotFoundError(tr_text("Archivo no encontrado: {path}").format(path=filepath))
 
     rows: List[Tuple[int, float]] = []
     weighted_input = False
@@ -229,11 +234,11 @@ def load_spectrum_from_csv(
         reader = csv.DictReader(f, delimiter=delim)
         freq_col, value_col, kind = _resolve_spectrum_columns(reader.fieldnames)
         if not freq_col or not value_col:
-            raise ValueError(
-                f"No se reconocen las columnas de {os.path.basename(filepath)}. "
+            raise ValueError(tr_text(
+                "No se reconocen las columnas de {file}. "
                 "Cabeceras aceptadas: freq_hz + Lw_dB (absoluto), LwA_dB/dBA/dB(A) "
                 "(ponderado A) o Lw_dB_rel (forma relativa)."
-            )
+            ).format(file=os.path.basename(filepath)))
         weighted_input = (kind == 'lwa')
         forced_relative = (kind == 'rel')
 
@@ -242,7 +247,7 @@ def load_spectrum_from_csv(
             try:
                 freq = int(float(row.get(freq_col) or ''))
                 lw = float(row.get(value_col) or '')
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             if freq <= 0:
                 continue
@@ -254,7 +259,7 @@ def load_spectrum_from_csv(
             rows.append((freq, lw))
 
     if not rows:
-        raise ValueError(f"No se pudieron leer datos válidos de {filepath}")
+        raise ValueError(tr_text("No se pudieron leer datos válidos de {path}").format(path=filepath))
 
     # Detectar si es absoluto o relativo
     values = [lw for _, lw in rows]
@@ -268,10 +273,10 @@ def load_spectrum_from_csv(
         # in dB(A) would be ambiguous, so reject it before conversion masks
         # it: the check uses the RAW typed values, not the converted ones.
         if max(raw_values) < 20.0:
-            raise ValueError(
+            raise ValueError(tr_text(
                 "La columna ponderada A contiene valores pequeños que parecen una "
                 "forma relativa. Para formas relativas usa la cabecera Lw_dB_rel."
-            )
+            ))
         is_relative = False
     else:
         is_relative = max_val < 20.0 or (min_val < 0 and max_val < 50.0)
@@ -289,7 +294,7 @@ def load_spectrum_from_csv(
     
     if is_relative:
         if lwa_global is None:
-            raise ValueError("Espectro relativo requiere lwa_global")
+            raise ValueError(tr_text("Espectro relativo requiere lwa_global"))
         spectrum_abs = global_lwa_to_octave_spectrum(lwa_global, spectrum_raw)
         metadata['lwa_global'] = lwa_global
     else:
@@ -319,7 +324,7 @@ def load_spectrum_from_csv(
     # Validar
     errors = validate_octave_spectrum(spectrum_abs)
     if errors:
-        raise ValueError(f"Espectro inválido: {', '.join(errors)}")
+        raise ValueError(tr_text("Espectro inválido: {errors}").format(errors=", ".join(errors)))
     
     return spectrum_abs, metadata
 

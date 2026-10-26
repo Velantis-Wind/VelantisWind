@@ -8,6 +8,23 @@ Velantis Wind is an experimental QGIS 3.x / QGIS 4.x plugin for early-stage wind
 >
 > **Compatibility:** this public package is marked as compatible with QGIS 3.x and QGIS 4.x. QGIS 4 support remains experimental and should be validated with real installations and user feedback.
 
+## What is new in 0.1.17
+
+- Predefined PyWake models, including TurbOPark, and manual class selection with editable parameters, rotor averaging, ground, turbulence and blockage. A new installation opens with predefined NOJ; manual defaults use Bastankhah with `LinearSum` and PyWake signature values. Results report the executed configuration and signed losses.
+- WRG resource parameters: sector-subdivision centres (seven per sector initially, or one if seven would exceed 360 directions), `nearest` or `linear` directional interpolation, Speedup `none` and wind speeds covering the turbines' operating bands. GRD uses its PyWake site's directions and wind speeds; both use 8766 h/year.
+- Density-tabulated `.wtg`/`.owtg` curves, optional per-turbine density, validated CSV/TXT curves, preserved derating, per-model hub heights and bin-mean power in energy calculations.
+- A turbine layer per Energy model row, reported resource exclusions, double-precision coordinates and fixes to spacing-envelope persistence and comparisons.
+- Negative effective speeds no longer fail at the density-table axis boundary; results report negative and non-finite values and partial totals. `WeightedSum` handles the 0 m/s node separately where applicable.
+- Georeferenced wake rasters with cancellation and a JSON audit file, using all current dialog inputs and reporting differences from the last AEP. Custom and derived CRS are retained; a raster is not loaded into another project after a project change.
+- XLSX and any-valid-CRS layout imports in Noise and Shadow Flicker; Noise isophones retain derived CRS. Exactly 30 h/year does not exceed the shadow-flicker annual limit, consistently in the summary, result fields and map.
+- Minimize, maximize/restore and close controls; a shared Sponsors button and clearer support links. Corrected ES/EN/FR/DE translations, faster translation and live language changes that preserve user data and edits. MW and MWh in the text and tables of the Energy results and report follow the plugin language; other numbers, such as the chart axes, may still use a decimal point, and CSV numeric formats are unchanged.
+
+**Default AEP results change compared with 0.1.16**, through wake defaults, resource grids, 8766 h/year, bin-mean power and turbine-curve corrections. The reference air density, new in this version, is stored in each project; a project without one starts undefined, with the density adjustment off.
+
+**Installation:** use `py_wake==2.6.18`, `h5netcdf>=1.8` and, on Linux/macOS, `h5py` with pip. On Windows with QGIS from OSGeo4W, do not install `h5py` with pip: an HDF5 conflict is expected but has not been reproduced there; `python3-h5py` through the OSGeo4W installer is an untested option. When GaussianOverlap's libraries are unavailable, the dialog asks before using `CGIRotorAvg(7)` where its table is needed and records the adaptation, or applies an applicable saved decision for the predefined model without asking. See [Energy dependency](#energy-dependency).
+
+**Known problem:** **Merge resource** ("Unir recurso") can write grids PyWake cannot read and discards turbulence intensity and speed factors; these problems remain for the next version. See the [full changelog](CHANGELOG.md).
+
 ## What is new in 0.1.16
 
 - Per-model elliptical spacing envelopes with WRG-based orientation, conflict validation, automatic CSV-layer refresh and screen-defined overrides.
@@ -23,7 +40,7 @@ See [`CHANGELOG.md`](CHANGELOG.md) for the full release notes.
 
 | Module | Purpose | Main outputs |
 |---|---|---|
-| **Energy / AEP** | Estimate wind-farm production with PyWake-compatible workflows and GIS inputs. | Gross/free AEP, wake-reduced AEP, wake/TI/blockage diagnostics, per-turbine table, sector summaries, HTML/CSV reports and QGIS layers. |
+| **Energy / AEP** | Estimate wind-farm production with PyWake-compatible workflows and GIS inputs. | Gross/free AEP, wake-reduced AEP, wake/TI/blockage diagnostics, per-turbine table, sector summaries, HTML/CSV reports, QGIS layers and georeferenced wake rasters. |
 | **Noise** | Run preliminary wind-turbine noise screening with fast and ISO-aligned octave-band engines. | Receiver levels, margins, compliance tables, critical receiver, noise raster, isophones and source-receptor links. |
 | **Shadow Flicker** | Estimate preliminary shadow/flicker impact using turbine, receptor, terrain and solar-geometry inputs. | Annual hours, real/adjusted hours, affected days, monthly/hourly matrices, receptor layer and raster map. |
 | **Spacing envelopes** | Visualize and validate model-specific minimum turbine separation in the Interactive Map. | Per-model elliptical layers, conflict status, optional insertion blocking and GeoPackage export. |
@@ -56,14 +73,29 @@ Then restart QGIS and enable **Velantis Wind** from the Plugin Manager.
 
 The Energy / AEP module requires **PyWake** in the same Python environment used by QGIS. PyWake is not bundled inside the plugin and it is not installed from the QGIS Plugin Manager.
 
-On Windows / OSGeo4W, close QGIS, open **OSGeo4W Shell** and run:
+Install `py_wake==2.6.18`, `h5py` and `h5netcdf>=1.8` in the Python environment used by QGIS. PyWake 2.6.18 requires `h5netcdf`. Since version 1.8, `h5netcdf` no longer depends on `h5py`, so the Windows command below does not install `h5py` through `h5netcdf`. On Linux and macOS, install all three with pip. On Windows with QGIS from OSGeo4W, do not install `h5py` with pip; see the OSGeo4W option below. The predefined models and the plugin's consistency with PyWake were checked with version 2.6.18; the dialog does not warn if a different version is installed. `h5py` and `h5netcdf` are needed by `GaussianOverlapAvgModel`, the rotor average used by the predefined models NiayifarGaussian and TurbOPark.
+
+On Linux and macOS, in the Python environment used by QGIS:
 
 ```bash
-python -m pip install py_wake==2.6.18
+python -m pip install py_wake==2.6.18 h5py "h5netcdf>=1.8"
+python -c "import py_wake, h5py, h5netcdf; print('PyWake OK:', py_wake.__file__)"
+```
+
+On Windows, with QGIS from OSGeo4W, close QGIS, open **OSGeo4W Shell** and run:
+
+```bash
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 python -c "import py_wake; print('PyWake OK:', py_wake.__file__)"
 ```
 
 Then restart QGIS and install or enable VelantisWind.
+
+Expected problem on Windows (not reproduced there): the `h5py` pip wheel is expected to fail to load inside QGIS from OSGeo4W (`ImportError: DLL load failed while importing defs`). The wheel bundles an HDF5 library named `hdf5.dll`, the same name as the library QGIS loads from OSGeo4W. Windows reuses a DLL already loaded under that name. Inspection of the binaries found that OSGeo4W HDF5 1.14.6 lacks 19 of the 522 symbols required by the `h5py` 3.16.0 wheel (HDF5 2.0.0). For this reason, `pip install h5py` is not offered as a solution on Windows.
+
+An option to try is installing `python3-h5py` through the OSGeo4W installer. This package is built against OSGeo4W's HDF5 and is not included in `qgis-full`. This option has not been tested. The command above ensures `h5netcdf>=1.8` is installed by pip; it does not need to be installed through OSGeo4W.
+
+If `h5py` or `h5netcdf` is missing or fails to load when PyWake would read the `GaussianOverlapAvgModel` table (for the predefined models NiayifarGaussian and TurbOPark, with two or more turbines or in a wake raster), the dialog asks before calculating in both predefined and manual modes. **Continue** uses `CGIRotorAvg(7)` and records the adaptation in the results; **Cancel** calculates nothing. If a predefined model has an applicable saved decision, the dialog adapts without asking, and the result states that the saved decision was applied.
 
 Detailed installation guide:
 
@@ -80,10 +112,11 @@ Detailed installation guide:
 2. Open **Velantis Wind → Energy / AEP**.
 3. Select turbine model/curve, layout input and wind-resource input.
    - Version 0.1.16 includes 4 traceable public/reference curves, 8 commercial-model approximations anchored to public technical specifications, and 30 manufacturer-neutral onshore/offshore classes. The dialog separates all three quality levels. Spec-based and generic curves are not OEM-certified and must be replaced with project data for technical deliverables.
-4. Select wake model and optional physics settings.
+4. Select wake model and optional physics settings; with a WRG, review its resource parameters.
 5. Run the calculation.
-6. Review AEP, losses, sector summaries and per-turbine outputs.
-7. Export HTML/CSV reports if needed.
+6. Optionally create a georeferenced wake raster; it runs in the QGIS task manager and writes a matching JSON audit file.
+7. Review AEP, losses, sector summaries and per-turbine outputs.
+8. Export HTML/CSV reports if needed.
 
 ### Noise
 

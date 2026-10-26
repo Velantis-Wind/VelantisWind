@@ -2,15 +2,23 @@
 
 **Purpose:** visual, real-time validation of minimum inter-turbine spacing while designing a layout in Interactive Map mode.
 
-The Spacing Envelope draws a semi-transparent ellipse (the *spacing envelope*) around every wind turbine in every turbine-model layer associated with the project. The ellipse represents the **minimum center-to-center separation**: if two envelopes overlap, the two turbines are closer than the configured threshold and the envelopes turn red instantly.
+The Spacing Envelope draws a semi-transparent ellipse (the *spacing envelope*) around every wind turbine of the layers chosen in the rows of the Energy dialog: the park that the AEP and the wake raster calculate. The ellipse represents the **minimum center-to-center separation**: if two envelopes overlap, the two turbines are closer than the configured threshold and the envelopes turn red instantly.
 
 > **Important:** this is a geometric screening aid for manual layout design. It does not replace wake modelling, micrositing constraints or any regulatory setback analysis.
 
 ---
 
+### Which layers are compared
+
+The envelopes managed from the Energy dialog are those of the layers chosen in the *Turbine layer* selectors of its rows, each once, and they are checked against each other (layers in the same CRS). With one model and its layer, only that layer is drawn and validated; with several models, each with its layer, the conflicts also cover turbines of different layers. No other point layer of the project takes part, even if VelantisWind used it before (in a row, or imported from a CSV): independent layout alternatives of the same site are never compared with each other. To check several layers together as one park, choose each of them in its own row. A layout imported from Noise or Shadow in a CRS projected in metres gets, at import, an envelope layer of its own, checked only against itself.
+
+When a row takes another layer, chooses «---», or disappears because the number of models goes down, the temporary envelope layer of the layer that left the rows is removed (a saved one is kept) and those of the remaining rows are rebuilt. With the spacing envelopes switched on, the new layer gets its ellipses at once; with them switched off, nothing is created, and the envelopes that already exist are still updated against every row. Choosing a layer in a row never switches the envelopes on. *Load new layer* without having opened the spacing envelopes in the dialog creates the ellipses and switches them on, as before, unless they were switched off (also in a dialog closed since); with them switched off, it creates none.
+
+A layer that is in no row cannot have its envelope configured any more: choose it in a row first.
+
 ### Model-specific ellipse dimensions
 
-Each turbine model stores its own longitudinal and crosswind spacing, orientation mode and fallback angle in the Energy model definition and, once created, on the associated turbine layer (`velantis/spacing_long_d`, `velantis/spacing_trans_d`, `velantis/spacing_mode` and `velantis/spacing_angle_deg`). The panel contains an explicit **wind turbine model selector**. Edit the values and press **Apply new configuration** to persist and rebuild only the selected model. A defined model appears in that selector even before it has a point layer, labelled as *no layer*, so its ellipse can be configured before loading the coordinate CSV. Older layers without these properties are initialized from the application defaults. Per-turbine ellipses drawn on screen still take priority over the model template.
+Each turbine model stores its own longitudinal and crosswind spacing, orientation mode and fallback angle in the Energy model definition and, once created, on the associated turbine layer (`velantis/spacing_long_d`, `velantis/spacing_trans_d`, `velantis/spacing_mode` and `velantis/spacing_angle_deg`). The panel contains an explicit **wind turbine model selector**. Edit the values and press **Apply new configuration** to persist and rebuild only the selected model. A defined model appears in that selector even before it has a point layer, labelled as *no layer*, so its ellipse can be configured before choosing or loading its layer. Older layers without these properties are initialized from the application defaults. Per-turbine ellipses drawn on screen still take priority over the model template.
 
 ## What it does
 
@@ -33,12 +41,12 @@ Each turbine model stores its own longitudinal and crosswind spacing, orientatio
 
 There are two entry points to the **same shared configuration**:
 
-1. **Main Energy/AEP dialog** — the **Spacing envelopes…** button in the *Turbine models* group, directly below the CSV coordinate import rows. It opens a non-modal configuration dialog, so envelopes can be set up and previewed on the map before entering Interactive Map mode. Pressing *Define ellipse on screen* from here hides the dialogs, lets you draw on the canvas, and restores them when the drawing tool exits.
+1. **Main Energy/AEP dialog** — the **Spacing envelopes…** button in the *Turbine models* group, directly below the model rows (each with its *Turbine layer* selector and *Load new layer*). It opens a non-modal configuration dialog, so envelopes can be set up and previewed on the map before entering Interactive Map mode. Pressing *Define ellipse on screen* from here hides the dialogs, lets you draw on the canvas, and restores them when the drawing tool exits.
 2. **Interactive Map dock** — the **Spacing envelope** group between the ambient-TI group and the Actions group, for live validation while editing the layout.
 
 Both embed the same panel and drive a single shared controller. There is one envelope layer and one parameter set per turbine model; the model selector determines which set is being edited. Changes made in one place are immediately reflected in the other. The UI, including Interactive Map labels and runtime messages, is available in ES/EN/FR/DE.
 
-When a turbine CSV is converted into a point layer, the plugin transfers the spacing values already stored in the selected model definition, assigns the model metadata and **creates/rebuilds its ellipse layer automatically**. Opening the spacing dialog first is not required, but doing so allows the user to configure that model before importing its coordinates.
+When *Load new layer* imports a coordinates file as a point layer, the plugin selects it in the row, transfers the spacing values already stored in the model definition, assigns the model metadata and, if the spacing envelopes have not been opened in the dialog and are not switched off, **creates/rebuilds its ellipse layer automatically**, checked against the other rows. If they are open, the row change does it while they are switched on; while they are switched off, nothing is created. A turbine layout imported from Noise or Shadow, in a CRS projected in metres, gets the envelopes of that layer only. Defining the row's turbine afterwards, or choosing in a row a layer that already has an envelope, rebuilds that envelope with the row's diameter. Opening the spacing dialog first is not required, but doing so allows the user to configure that model before importing its coordinates.
 
 ---
 
@@ -117,7 +125,7 @@ The validation level is user-selectable:
 
 - **Visualization only** — conflicts only change colors; no message-bar noise.
 - **Warn on conflict** (default) — conflicts additionally raise a message-bar warning.
-- **Block insertion on conflict** — before a new turbine is committed in Interactive Map mode, its would-be envelope is tested against the existing ones; on overlap the insertion is rejected with the message *"The turbine intrudes into another turbine's envelope · insertion blocked."* The check is fail-open: any internal error never prevents editing.
+- **Block insertion on conflict** — before a new turbine is committed in Interactive Map mode, its would-be envelope is tested against the existing ones; on overlap the insertion is rejected with the message *"The turbine intrudes into another turbine's envelope · insertion blocked."* If the candidate cannot be compared with an envelope (its transformation to another CRS fails or crosses a cut of that CRS, or a geometry operation fails), the insertion is blocked too, with the warning *"The turbine could not be compared with the spacing envelopes · insertion blocked."*. Without envelope layers there is nothing to compare with, and an unexpected error before the comparison also lets the insertion through.
 
 ---
 
@@ -145,8 +153,8 @@ Per-turbine overrides persist as JSON in the turbine layer custom property `vela
 
 - **Multiple rotor diameters:** each turbine layer carries its own `velantis/diameter_m`; each model has its own envelope layer and always uses the real `D` of that source layer. Conflicts are also checked between different models.
 - **No wind resource loaded:** automatic mode falls back to the panel's manual angle (0° by default) with a visible notice.
-- **Turbine model change:** regenerating point layers rewrites `velantis/diameter_m` and the model-specific spacing properties; envelopes pick them up immediately.
-- **CSV import:** every valid turbine CSV point layer inherits the spacing values configured for its model and creates or refreshes its associated ellipse layer automatically. If several model layers are present, conflicts are recalculated across all of them.
+- **Turbine model change:** defining a row's turbine, or choosing a layer in a row's *Turbine layer* selector, writes `velantis/diameter_m` and the model-specific spacing properties into the layer; the envelopes of the rows are rebuilt at once, through the spacing panel when it is open and switched on, and otherwise only those that already exist, against every row.
+- **Load new layer:** every point layer imported from a coordinates file inherits the spacing values configured for its model and, as described in *Where to find it*, creates or refreshes its associated ellipse layer. Conflicts are recalculated against the layers of the other rows.
 - **Legacy circular projects:** old `circular` values are accepted when loading the project but migrated to elliptical envelopes.
 - **Large layouts:** conflict checks are spatial-index based; the ellipse rebuild itself is O(n) with 64-vertex polygons and is comfortable for screening-size layouts.
 

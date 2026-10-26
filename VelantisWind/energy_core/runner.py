@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from .domain import EnergyRunConfig, ProgressCallback
+from .translation import tr
 from .validation import ValidationIssue, format_validation_issues, validate_energy_config
 
 
@@ -39,4 +40,11 @@ class EnergyRunner:
         except Exception:  # pragma: no cover - standalone fallback
             from ag_core.aep_compute import compute_and_update  # type: ignore
 
-        return compute_and_update(**config.to_compute_kwargs(progress_callback=progress_callback))
+        # Los mensajes de progreso de ag_core van en español (también al log); se
+        # traducen solo para mostrarlos.
+        translated_callback = None
+        if progress_callback is not None:
+            def translated_callback(value: int, message: str) -> None:
+                progress_callback(value, tr(message))
+
+        return compute_and_update(**config.to_compute_kwargs(progress_callback=translated_callback))

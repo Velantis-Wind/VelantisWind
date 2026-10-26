@@ -9,10 +9,43 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
+from ...ag_core.curve_text import autodetected_table_rows
+from ...i18n import tr_text
+
+
+def _mixed_whitespace_rows(stream):
+    """Parse mixed numeric whitespace without collapsing empty TSV cells.
+
+    Unquoted tabs delimit cells, including empty cells. Within each nonempty
+    cell, spaces may separate values. Quotes protect either kind of whitespace;
+    doubled CSV quotes toggle the state twice. This is the acoustic fallback
+    when no uniform file delimiter is detected, not the parser for known TSV.
+    """
+    for line in stream:
+        cells = []
+        start = 0
+        quoted = False
+        for index, char in enumerate(line):
+            if char == '"':
+                quoted = not quoted
+            elif char == "\t" and not quoted:
+                cells.append(line[start:index])
+                start = index + 1
+        cells.append(line[start:])
+        row = []
+        for cell in cells:
+            value = cell.strip(" \r\n")
+            if value:
+                row.extend(next(autodetected_table_rows([value], " ")))
+            else:
+                row.append("")
+        yield row
+
+
 def load_acoustic_curve_csv(path: str) -> Tuple[np.ndarray, np.ndarray]:
     """Lee una curva acústica simple ws/LwA desde CSV o TXT."""
     if not path or not os.path.exists(path):
-        raise FileNotFoundError(path or 'Sin ruta de curva acústica')
+        raise FileNotFoundError(path or tr_text('Sin ruta de curva acústica'))
     rows: List[Tuple[float, float]] = []
     with open(path, 'r', encoding='utf-8-sig', newline='') as f:
         sample = f.read(4096)
@@ -22,21 +55,23 @@ def load_acoustic_curve_csv(path: str) -> Tuple[np.ndarray, np.ndarray]:
             delim = dialect.delimiter
         except Exception:
             delim = ',' if ',' in sample else ';' if ';' in sample else None
-        if delim:
-            reader = csv.reader(f, delimiter=delim)
+        if delim is None:
+            # No consistent delimiter: allow separators to change between rows.
+            # Preserve empty TSV cells and CSV quotes instead of using split().
+            reader = _mixed_whitespace_rows(f)
         else:
-            reader = (line.strip().split() for line in f)
+            reader = autodetected_table_rows(f, delim)
         for row in reader:
             if not row or len(row) < 2:
                 continue
             try:
                 ws = float(str(row[0]).replace(',', '.'))
                 lwa = float(str(row[1]).replace(',', '.'))
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             rows.append((ws, lwa))
     if not rows:
-        raise ValueError(f'No se pudieron leer pares ws/LwA válidos de {path}')
+        raise ValueError(tr_text('No se pudieron leer pares ws/LwA válidos de {path}').format(path=path))
     rows = sorted(rows, key=lambda t: t[0])
     ws = np.array([r[0] for r in rows], dtype=float)
     lwa = np.array([r[1] for r in rows], dtype=float)
@@ -52,7 +87,7 @@ def load_acoustic_curve_csv(path: str) -> Tuple[np.ndarray, np.ndarray]:
 
 def evaluate_acoustic_curve(ws: np.ndarray, lwa: np.ndarray, eval_ws_m_s: Optional[float] = None, use_worst_case: bool = False) -> float:
     if ws.size == 0 or lwa.size == 0:
-        raise ValueError('Acoustic curve vacía')
+        raise ValueError(tr_text('Curva acústica vacía'))
     if use_worst_case:
         return float(np.max(lwa))
     if eval_ws_m_s is None or not math.isfinite(float(eval_ws_m_s)):
@@ -63,3 +98,4 @@ def evaluate_acoustic_curve(ws: np.ndarray, lwa: np.ndarray, eval_ws_m_s: Option
     if eval_ws_m_s >= float(ws.max()):
         return float(lwa[-1])
     return float(np.interp(eval_ws_m_s, ws, lwa))
+

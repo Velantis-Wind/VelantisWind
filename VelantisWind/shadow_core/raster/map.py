@@ -14,6 +14,7 @@ from qgis.core import QgsRasterLayer, QgsProject
 from .task import ShadowRasterTask
 from ..i18n_local import tr4 as _ml, lang_code, hours_per_year_unit
 from ...raster_io import write_float32_band
+from ...crs_utils import preferred_wkt
 
 
 def _raster_prefix() -> str:
@@ -58,7 +59,7 @@ def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem
         "max_sun_elevation": float(calculator.max_sun_elevation),
         "max_shadow_distance_m": float(max_distance),
     }
-    turbine_crs_wkt = str(turbine_layer.crs().toWkt() or "")
+    turbine_crs_wkt = preferred_wkt(turbine_layer.crs())
 
     dem_path = ""
     if dem_layer is not None:
@@ -75,7 +76,7 @@ def create_shadow_raster_for_page(self, turbines, calculator, turbine_layer, dem
         _ml(
             "Generando mapa ráster de sombras y parpadeo",
             "Generating shadow-flicker raster map",
-            "Génération de la carte raster d’ombres et scintillement",
+            "Génération de la carte raster d’ombres portées",
             "Schattenwurf-Rasterkarte wird erzeugt",
         ),
         turbine_snapshot,
@@ -137,7 +138,7 @@ def on_raster_completed_for_page(self, task):
                 if iface:
                     iface.mapCanvas().setExtent(raster_layer.extent())
                     iface.mapCanvas().refresh()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
             if hasattr(task, "npz_path") and task.npz_path and os.path.exists(task.npz_path):
@@ -263,7 +264,7 @@ def regenerate_filtered_raster_for_page(self):
 
         srs = osr.SpatialReference()
         srs.ImportFromWkt(crs_wkt)
-        ds.SetProjection(srs.ExportToWkt())
+        ds.SetProjection(srs.ExportToWkt(["FORMAT=WKT2_2019"]))
 
         band = ds.GetRasterBand(1)
         write_float32_band(
@@ -332,7 +333,7 @@ def on_raster_terminated_for_page(self, task=None):
             _ml(
                 f"No se pudo generar el ráster de sombras:\n\n{detail}\n\nLos resultados por receptor siguen disponibles.",
                 f"The shadow-flicker raster could not be generated:\n\n{detail}\n\nThe receiver results remain available.",
-                f"Le raster d’ombres et scintillement n’a pas pu être généré :\n\n{detail}\n\nLes résultats par récepteur restent disponibles.",
+                f"Le raster d’ombres portées n’a pas pu être généré :\n\n{detail}\n\nLes résultats par récepteur restent disponibles.",
                 f"Das Schattenwurf-Raster konnte nicht erzeugt werden:\n\n{detail}\n\nDie Ergebnisse je Rezeptor bleiben verfügbar.",
             ),
         )
@@ -364,8 +365,11 @@ def apply_raster_symbology_for_page(self, layer):
         QgsColorRampShader.ColorRampItem(10, QtGui.QColor(0, 255, 0), f"10 {unit}"),
         QgsColorRampShader.ColorRampItem(20, QtGui.QColor(255, 255, 0), f"20 {unit}"),
         QgsColorRampShader.ColorRampItem(30, QtGui.QColor(255, 165, 0), f"30 {unit}"),
-        QgsColorRampShader.ColorRampItem(max_val, QtGui.QColor(255, 0, 0), f"{max_val:.0f} {unit}"),
     ]
+    if max_val > 30:  # red only above the limit: at or under 30 h/year the legend would show a colour no cell has
+        # Two decimals unless whole: just above 30 h, «30» would name the red stop like the orange one.
+        max_label = f"{max_val:.0f}" if float(max_val).is_integer() else f"{max_val:.2f}"
+        color_ramp_items.append(QgsColorRampShader.ColorRampItem(max_val, QtGui.QColor(255, 0, 0), f"{max_label} {unit}"))
     shader.setColorRampItemList(color_ramp_items)
 
     raster_shader = QgsRasterShader()

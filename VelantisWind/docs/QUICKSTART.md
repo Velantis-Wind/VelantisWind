@@ -46,13 +46,15 @@ Check these points in the QGIS project:
 
 The Energy module needs PyWake installed in the same Python environment used by QGIS.
 
-In **OSGeo4W Shell**:
+On Windows, in **OSGeo4W Shell**:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install py_wake
+python -m pip install py_wake==2.6.18 "h5netcdf>=1.8"
 python -c "import py_wake; print('PyWake OK')"
 ```
+
+This ensures `h5netcdf>=1.8` is installed, as PyWake 2.6.18 requires `h5netcdf`. Since version 1.8, `h5netcdf` no longer depends on `h5py`, so this command does not install `h5py` through `h5netcdf`. For `GaussianOverlapAvgModel` on Windows, do not install `h5py` with pip; see the untested `python3-h5py` option in the [OSGeo4W guide](INSTALL_OSGEO4W_PYWAKE.md#h5py-in-qgis-from-osgeo4w). For Linux and macOS, run `python -m pip install py_wake==2.6.18 h5py "h5netcdf>=1.8"` in the QGIS Python environment, as described in the [dependency guide](INSTALL_ENERGY_DEPENDENCIES.md#linux-and-macos).
 
 ### Minimum inputs
 

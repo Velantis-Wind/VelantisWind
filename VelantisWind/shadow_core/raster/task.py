@@ -78,7 +78,7 @@ class ShadowRasterTask(QgsTask):
             debug_print(f"[Shadow Raster Task] Valid points: {len(valid_indices)}")
 
             if len(valid_indices) == 0:
-                self.exception = "No valid points to calculate"
+                self.exception = _ml("No hay puntos válidos que calcular.", "No valid points to calculate.", "Aucun point valide à calculer.", "Keine gültigen Punkte zu berechnen.")
                 debug_print("[Shadow Raster Task] ERROR: no valid points")
                 return False
 
@@ -99,10 +99,10 @@ class ShadowRasterTask(QgsTask):
 
                     dem_ds = gdal.Open(self.dem_path, gdal.GA_ReadOnly)
                     if dem_ds is None:
-                        raise RuntimeError(f"GDAL could not open DEM: {self.dem_path}")
+                        raise RuntimeError(_ml(f"GDAL no pudo abrir el MDT: {self.dem_path}", f"GDAL could not open the DEM: {self.dem_path}", f"GDAL n’a pas pu ouvrir le MNT : {self.dem_path}", f"GDAL konnte das DGM nicht öffnen: {self.dem_path}"))
                     dem_band = dem_ds.GetRasterBand(1)
                     if dem_band is None:
-                        raise RuntimeError("The selected DEM has no band 1.")
+                        raise RuntimeError(_ml("El MDT seleccionado no tiene banda 1.", "The selected DEM has no band 1.", "Le MNT sélectionné n’a pas de bande 1.", "Das ausgewählte DGM hat kein Band 1."))
 
                     geotransform = dem_ds.GetGeoTransform()
                     inv_gt = gdal.InvGeoTransform(geotransform)
@@ -114,7 +114,7 @@ class ShadowRasterTask(QgsTask):
                     ):
                         inv_gt = inv_gt[1] if inv_gt[0] else None
                     if inv_gt is None:
-                        raise RuntimeError("Could not invert the DEM geotransform.")
+                        raise RuntimeError(_ml("No se pudo invertir la geotransformación del MDT.", "Could not invert the DEM geotransform.", "Impossible d’inverser la géotransformation du MNT.", "Die Geotransformation des DGM konnte nicht invertiert werden."))
 
                     coord_transform = None
                     dem_wkt = str(dem_ds.GetProjection() or "")
@@ -248,7 +248,7 @@ class ShadowRasterTask(QgsTask):
             debug_print(f"[Shadow Raster Task] ✅ Solar positions: {len(sun_az_array):,} valid timesteps in {elapsed_solar:.2f}s (timestep={self.raster_timestep}min)")
 
             if len(sun_az_array) == 0:
-                self.exception = "No valid solar positions were found"
+                self.exception = _ml("No se encontró ninguna posición solar válida.", "No valid solar positions were found.", "Aucune position solaire valide n’a été trouvée.", "Es wurden keine gültigen Sonnenstände gefunden.")
                 debug_print("[Shadow Raster Task] ❌ ERROR: No valid timesteps")
                 return False
 
