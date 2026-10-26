@@ -19,8 +19,11 @@ import os
 import re
 import tempfile
 from typing import Iterable, Sequence
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape, quoteattr  # nosec B406
 from zipfile import ZIP_DEFLATED, ZipFile
+
+from ...i18n import tr_text
+from ...version import plugin_version
 
 
 _INVALID_XML_CHARS = re.compile(
@@ -157,7 +160,7 @@ def write_xlsx_workbook(path: str, sheets: Sequence[dict]) -> str:
     output_path = os.path.abspath(os.fspath(path))
     parent = os.path.dirname(output_path) or os.getcwd()
     if not os.path.isdir(parent):
-        raise OSError(f"Destination folder does not exist: {parent}")
+        raise OSError(tr_text("La carpeta de destino no existe: {parent}").format(parent=parent))
 
     names = _safe_sheet_names(sheet.get("title", "") for sheet in sheets)
     temp_handle = tempfile.NamedTemporaryFile(
@@ -225,7 +228,7 @@ def write_xlsx_workbook(path: str, sheets: Sequence[dict]) -> str:
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" '
             'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
-            '<Application>VelantisWind</Application><AppVersion>0.1.16</AppVersion></Properties>'
+            f'<Application>VelantisWind</Application><AppVersion>{escape(plugin_version())}</AppVersion></Properties>'
         )
 
         with ZipFile(temp_path, "w", compression=ZIP_DEFLATED, allowZip64=True) as archive:

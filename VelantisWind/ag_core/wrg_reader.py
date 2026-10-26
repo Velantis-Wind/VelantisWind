@@ -12,9 +12,13 @@ Más adelante se puede ampliar para construir un XRSite para PyWake.
 
 from __future__ import annotations
 
+import math
 import os
 import zipfile
 from typing import Dict, Any, List, Tuple, Optional, IO
+
+from .log_text import log_error
+from .wrg_nodes import node_tokens, wrg_error
 
 
 def _open_wrg_text(path: str) -> Tuple[IO[bytes], Optional[zipfile.ZipFile]]:
@@ -27,7 +31,7 @@ def _open_wrg_text(path: str) -> Tuple[IO[bytes], Optional[zipfile.ZipFile]]:
         names = [n for n in zf.namelist() if n.lower().endswith(".wrg")]
         if not names:
             zf.close()
-            raise ValueError(f"El ZIP no contiene ningún .wrg: {path}")
+            raise log_error(ValueError, "El ZIP no contiene ningún .wrg: {path}", path=path)
         fh = zf.open(names[0], "r")
         return fh, zf
 
@@ -51,7 +55,7 @@ def _open_all_wrg_texts(path: str) -> List[Tuple[IO[bytes], Optional[zipfile.Zip
         names = [n for n in zf.namelist() if n.lower().endswith(".wrg")]
         if not names:
             zf.close()
-            raise ValueError(f"El ZIP no contiene ningún .wrg: {path}")
+            raise log_error(ValueError, "El ZIP no contiene ningún .wrg: {path}", path=path)
         try:
             for name in names:
                 out.append((zf.open(name, "r"), zf, f"{os.path.basename(path)}::{name}"))
@@ -59,54 +63,55 @@ def _open_all_wrg_texts(path: str) -> List[Tuple[IO[bytes], Optional[zipfile.Zip
         except Exception:
             try:
                 zf.close()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             raise
 
     return [(open(path, "rb"), None, os.path.basename(path))]
 
 
-def _read_nonempty_line(fh: IO[bytes]) -> str:
-    while True:
-        b = fh.readline()
-        if not b:
-            return ""
-        s = b.decode("utf-8", errors="ignore").strip("\r\n")
-        if s.strip():
-            return s
-
-
-def _read_wrg_meta_from_handle(fh: IO[bytes]) -> Dict[str, Any]:
-    header = _read_nonempty_line(fh)
+def _read_wrg_meta_from_handle(fh: IO[bytes], *, source="WRG") -> Dict[str, Any]:
+    line_number = 0
+    def read_line():
+        nonlocal line_number
+        while True:
+            raw = fh.readline()
+            if not raw:
+                return ""
+            line_number += 1
+            text = raw.decode("utf-8", errors="ignore").strip("\r\n")
+            if text.strip():
+                return text
+    header = read_line()
     if not header:
-        raise ValueError("WRG vacío")
+        raise log_error(ValueError, "WRG vacío")
 
     parts = header.strip().split()
     if len(parts) < 5:
-        raise ValueError(f"Cabecera WRG inválida: {header}")
+        raise log_error(ValueError, "Cabecera WRG inválida: {header}", header=header)
 
-    nx, ny = int(parts[0]), int(parts[1])
-    xmin, ymin, cell = float(parts[2]), float(parts[3]), float(parts[4])
+    try:
+        nx, ny = int(parts[0]), int(parts[1])
+        xmin, ymin, cell = float(parts[2]), float(parts[3]), float(parts[4])
+    except ValueError as exc:
+        raise log_error(ValueError, "Cabecera WRG inválida: {header}", header=header) from exc
     xmax = xmin + (nx - 1) * cell
     ymax = ymin + (ny - 1) * cell
 
     # segunda línea: primer gridpoint para altura y nsec
-    first = _read_nonempty_line(fh)
+    first = read_line()
     if not first:
-        raise ValueError("WRG sin puntos (sólo cabecera)")
-    vals = first.split()
-
-    # algunos WRG incluyen un ID (texto) al inicio; si el primer token no es float, saltamos 1
-    start_i = 0
+        raise log_error(ValueError, "WRG sin puntos (sólo cabecera)")
+    vals, _ = node_tokens(first.split(), source=source, line_number=line_number)
     try:
-        float(vals[0])
-    except Exception:
-        start_i = 1
-    if len(vals) < start_i + 8:
-        raise ValueError(f"Línea de punto WRG inválida: {first}")
-
-    height = float(vals[start_i + 3])
-    nsec = int(vals[start_i + 7])
+        finite_header = all(math.isfinite(float(value)) for value in vals[:8])
+    except ValueError:
+        finite_header = False
+    if not finite_header:
+        raise wrg_error("los campos del nodo deben ser números finitos.",
+                        source=source, line_number=line_number)
+    height = float(vals[3])
+    nsec = int(float(vals[7]))
 
     return {
         "nx": nx,
@@ -127,14 +132,17 @@ def read_wrg_meta(path: str) -> Dict[str, Any]:
       - nx, ny, xmin, ymin, cellsize
       - height_m (altura única si sólo hay una; primera altura si hay varias)
       - height_m_list (todas las alturas detectadas)
-      - n_sectors
+      - n_sectors (del primer WRG) y n_sectors_list (de cada WRG, p. ej. de cada miembro de un ZIP)
       - extent (xmin, xmax, ymin, ymax)
     """
     items = _open_all_wrg_texts(path)
     metas: List[Dict[str, Any]] = []
     try:
         for fh, _zf, label in items:
-            meta = _read_wrg_meta_from_handle(fh)
+            source = os.path.abspath(path)
+            if path.lower().endswith(".zip"):
+                source += "::" + label.split("::", 1)[1]
+            meta = _read_wrg_meta_from_handle(fh, source=source)
             meta["label"] = label
             metas.append(meta)
     finally:
@@ -142,21 +150,22 @@ def read_wrg_meta(path: str) -> Dict[str, Any]:
         for fh, zf, _label in items:
             try:
                 fh.close()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             if zf is not None and id(zf) not in seen_zf:
                 seen_zf.add(id(zf))
                 try:
                     zf.close()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
 
     if not metas:
-        raise ValueError(f"No se pudo leer ningún WRG desde: {path}")
+        raise log_error(ValueError, "No se pudo leer ningún WRG desde: {path}", path=path)
 
     m0 = dict(metas[0])
     heights = [float(m.get("height_m")) for m in metas]
     m0["height_m_list"] = heights
+    m0["n_sectors_list"] = [m.get("n_sectors") for m in metas]
     if len(heights) == 1:
         m0["height_m"] = heights[0]
     else:

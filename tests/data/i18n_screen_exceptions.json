@@ -1,0 +1,681 @@
+[
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/windowTitle",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QLabel[2]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/188",
+    "text": "America/Knox_IN",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/571",
+    "text": "Pacific/Wake",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/NoisePage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QLabel[2]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/NoisePage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[3]/QTextEdit[0]/plainText",
+    "text": "Noise · Receivers",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/QWidget[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QLabel[0]/text",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/QWidget[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[0]/QComboBox[0]/item/1",
+    "text": "English",
+    "reason": "Autónimo del idioma en el selector; permite reconocerlo sin conocer el idioma activo."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QPushButton[0]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QLabel[2]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QToolButton[0]/text",
+    "text": "nearest",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QLabel[0]/toolTip",
+    "text": "nearest",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QLabel[0]/toolTip",
+    "text": "linear",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QComboBox[0]/toolTip",
+    "text": "nearest",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QComboBox[0]/toolTip",
+    "text": "linear",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QComboBox[0]/item/0",
+    "text": "nearest",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QComboBox[0]/item/1",
+    "text": "linear",
+    "reason": "Valor del parámetro de interpolación direccional WRG; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QLabel[2]/toolTip",
+    "text": "none",
+    "reason": "Valor del modo de aceleración del recurso; identificador de la API."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[0]/QComboBox[0]/itemTip/2",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QComboBox[1]/toolTip",
+    "text": "False",
+    "reason": "Literal booleano de Python usado por PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QComboBox[1]/toolTip",
+    "text": "True",
+    "reason": "Literal booleano de Python usado por PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QComboBox[1]/item/0",
+    "text": "True",
+    "reason": "Literal booleano de Python usado por PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QComboBox[1]/item/1",
+    "text": "False",
+    "reason": "Literal booleano de Python usado por PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QLabel[4]/text",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QLabel[4]/toolTip",
+    "text": "False",
+    "reason": "Literal booleano de Python usado por PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/CollapsibleSection[0]/QWidget[0]/QWidget[0]/ParamEditor[0]/QLabel[4]/toolTip",
+    "text": "True",
+    "reason": "Literal booleano de Python usado por PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[3]/QComboBox[0]/itemTip/3",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[3]/QComboBox[0]/itemTip/4",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[3]/QComboBox[0]/itemTip/5",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[3]/QComboBox[0]/itemTip/6",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[3]/QComboBox[0]/itemTip/7",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[3]/QComboBox[0]/itemTip/8",
+    "text": "use_effective_ws",
+    "reason": "Nombre exacto del parámetro de PyWake."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[1]/QLabel[0]/text",
+    "text": "Predefined Engineering Wind Farm Models",
+    "reason": "Título propio de la documentación de PyWake enlazada."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[2]/QLabel[0]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "aep",
+    "path": "AEPResultsDialog/QWidget[0]/QLabel[0]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "aep",
+    "path": "AEPResultsDialog/QTabWidget[0]/QStackedWidget[0]/QScrollArea[1]/QWidget[0]/QWidget[0]/QTextBrowser[0]/plainText",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "aep",
+    "path": "AEPResultsDialog/QDialogButtonBox[0]/QPushButton[1]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "aep",
+    "path": "AEPResultsDialog/QTabWidget[0]/QStackedWidget[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QTextBrowser[0]/plainText",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QLabel[0]/toolTip",
+    "text": "Velantis Wind",
+    "reason": "Nombre propio del producto."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[0]/cell/0/0/text",
+    "text": "Noise · Receivers",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[0]/cell/1/0/text",
+    "text": "Noise · Sources",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[0]/cell/2/0/text",
+    "text": "Noise · Dominant links",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[0]/cell/3/0/text",
+    "text": "Noise · Receivers outside radius",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[0]/cell/4/0/text",
+    "text": "Noise · Map",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[0]/cell/5/0/text",
+    "text": "Noise · Isophones",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[1]/cell/0/0/text",
+    "text": "Noise · Receivers",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[1]/cell/1/0/text",
+    "text": "Noise · Sources",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[2]/cell/0/0/text",
+    "text": "Noise · Receivers",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[2]/cell/1/0/text",
+    "text": "Noise · Sources",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[2]/cell/2/0/text",
+    "text": "Noise · Dominant links",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTextBrowser[0]/plainText",
+    "text": "LwA,target",
+    "reason": "Símbolo de la potencia acústica objetivo en la fórmula; identificador matemático."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[1]/cell/2/0/text",
+    "text": "Noise · Dominant links",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[2]/cell/3/0/text",
+    "text": "Noise · Receivers outside radius",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[2]/cell/4/0/text",
+    "text": "Noise · Map",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[2]/cell/5/0/text",
+    "text": "Noise · Isophones",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[1]/cell/3/0/text",
+    "text": "Noise · Receivers outside radius",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[1]/cell/4/0/text",
+    "text": "Noise · Map",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "es",
+    "screen": "noise",
+    "path": "NoiseResultsDialog/QTabWidget[0]/QStackedWidget[0]/QTableWidget[1]/cell/5/0/text",
+    "text": "Noise · Isophones",
+    "reason": "Nombre de capa generado por el complemento y utilizado como identificador; exclusión expresa del plan."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[0]/toolTip",
+    "text": "Logroño",
+    "reason": "Nombre propio de la ciudad del ejemplo de coordenadas."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[1]/toolTip",
+    "text": "Logroño",
+    "reason": "Nombre propio de la ciudad del ejemplo de coordenadas."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/36",
+    "text": "America/Los_Angeles",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/74",
+    "text": "Africa/El_Aaiun",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/112",
+    "text": "America/Argentina/La_Rioja",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/155",
+    "text": "America/El_Salvador",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/190",
+    "text": "America/La_Paz",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "en",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/QWidget[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[0]/QComboBox[0]/item/0",
+    "text": "Español",
+    "reason": "Autónimo del idioma en el selector; permite reconocerlo sin conocer el idioma activo."
+  },
+  {
+    "language": "en",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[1]/QComboBox[0]/itemTip/0",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "en",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[1]/QComboBox[0]/itemTip/1",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "en",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[1]/QComboBox[0]/itemTip/2",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "en",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[2]/QComboBox[0]/itemTip/3",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "en",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[4]/QComboBox[0]/itemTip/4",
+    "text": "Hernández",
+    "reason": "Apellido del autor del modelo de turbulencia citado."
+  },
+  {
+    "language": "fr",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[0]/toolTip",
+    "text": "Logroño",
+    "reason": "Nombre propio de la ciudad del ejemplo de coordenadas."
+  },
+  {
+    "language": "fr",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[1]/toolTip",
+    "text": "Logroño",
+    "reason": "Nombre propio de la ciudad del ejemplo de coordenadas."
+  },
+  {
+    "language": "fr",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/36",
+    "text": "America/Los_Angeles",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "fr",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/74",
+    "text": "Africa/El_Aaiun",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "fr",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/155",
+    "text": "America/El_Salvador",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "fr",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/QWidget[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[0]/QComboBox[0]/item/0",
+    "text": "Español",
+    "reason": "Autónimo del idioma en el selector; permite reconocerlo sin conocer el idioma activo."
+  },
+  {
+    "language": "fr",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[4]/QComboBox[0]/itemTip/4",
+    "text": "Hernández",
+    "reason": "Apellido del autor del modelo de turbulencia citado."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[0]/toolTip",
+    "text": "Logroño",
+    "reason": "Nombre propio de la ciudad del ejemplo de coordenadas."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[1]/toolTip",
+    "text": "Logroño",
+    "reason": "Nombre propio de la ciudad del ejemplo de coordenadas."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/36",
+    "text": "America/Los_Angeles",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/74",
+    "text": "Africa/El_Aaiun",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/112",
+    "text": "America/Argentina/La_Rioja",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/155",
+    "text": "America/El_Salvador",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/ShadowPage[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QComboBox[1]/item/190",
+    "text": "America/La_Paz",
+    "reason": "Identificador IANA de zona horaria; no se traduce."
+  },
+  {
+    "language": "de",
+    "screen": "hub",
+    "path": "VelantisHubDialog/QStackedWidget[0]/QWidget[0]/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[0]/QComboBox[0]/item/0",
+    "text": "Español",
+    "reason": "Autónimo del idioma en el selector; permite reconocerlo sin conocer el idioma activo."
+  },
+  {
+    "language": "de",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[1]/QComboBox[0]/itemTip/0",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "de",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[1]/QComboBox[0]/itemTip/1",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "de",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[1]/QComboBox[0]/itemTip/2",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "de",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[2]/QComboBox[0]/itemTip/3",
+    "text": "Porté-Agel",
+    "reason": "Apellido del autor de los modelos científicos citados."
+  },
+  {
+    "language": "de",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/WakeModelGroup[0]/QWidget[0]/QWidget[4]/QComboBox[0]/itemTip/4",
+    "text": "Hernández",
+    "reason": "Apellido del autor del modelo de turbulencia citado."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[0]/QWidget[0]/QgsMapLayerComboBox[0]/itemTip/1",
+    "text": "Point",
+    "reason": "Identificador del tipo geométrico de la capa y del proveedor QGIS en su URI; no se traduce."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[0]/QWidget[0]/QgsMapLayerComboBox[0]/itemTip/2",
+    "text": "Point",
+    "reason": "Identificador del tipo geométrico de la capa y del proveedor QGIS en su URI; no se traduce."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QLabel[3]/toolTip",
+    "text": "Site",
+    "reason": "Nombre de la clase Site de PyWake, citada en la ayuda técnica."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QLabel[4]/toolTip",
+    "text": "Site",
+    "reason": "Nombre de la clase Site de PyWake, citada en la ayuda técnica."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QWidget[1]/QWidget[0]/QComboBox[2]/toolTip",
+    "text": "Site",
+    "reason": "Nombre de la clase Site de PyWake, citada en la ayuda técnica."
+  },
+  {
+    "language": "es",
+    "screen": "energy",
+    "path": "AEPSetupDialog/QScrollArea[0]/QWidget[0]/QWidget[0]/QGroupBox[1]/QDoubleSpinBox[0]/toolTip",
+    "text": "Site",
+    "reason": "Nombre de la clase Site de PyWake, citada en la ayuda técnica."
+  }
+]

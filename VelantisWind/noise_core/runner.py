@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Dict, Any
 
+from ..i18n import tr_text
 from .domain import NoiseRunConfig, NoiseRunResult
 from .validation import validate_run_config
 from .noise_compute import compute_noise
@@ -20,7 +21,7 @@ class NoiseRunner:
     def run(self, config: NoiseRunConfig) -> NoiseRunResult:
         errors, _warnings = validate_run_config(config)
         if errors:
-            raise ValueError("Configuración acústica inválida:\n- " + "\n- ".join(errors[:12]))
+            raise ValueError(tr_text("Configuración acústica inválida:") + "\n- " + "\n- ".join(errors[:12]))
 
         raw: Dict[str, Any] = compute_noise(
             receiver_layer=config.receiver_layer,

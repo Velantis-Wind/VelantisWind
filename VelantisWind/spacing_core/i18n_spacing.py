@@ -17,6 +17,7 @@ except Exception:  # ejecución fuera del paquete (tests)
         register_language = None  # type: ignore
 
 _TO_EN = {
+    'La envolvente guardada se conserva sin cambios; la actualización se genera en una capa temporal.': 'The saved envelope is preserved unchanged; the update is generated in a temporary layer.',
     "Envolventes de separación…": "Spacing envelopes…",
     "Cerrar": "Close",
     "Configura la separación mínima entre turbinas. Las envolventes se "
@@ -56,7 +57,7 @@ _TO_EN = {
     "Restablecer": "Reset",
     "OK": "OK",
     "Cerca del límite": "Near the limit",
-    "Conflicto de spacing": "Spacing conflict",
+
     "No hay capa de turbinas activa.": "No active turbine layer.",
     "No hay capa de turbinas activa para dibujar.": "No active turbine layer to draw on.",
     "No hay turbina cerca del clic · pincha sobre un aerogenerador":
@@ -68,7 +69,7 @@ _TO_EN = {
     "sin conflictos": "no conflicts",
     "cerca del límite": "near the limit",
     "sector más energético": "most energetic sector",
-    "conflicto(s) de spacing": "spacing conflict(s)",
+
     "envolvente(s)": "envelope(s)",
     "Eje mayor": "Major axis",
     "Eje menor": "Minor axis",
@@ -98,48 +99,47 @@ _TO_EN = {
 }
 
 _TO_FR = {
-    "Envolventes de separación…": "Enveloppes d'espacement…",
+    'La envolvente guardada se conserva sin cambios; la actualización se genera en una capa temporal.': 'L’enveloppe enregistrée est conservée sans modification ; la mise à jour est générée dans une couche temporaire.',
+    "Envolventes de separación…": "Enveloppes d’espacement…",
     "Cerrar": "Fermer",
     "Configura la separación mínima entre turbinas. Las envolventes se "
     "dibujan en una capa independiente por cada modelo de turbina y se "
     "validan también entre modelos al editar en el Mapa interactivo.":
-        "Configurez l'espacement minimal entre éoliennes. Les enveloppes sont "
-        "dessinées dans une couche distincte pour chaque modèle et sont aussi "
-        "validées entre modèles en mode Carte interactive.",
+        "Configurez l’espacement minimal entre éoliennes. Les enveloppes sont dessinées dans une couche distincte pour chaque modèle et sont aussi validées entre modèles en mode Carte interactive.",
     "No se pudo inicializar el módulo de envolventes (spacing_core).":
-        "Impossible d'initialiser le module d'enveloppes (spacing_core).",
+        "Impossible d’initialiser le module d’enveloppes (spacing_core).",
     "Tipo:": "Type :",
     "Elíptica": "Elliptique",
     "Circular": "Circulaire",
     "Validación:": "Validation :",
     "Solo visualización": "Visualisation seule",
     "Avisar si hay conflicto": "Avertir en cas de conflit",
-    "Bloquear inserción si hay conflicto": "Bloquer l'insertion en cas de conflit",
+    "Bloquear inserción si hay conflicto": "Bloquer l’insertion en cas de conflit",
     "Exportar envolventes…": "Exporter les enveloppes…",
-    "Exportar envolventes de separación": "Exporter les enveloppes d'espacement",
+    "Exportar envolventes de separación": "Exporter les enveloppes d’espacement",
     "No hay envolventes que exportar.": "Aucune enveloppe à exporter.",
     "Envolventes exportadas:": "Enveloppes exportées :",
-    "No se pudo exportar:": "Échec de l'export :",
+    "No se pudo exportar:": "Échec de l’export :",
     "Capa exportada a": "Couche exportée vers",
     "La turbina invade la envolvente de otra turbina · inserción bloqueada.":
-        "L'éolienne empiète sur l'enveloppe d'une autre éolienne · insertion bloquée.",
-    "Envolvente de separación": "Enveloppe d'espacement",
-    "Envolventes de separación": "Enveloppes d'espacement",
-    "Activar envolventes de separación": "Activer les enveloppes d'espacement",
+        "L’éolienne empiète sur l’enveloppe d’une autre éolienne · insertion bloquée.",
+    "Envolvente de separación": "Enveloppe d’espacement",
+    "Envolventes de separación": "Enveloppes d’espacement",
+    "Activar envolventes de separación": "Activer les enveloppes d’espacement",
     "Longitudinal:": "Longitudinal :",
     "Transversal:": "Transversal :",
     "Orientación:": "Orientation :",
     "Ángulo:": "Angle :",
     "Automática · sector más energético": "Automatique · secteur le plus énergétique",
     "Manual · ángulo": "Manuel · angle",
-    "Manual · definir en pantalla": "Manuel · définir à l'écran",
-    "Definir elipse en pantalla": "Définir l'ellipse à l'écran",
+    "Manual · definir en pantalla": "Manuel · définir à l’écran",
+    "Definir elipse en pantalla": "Définir l’ellipse à l’écran",
     "Restablecer": "Réinitialiser",
     "Cerca del límite": "Proche de la limite",
-    "Conflicto de spacing": "Conflit d'espacement",
-    "No hay capa de turbinas activa.": "Aucune couche d'éoliennes active.",
+
+    "No hay capa de turbinas activa.": "Aucune couche d’éoliennes active.",
     "No hay capa de turbinas activa para dibujar.":
-        "Aucune couche d'éoliennes active pour dessiner.",
+        "Aucune couche d’éoliennes active pour dessiner.",
     "No hay turbina cerca del clic · pincha sobre un aerogenerador":
         "Aucune éolienne près du clic · cliquez sur une éolienne",
     "Clic sobre una turbina para definir su envolvente · Esc cancela":
@@ -149,7 +149,7 @@ _TO_FR = {
     "sin conflictos": "aucun conflit",
     "cerca del límite": "proche de la limite",
     "sector más energético": "secteur le plus énergétique",
-    "conflicto(s) de spacing": "conflit(s) d'espacement",
+
     "envolvente(s)": "enveloppe(s)",
     "Eje mayor": "Grand axe",
     "Eje menor": "Petit axe",
@@ -158,20 +158,20 @@ _TO_FR = {
     "No se pudo determinar automáticamente el sector más energético":
         "Impossible de déterminer automatiquement le secteur le plus énergétique",
     "La disposición incumple la separación mínima en":
-        "La disposition ne respecte pas l'espacement minimal pour",
+        "La disposition ne respecte pas l’espacement minimal pour",
     "No hay capas de turbinas asociadas a los modelos.":
-        "Aucune couche d'éoliennes n'est associée aux modèles.",
+        "Aucune couche d’éoliennes n’est associée aux modèles.",
     "La disposición multimodelo incumple la separación mínima en":
-        "La disposition multi-modèle ne respecte pas l'espacement minimal pour",
+        "La disposition multi-modèle ne respecte pas l’espacement minimal pour",
     "Overrides del modelo": "Personnalisations du modèle",
     "eliminados · usando la plantilla global.": "supprimées · modèle global utilisé.",
     "Exportar envolventes de separación por modelo":
-        "Exporter les enveloppes d'espacement par modèle",
+        "Exporter les enveloppes d’espacement par modèle",
     "capa(s) de modelo exportadas:": "couche(s) de modèle exportée(s) :",
     "Se exportaron": "Export de",
     "capas de modelo a": "couches de modèle vers",
     "La turbina invade la envolvente de una turbina del modelo":
-        "L'éolienne empiète sur l'enveloppe d'une éolienne du modèle",
+        "L’éolienne empiète sur l’enveloppe d’une éolienne du modèle",
     "inserción bloqueada.": "insertion bloquée.",
     "modelo": "modèle",
     "modelos": "modèles",
@@ -179,14 +179,13 @@ _TO_FR = {
 }
 
 _TO_DE = {
+    'La envolvente guardada se conserva sin cambios; la actualización se genera en una capa temporal.': "Die gespeicherte Hülle bleibt unverändert; die Aktualisierung wird in einem temporären Layer erstellt.",
     "Envolventes de separación…": "Abstandshüllen…",
     "Cerrar": "Schließen",
     "Configura la separación mínima entre turbinas. Las envolventes se "
     "dibujan en una capa independiente por cada modelo de turbina y se "
     "validan también entre modelos al editar en el Mapa interactivo.":
-        "Konfigurieren Sie den Mindestabstand zwischen Turbinen. Für jedes "
-        "Turbinenmodell wird eine eigene Hüllen-Ebene erzeugt; die Validierung "
-        "erfolgt auch modellübergreifend im interaktiven Kartenmodus.",
+        "Konfigurieren Sie den Mindestabstand zwischen Windturbinen. Für jedes Windturbinenmodell wird ein eigener Hüllen-Layer erzeugt; die Validierung erfolgt auch modellübergreifend im interaktiven Kartenmodus.",
     "No se pudo inicializar el módulo de envolventes (spacing_core).":
         "Das Abstandshüllen-Modul (spacing_core) konnte nicht initialisiert werden.",
     "Tipo:": "Typ:",
@@ -201,9 +200,9 @@ _TO_DE = {
     "No hay envolventes que exportar.": "Keine Hüllen zum Exportieren.",
     "Envolventes exportadas:": "Hüllen exportiert:",
     "No se pudo exportar:": "Export fehlgeschlagen:",
-    "Capa exportada a": "Ebene exportiert nach",
+    "Capa exportada a": "Layer exportiert nach",
     "La turbina invade la envolvente de otra turbina · inserción bloqueada.":
-        "Die Turbine ragt in die Hülle einer anderen Turbine · Einfügen blockiert.",
+        "Die Windturbine ragt in die Hülle einer anderen Windturbine · Einfügen blockiert.",
     "Envolvente de separación": "Abstandshülle",
     "Envolventes de separación": "Abstandshüllen",
     "Activar envolventes de separación": "Abstandshüllen aktivieren",
@@ -217,20 +216,20 @@ _TO_DE = {
     "Definir elipse en pantalla": "Ellipse am Bildschirm definieren",
     "Restablecer": "Zurücksetzen",
     "Cerca del límite": "Nahe am Grenzwert",
-    "Conflicto de spacing": "Abstandskonflikt",
-    "No hay capa de turbinas activa.": "Keine aktive Turbinen-Ebene.",
+
+    "No hay capa de turbinas activa.": "Kein aktiver Windturbinen-Layer.",
     "No hay capa de turbinas activa para dibujar.":
-        "Keine aktive Turbinen-Ebene zum Zeichnen.",
+        "Kein aktiver Windturbinen-Layer zum Zeichnen.",
     "No hay turbina cerca del clic · pincha sobre un aerogenerador":
-        "Keine Turbine in Klicknähe · auf eine Windenergieanlage klicken",
+        "Keine Windturbine in Klicknähe · auf eine Windturbine klicken",
     "Clic sobre una turbina para definir su envolvente · Esc cancela":
-        "Turbine anklicken, um ihre Hülle zu definieren · Esc bricht ab",
+        "Windturbine anklicken, um ihre Hülle zu definieren · Esc bricht ab",
     "Overrides eliminados · usando la plantilla global.":
         "Überschreibungen gelöscht · globale Vorlage wird verwendet.",
     "sin conflictos": "keine Konflikte",
     "cerca del límite": "nahe am Grenzwert",
     "sector más energético": "energiereichster Sektor",
-    "conflicto(s) de spacing": "Abstandskonflikt(e)",
+
     "envolvente(s)": "Hülle(n)",
     "Eje mayor": "Hauptachse",
     "Eje menor": "Nebenachse",
@@ -241,22 +240,22 @@ _TO_DE = {
     "La disposición incumple la separación mínima en":
         "Das Layout verletzt den Mindestabstand bei",
     "No hay capas de turbinas asociadas a los modelos.":
-        "Den Modellen sind keine Turbinen-Ebenen zugeordnet.",
+        "Den Modellen sind keine Windturbinen-Layer zugeordnet.",
     "La disposición multimodelo incumple la separación mínima en":
         "Das Mehrmodell-Layout verletzt den Mindestabstand bei",
     "Overrides del modelo": "Überschreibungen des Modells",
     "eliminados · usando la plantilla global.": "gelöscht · globale Vorlage wird verwendet.",
     "Exportar envolventes de separación por modelo":
         "Abstandshüllen nach Modell exportieren",
-    "capa(s) de modelo exportadas:": "Modell-Ebene(n) exportiert:",
+    "capa(s) de modelo exportadas:": "Modell-Layer(n) exportiert:",
     "Se exportaron": "Exportiert wurden",
-    "capas de modelo a": "Modell-Ebenen nach",
+    "capas de modelo a": "Modell-Layer nach",
     "La turbina invade la envolvente de una turbina del modelo":
-        "Die Turbine ragt in die Hülle einer Turbine des Modells",
+        "Die Windturbine ragt in die Hülle einer Windturbine des Modells",
     "inserción bloqueada.": "Einfügen blockiert.",
     "modelo": "Modell",
     "modelos": "Modelle",
-    "turbina(s).": "Turbine(n).",
+    "turbina(s).": "Windturbine(n).",
 }
 
 
@@ -324,7 +323,7 @@ _TO_FR.update({
 _TO_DE.update({
     "Separación": "Abstand",
     "Dibuja una elipse semitransparente alrededor de cada turbina representando la separación mínima entre centros. Rojo = solape (conflicto de spacing); naranja = cerca del límite.":
-        "Zeichnet um jede Turbine eine halbtransparente Ellipse, die den Mindestabstand zwischen den Mittelpunkten darstellt. Rot = Überlappung (Abstandskonflikt); Orange = nahe am Grenzwert.",
+        "Zeichnet um jede Windturbine eine halbtransparente Ellipse, die den Mindestabstand zwischen den Mittelpunkten darstellt. Rot = Überlappung (Abstandskonflikt); Orange = nahe am Grenzwert.",
     "Elíptica: separación longitudinal/transversal distintas, orientada al viento. Circular: modo básico, misma separación (la longitudinal) en todas las direcciones; la orientación no aplica.":
         "Elliptisch: unterschiedliche Längs- und Querabstände, am Wind ausgerichtet. Kreisförmig: Basismodus mit demselben Abstand (Längswert) in alle Richtungen; die Ausrichtung ist nicht relevant.",
     "Separación longitudinal mínima entre centros, en diámetros de rotor. Define el eje mayor de la elipse (semieje = valor/2).":
@@ -332,19 +331,19 @@ _TO_DE.update({
     "Separación transversal mínima entre centros, en diámetros de rotor. Define el eje menor de la elipse (semieje = valor/2).":
         "Minimaler Querabstand zwischen den Mittelpunkten in Rotordurchmessern. Definiert die Nebenachse der Ellipse (Halbachse = Wert/2).",
     "Automática: la elipse se alinea con el sector más energético del WRG (argmax de f·A³·Γ(1+3/k) por sector). Manual · ángulo: azimut fijo desde el Norte, horario. Manual · definir en pantalla: dibuja centro, eje mayor y eje menor sobre el mapa turbina a turbina.":
-        "Automatisch: richtet die Ellipse am energiereichsten WRG-Sektor aus (sektorweises Argmax von f·A³·Γ(1+3/k)). Manuell · Winkel: fester Azimut ab Norden im Uhrzeigersinn. Manuell · am Bildschirm definieren: Mittelpunkt, Haupt- und Nebenachse für jede Turbine auf der Karte zeichnen.",
+        "Automatisch: richtet die Ellipse am energiereichsten WRG-Sektor aus (sektorweises Argmax von f·A³·Γ(1+3/k)). Manuell · Winkel: fester Azimut ab Norden im Uhrzeigersinn. Manuell · am Bildschirm definieren: Mittelpunkt, Haupt- und Nebenachse für jede Windturbine auf der Karte zeichnen.",
     "Azimut del eje mayor: grados desde el Norte, en sentido horario. El eje es bidireccional (α y α+180° son equivalentes). También es el fallback si no se puede calcular el sector más energético.":
         "Azimut der Hauptachse: Grad ab Norden im Uhrzeigersinn. Die Achse ist bidirektional (α und α+180° sind gleichwertig). Der Wert dient außerdem als Fallback, wenn der energiereichste Sektor nicht berechnet werden kann.",
     "Solo visualización: los conflictos solo cambian el color. Avisar: además, aviso en la barra de mensajes de QGIS. Bloquear: además, no se permite insertar una turbina cuya envolvente solaparía con otra.":
-        "Nur Visualisierung: Konflikte ändern lediglich die Farbe. Warnen: zeigt zusätzlich eine Warnung in der QGIS-Meldungsleiste. Blockieren: verhindert zusätzlich das Einfügen einer Turbine, deren Hülle eine andere überlappen würde.",
+        "Nur Visualisierung: Konflikte ändern lediglich die Farbe. Warnen: zeigt zusätzlich eine Warnung in der QGIS-Meldungsleiste. Blockieren: verhindert zusätzlich das Einfügen einer Windturbine, deren Hülle eine andere überlappen würde.",
     "Flujo de 3 clics: (1) clic sobre una turbina; (2) arrastra para orientar y fijar el eje mayor; (3) arrastra para fijar el eje menor. Ctrl = snap angular a 5°/sectores · Shift = snap a 0.5·D · Esc/clic derecho = paso atrás.":
-        "Drei-Klick-Ablauf: (1) Turbine anklicken; (2) ziehen, um die Hauptachse auszurichten und festzulegen; (3) ziehen, um die Nebenachse festzulegen. Strg = Einrasten auf 5°/Sektoren · Umschalt = Einrasten auf 0,5·D · Esc/Rechtsklick = einen Schritt zurück.",
+        "Drei-Klick-Ablauf: (1) Windturbine anklicken; (2) ziehen, um die Hauptachse auszurichten und festzulegen; (3) ziehen, um die Nebenachse festzulegen. Strg = Einrasten auf 5°/Sektoren · Umschalt = Einrasten auf 0,5·D · Esc/Rechtsklick = einen Schritt zurück.",
     "Borra las elipses definidas en pantalla (overrides por turbina) y vuelve a la plantilla global del panel.":
         "Löscht die am Bildschirm definierten Ellipsen (turbinenbezogene Überschreibungen) und kehrt zur globalen Vorlage des Panels zurück.",
     "Guarda todas las capas de envolventes, una por modelo de turbina, en un GeoPackage con una tabla independiente por modelo.":
-        "Speichert alle Hüllen-Ebenen, jeweils eine pro Turbinenmodell, in einem GeoPackage mit einer separaten Tabelle pro Modell.",
+        "Speichert alle Hüllen-Layer, jeweils einen pro Windturbinenmodell, in einem GeoPackage mit einer separaten Tabelle pro Modell.",
     "Estos valores son la plantilla global. Cada modelo puede guardar sus propias dimensiones longitudinal y transversal al definir la turbina.":
-        "Diese Werte bilden die globale Vorlage. Jedes Turbinenmodell kann beim Definieren eigene Längs- und Querabstände speichern.",
+        "Diese Werte bilden die globale Vorlage. Jedes Windturbinenmodell kann beim Definieren eigene Längs- und Querabstände speichern.",
     "dimensiones:": "Abmessungen:",
     "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje mayor de sus envolventes.":
         "Anfänglicher Längsabstand dieses Modells in Rotordurchmessern. Er wird mit dem Modell gespeichert und steuert die Hauptachse seiner Hüllen.",
@@ -358,7 +357,7 @@ _TO_EN.update({
     "Modelo de aerogenerador:": "Wind turbine model:",
     "No hay modelos cargados": "No models loaded",
     "No hay modelos cargados.": "No models loaded.",
-    "Actualizar la lista de modelos de turbina del proyecto.": "Refresh the list of turbine models in the project.",
+    "Actualizar la lista de modelos de las filas de Energía.": "Refresh the list of models in the Energy rows.",
     "Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar.": "Select the layer/model whose dimensions and orientation you want to edit.",
     "Modelo seleccionado.": "Selected model.",
     "Dibuja una elipse semitransparente alrededor de cada turbina. Cada modelo conserva su propia geometría. Rojo = conflicto; naranja = cerca del límite.": "Draws a semi-transparent ellipse around each turbine. Each model keeps its own geometry. Red = conflict; orange = near the limit.",
@@ -366,7 +365,7 @@ _TO_EN.update({
     "Separación transversal mínima del modelo seleccionado, en diámetros de rotor.": "Minimum crosswind spacing for the selected model, in rotor diameters.",
     "La orientación se guarda por modelo. En modo automático la elipse se alinea con el sector más energético del recurso; el ángulo actúa como respaldo.": "Orientation is stored per model. In automatic mode the ellipse aligns with the resource's most energetic sector; the angle is used as a fallback.",
     "Azimut del eje mayor desde el Norte, en sentido horario. Se guarda de forma independiente para el modelo seleccionado.": "Major-axis azimuth clockwise from North. It is stored independently for the selected model.",
-    "La validación se aplica conjuntamente entre todos los modelos del proyecto.": "Validation is applied jointly across all models in the project.",
+    "La validación se aplica conjuntamente entre las capas de turbinas elegidas en las filas de Energía.": "Validation is applied jointly across the turbine layers chosen in the Energy rows.",
     "Define una excepción para una turbina del modelo seleccionado mediante tres clics.": "Defines an exception for a turbine of the selected model using three clicks.",
     "Elimina las excepciones dibujadas de la capa/modelo seleccionado.": "Removes the drawn exceptions from the selected layer/model.",
     "Exporta todas las capas de envolventes a un GeoPackage, una tabla por modelo.": "Exports all envelope layers to a GeoPackage, one table per model.",
@@ -388,7 +387,7 @@ _TO_FR.update({
     "Modelo de aerogenerador:": "Modèle d’éolienne :",
     "No hay modelos cargados": "Aucun modèle chargé",
     "No hay modelos cargados.": "Aucun modèle chargé.",
-    "Actualizar la lista de modelos de turbina del proyecto.": "Actualiser la liste des modèles d’éoliennes du projet.",
+    "Actualizar la lista de modelos de las filas de Energía.": "Actualiser la liste des modèles des lignes d’Énergie.",
     "Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar.": "Sélectionnez la couche/le modèle dont vous souhaitez modifier les dimensions et l’orientation.",
     "Modelo seleccionado.": "Modèle sélectionné.",
     "Dibuja una elipse semitransparente alrededor de cada turbina. Cada modelo conserva su propia geometría. Rojo = conflicto; naranja = cerca del límite.": "Dessine une ellipse semi-transparente autour de chaque éolienne. Chaque modèle conserve sa propre géométrie. Rouge = conflit ; orange = proche de la limite.",
@@ -396,7 +395,7 @@ _TO_FR.update({
     "Separación transversal mínima del modelo seleccionado, en diámetros de rotor.": "Espacement transversal minimal du modèle sélectionné, en diamètres de rotor.",
     "La orientación se guarda por modelo. En modo automático la elipse se alinea con el sector más energético del recurso; el ángulo actúa como respaldo.": "L’orientation est enregistrée par modèle. En mode automatique, l’ellipse s’aligne sur le secteur le plus énergétique de la ressource ; l’angle sert de valeur de repli.",
     "Azimut del eje mayor desde el Norte, en sentido horario. Se guarda de forma independiente para el modelo seleccionado.": "Azimut du grand axe depuis le Nord, dans le sens horaire. Il est enregistré séparément pour le modèle sélectionné.",
-    "La validación se aplica conjuntamente entre todos los modelos del proyecto.": "La validation est appliquée conjointement à tous les modèles du projet.",
+    "La validación se aplica conjuntamente entre las capas de turbinas elegidas en las filas de Energía.": "La validation est appliquée conjointement aux couches d’éoliennes choisies dans les lignes d’Énergie.",
     "Define una excepción para una turbina del modelo seleccionado mediante tres clics.": "Définit une exception pour une éolienne du modèle sélectionné en trois clics.",
     "Elimina las excepciones dibujadas de la capa/modelo seleccionado.": "Supprime les exceptions dessinées de la couche/du modèle sélectionné.",
     "Exporta todas las capas de envolventes a un GeoPackage, una tabla por modelo.": "Exporte toutes les couches d’enveloppes vers un GeoPackage, une table par modèle.",
@@ -418,30 +417,30 @@ _TO_DE.update({
     "Modelo de aerogenerador:": "Windturbinenmodell:",
     "No hay modelos cargados": "Keine Modelle geladen",
     "No hay modelos cargados.": "Keine Modelle geladen.",
-    "Actualizar la lista de modelos de turbina del proyecto.": "Liste der Turbinenmodelle im Projekt aktualisieren.",
-    "Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar.": "Wählen Sie die Ebene/das Modell aus, dessen Abmessungen und Ausrichtung Sie bearbeiten möchten.",
+    "Actualizar la lista de modelos de las filas de Energía.": "Liste der Modelle in den Energie-Zeilen aktualisieren.",
+    "Selecciona la capa/modelo cuyas dimensiones y orientación quieres editar.": "Wählen Sie den Layer bzw. das Modell aus, dessen Abmessungen und Ausrichtung Sie bearbeiten möchten.",
     "Modelo seleccionado.": "Ausgewähltes Modell.",
-    "Dibuja una elipse semitransparente alrededor de cada turbina. Cada modelo conserva su propia geometría. Rojo = conflicto; naranja = cerca del límite.": "Zeichnet eine halbtransparente Ellipse um jede Turbine. Jedes Modell behält seine eigene Geometrie. Rot = Konflikt; Orange = nahe am Grenzwert.",
+    "Dibuja una elipse semitransparente alrededor de cada turbina. Cada modelo conserva su propia geometría. Rojo = conflicto; naranja = cerca del límite.": "Zeichnet eine halbtransparente Ellipse um jede Windturbine. Jedes Modell behält seine eigene Geometrie. Rot = Konflikt; Orange = nahe am Grenzwert.",
     "Separación longitudinal mínima del modelo seleccionado, en diámetros de rotor.": "Minimaler Längsabstand des ausgewählten Modells in Rotordurchmessern.",
     "Separación transversal mínima del modelo seleccionado, en diámetros de rotor.": "Minimaler Querabstand des ausgewählten Modells in Rotordurchmessern.",
     "La orientación se guarda por modelo. En modo automático la elipse se alinea con el sector más energético del recurso; el ángulo actúa como respaldo.": "Die Ausrichtung wird je Modell gespeichert. Im Automatikmodus richtet sich die Ellipse am energiereichsten Ressourcensektor aus; der Winkel dient als Fallback.",
     "Azimut del eje mayor desde el Norte, en sentido horario. Se guarda de forma independiente para el modelo seleccionado.": "Azimut der Hauptachse ab Norden im Uhrzeigersinn. Er wird separat für das ausgewählte Modell gespeichert.",
-    "La validación se aplica conjuntamente entre todos los modelos del proyecto.": "Die Validierung wird gemeinsam für alle Modelle im Projekt angewendet.",
-    "Define una excepción para una turbina del modelo seleccionado mediante tres clics.": "Definiert mit drei Klicks eine Ausnahme für eine Turbine des ausgewählten Modells.",
-    "Elimina las excepciones dibujadas de la capa/modelo seleccionado.": "Entfernt die gezeichneten Ausnahmen aus der ausgewählten Ebene/dem ausgewählten Modell.",
-    "Exporta todas las capas de envolventes a un GeoPackage, una tabla por modelo.": "Exportiert alle Hüllen-Ebenen in ein GeoPackage, eine Tabelle pro Modell.",
+    "La validación se aplica conjuntamente entre las capas de turbinas elegidas en las filas de Energía.": "Die Validierung wird gemeinsam für die in den Energie-Zeilen gewählten Windturbinen-Layer angewendet.",
+    "Define una excepción para una turbina del modelo seleccionado mediante tres clics.": "Definiert mit drei Klicks eine Ausnahme für eine Windturbine des ausgewählten Modells.",
+    "Elimina las excepciones dibujadas de la capa/modelo seleccionado.": "Entfernt die gezeichneten Ausnahmen aus dem ausgewählten Layer bzw. Modell.",
+    "Exporta todas las capas de envolventes a un GeoPackage, una tabla por modelo.": "Exportiert alle Hüllen-Layer in ein GeoPackage, eine Tabelle pro Modell.",
     "se utilizará el ángulo de respaldo guardado en cada modelo.": "der in jedem Modell gespeicherte Fallback-Winkel wird verwendet.",
-    "Excepción guardada para la turbina": "Ausnahme für Turbine gespeichert",
+    "Excepción guardada para la turbina": "Ausnahme für Windturbine gespeichert",
     "del modelo": "des Modells",
     "Excepción de envolvente guardada.": "Hüllenausnahme gespeichert.",
     "Excepciones del modelo": "Modellausnahmen",
     "eliminadas · usando su plantilla de modelo.": "gelöscht · die Modellvorlage wird verwendet.",
     "dimensiones:": "Abmessungen:",
-    "sin capa": "ohne Ebene",
+    "sin capa": "ohne Layer",
     "Modelo definido sin capa de turbinas. Carga un CSV o genera la capa de puntos para crear sus elipses.":
-        "Modell ohne Turbinen-Ebene definiert. Laden Sie eine CSV-Datei oder erzeugen Sie die Punktebene, um die Ellipsen zu erstellen.",
+        "Modell ohne Windturbinen-Layer definiert. Laden Sie eine CSV-Datei oder erzeugen Sie die Punktebene, um die Ellipsen zu erstellen.",
     "El modelo seleccionado todavía no tiene una capa de turbinas para dibujar.":
-        "Das ausgewählte Modell besitzt noch keine Turbinen-Ebene zum Zeichnen.",
+        "Das ausgewählte Modell hat noch keinen Windturbinen-Layer zum Zeichnen.",
     "No hay modelos de aerogenerador definidos.": "Es sind keine Windturbinenmodelle definiert.",
 })
 
@@ -478,13 +477,13 @@ _TO_FR.update({
 _TO_DE.update({
     "Aplicar nueva configuración": "Neue Konfiguration anwenden",
     "Guarda los valores mostrados en el modelo seleccionado y reconstruye su capa de elipses. No crea una excepción individual.":
-        "Speichert die angezeigten Werte im ausgewählten Modell und baut dessen Ellipsen-Ebene neu auf. Es wird keine individuelle Ausnahme erzeugt.",
+        "Speichert die angezeigten Werte im ausgewählten Modell und baut dessen Ellipsen-Layer neu auf. Es wird keine individuelle Ausnahme erzeugt.",
     "Cambios pendientes · pulsa «Aplicar nueva configuración» para actualizar el modelo.":
         "Ausstehende Änderungen · klicken Sie auf „Neue Konfiguration anwenden“, um das Modell zu aktualisieren.",
     "No hay un modelo seleccionado al que aplicar la configuración.":
         "Es ist kein Modell ausgewählt, auf das die Konfiguration angewendet werden kann.",
     "Configuración aplicada al modelo": "Konfiguration auf Modell angewendet",
-    "capa de elipses actualizada.": "Ellipsen-Ebene aktualisiert.",
+    "capa de elipses actualizada.": "Ellipsen-Layer aktualisiert.",
     "Configuración guardada para el modelo": "Konfiguration für Modell gespeichert",
     "se utilizará automáticamente al cargar su CSV.":
         "sie wird beim Laden der zugehörigen CSV-Datei automatisch verwendet.",
@@ -500,8 +499,61 @@ _TO_FR.update({
 })
 _TO_DE.update({
     "Configura la separación mínima entre turbinas. Las envolventes se dibujan en una capa independiente por cada modelo de turbina y se validan también entre modelos al editar en el Mapa interactivo. Edita los valores y pulsa «Aplicar nueva configuración» para actualizar el modelo; «Definir elipse en pantalla» crea solo una excepción para una turbina concreta.":
-        "Konfigurieren Sie den Mindestabstand zwischen Turbinen. Für jedes Turbinenmodell wird eine eigene Hüllen-Ebene erzeugt; die Validierung erfolgt auch modellübergreifend im interaktiven Kartenmodus. Bearbeiten Sie die Werte und klicken Sie auf „Neue Konfiguration anwenden“, um das Modell zu aktualisieren; „Ellipse am Bildschirm definieren“ erzeugt nur eine Ausnahme für eine bestimmte Turbine.",
+        "Konfigurieren Sie den Mindestabstand zwischen Windturbinen. Für jedes Windturbinenmodell wird ein eigener Hüllen-Layer erzeugt; die Validierung erfolgt auch modellübergreifend im interaktiven Kartenmodus. Bearbeiten Sie die Werte und klicken Sie auf „Neue Konfiguration anwenden“, um das Modell zu aktualisieren; „Ellipse am Bildschirm definieren“ erzeugt nur eine Ausnahme für eine bestimmte Windturbine.",
 })
+
+# Turbine layer of each energy row: «Definir elipse en pantalla» only on a layer and a map in the same CRS in metres.
+_TO_EN.update({
+    "«Definir elipse en pantalla» solo funciona con la capa de turbinas y el mapa en el mismo sistema de coordenadas, proyectado y en metros.":
+        "“Define ellipse on screen” only works with the turbine layer and the map in the same coordinate reference system, projected and in metres.",
+    "Definición cancelada: ha cambiado el sistema de coordenadas del mapa o de la capa.":
+        "Definition cancelled: the coordinate reference system of the map or of the layer has changed.",
+})
+_TO_FR.update({
+    "«Definir elipse en pantalla» solo funciona con la capa de turbinas y el mapa en el mismo sistema de coordenadas, proyectado y en metros.":
+        "« Définir l’ellipse à l’écran » ne fonctionne qu’avec la couche d’éoliennes et la carte dans le même système de coordonnées, projeté et en mètres.",
+    "Definición cancelada: ha cambiado el sistema de coordenadas del mapa o de la capa.":
+        "Définition annulée : le système de coordonnées de la carte ou de la couche a changé.",
+})
+_TO_DE.update({
+    "«Definir elipse en pantalla» solo funciona con la capa de turbinas y el mapa en el mismo sistema de coordenadas, proyectado y en metros.":
+        "„Ellipse am Bildschirm definieren“ funktioniert nur, wenn der Windturbinen-Layer und die Karte dasselbe projizierte Koordinatenbezugssystem in Metern verwenden.",
+    "Definición cancelada: ha cambiado el sistema de coordenadas del mapa o de la capa.":
+        "Definition abgebrochen: Das Koordinatenbezugssystem der Karte oder des Layers hat sich geändert.",
+})
+
+# Turbine layer of each energy row: a model without a layer gets one in its row's selector.
+_TO_EN.update({
+    "Modelo definido sin capa de turbinas. Elige una capa en su fila, o usa «Cargar nueva capa» o «Generar capas de puntos», para crear sus elipses.":
+        "Model defined without a turbine layer. Choose a layer in its row, or use “Load new layer” or “Generate point layers”, to create its ellipses.",
+    "se utilizará automáticamente al elegir su capa de turbinas.": "it will be used automatically when its turbine layer is chosen.",
+    "Ninguna fila tiene una capa de turbinas para dibujar.": "No row has a turbine layer to draw on.",
+})
+_TO_FR.update({
+    "Modelo definido sin capa de turbinas. Elige una capa en su fila, o usa «Cargar nueva capa» o «Generar capas de puntos», para crear sus elipses.":
+        "Modèle défini sans couche d’éoliennes. Choisissez une couche sur sa ligne, ou utilisez « Charger une nouvelle couche » ou « Générer les couches de points », pour créer ses ellipses.",
+    "se utilizará automáticamente al elegir su capa de turbinas.": "elle sera utilisée automatiquement lorsque sa couche d’éoliennes sera choisie.",
+    "Ninguna fila tiene una capa de turbinas para dibujar.": "Aucune ligne n’a de couche d’éoliennes sur laquelle dessiner.",
+})
+_TO_DE.update({
+    "Modelo definido sin capa de turbinas. Elige una capa en su fila, o usa «Cargar nueva capa» o «Generar capas de puntos», para crear sus elipses.":
+        "Modell ohne Windturbinen-Layer definiert. Wählen Sie einen Layer in seiner Zeile oder verwenden Sie „Neuen Layer laden“ oder „Punkt-Layer erzeugen“, um seine Ellipsen zu erzeugen.",
+    "se utilizará automáticamente al elegir su capa de turbinas.": "sie wird automatisch verwendet, sobald sein Windturbinen-Layer gewählt ist.",
+    "Ninguna fila tiene una capa de turbinas para dibujar.": "Keine Zeile hat einen Windturbinen-Layer zum Zeichnen.",
+})
+
+
+# An insertion that cannot be compared with an envelope (another CRS, an invalid geometry) is blocked.
+_TO_EN.update({
+    "No se pudo comparar la turbina con las envolventes de separación · inserción bloqueada.": "The turbine could not be compared with the spacing envelopes · insertion blocked.",
+})
+_TO_FR.update({
+    "No se pudo comparar la turbina con las envolventes de separación · inserción bloqueada.": "L’éolienne n’a pas pu être comparée aux enveloppes d’espacement · insertion bloquée.",
+})
+_TO_DE.update({
+    "No se pudo comparar la turbina con las envolventes de separación · inserción bloqueada.": "Die Windturbine konnte nicht mit den Abstandshüllen verglichen werden · Einfügen blockiert.",
+})
+
 
 def register() -> None:
     """Registra las traducciones del módulo (idempotente)."""
@@ -511,5 +563,6 @@ def register() -> None:
         register_language(LANG_EN, _TO_EN, _TO_EN, label="English")
         register_language(LANG_FR, _TO_FR, _TO_FR, label="Français")
         register_language(LANG_DE, _TO_DE, _TO_DE, label="Deutsch")
-    except Exception:
+    except Exception:  # nosec B110
         pass
+

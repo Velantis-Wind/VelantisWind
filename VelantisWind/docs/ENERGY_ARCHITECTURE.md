@@ -25,13 +25,31 @@ ag_core/orchestration/
 ag_core/resources/
 ag_core/layout/
 ag_core/turbines/
-ag_core/physics/
+ag_core/wake_setup/
 ag_core/simulation/
 ag_core/results/
 ag_core/qgis_io/
 ```
 
-`ag_core/aep_compute.py` remains the compatibility façade around the historical PyWake execution path. It is smaller than the original implementation, but it deliberately remains the public execution boundary for this experimental release.
+`ag_core/aep_compute.py` remains the public execution boundary: it reads the wake physics with the contract of `ag_core/wake_setup/api.py`, builds the model with the factory and assembles the schema-2 result. It is smaller than the original implementation, but it deliberately remains the public execution boundary for this experimental release.
+
+The wake-raster action follows a separate asynchronous path:
+
+```text
+aep_setup_dialog.py
+  ↓ snapshot inputs on main thread
+wake_core/controller.py
+  ↓
+wake_core/task.py (QgsTask)
+  ↓
+wake_core/raster.py (the configuration of the AEP; wake_core/engine.py: grid, tiles, terrain)
+  ↓
+ag_core/qgis_io/wake_raster.py (worker-safe GeoTIFF + JSON)
+  ↓ main thread
+QGIS raster layer + styling
+```
+
+Live `QgsProject`, layer-tree and widget objects are never accessed by the worker. The worker receives coordinate snapshots, regular PyWake turbine objects, paths, CRS text and scalar/model settings only.
 
 ---
 
@@ -103,8 +121,7 @@ It should become smaller over time, but not immediately before publication unles
 ag_core/orchestration/
 ├─ resource_loader.py
 ├─ layout_builder.py
-├─ model_config.py
-└─ result_builder.py
+└─ resource_settings.py
 ```
 
 Responsibilities:
@@ -113,8 +130,8 @@ Responsibilities:
 - load the wind resource and optional TI rasters;
 - build layout arrays from live map points or CSV inputs;
 - filter turbines outside the resource extent;
-- configure PyWake model components and compatibility fallbacks;
-- build final per-model summaries, global losses, per-turbine tables and payload dictionaries.
+- resolve the resource settings of the calculation (directions, interpolation, Speedup, wind speeds and hours) with the rules shared with Velantis Optimizer (`resource_settings.py` and `ag_core/resource_grid.py`, QGIS-free);
+- the wake physics is not here: it is the configuration of `ag_core/wake_setup/` (below).
 
 ### Lower-level packages
 
@@ -122,13 +139,27 @@ Responsibilities:
 ag_core/resources/    # WAsP/WRG/TI resource helpers
 ag_core/layout/       # Coordinate and layout IO helpers
 ag_core/turbines/     # Turbine curves, factories and hub-height logic
-ag_core/physics/      # Wake, turbulence, blockage, rotor-average helpers
-ag_core/simulation/   # PyWake execution helpers
-ag_core/results/      # AEP arrays, summary and table helpers
+ag_core/wake_setup/   # The wake configuration: catalogue, contract, validation, factory, readers, API, notices
+ag_core/physics/      # Air density (and the logger helper of common/)
+ag_core/simulation/   # One simulation of a built model (no retry) and the lock shared with the raster
+ag_core/results/      # AEP arrays, the signed breakdown and its variants, the schema-2 result, tables
 ag_core/qgis_io/      # QGIS layer and export helpers
 ```
 
 These packages should remain as independent as possible from Qt widgets.
+
+### Wake-raster application layer
+
+```text
+wake_core/
+├─ domain.py      # detached task configuration
+├─ raster.py      # the raster of a WakeConfig, with the inputs of the AEP
+├─ engine.py      # grid, tiles, terrain and package helpers, no live QGIS objects
+├─ task.py        # cancellable QgsTask
+└─ controller.py  # main-thread validation, progress and layer loading
+```
+
+UI code calls `wake_core.controller.start_wake_raster_from_dialog()`; the previous synchronous façade (`graficar.py`) was removed with the previous raster.
 
 ---
 
@@ -159,9 +190,9 @@ The public call signature is kept stable for the experimental release. The inter
 ```text
 PyWake outputs / arrays / diagnostics
   ↓
-result_builder.py
+ag_core/results/variants.py + result_v2.py
   ↓
-result payload dictionary
+result payload dictionary (schema 2; a result of the previous schema is still read with its own fields)
   ↓
 QGIS layers, result dialog, CSV/HTML export
 ```
@@ -184,7 +215,7 @@ Safe before publication:
 Avoid immediately before publication:
 
 - PyWake simulation ordering;
-- wake/turbulence/blockage fallback logic;
+- the wake factory and its class check;
 - AEP aggregation formulas;
 - turbine-type mapping;
 - resource interpolation/loading behaviour;
@@ -202,7 +233,7 @@ Every Energy refactor should be checked with at least:
 4. CSV layout case.
 5. Interactive-map layout case.
 6. One turbulence-enabled model.
-7. One incompatible blockage setting to verify warning/fallback.
+7. One combination PyWake refuses, to verify that it is not calculated.
 8. CSV export and result-layer update.
 9. Result dialog opening.
 10. Total AEP and per-turbine AEP comparison against the previous accepted build.
@@ -213,6 +244,6 @@ Every Energy refactor should be checked with at least:
 
 - Move the remaining simulation sequencing from `aep_compute.py` into a dedicated service once regression fixtures exist.
 - Add small public test fixtures if licensing allows: minimal layout, turbine curve and resource sample.
-- Add unit tests for `resource_loader`, `layout_builder`, `model_config` and `result_builder` outside QGIS.
+- Add unit tests for `resource_loader` and `layout_builder` outside QGIS.
 - Move report generation into a dedicated report service.
 - Add a stable JSON metadata block to exported reports so testers can compare runs more easily.

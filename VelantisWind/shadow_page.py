@@ -14,6 +14,7 @@ from .shadow_core.debug import debug_print
 import json
 import os
 from datetime import datetime
+from .number_format import format_number
 from typing import Callable, Dict, List, Optional
 
 import numpy as np
@@ -34,7 +35,7 @@ from .shadow_core import (
     DEFAULT_OBSERVER_HEIGHT,
     DEFAULT_MAX_SHADOW_DISTANCE_M,
 )
-from .i18n import apply_i18n, install_runtime_i18n_patches, tr_text as _tr, is_spanish, current_language
+from .i18n import set_source, apply_i18n, install_runtime_i18n_patches, mark_data, mark_translated, tr_text as _tr, is_spanish, current_language
 from .ui_core.layout_sources import import_turbine_layout_from_csv
 from .shadow_core.timezone_utils import (
     detect_timezone_name,
@@ -82,11 +83,11 @@ def _tr_help(text):
                 hit = getattr(_tr_help, "_norm_%s" % current_language(), {}).get(norm_s)
                 if hit is not None:
                     return hit
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             # For translated help dialogs, prefer a clean source fallback over mixed fragments.
             return st or s
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return _tr(s)
 
@@ -105,7 +106,7 @@ def _help_ok_label() -> str:
 def _set_help_ok_text(msg) -> None:
     try:
         msg.button(QtWidgets.QMessageBox.Ok).setText(_help_ok_label())
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -120,7 +121,8 @@ def _ml(es: str, en: str = None, fr: str = None, de: str = None) -> str:
         return fr
     if lang == "de" and de is not None:
         return de
-    return _tr(es)
+    # The Spanish text is the source, with its data already inserted: returned as written, without the translator.
+    return es if lang == "es" else _tr(es)
 
 
 def _de_cleanup_shadow_status(text: str) -> str:
@@ -171,7 +173,7 @@ class ShadowPage(QtWidgets.QWidget):
             btn.setText("?")
         btn.setAutoRaise(True)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        btn.setToolTip(_tr(tooltip))
+        set_source(btn, "toolTip", tooltip)
         btn.clicked.connect(lambda _checked=False, key=help_key: self._show_shadow_help(key))
         return btn
 
@@ -204,7 +206,7 @@ class ShadowPage(QtWidgets.QWidget):
                     <b>Was hier definiert wird</b><br><br>
                     In diesem Block werden Standort und Zeitrahmen der Schattenwurfberechnung konfiguriert.<br><br>
                     <b>Breitengrad und Längengrad</b><br>
-                    Sie werden zur Berechnung der Sonnenposition verwendet. Geben Sie sie in Dezimalgrad ein, zum Beispiel 42.465 und -2.445.<br><br>
+                    Sie werden zur Berechnung der Sonnenposition verwendet. Geben Sie sie in Dezimalgrad ein, zum Beispiel 42,465 und -2,445.<br><br>
                     <b>Analysejahr</b><br>
                     Damit kann das Plugin die Jahrestabelle mit dem realen Kalender des ausgewählten Jahres erzeugen.<br><br>
                     <b>Hinweis</b><br>
@@ -227,21 +229,21 @@ class ShadowPage(QtWidgets.QWidget):
                 "layers": (
                     "Hilfe · Berechnungs-Layer",
                     """
-                    <b>Turbinen-Layer</b><br><br>
-                    Wählen Sie den in VelantisWind erkannten oder importierten Koordinaten-Layer der Turbinen. Dieser Layer definiert die Positionen der Turbinen, die Schatten werfen.<br><br>
+                    <b>Windturbinen-Layer</b><br><br>
+                    Wählen Sie den in VelantisWind erkannten oder importierten Koordinaten-Layer der Windturbinen. Dieser Layer definiert die Positionen der Windturbinen, die Schatten werfen.<br><br>
                     <b>Rezeptor-Layer</b><br>
                     Dies sollte ein Punkt-Layer mit den Positionen sein, an denen der Schattenwurf bewertet werden soll, zum Beispiel Wohngebäude oder sensible Rezeptoren.<br><br>
                     <b>Hinweis</b><br>
-                    Prüfen Sie vor der Berechnung, dass beide Layer im Projekt geladen sind und das korrekte CRS verwenden.
+                    Prüfen Sie vor der Berechnung, dass beide Layer im Projekt geladen sind und das korrekte KBS verwenden.
                     """,
                 ),
                 "dem": (
-                    "Hilfe · Optionales DGM/DEM",
+                    "Hilfe · Optionales DGM",
                     """
                     <b>Wofür es verwendet wird</b><br><br>
-                    Wenn ein Höhenraster ausgewählt wird, korrigiert das Plugin die Geometrie anhand der Geländehöhe an jeder Turbine und jedem Rezeptor.<br><br>
+                    Wenn ein Höhenraster ausgewählt wird, korrigiert das Plugin die Geometrie anhand der Geländehöhe an jeder Windturbine und jedem Rezeptor.<br><br>
                     <b>Erwartetes Format</b><br>
-                    Verwenden Sie einen in QGIS geladenen Raster-Layer, vorzugsweise im gleichen CRS wie das Projekt und mit Höhenwerten in Metern.<br><br>
+                    Verwenden Sie einen in QGIS geladenen Raster-Layer, vorzugsweise im gleichen KBS wie das Projekt und mit Höhenwerten in Metern.<br><br>
                     <b>Wenn nichts ausgewählt ist</b><br>
                     Die Berechnung nimmt ebenes Gelände an (z = 0), was für eine erste Abschätzung ausreichend ist.
                     """,
@@ -256,11 +258,11 @@ class ShadowPage(QtWidgets.QWidget):
                     <b>Minimale und maximale Sonnenhöhe</b><br>
                     Damit können weniger relevante Sonnenstände ignoriert werden. Das Minimum wird häufig auf etwa 3° gesetzt. Das Maximum kann bei 90° bleiben, wenn hohe Sonnenstände nicht gefiltert werden sollen.<br><br>
                     <b>Verfügbarkeit und maximale Entfernung</b><br>
-                    Die Verfügbarkeit reduziert das Ergebnis entsprechend der realen Betriebszeit der Turbine. Die maximale Entfernung begrenzt den betrachteten Einflussradius.
+                    Die Verfügbarkeit reduziert das Ergebnis entsprechend der realen Betriebszeit der Windturbine. Die maximale Entfernung begrenzt den betrachteten Einflussradius.
                     """,
                 ),
                 "models": (
-                    "Hilfe · Konfiguration der Turbinenmodelle",
+                    "Hilfe · Konfiguration der Windturbinenmodelle",
                     """
                     <b>Was jede Zeile darstellt</b><br><br>
                     Jede Zeile fasst ein im Projekt erkanntes Turbinenmodell zusammen.<br><br>
@@ -269,7 +271,7 @@ class ShadowPage(QtWidgets.QWidget):
                     • <b>Rotordurchmesser</b>: Durchmesser des Rotors.<br>
                     • <b>Notizen</b>: Hinweise oder Rückverfolgbarkeitskommentare zum Modell.<br><br>
                     <b>Warum das wichtig ist</b><br>
-                    Diese Parameter werden benötigt, um die Schattengeometrie korrekt zu projizieren. Prüfen Sie, dass sie zum realen Turbinenmodell passen.
+                    Diese Parameter werden benötigt, um die Schattengeometrie korrekt zu projizieren. Prüfen Sie, dass sie zum realen Windturbinenmodell passen.
                     """,
                 ),
                 "raster": (
@@ -305,7 +307,7 @@ class ShadowPage(QtWidgets.QWidget):
                 <b>Qué defines aquí</b><br><br>
                 En este bloque se configura la localización y el marco temporal del cálculo de sombras y parpadeo.<br><br>
                 <b>Latitud y longitud</b><br>
-                Se usan para calcular la posición solar. Deben estar en grados decimales, por ejemplo 42.465 y -2.445.<br><br>
+                Se usan para calcular la posición solar. Deben estar en grados decimales, por ejemplo 42,465 y -2,445.<br><br>
                 <b>Año de análisis</b><br>
                 Permite generar la tabla anual con el calendario real del año seleccionado.<br><br>
                 <b>Consejo</b><br>
@@ -316,10 +318,10 @@ class ShadowPage(QtWidgets.QWidget):
                 "Ayuda · Zona horaria",
                 """
                 <b>Base temporal</b><br><br>
-                Puedes trabajar con hora civil real del emplazamiento o con un offset UTC fijo.<br><br>
+                Puedes trabajar con hora civil real del emplazamiento o con un desfase UTC fijo.<br><br>
                 <b>Hora civil local (IANA/DST)</b><br>
                 Usa zonas como <code>Europe/Madrid</code> y aplica automáticamente los cambios de horario de verano e invierno.<br><br>
-                <b>Offset UTC fijo</b><br>
+                <b>Desfase UTC fijo</b><br>
                 Mantiene la misma diferencia con UTC durante todo el año. Es más simple, pero no refleja cambios estacionales.<br><br>
                 <b>Recomendación</b><br>
                 Para estudios reales normalmente conviene usar la zona IANA del emplazamiento.
@@ -340,9 +342,9 @@ class ShadowPage(QtWidgets.QWidget):
                 "Ayuda · MDT / DEM opcional",
                 """
                 <b>Para qué sirve</b><br><br>
-                Si seleccionas un raster de elevación, el plugin corrige la geometría usando la cota del terreno en cada turbina y en cada receptor.<br><br>
+                Si seleccionas un ráster de elevación, el plugin corrige la geometría usando la cota del terreno en cada turbina y en cada receptor.<br><br>
                 <b>Formato esperado</b><br>
-                Usa una capa raster cargada en QGIS, preferiblemente en el mismo CRS del proyecto y con valores de elevación en metros.<br><br>
+                Usa una capa ráster cargada en QGIS, preferiblemente en el mismo CRS del proyecto y con valores de elevación en metros.<br><br>
                 <b>Si no se selecciona</b><br>
                 El cálculo asume terreno plano (z = 0), suficiente para una primera aproximación.
                 """,
@@ -375,13 +377,13 @@ class ShadowPage(QtWidgets.QWidget):
                 """,
             ),
             "raster": (
-                "Ayuda · Raster de sombras y parpadeo",
+                "Ayuda · Ráster de sombras y parpadeo",
                 """
                 <b>Qué genera</b><br><br>
-                Además del cálculo en receptores, el plugin puede crear un raster continuo con las horas de sombras y parpadeo en el entorno del parque.<br><br>
+                Además del cálculo en receptores, el plugin puede crear un ráster continuo con las horas de sombras y parpadeo en el entorno del parque.<br><br>
                 <b>Resolución</b><br>
                 Una celda más pequeña ofrece más detalle, pero tarda más. 100 m suele ser útil para pruebas rápidas; 50 m o 25 m dan más detalle.<br><br>
-                <b>Paso temporal del raster</b><br>
+                <b>Paso temporal del ráster</b><br>
                 Es independiente del usado en receptores. Puedes usar un paso algo mayor para acelerar la generación del mapa.
                 """,
             ),
@@ -389,13 +391,13 @@ class ShadowPage(QtWidgets.QWidget):
                 "Ayuda · Filtro por mes y hora",
                 """
                 <b>Para qué sirve</b><br><br>
-                Una vez generado el raster anual, puedes regenerar versiones filtradas por mes y/o por hora sin recalcular toda la geometría anual.<br><br>
+                Una vez generado el ráster anual, puedes regenerar versiones filtradas por mes y/o por hora sin recalcular toda la geometría anual.<br><br>
                 <b>Ejemplos</b><br>
                 • Solo marzo.<br>
                 • Solo las 08:00–09:00.<br>
                 • Marzo a las 18:00.<br><br>
                 <b>Nota</b><br>
-                Esta opción se habilita después de crear el raster base.
+                Esta opción se habilita después de crear el ráster base.
                 """,
             ),
         }
@@ -432,7 +434,7 @@ class ShadowPage(QtWidgets.QWidget):
                 <b>Turbine layer</b><br><br>
                 Select the turbine-coordinate layer detected or imported in VelantisWind. This layer defines the turbine positions that cast shadow flicker.<br><br>
                 <b>Receiver layer</b><br>
-                This should be a point layer with the locations where you want to evaluate shadow flicker, for example houses or sensitive receptors.<br><br>
+                This should be a point layer with the locations where you want to evaluate shadow flicker, for example houses or sensitive receivers.<br><br>
                 <b>Tip</b><br>
                 Make sure both layers are loaded in the project and use the correct CRS before running the calculation.
                 """,
@@ -452,7 +454,7 @@ class ShadowPage(QtWidgets.QWidget):
                 "Help · Calculation parameters",
                 """
                 <b>Observer height</b><br><br>
-                Height at which the receptor is evaluated. A typical value is 2 m for a window or observation point.<br><br>
+                Height at which the receiver is evaluated. A typical value is 2 m for a window or observation point.<br><br>
                 <b>Time step</b><br>
                 Controls the temporal resolution. 5 min usually gives a good balance between accuracy and runtime; 1 min is more accurate but much slower.<br><br>
                 <b>Minimum and maximum solar elevation</b><br>
@@ -479,7 +481,7 @@ class ShadowPage(QtWidgets.QWidget):
                 "Help · Shadow flicker raster",
                 """
                 <b>What it generates</b><br><br>
-                In addition to the receptor-based calculation, the plugin can create a continuous raster with shadow flicker hours around the wind farm.<br><br>
+                In addition to the receiver-based calculation, the plugin can create a continuous raster with shadow flicker hours around the wind farm.<br><br>
                 <b>Resolution</b><br>
                 A smaller cell gives more detail but takes longer. 100 m is often useful for quick tests; 50 m or 25 m provide finer detail.<br><br>
                 <b>Raster time step</b><br>
@@ -503,8 +505,8 @@ class ShadowPage(QtWidgets.QWidget):
 
         data_fr = {'site': ('Aide · Configuration du site',
                   '<b>Ce que vous définissez ici</b><br><br>Ce bloc configure la localisation du site et le cadre temporel du '
-                  'calcul d’ombres et scintillement.<br><br><b>Latitude et longitude</b><br>Elles servent à calculer la position '
-                  'solaire. Elles doivent être saisies en degrés décimaux, par exemple 42.465 et -2.445.<br><br><b>Année '
+                  'calcul des ombres portées.<br><br><b>Latitude et longitude</b><br>Elles servent à calculer la position '
+                  'solaire. Elles doivent être saisies en degrés décimaux, par exemple 42,465 et -2,445.<br><br><b>Année '
                   'd’analyse</b><br>Elle permet au plugin de générer le tableau annuel avec le calendrier réel de l’année '
                   'sélectionnée.<br><br><b>Conseil</b><br>Si vous ne connaissez pas les coordonnées exactes, utilisez le '
                   'bouton de détection automatique pour les estimer à partir du centroïde de l’implantation active.'),
@@ -518,15 +520,15 @@ class ShadowPage(QtWidgets.QWidget):
                       'd’utiliser le fuseau IANA du site.'),
          'layers': ('Aide · Couches de calcul',
                     '<b>Couche d’éoliennes</b><br><br>Sélectionnez la couche de coordonnées d’éoliennes détectée ou importée '
-                    'dans VelantisWind. Cette couche définit les positions des éoliennes qui projettent l’ombre '
-                    'intermittente.<br><br><b>Couche de récepteurs</b><br>Il doit s’agir d’une couche de points contenant les '
-                    'emplacements où vous voulez évaluer les ombres et scintillement, par exemple des maisons ou des récepteurs '
+                    'dans VelantisWind. Cette couche définit les positions des éoliennes qui projettent les ombres '
+                    'portées.<br><br><b>Couche de récepteurs</b><br>Il doit s’agir d’une couche de points contenant les '
+                    'emplacements où vous voulez évaluer les ombres portées, par exemple des maisons ou des récepteurs '
                     'sensibles.<br><br><b>Conseil</b><br>Vérifiez que les deux couches sont chargées dans le projet et '
-                    'utilisent le bon CRS avant de lancer le calcul.'),
-         'dem': ('Aide · MDT/DEM optionnel',
+                    'utilisent le bon SCR avant de lancer le calcul.'),
+         'dem': ('Aide · MNT optionnel',
                  '<b>À quoi il sert</b><br><br>Si vous sélectionnez un raster d’élévation, le plugin corrige la géométrie en '
                  'utilisant l’altitude du terrain à chaque éolienne et à chaque récepteur.<br><br><b>Format '
-                 'attendu</b><br>Utilisez une couche raster chargée dans QGIS, de préférence dans le même CRS que le projet et '
+                 'attendu</b><br>Utilisez une couche raster chargée dans QGIS, de préférence dans le même SCR que le projet et '
                  'avec des valeurs d’altitude en mètres.<br><br><b>Si rien n’est sélectionné</b><br>Le calcul suppose un '
                  'terrain plat (z = 0), ce qui est acceptable pour une première approximation.'),
          'parameters': ('Aide · Paramètres du calcul',
@@ -545,9 +547,9 @@ class ShadowPage(QtWidgets.QWidget):
                     '<b>Diamètre du rotor</b> : diamètre du rotor.<br>• <b>Notes</b> : observations ou commentaires de '
                     'traçabilité du modèle.<br><br><b>Pourquoi c’est important</b><br>Ces paramètres sont nécessaires pour '
                     'projeter correctement la géométrie d’ombre. Vérifiez qu’ils correspondent au modèle réel d’éolienne.'),
-         'raster': ('Aide · Raster d’ombres et scintillement',
+         'raster': ('Aide · Raster d’ombres portées',
                     '<b>Ce qu’il génère</b><br><br>En plus du calcul par récepteurs, le plugin peut créer un raster continu '
-                    'avec les heures d’ombres et scintillement autour du parc éolien.<br><br><b>Résolution</b><br>Une cellule plus '
+                    'avec les heures d’ombres portées autour du parc éolien.<br><br><b>Résolution</b><br>Une cellule plus '
                     'petite offre plus de détail mais prend plus de temps. 100 m est souvent utile pour des tests rapides ; 50 '
                     'm ou 25 m donnent un détail plus fin.<br><br><b>Pas temporel du raster</b><br>Il est indépendant du pas '
                     'utilisé pour les récepteurs. Vous pouvez utiliser un pas un peu plus grand pour accélérer la génération '
@@ -611,14 +613,13 @@ class ShadowPage(QtWidgets.QWidget):
 
         hero_text = QtWidgets.QVBoxLayout()
         hero_text.setSpacing(6)
-        title = QtWidgets.QLabel(_tr("Sombras y parpadeo"))
+        title = QtWidgets.QLabel()
+        set_source(title, "text", "Sombras y parpadeo")
         title.setObjectName("shadowTitle")
         hero_text.addWidget(title)
         
         subtitle = QtWidgets.QLabel(_tr(
-            "Módulo de sombras y parpadeo para aerogeneradores. "
-            "Conectado al layout del proyecto, calcula receptores puntuales "
-            "y genera capas QGIS de salida detalladas por receptor."
+            'Módulo de sombras y parpadeo para aerogeneradores. Conectado a la disposición del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.'
         ))
         subtitle.setWordWrap(True)
         subtitle.setObjectName("shadowSubtitle")
@@ -649,10 +650,12 @@ class ShadowPage(QtWidgets.QWidget):
         
         for w in [self.lbl_project, self.lbl_crs, self.lbl_layout, self.lbl_models, self.lbl_receptor_info]:
             w.setWordWrap(True)
+            # Composed in the active language with the project's names, and composed again by refresh_from_project.
+            mark_translated(w)
         
         form_ctx.addRow(_tr("Proyecto:"), self.lbl_project)
         form_ctx.addRow(_tr("CRS:"), self.lbl_crs)
-        form_ctx.addRow(_tr("Layout activo:"), self.lbl_layout)
+        form_ctx.addRow(_tr('Disposición activa:'), self.lbl_layout)
         form_ctx.addRow(_tr("Modelos WT detectados:"), self.lbl_models)
         form_ctx.addRow(_tr("Capa de receptores:"), self.lbl_receptor_info)
         root.addWidget(grp_ctx)
@@ -669,7 +672,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_latitude.setRange(-90.0, 90.0)
         self.sp_latitude.setValue(float(self._qsettings.value("shadow/latitude", 42.0, type=float)))
         self.sp_latitude.setSuffix(" °")
-        self.sp_latitude.setToolTip(_tr("Latitud del emplazamiento (ej. 42.465 para Logroño)"))
+        self.sp_latitude.setToolTip(_tr("Latitud del emplazamiento (ej. 42,465 para Logroño)"))
         self.sp_latitude.valueChanged.connect(lambda v: self._qsettings.setValue("shadow/latitude", float(v)))
         grid_site.addWidget(self.sp_latitude, row, 1)
         
@@ -680,7 +683,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_longitude.setRange(-180.0, 180.0)
         self.sp_longitude.setValue(float(self._qsettings.value("shadow/longitude", -2.0, type=float)))
         self.sp_longitude.setSuffix(" °")
-        self.sp_longitude.setToolTip(_tr("Longitud del emplazamiento (ej. -2.445 para Logroño)"))
+        self.sp_longitude.setToolTip(_tr("Longitud del emplazamiento (ej. -2,445 para Logroño)"))
         self.sp_longitude.valueChanged.connect(lambda v: self._qsettings.setValue("shadow/longitude", float(v)))
         grid_site.addWidget(self.sp_longitude, row, 3)
         row += 1
@@ -716,8 +719,7 @@ class ShadowPage(QtWidgets.QWidget):
         saved_tz_name = str(self._qsettings.value("shadow/timezone_name", "Europe/Madrid"))
         self._set_timezone_combo_value(saved_tz_name)
         self.cb_timezone_name.setToolTip(_tr(
-            "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\n"
-            "El plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder."
+            'Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl complemento incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.'
         ))
         self.cb_timezone_name.currentTextChanged.connect(lambda v: self._qsettings.setValue("shadow/timezone_name", str(v).strip()))
         grid_site.addWidget(self.cb_timezone_name, row, 1)
@@ -730,12 +732,15 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_timezone.setPrefix("UTC ")
         self.sp_timezone.setToolTip(_tr("Desfase fijo para el modo UTC fijo. No se aplica horario de verano."))
         self.sp_timezone.valueChanged.connect(lambda v: self._qsettings.setValue("shadow/timezone_offset", float(v)))
+        self.sp_timezone.valueChanged.connect(self._refresh_timezone_status)
         grid_site.addWidget(self.sp_timezone, row, 3)
         row += 1
 
         self.lbl_timezone_status = QtWidgets.QLabel("-")
         self.lbl_timezone_status.setWordWrap(True)
         self.lbl_timezone_status.setObjectName("shadowMinor")
+        # Composed in the active language with the zone or the offset (_refresh_timezone_status).
+        mark_translated(self.lbl_timezone_status)
         grid_site.addWidget(self.lbl_timezone_status, row, 0, 1, 4)
         row += 1
         self._on_timezone_mode_changed()
@@ -743,7 +748,7 @@ class ShadowPage(QtWidgets.QWidget):
         # Button to detect coordinates from CRS
         btn_detect = QtWidgets.QPushButton(_tr("Detectar automáticamente coordenadas y zona horaria"))
         btn_detect.clicked.connect(self._auto_detect_coordinates)
-        btn_detect.setToolTip(_tr("Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA"))
+        btn_detect.setToolTip(_tr('Calcula latitud/longitud desde el centroide de la disposición e intenta detectar la zona IANA'))
         grid_site.addLayout(self._wrap_in_hbox(btn_detect), row, 0, 1, 4)
         row += 1
         
@@ -763,7 +768,7 @@ class ShadowPage(QtWidgets.QWidget):
         row += 1
 
         turbine_btns = QtWidgets.QHBoxLayout()
-        self.btn_import_layout = QtWidgets.QPushButton(_tr("Importar layout de aerogeneradores desde CSV…"))
+        self.btn_import_layout = QtWidgets.QPushButton(_tr('Importar disposición de aerogeneradores desde CSV…'))
         self.btn_import_layout.clicked.connect(self._import_turbine_layout_for_shadow)
         turbine_btns.addWidget(self.btn_import_layout)
         turbine_btns.addStretch(1)
@@ -779,7 +784,7 @@ class ShadowPage(QtWidgets.QWidget):
         row += 1
         
         # DEM (digital elevation model) - optional, for terrain-aware geometry
-        grid_inputs.addWidget(self._label_with_help("Raster MDT/DEM (opcional):", "Raster de elevación opcional para geometría con terreno", "dem"), row, 0)
+        grid_inputs.addWidget(self._label_with_help("Ráster MDT/DEM (opcional):", "Ráster de elevación opcional para geometría con terreno", "dem"), row, 0)
         self.cb_dem = QtWidgets.QComboBox()
         self.cb_dem.currentIndexChanged.connect(self._on_dem_changed)
         self.cb_dem.setToolTip(_tr(
@@ -842,7 +847,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_availability.setRange(0.0, 1.0)
         self.sp_availability.setValue(float(self._qsettings.value("shadow/turbine_availability", 0.97, type=float)))
         self.sp_availability.setSingleStep(0.01)
-        self.sp_availability.setToolTip(_tr("Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)"))
+        self.sp_availability.setToolTip(_tr("Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0,97 = 97 %)"))
         self.sp_availability.valueChanged.connect(lambda v: self._qsettings.setValue("shadow/turbine_availability", float(v)))
         grid_inputs.addWidget(self.sp_availability, row, 1)
 
@@ -853,9 +858,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_max_shadow_distance.setValue(int(self._qsettings.value("shadow/max_shadow_distance", int(DEFAULT_MAX_SHADOW_DISTANCE_M), type=int)))
         self.sp_max_shadow_distance.setSuffix(" m")
         self.sp_max_shadow_distance.setToolTip(_tr(
-            "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\n"
-            "Valor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\n"
-            "Se usa para filtrar receptores y para la extensión/máscara del raster."
+            "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, una distancia de cribado conservadora.\nSe usa para filtrar receptores y para la extensión/máscara del ráster."
         ))
         self.sp_max_shadow_distance.valueChanged.connect(lambda v: self._qsettings.setValue("shadow/max_shadow_distance", int(v)))
         self.sp_max_shadow_distance.valueChanged.connect(lambda _v: self._check_configuration())
@@ -911,20 +914,22 @@ class ShadowPage(QtWidgets.QWidget):
         self.txt_status.setReadOnly(True)
         self.txt_status.setMinimumHeight(120)
         self.txt_status.setMaximumHeight(220)
+        # Composed in the active language with the layers' names, and composed again by _check_configuration.
+        mark_translated(self.txt_status)
         act_lay.addWidget(self.txt_status)
         
         # Option to create raster map
         raster_layout = QtWidgets.QHBoxLayout()
-        self.chk_create_raster = QtWidgets.QCheckBox(_tr("Crear mapa raster de sombras y parpadeo"))
+        self.chk_create_raster = QtWidgets.QCheckBox(_tr("Crear mapa ráster de sombras y parpadeo"))
         self.chk_create_raster.setChecked(bool(self._qsettings.value("shadow/create_raster", False, type=bool)))
         self.chk_create_raster.setToolTip(_tr(
-            "Genera un mapa raster continuo de horas de sombra y parpadeo\n"
+            "Genera un mapa ráster continuo de horas de sombra y parpadeo\n"
             "Muestra un gradiente de colores en toda la zona de análisis\n"
             "ATENCIÓN: puede tardar varios minutos según la zona"
         ))
         self.chk_create_raster.stateChanged.connect(lambda s: self._qsettings.setValue("shadow/create_raster", bool(s)))
         raster_layout.addWidget(self.chk_create_raster)
-        raster_layout.addWidget(self._make_help_button("Mapa raster, resolución y paso temporal del raster", "raster"))
+        raster_layout.addWidget(self._make_help_button("Mapa ráster, resolución y paso temporal del ráster", "raster"))
         
         raster_layout.addWidget(QtWidgets.QLabel(_tr("Resolución [m]:")))
         self.sp_raster_resolution = QtWidgets.QSpinBox()
@@ -932,7 +937,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_raster_resolution.setValue(int(self._qsettings.value("shadow/raster_resolution", 100, type=int)))
         self.sp_raster_resolution.setSuffix(" m")
         self.sp_raster_resolution.setToolTip(_tr(
-            "Tamaño de celda del raster\n"
+            "Tamaño de celda del ráster\n"
             "100 m = rápido, menos detalle\n"
             "50 m = intermedio\n"
             "25 m = lento, máximo detalle"
@@ -949,7 +954,7 @@ class ShadowPage(QtWidgets.QWidget):
         self.sp_raster_timestep.setValue(int(self._qsettings.value("shadow/raster_timestep", 5, type=int)))
         self.sp_raster_timestep.setSuffix(" min")
         self.sp_raster_timestep.setToolTip(_tr(
-            "Paso temporal SOLO para el raster (independiente de los receptores).\n"
+            "Paso temporal SOLO para el ráster (independiente de los receptores).\n"
             "1 min = precisión máxima, MUY lento\n"
             "5 min = recomendado (precisión >98 %, 5× más rápido)\n"
             "10 min = muy rápido, precisión ~95 %\n"
@@ -964,13 +969,13 @@ class ShadowPage(QtWidgets.QWidget):
         act_lay.addLayout(raster_layout)
         
         # ============ NEW: Raster month/hour filter ============
-        filter_group = QtWidgets.QGroupBox(_tr("Filtrar raster por mes/hora (después de generarlo)"))
+        filter_group = QtWidgets.QGroupBox(_tr("Filtrar ráster por mes/hora (después de generarlo)"))
         filter_group.setToolTip(_tr(
-            "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\n"
+            "Una vez generado el ráster, puedes regenerar TIF filtrados por mes y/o hora\n"
             "sin recalcular toda la geometría anual."
         ))
         filter_layout = QtWidgets.QHBoxLayout(filter_group)
-        filter_layout.addWidget(self._make_help_button("Filtrar el raster generado por mes y/u hora", "filter"))
+        filter_layout.addWidget(self._make_help_button("Filtrar el ráster generado por mes y/u hora", "filter"))
         
         filter_layout.addWidget(QtWidgets.QLabel(_tr("Mes:")))
         self.cb_filter_month = QtWidgets.QComboBox()
@@ -1063,29 +1068,32 @@ class ShadowPage(QtWidgets.QWidget):
             self.cb_timezone_name.setEnabled(use_iana)
         if hasattr(self, "sp_timezone"):
             self.sp_timezone.setEnabled(not use_iana)
-        if hasattr(self, "lbl_timezone_status"):
-            if use_iana:
-                tz_name = self.cb_timezone_name.currentText().strip() if hasattr(self, "cb_timezone_name") else "UTC"
-                self.lbl_timezone_status.setText(
-                    _ml(
-                        f"Tabla horaria: hora civil local con DST · Zona: {tz_name}. El cálculo solar usa UTC internamente y acumula resultados por mes/hora local.",
-                        f"Time table: local civil time with DST · Zone: {tz_name}. The solar calculation uses UTC internally and aggregates results by local month/hour.",
-                        f"Table horaire : heure civile locale avec DST · Zone : {tz_name}. Le calcul solaire utilise UTC en interne et accumule les résultats par mois/heure locaux.",
-                        f"Zeittabelle: lokale Uhrzeit mit DST · Zone: {tz_name}. Die Sonnenberechnung verwendet intern UTC und aggregiert die Ergebnisse nach lokalen Monaten/Stunden.",
-                    )
-                )
-            else:
-                offset = self.sp_timezone.value() if hasattr(self, "sp_timezone") else 0.0
-                self.lbl_timezone_status.setText(
-                    _ml(
-                        f"Tabla horaria: desfase UTC fijo UTC{offset:+.1f}. Útil para cálculos reproducibles con desfase fijo; no se aplica horario de verano.",
-                        f"Time table: fixed UTC offset UTC{offset:+.1f}. Useful for reproducible fixed-offset calculations; daylight saving time is not applied.",
-                        f"Table horaire : décalage UTC fixe UTC{offset:+.1f}. Utile pour une reproductibilité à décalage fixe ; l’heure d’été n’est pas appliquée.",
-                        f"Zeittabelle: fester UTC-Offset UTC{offset:+.1f}. Nützlich für reproduzierbare Berechnungen mit festem Offset; Sommerzeit wird nicht angewendet.",
-                    )
-                )
+        self._refresh_timezone_status()
         if hasattr(self, "txt_status") and hasattr(self, "btn_calc"):
             self._check_configuration()
+
+    def _refresh_timezone_status(self):
+        """Compose the time-basis label in the active language, with the zone or the offset of the selected mode."""
+        if not hasattr(self, "lbl_timezone_status"):
+            return
+        mode = str(self.cb_timezone_mode.currentData(QtCore.Qt.UserRole) or "fixed")
+        if mode == "iana":
+            tz_name = self.cb_timezone_name.currentText().strip() if hasattr(self, "cb_timezone_name") else "UTC"
+            text = _ml(
+                f"Base temporal: hora civil local con DST · Zona: {tz_name}. El cálculo solar usa UTC internamente y acumula resultados por mes/hora local.",
+                f"Time basis: local civil time with DST · Zone: {tz_name}. The solar calculation uses UTC internally and aggregates results by local month/hour.",
+                f"Base temporelle : heure civile locale avec DST · Zone : {tz_name}. Le calcul solaire utilise UTC en interne et accumule les résultats par mois/heure locaux.",
+                f"Zeitbasis: lokale Uhrzeit mit DST · Zone: {tz_name}. Die Sonnenberechnung verwendet intern UTC und aggregiert die Ergebnisse nach lokalen Monaten/Stunden.",
+            )
+        else:
+            offset = format_number(self.sp_timezone.value() if hasattr(self, "sp_timezone") else 0.0, "+.1f")
+            text = _ml(
+                f"Base temporal: desfase UTC fijo UTC{offset}. Útil para cálculos reproducibles con desfase fijo; no se aplica horario de verano.",
+                f"Time basis: fixed UTC offset UTC{offset}. Useful for reproducible fixed-offset calculations; daylight saving time is not applied.",
+                f"Base temporelle : décalage UTC fixe UTC{offset}. Utile pour des calculs reproductibles à décalage fixe ; l’heure d’été n’est pas appliquée.",
+                f"Zeitbasis: fester UTC-Offset UTC{offset}. Nützlich für reproduzierbare Berechnungen mit festem Offset; Sommerzeit wird nicht angewendet.",
+            )
+        self.lbl_timezone_status.setText(text)
 
     def _get_timezone_settings(self):
         """Return (mode, timezone_name, fixed_offset)."""
@@ -1114,7 +1122,7 @@ class ShadowPage(QtWidgets.QWidget):
         except Exception as e:
             QtWidgets.QMessageBox.warning(
                 self,
-                _ml("Sombras · Importar layout", "Shadow · Layout import", "Ombres · Import d’implantation", "Schattenwurf · Layout-Import"),
+                _ml("Sombras · Importar layout", "Shadow · Layout import", "Ombres portées · Import d’implantation", "Schattenwurf · Layout-Import"),
                 _ml(
                     f"No se pudo importar el layout de aerogeneradores:\n{e}",
                     f"Could not import the wind-turbine layout:\n{e}",
@@ -1127,20 +1135,62 @@ class ShadowPage(QtWidgets.QWidget):
             return
         try:
             self._qsettings.setValue("shadow/turbine_layer_id", layer.id())
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.refresh_from_project()
         try:
             idx = self.cb_turbines.findData(layer.id(), QtCore.Qt.UserRole)
             if idx >= 0:
                 self.cb_turbines.setCurrentIndex(idx)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         QtWidgets.QMessageBox.information(
             self,
-            _ml("Sombras · Importar layout", "Shadow · Layout import", "Ombres · Import d’implantation", "Schattenwurf · Layout-Import"),
+            _ml("Sombras · Importar layout", "Shadow · Layout import", "Ombres portées · Import d’implantation", "Schattenwurf · Layout-Import"),
             _ml(f"'{layer.name()}' importado con {int(layer.featureCount())} aerogenerador(es).", f"'{layer.name()}' imported with {int(layer.featureCount())} wind turbine(s).", f"'{layer.name()}' importé avec {int(layer.featureCount())} éolienne(s).", f"'{layer.name()}' mit {int(layer.featureCount())} Windturbine(n) importiert.")
         )
+
+    def retranslate(self):
+        """Recompose generated text and dimensions, preserving selections, drafts and raster data."""
+        apply_i18n(self)
+        blocker = QtCore.QSignalBlocker(self.tbl_models)
+        for row in range(self.tbl_models.rowCount()):
+            for col in (2, 3):
+                item = self.tbl_models.item(row, col)
+                if item is not None:
+                    try:
+                        value = float(item.text().replace(",", "."))
+                    except ValueError:
+                        continue  # Keep incomplete input as entered.
+                    item.setText(format_number(value, ""))
+        del blocker
+        # These two sources have the same translation in some languages.
+        for combo, texts in ((self.cb_filter_month, ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo",
+                                                   "Junio", "Julio", "Agosto", "Septiembre", "Octubre",
+                                                   "Noviembre", "Diciembre"]),
+                             (self.cb_filter_hour, ["Todas"])):
+            blocker = QtCore.QSignalBlocker(combo)
+            for i, text in enumerate(texts):
+                combo.setItemText(i, _tr(text))
+            del blocker
+        prj = QgsProject.instance()
+        self._populate_context(prj)
+        blocker = QtCore.QSignalBlocker(self.cb_turbines)
+        for i in range(self.cb_turbines.count()):
+            info = next((r for r in self._model_rows if r.get("layer_id") == self.cb_turbines.itemData(i)), None)
+            if info is not None:
+                name, n = str(info.get("name", _tr("Modelo"))), int(info.get("n_turbines", 0))
+                self.cb_turbines.setItemText(i, _ml(f"{name} ({n} aerogenerador(es))", f"{name} ({n} wind turbine(s))",
+                                                   f"{name} ({n} éolienne(s))", f"{name} ({n} Windturbine(n))"))
+        del blocker
+        blocker = QtCore.QSignalBlocker(self.cb_receivers)
+        for i in range(self.cb_receivers.count()):
+            layer = prj.mapLayer(self.cb_receivers.itemData(i))
+            if isinstance(layer, QgsVectorLayer):
+                self.cb_receivers.setItemText(i, f"{layer.name()} [{_ml('puntos', 'points', 'points', 'Punkte')}]")
+        del blocker
+        self._refresh_receiver_text()
+        self._refresh_timezone_status()
 
     def refresh_from_project(self):
         """Refresh the interface from the QGIS project."""
@@ -1162,7 +1212,7 @@ class ShadowPage(QtWidgets.QWidget):
         n_turbs = sum(int(r.get("n_turbines", 0)) for r in self._model_rows)
         
         if n_models <= 0:
-            self.lbl_layout.setText(_tr("No se ha detectado ningún layout"))
+            self.lbl_layout.setText(_tr("No se ha detectado ninguna disposición"))
             self.lbl_models.setText("0")
         else:
             self.lbl_layout.setText(_ml(f"{n_models} modelo(s) WT · {n_turbs} aerogenerador(es)", f"{n_models} WT model(s) · {n_turbs} wind turbine(s)", f"{n_models} modèle(s) WT · {n_turbs} éolienne(s)", f"{n_models} WT-Modell(e) · {n_turbs} Windturbine(n)"))
@@ -1187,6 +1237,7 @@ class ShadowPage(QtWidgets.QWidget):
             name = str(model_info.get("name", _tr("Modelo")))
             n = int(model_info.get("n_turbines", 0))
             self.cb_turbines.addItem(_ml(f"{name} ({n} aerogenerador(es))", f"{name} ({n} wind turbine(s))", f"{name} ({n} éolienne(s))", f"{name} ({n} Windturbine(n))"), lid)
+            mark_data(self.cb_turbines, self.cb_turbines.count() - 1)
         
         # Restaurar selección previa
         idx = self.cb_turbines.findData(current_id, QtCore.Qt.UserRole)
@@ -1203,7 +1254,8 @@ class ShadowPage(QtWidgets.QWidget):
         
         self.cb_receivers.blockSignals(True)
         self.cb_receivers.clear()
-        self.cb_receivers.addItem(_tr("— Seleccionar capa de receptores —"), None)
+        self.cb_receivers.addItem("— Seleccionar capa de receptores —", None)
+        apply_i18n(self.cb_receivers)
         
         for lyr in prj.mapLayers().values():
             if not isinstance(lyr, QgsVectorLayer):
@@ -1215,7 +1267,8 @@ class ShadowPage(QtWidgets.QWidget):
             
             gtype = QgsWkbTypes.geometryType(lyr.wkbType())
             if gtype == QgsWkbTypes.PointGeometry:
-                self.cb_receivers.addItem(f"{lyr.name()} [Points]", lyr.id())
+                self.cb_receivers.addItem(f"{lyr.name()} [{_ml('puntos', 'points', 'points', 'Punkte')}]", lyr.id())
+                mark_data(self.cb_receivers, self.cb_receivers.count() - 1)
         
         idx = self.cb_receivers.findData(current_id, QtCore.Qt.UserRole)
         if idx >= 0:
@@ -1240,9 +1293,10 @@ class ShadowPage(QtWidgets.QWidget):
             try:
                 if lyr.bandCount() < 1:
                     continue
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             self.cb_dem.addItem(f"{lyr.name()} [{lyr.crs().authid()}]", lyr.id())
+            mark_data(self.cb_dem, self.cb_dem.count() - 1)
         
         idx = self.cb_dem.findData(current_id, QtCore.Qt.UserRole)
         if idx >= 0:
@@ -1285,7 +1339,10 @@ class ShadowPage(QtWidgets.QWidget):
         
         # Column 0: model name (read-only)
         item_name = QtWidgets.QTableWidgetItem(str(model_info.get("name", "Model")))
+        # The settings key: the visible text can be changed by the translator.
+        item_name.setData(QtCore.Qt.UserRole, str(model_info.get("name")))
         item_name.setFlags(item_name.flags() & ~QtCore.Qt.ItemIsEditable)
+        mark_data(item_name)
         self.tbl_models.setItem(0, 0, item_name)
         
         # Column 1: number of turbines (read-only)
@@ -1296,16 +1353,24 @@ class ShadowPage(QtWidgets.QWidget):
         
         # Column 2: Hub Height (editable) - try saved value, imported metadata or default
         default_hh = model_info.get('hub_height')
-        default_hh_txt = f"{float(default_hh):.1f}" if default_hh is not None else "100.0"
+        default_hh_txt = format_number(float(default_hh) if default_hh is not None else 100.0, ".1f")
         saved_hh = self._qsettings.value(f"shadow/model_{model_info.get('name')}_hh", default_hh_txt, type=str)
+        try:
+            saved_hh = format_number(float(saved_hh.replace(",", ".")), "")
+        except ValueError:
+            pass  # Keep invalid user input visible for configuration validation.
         item_hh = QtWidgets.QTableWidgetItem(saved_hh)
         item_hh.setTextAlignment(QtCore.Qt.AlignCenter)
         self.tbl_models.setItem(0, 2, item_hh)
         
         # Column 3: Rotor Diameter (editable) - try saved value, imported metadata or default
         default_d = model_info.get('diameter')
-        default_d_txt = f"{float(default_d):.1f}" if default_d is not None else "120.0"
+        default_d_txt = format_number(float(default_d) if default_d is not None else 120.0, ".1f")
         saved_d = self._qsettings.value(f"shadow/model_{model_info.get('name')}_d", default_d_txt, type=str)
+        try:
+            saved_d = format_number(float(saved_d.replace(",", ".")), "")
+        except ValueError:
+            pass  # Keep invalid user input visible for configuration validation.
         item_d = QtWidgets.QTableWidgetItem(saved_d)
         item_d.setTextAlignment(QtCore.Qt.AlignCenter)
         self.tbl_models.setItem(0, 3, item_d)
@@ -1313,6 +1378,7 @@ class ShadowPage(QtWidgets.QWidget):
         # Column 4: Notes (editable)
         saved_notes = self._qsettings.value(f"shadow/model_{model_info.get('name')}_notes", "", type=str)
         item_notes = QtWidgets.QTableWidgetItem(saved_notes)
+        mark_data(item_notes)
         self.tbl_models.setItem(0, 4, item_notes)
         
         # Connect signals to save changes
@@ -1325,16 +1391,20 @@ class ShadowPage(QtWidgets.QWidget):
         if self.tbl_models.rowCount() == 0:
             return
         
-        model_name = self.tbl_models.item(0, 0).text()
+        model_name = self.tbl_models.item(0, 0).data(QtCore.Qt.UserRole)
         
         try:
-            if item.column() == 2:  # Hub Height
-                self._qsettings.setValue(f"shadow/model_{model_name}_hh", item.text())
-            elif item.column() == 3:  # Rotor Diameter
-                self._qsettings.setValue(f"shadow/model_{model_name}_d", item.text())
+            if item.column() in (2, 3):  # Hub Height / Rotor Diameter
+                suffix = "hh" if item.column() == 2 else "d"
+                value = item.text()
+                try:
+                    value = float(value.replace(",", "."))
+                except ValueError:
+                    pass  # Preserve invalid input when the table is populated again.
+                self._qsettings.setValue(f"shadow/model_{model_name}_{suffix}", value)
             elif item.column() == 4:  # Notes
                 self._qsettings.setValue(f"shadow/model_{model_name}_notes", item.text())
-        except Exception:
+        except Exception:  # nosec B110
             pass
         
         self._check_configuration()
@@ -1356,7 +1426,11 @@ class ShadowPage(QtWidgets.QWidget):
         lid = self.cb_receivers.currentData(QtCore.Qt.UserRole)
         if lid:
             self._qsettings.setValue("shadow/receiver_layer_id", lid)
-        
+        self._refresh_receiver_text()
+
+    def _refresh_receiver_text(self):
+        """Compose receiver information without saving the layer selection."""
+        lid = self.cb_receivers.currentData(QtCore.Qt.UserRole)
         # Refresh info
         if lid:
             prj = QgsProject.instance()
@@ -1379,24 +1453,38 @@ class ShadowPage(QtWidgets.QWidget):
             if not project_crs.isValid():
                 QtWidgets.QMessageBox.warning(
                     self,
-                    _ml("CRS no válido", "Invalid CRS", "CRS non valide", "Ungültiges CRS"),
-                    _ml("El proyecto no tiene un CRS válido.", "The project does not have a valid CRS.", "Le projet n’a pas de CRS valide.", "Das Projekt hat kein gültiges CRS."),
+                    _ml("CRS no válido", "Invalid CRS", "SCR non valide", "Ungültiges KBS"),
+                    _ml("El proyecto no tiene un CRS válido.", "The project does not have a valid CRS.", "Le projet n’a pas de SCR valide.", "Das Projekt hat kein gültiges KBS."),
                 )
                 return
             
             # Prefer computing centroid from the SELECTED layer
             all_coords = []
             source_description = ""
+
+            def project_points(lyr):
+                # Each layer in its own CRS, brought to the project's: the centroid is then taken as the project's. An
+                # invalid transformation would return the points unchanged, without an error.
+                to_project = QgsCoordinateTransform(lyr.crs(), project_crs, prj) if lyr.crs() != project_crs else None
+                if not lyr.crs().isValid() or (to_project is not None and not to_project.isValid()):
+                    raise ValueError(_ml(
+                        f"La capa «{lyr.name()}» no tiene un sistema de coordenadas válido.",
+                        f"Layer “{lyr.name()}” has no valid coordinate reference system.",
+                        f"La couche « {lyr.name()} » n’a pas de système de coordonnées valide.",
+                        f"Der Layer „{lyr.name()}“ hat kein gültiges Koordinatenbezugssystem.",
+                    ))
+                for feat in lyr.getFeatures():
+                    geom = feat.geometry()
+                    if geom and not geom.isNull():
+                        point = geom.asPoint()
+                        all_coords.append(to_project.transform(point) if to_project is not None else point)
             
             # Opción 1: Usar selected layer en el combo
             selected_layer_id = self.cb_turbines.currentData(QtCore.Qt.UserRole)
             if selected_layer_id:
                 lyr = prj.mapLayer(str(selected_layer_id))
                 if lyr:
-                    for feat in lyr.getFeatures():
-                        geom = feat.geometry()
-                        if geom and not geom.isNull():
-                            all_coords.append(geom.asPoint())
+                    project_points(lyr)
                     source_description = _ml(f"la capa seleccionada '{lyr.name()}'", f"selected layer '{lyr.name()}'", f"couche sélectionnée '{lyr.name()}'", f"ausgewähltem Layer '{lyr.name()}'")
                     debug_print(f"[Shadow] Centroid calculated from {source_description}: {len(all_coords)} turbines")
             
@@ -1406,15 +1494,12 @@ class ShadowPage(QtWidgets.QWidget):
                     lyr = prj.mapLayer(str(info.get("layer_id", "")))
                     if not lyr:
                         continue
-                    for feat in lyr.getFeatures():
-                        geom = feat.geometry()
-                        if geom and not geom.isNull():
-                            all_coords.append(geom.asPoint())
+                    project_points(lyr)
                 source_description = _ml("todas las capas del módulo de Energía", "all Energy module layers", "toutes les couches du module Énergie", "allen Layern des Energiemoduls")
                 debug_print(f"[Shadow] Centroid calculated from {source_description}: {len(all_coords)} turbines")
             
             if not all_coords:
-                QtWidgets.QMessageBox.warning(self, _ml("Sin coordenadas", "No coordinates", "Aucune coordonnée", "Keine Koordinate"), _ml("No se encontró ningún aerogenerador en el layout.", "No wind turbine was found in the layout.", "Aucune éolienne n’a été trouvée dans le layout.", "Im Layout wurde keine Windturbine gefunden."))
+                QtWidgets.QMessageBox.warning(self, _ml("Sin coordenadas", "No coordinates", "Aucune coordonnée", "Keine Koordinaten"), _ml("No se encontró ningún aerogenerador en el layout.", "No wind turbine was found in the layout.", "Aucune éolienne n’a été trouvée dans l’implantation.", "Im Layout wurde keine Windturbine gefunden."))
                 return
             
             # Centroide
@@ -1447,6 +1532,10 @@ class ShadowPage(QtWidgets.QWidget):
                 self._qsettings.setValue("shadow/timezone_name", tz_name)
                 self._qsettings.setValue("shadow/timezone_mode", "iana")
                 self._on_timezone_mode_changed()
+                tz_method = {
+                    "bundled approximate bbox": _ml("aproximación por recuadro geográfico", "approximation by geographic box", "approximation par zone géographique", "Näherung über einen geografischen Rahmen"),
+                    "bundled approximate longitude": _ml("aproximación por longitud", "approximation by longitude", "approximation par longitude", "Näherung über den Längengrad"),
+                }.get(tz_method, tz_method)
                 tz_msg = _ml(
                     f"\nZona horaria detectada: {tz_name}\nMétodo: {tz_method}",
                     f"\nTime zone detected: {tz_name}\nMethod: {tz_method}",
@@ -1472,10 +1561,10 @@ class ShadowPage(QtWidgets.QWidget):
                 self,
                 _ml("Coordenadas detectadas", "Coordinates detected", "Coordonnées détectées", "Koordinaten erkannt"),
                 _ml(
-                    f"Latitud: {lat:.6f}°\nLongitud: {lon:.6f}°\n\nCalculado desde {source_description}.\nNúmero total de aerogeneradores usados: {len(all_coords)}{tz_msg}",
-                    f"Latitude: {lat:.6f}°\nLongitude: {lon:.6f}°\n\nCalculated from {source_description}.\nTotal wind turbines used: {len(all_coords)}{tz_msg}",
-                    f"Latitude : {lat:.6f}°\nLongitude : {lon:.6f}°\n\nCalculé depuis {source_description}.\nNombre total d’éoliennes utilisées : {len(all_coords)}{tz_msg}",
-                    f"Breitengrad: {lat:.6f}°\nLängengrad: {lon:.6f}°\n\nBerechnet aus {source_description}.\nAnzahl verwendeter Windturbinen: {len(all_coords)}{tz_msg}",
+                    f"Latitud: {format_number(lat, '.6f')}°\nLongitud: {format_number(lon, '.6f')}°\n\nCalculado desde {source_description}.\nNúmero total de aerogeneradores usados: {len(all_coords)}{tz_msg}",
+                    f"Latitude: {format_number(lat, '.6f')}°\nLongitude: {format_number(lon, '.6f')}°\n\nCalculated from {source_description}.\nTotal wind turbines used: {len(all_coords)}{tz_msg}",
+                    f"Latitude : {format_number(lat, '.6f')}°\nLongitude : {format_number(lon, '.6f')}°\n\nCalculé depuis {source_description}.\nNombre total d’éoliennes utilisées : {len(all_coords)}{tz_msg}",
+                    f"Breitengrad: {format_number(lat, '.6f')}°\nLängengrad: {format_number(lon, '.6f')}°\n\nBerechnet aus {source_description}.\nAnzahl verwendeter Windturbinen: {len(all_coords)}{tz_msg}",
                 )
             )
         
@@ -1515,7 +1604,7 @@ class ShadowPage(QtWidgets.QWidget):
                 msgs.append(_ml("⚠️ No se encontró la capa de aerogeneradores.", "⚠️ Wind-turbine layer not found.", "⚠️ Couche d’éoliennes introuvable.", "⚠️ Windturbinen-Layer nicht gefunden."))
         min_elev = self.sp_min_elevation.value()
         max_elev = self.sp_max_elevation.value()
-        msgs.append(_ml(f"✓ Elevación solar: {min_elev}° - {max_elev}°", f"✓ Solar elevation: {min_elev}° - {max_elev}°", f"✓ Élévation solaire : {min_elev}° - {max_elev}°", f"✓ Sonnenhöhe: {min_elev}° - {max_elev}°"))
+        msgs.append(_ml(f"✓ Elevación solar: {format_number(min_elev, '.1f')}° - {format_number(max_elev, '.1f')}°", f"✓ Solar elevation: {format_number(min_elev, '.1f')}° - {format_number(max_elev, '.1f')}°", f"✓ Élévation solaire : {format_number(min_elev, '.1f')}° - {format_number(max_elev, '.1f')}°", f"✓ Sonnenhöhe: {format_number(min_elev, '.1f')}° - {format_number(max_elev, '.1f')}°"))
         msgs.append(_ml(f"✓ Distancia máxima de sombra: {self.sp_max_shadow_distance.value()} m", f"✓ Maximum shadow distance: {self.sp_max_shadow_distance.value()} m", f"✓ Distance maximale d’ombre : {self.sp_max_shadow_distance.value()} m", f"✓ Maximale Schattenentfernung: {self.sp_max_shadow_distance.value()} m"))
         
         # Model configuration
@@ -1530,17 +1619,17 @@ class ShadowPage(QtWidgets.QWidget):
                 try:
                     model_name_item = self.tbl_models.item(i, 0)
                     model_name = model_name_item.text() if model_name_item is not None else _ml(f"Modelo {i + 1}", f"Model {i + 1}", f"Modèle {i + 1}", f"Modell {i + 1}")
-                    hh = float(self.tbl_models.item(i, 2).text())
-                    d = float(self.tbl_models.item(i, 3).text())
+                    hh = float(self.tbl_models.item(i, 2).text().replace(",", "."))
+                    d = float(self.tbl_models.item(i, 3).text().replace(",", "."))
                     if hh > 0 and d > 0:
                         models_ok += 1
-                        geometry_lines.append(_ml(f"   {model_name}: altura de buje={hh:.2f} m · diámetro del rotor={d:.2f} m", f"   {model_name}: hub height={hh:.2f} m · rotor diameter={d:.2f} m", f"   {model_name} : hauteur de moyeu={hh:.2f} m · diamètre du rotor={d:.2f} m", f"   {model_name}: Nabenhöhe={hh:.2f} m · Rotordurchmesser={d:.2f} m"))
-                except Exception:
+                        geometry_lines.append(_ml(f"   {model_name}: altura de buje={format_number(hh, '.2f')} m · diámetro del rotor={format_number(d, '.2f')} m", f"   {model_name}: hub height={format_number(hh, '.2f')} m · rotor diameter={format_number(d, '.2f')} m", f"   {model_name} : hauteur de moyeu={format_number(hh, '.2f')} m · diamètre du rotor={format_number(d, '.2f')} m", f"   {model_name}: Nabenhöhe={format_number(hh, '.2f')} m · Rotordurchmesser={format_number(d, '.2f')} m"))
+                except Exception:  # nosec B110
                     pass
             
             if models_ok == n_models:
                 msgs.append(_ml(f"✓ {n_models} modelo(s) configurado(s) correctamente.", f"✓ {n_models} model(s) configured correctly.", f"✓ {n_models} modèle(s) configuré(s) correctement.", f"✓ {n_models} Modell(e) korrekt konfiguriert."))
-                msgs.append(_ml("✓ Geometría de aerogeneradores usada en el cálculo de sombras:", "✓ Wind-turbine geometry used in the shadow calculation:", "✓ Géométrie d’éolienne utilisée dans le calcul d’ombres :", "✓ Windturbinengeometrie für die Schattenwurfberechnung:"))
+                msgs.append(_ml("✓ Geometría de aerogeneradores usada en el cálculo de sombras:", "✓ Wind-turbine geometry used in the shadow calculation:", "✓ Géométrie d’éolienne utilisée dans le calcul d’ombres portées :", "✓ Windturbinengeometrie für die Schattenwurfberechnung:"))
                 msgs.extend(geometry_lines)
             elif models_ok > 0:
                 msgs.append(_ml(f"⚠️ Solo {models_ok}/{n_models} modelos tienen una configuración válida.", f"⚠️ Only {models_ok}/{n_models} models have a valid configuration.", f"⚠️ Seuls {models_ok}/{n_models} modèles ont une configuration valide.", f"⚠️ Nur {models_ok}/{n_models} Modelle haben eine gültige Konfiguration."))
@@ -1697,7 +1786,7 @@ class ShadowPage(QtWidgets.QWidget):
                     if lid and lid not in seen and self._is_model_layer(lyr):
                         out.append(lyr)
                         seen.add(lid)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         for lyr in prj.mapLayers().values():

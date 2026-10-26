@@ -12,6 +12,7 @@ import re
 from typing import Any, Callable, List, Optional, Tuple
 
 from ..physics.common.compat import emit
+from ..log_text import log_error, log_text
 
 try:
     from py_wake.site.wasp_grid_site import WaspGridSite
@@ -80,7 +81,7 @@ def _sanitize_dir_for_pywake(dirpath: str, move_bad: bool = True) -> Tuple[int, 
                 try:
                     os.replace(full, os.path.join(bad_dir, f))
                     moved += 1
-                except Exception:
+                except Exception:  # nosec B110
                     pass
     return total, moved, bad
 
@@ -101,11 +102,11 @@ def _load_site_with_filter(wasp_dir: str,
     # Validar y sanear si hace falta
     tot, moved, bad = _sanitize_dir_for_pywake(load_dir, move_bad=sanitize)
     if bad:
-        _log(f"[WAsP] Archivos que NO casaban con el patrón py_wake: {len(bad)}", Qgis.Warning)
+        _log(log_text("[WAsP] Archivos que NO casaban con el patrón py_wake: {n}", n=len(bad)), Qgis.Warning)
         if sanitize:
-            _log(f"[WAsP] Movidos a '_bad_for_pywake': {moved} (evita crash).", Qgis.Warning)
+            _log(log_text("[WAsP] Movidos a '_bad_for_pywake': {n} (evita crash).", n=moved), Qgis.Warning)
         else:
-            raise RuntimeError(f"Hay {len(bad)} nombres que no casan con py_wake en: {load_dir}")
+            raise log_error(RuntimeError, "Hay {n} nombres que no casan con py_wake en: {folder}", n=len(bad), folder=load_dir)
 
     # Loader robusto si está disponible
     site = None; ds = None
@@ -115,7 +116,7 @@ def _load_site_with_filter(wasp_dir: str,
             _log("[WAsP] Cargado con loader robusto (union_recurso.load_waspgridsite)")
             return site, ds, load_dir
         except Exception as e:
-            _log(f"[WAsP] Loader robusto falló: {e}. Probando loader estándar…", Qgis.Warning)
+            _log(log_text("[WAsP] Loader robusto falló: {error}. Probando loader estándar…", error=e), Qgis.Warning)
 
     # Fallback estándar
     site = WaspGridSite.from_wasp_grd(load_dir)

@@ -22,7 +22,7 @@ def _copy_attr(target, old_name, enum_owner, new_name=None):
         return
     try:
         setattr(target, old_name, value)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -53,7 +53,7 @@ def _patch_qvariant():
 
     try:
         setattr(QtCore, 'QVariant', _QVariantCompat)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -62,12 +62,14 @@ def _patch_qtcore():
     Qt = QtCore.Qt
     groups = {
         'AlignmentFlag': ['AlignCenter', 'AlignLeft', 'AlignRight', 'AlignTop', 'AlignVCenter', 'AlignHCenter'],
+        'ArrowType': ['RightArrow', 'DownArrow'],
         'AspectRatioMode': ['KeepAspectRatio'],
         'CheckState': ['Checked', 'Unchecked', 'PartiallyChecked'],
         'CaseSensitivity': ['CaseInsensitive', 'CaseSensitive'],
         'CursorShape': ['PointingHandCursor', 'CrossCursor', 'ArrowCursor'],
         'DockWidgetArea': ['LeftDockWidgetArea', 'RightDockWidgetArea'],
-        'ItemDataRole': ['UserRole', 'DisplayRole', 'EditRole'],
+        'FocusPolicy': ['StrongFocus'],
+        'ItemDataRole': ['UserRole', 'DisplayRole', 'EditRole', 'ToolTipRole'],
         'ItemFlag': ['ItemIsEditable', 'ItemIsUserCheckable', 'ItemIsEnabled', 'ItemIsSelectable'],
         'Key': ['Key_Escape'],
         'MatchFlag': ['MatchFixedString', 'MatchContains'],
@@ -78,9 +80,13 @@ def _patch_qtcore():
         'TextElideMode': ['ElideRight'],
         'TextFormat': ['RichText', 'PlainText'],
         'TextInteractionFlag': ['TextSelectableByMouse'],
+        'ToolButtonStyle': ['ToolButtonTextBesideIcon'],
         'TransformationMode': ['SmoothTransformation'],
         'WidgetAttribute': ['WA_DeleteOnClose'],
         'WindowModality': ['NonModal', 'WindowModal'],
+        'WindowState': ['WindowMinimized'],
+        'WindowType': ['Window', 'WindowType_Mask', 'WindowTitleHint', 'WindowSystemMenuHint',
+                       'WindowMinimizeButtonHint', 'WindowMaximizeButtonHint', 'WindowCloseButtonHint'],
     }
     for enum_name, names in groups.items():
         enum_owner = getattr(Qt, enum_name, None)
@@ -92,6 +98,7 @@ def _patch_qtcore():
     # Qt6 scopes these enums under their enum classes. Keep QGIS 3 names.
     if hasattr(QtCore, 'QEvent'):
         _copy_attr(QtCore.QEvent, 'KeyPress', getattr(QtCore.QEvent, 'Type', None))
+        _copy_attr(QtCore.QEvent, 'WindowStateChange', getattr(QtCore.QEvent, 'Type', None))
     if hasattr(QtCore, 'QEventLoop'):
         _copy_attr(QtCore.QEventLoop, 'ExcludeUserInputEvents', getattr(QtCore.QEventLoop, 'ProcessEventsFlag', None))
 
@@ -122,7 +129,8 @@ def _patch_qtwidgets():
         (W.QMessageBox, 'StandardButton', ['Ok', 'Yes', 'No', 'Cancel', 'Close']),
         (W.QPlainTextEdit, 'LineWrapMode', ['WidgetWidth']),
         (W.QSizePolicy, 'Policy', ['Expanding', 'Fixed', 'Preferred', 'Minimum', 'Maximum']),
-        (W.QStyle, 'StandardPixmap', ['SP_MessageBoxInformation']),
+        (W.QStyle, 'StandardPixmap', ['SP_MessageBoxInformation', 'SP_TitleBarMinButton', 'SP_TitleBarMaxButton',
+                                      'SP_TitleBarNormalButton', 'SP_TitleBarCloseButton']),
     ]
     for cls, enum_name, names in mappings:
         enum_owner = getattr(cls, enum_name, None)
@@ -137,7 +145,7 @@ def _patch_qtwidgets():
         if cls is not None and not hasattr(cls, 'exec_') and hasattr(cls, 'exec'):
             try:
                 setattr(cls, 'exec_', cls.exec)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
 
@@ -152,7 +160,7 @@ def _patch_qtgui():
     if not hasattr(QtWidgets, 'QAction') and hasattr(QtGui, 'QAction'):
         try:
             setattr(QtWidgets, 'QAction', QtGui.QAction)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
 

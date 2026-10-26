@@ -15,7 +15,7 @@ VelantisWind is designed to be transparent, adaptable and useful as a complement
 Donations, sponsorships and public recognition are managed from the GitHub project pages:
 
 - Support information: <https://github.com/Velantis-Wind/VelantisWind/blob/main/SUPPORT.md>
-- Supporters page: <https://github.com/Velantis-Wind/VelantisWind/blob/main/SUPPORTERS.md>
+- Supporters page: <https://github.com/Velantis-Wind/VelantisWind/blob/main/VelantisWind/SUPPORTERS.md>
 
 For sponsorship questions, validation cases, academic collaboration or technical partnerships, contact VelantisWind at:
 
@@ -106,7 +106,7 @@ Depending on the support level and the preference of each supporter, VelantisWin
 | Channel | Possible recognition |
 |---|---|
 | GitHub README | Name, organization or logo in the project repository. |
-| [Supporters page](https://github.com/Velantis-Wind/VelantisWind/blob/main/SUPPORTERS.md) | Supporter list grouped by contribution level. |
+| [Supporters page](https://github.com/Velantis-Wind/VelantisWind/blob/main/VelantisWind/SUPPORTERS.md) | Supporter list grouped by contribution level. |
 | Plugin interface | Sponsor or partner visibility inside the About / Sponsors section. |
 | Documentation | Recognition in documentation, tutorials or release notes. |
 | Website | Logo or name visibility on the official VelantisWind website, if agreed. |

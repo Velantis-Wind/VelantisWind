@@ -40,7 +40,7 @@ def _read_xy_csv(path: str) -> Tuple[List[float], List[float]]:
             except Exception:
                 try:
                     xs.append(float(row[0])); ys.append(float(row[1]))
-                except Exception:
+                except Exception:  # nosec B112
                     continue
     return xs, ys
 
@@ -54,7 +54,7 @@ def _bbox_from_site(site) -> Tuple[float, float, float, float]:
                 if xmin > xmax: xmin, xmax = xmax, xmin
                 if ymin > ymax: ymin, ymax = ymax, ymin
                 return xmin, xmax, ymin, ymax
-            except Exception:
+            except Exception:  # nosec B110
                 pass
     # Fallback
     return 0.0, 1.0, 0.0, 1.0

@@ -15,7 +15,17 @@ La herramienta espera que el controlador (ctl) exponga:
 """
 
 from qgis.gui import QgsMapTool
-from qgis.core import QgsPointXY, QgsGeometry, QgsFeature, QgsVectorLayer, QgsWkbTypes
+from qgis.core import (
+    QgsCoordinateTransform,
+    QgsCsException,
+    QgsFeature,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsVectorDataProvider,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
 from qgis.utils import iface
 from qgis.PyQt.QtCore import Qt
 
@@ -27,8 +37,12 @@ except Exception:  # pragma: no cover
 try:
     from . import interactive_i18n
     interactive_i18n.register()
-except Exception:
+except Exception:  # nosec B110
     pass
+try:
+    from .wake_core.controller import is_projected_in_metres
+except Exception:  # pragma: no cover
+    from wake_core.controller import is_projected_in_metres  # type: ignore
 
 
 class _TurbineInteractiveTool(QgsMapTool):
@@ -54,12 +68,12 @@ class _TurbineInteractiveTool(QgsMapTool):
             if e.key() == Qt.Key_Escape:
                 self.ctl._exit_map_interactive_via_esc()
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
             super().keyPressEvent(e)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ---------------- helpers ----------------
@@ -76,14 +90,46 @@ class _TurbineInteractiveTool(QgsMapTool):
             raise RuntimeError(tr_text("La capa activa no es vectorial."))
         if QgsWkbTypes.geometryType(lyr.wkbType()) != QgsWkbTypes.PointGeometry:
             raise RuntimeError(tr_text("La capa activa no es de puntos."))
+        # Redondea a 50 y mide la distancia de borrado en unidades de la capa: tienen que ser metros.
+        if not is_projected_in_metres(lyr.crs()):
+            raise RuntimeError(tr_text("El mapa interactivo solo edita capas en un sistema de coordenadas proyectado y en metros."))
         return lyr
 
     def _to_layer_xy(self, layer, map_point):
+        """El clic en el sistema de la capa; lanza RuntimeError si no se puede transformar."""
         try:
-            p = self.toLayerCoordinates(layer, map_point)
-        except Exception:
-            p = map_point
+            transform = QgsCoordinateTransform(
+                self.canvas.mapSettings().destinationCrs(), layer.crs(), QgsProject.instance().transformContext()
+            )
+            # Una transformación no válida (por ejemplo, el mapa sin sistema) devolvería el clic sin transformar.
+            if not transform.isValid():
+                raise QgsCsException(tr_text("el mapa o la capa no tienen un sistema de coordenadas válido"))
+            p = transform.transform(QgsPointXY(map_point))
+        except QgsCsException as exc:
+            raise RuntimeError(tr_text("No se pudo pasar el clic al sistema de coordenadas de la capa: {error}").format(error=exc))
         return float(p.x()), float(p.y())
+
+    def _can_edit(self, layer, capability, text) -> bool:
+        # El mapa escribe directamente en la capa: no en una marcada como de solo lectura, ni en una con la edición
+        # abierta, porque el cambio quedaría fuera de esa edición y descartarla o deshacer no lo quitaría.
+        if layer.readOnly():
+            self._warn(tr_text("La capa «{layer}» es de solo lectura.").format(layer=layer.name()))
+            return False
+        if layer.isEditable():
+            self._warn(tr_text(
+                "La capa «{layer}» está en modo edición: guarda o descarta sus cambios para editarla desde el mapa."
+            ).format(layer=layer.name()))
+            return False
+        if layer.dataProvider().capabilities() & capability:
+            return True
+        self._warn(tr_text(text).format(layer=layer.name()))
+        return False
+
+    def _warn(self, text):
+        try:
+            iface.messageBar().pushWarning(tr_text("Mapa interactivo"), text)
+        except Exception:  # nosec B110
+            pass
 
     def _nearest_feature(self, layer: QgsVectorLayer, map_point):
         px, py = self._to_layer_xy(layer, map_point)
@@ -93,7 +139,7 @@ class _TurbineInteractiveTool(QgsMapTool):
         for f in layer.getFeatures():
             try:
                 p = f.geometry().asPoint()
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             d2 = (px - p.x()) ** 2 + (py - p.y()) ** 2
             if best_d2 is None or d2 < best_d2:
@@ -111,7 +157,7 @@ class _TurbineInteractiveTool(QgsMapTool):
         for f in layer.getFeatures():
             try:
                 p = f.geometry().asPoint()
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             if abs(p.x() - x) <= eps and abs(p.y() - y) <= eps:
                 return True
@@ -124,24 +170,29 @@ class _TurbineInteractiveTool(QgsMapTool):
         except Exception as ex:
             try:
                 iface.messageBar().pushWarning(tr_text("Mapa interactivo"), str(ex))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
-        mx = e.mapPoint()
-        x, y = self._to_layer_xy(layer, mx)
+        if not self._can_edit(layer, QgsVectorDataProvider.AddFeatures, "La capa «{layer}» no admite añadir turbinas."):
+            return
+        try:
+            x, y = self._to_layer_xy(layer, e.mapPoint())
+        except RuntimeError as ex:
+            self._warn(str(ex))
+            return
 
         # Snap a 50 m usando el diálogo
         try:
             x = self.ctl._snap50(x)
             y = self.ctl._snap50(y)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         if self._exists_at(layer, x, y):
             try:
                 iface.messageBar().pushInfo(tr_text("Mapa interactivo"), tr_text("Ya existe una turbina en ese punto."))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
@@ -151,26 +202,28 @@ class _TurbineInteractiveTool(QgsMapTool):
             check = getattr(self.ctl, "_spacing_check_candidate", None)
             if callable(check) and check(layer, x, y) is False:
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
             f = QgsFeature(layer.fields())
             f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
             # Para capas "memory" esto suele funcionar sin startEditing.
-            layer.dataProvider().addFeatures([f])
+            ok, _ = layer.dataProvider().addFeatures([f])
+            if not ok:
+                raise RuntimeError(tr_text("la capa no ha guardado el cambio."))
             layer.updateExtents()
             layer.triggerRepaint()
         except Exception as ex:
             try:
                 iface.messageBar().pushWarning(tr_text("Mapa interactivo"), f"{tr_text('No se pudo añadir turbina:')} {ex}")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
         try:
             self.ctl._mark_turbines_layer_dirty(layer)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         self._notify_spacing(layer)
@@ -181,32 +234,39 @@ class _TurbineInteractiveTool(QgsMapTool):
         except Exception as ex:
             try:
                 iface.messageBar().pushWarning(tr_text("Mapa interactivo"), str(ex))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
-        fid = self._nearest_feature(layer, e.mapPoint())
+        if not self._can_edit(layer, QgsVectorDataProvider.DeleteFeatures, "La capa «{layer}» no admite borrar turbinas."):
+            return
+        try:
+            fid = self._nearest_feature(layer, e.mapPoint())
+        except RuntimeError as ex:
+            self._warn(str(ex))
+            return
         if fid is None:
             try:
                 iface.messageBar().pushInfo(tr_text("Mapa interactivo"), tr_text("No hay turbina cerca del clic."))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
         try:
-            layer.dataProvider().deleteFeatures([fid])
+            if not layer.dataProvider().deleteFeatures([fid]):
+                raise RuntimeError(tr_text("la capa no ha guardado el cambio."))
             layer.updateExtents()
             layer.triggerRepaint()
         except Exception as ex:
             try:
                 iface.messageBar().pushWarning(tr_text("Mapa interactivo"), f"{tr_text('No se pudo borrar turbina:')} {ex}")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return
 
         try:
             self.ctl._mark_turbines_layer_dirty(layer)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         self._notify_spacing(layer)
@@ -216,11 +276,14 @@ class _TurbineInteractiveTool(QgsMapTool):
         spacing_core está activo (el dock publica el callback en el ctl).
 
         Mantiene mapa_interactivo desacoplado de spacing_core: si el módulo
-        no está cargado, el getattr devuelve None y no pasa nada.
+        no está cargado, el getattr devuelve None y no pasa nada. El diálogo de
+        Energía pone al día también las envolventes que ya existen con las
+        separaciones desactivadas, sin activarlas (#96).
         """
         try:
-            cb = getattr(self.ctl, "_spacing_notify_layout_changed", None)
+            sync = getattr(self.ctl, "_sync_spacing_envelopes", None)
+            cb = sync if callable(sync) else getattr(self.ctl, "_spacing_notify_layout_changed", None)
             if callable(cb):
                 cb(layer)
-        except Exception:
+        except Exception:  # nosec B110
             pass

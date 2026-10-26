@@ -36,6 +36,9 @@ from qgis.core import (
     QgsSingleBandPseudoColorRenderer,
 )
 
+from ..crs_utils import memory_layer_with_crs, portable_crs_definition
+from ..i18n import tr_text
+
 # Acoustic engine imports
 from .noise_common import (
     NoiseSource,
@@ -138,31 +141,31 @@ def compute_noise(
 ) -> Dict[str, object]:
     prj = QgsProject.instance()
     if receiver_layer is None or not isinstance(receiver_layer, QgsVectorLayer):
-        raise ValueError("No valid receiver layer was provided.")
+        raise ValueError(tr_text("No se ha indicado una capa de receptores válida."))
     if not _layer_crs_matches(receiver_layer, prj.crs()):
-        raise ValueError("The receiver layer is not in the same CRS as the project. Reproject it before calculating.")
+        raise ValueError(tr_text("La capa de receptores no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular."))
     if dem_layer is not None and not _layer_crs_matches(dem_layer, prj.crs()):
-        raise ValueError("El MDT/DSM no está en el mismo CRS que el proyecto. Reproyéctalo antes de calcular.")
+        raise ValueError(tr_text("El MDT/DSM no está en el mismo CRS que el proyecto. Reproyéctalo antes de calcular."))
     if landuse_layer is not None:
         if not isinstance(landuse_layer, QgsVectorLayer) or QgsWkbTypes.geometryType(landuse_layer.wkbType()) != QgsWkbTypes.PolygonGeometry:
-            raise ValueError("La capa de uso del suelo debe ser vectorial poligonal.")
+            raise ValueError(tr_text("La capa de uso del suelo debe ser vectorial poligonal."))
         if not _layer_crs_matches(landuse_layer, prj.crs()):
-            raise ValueError("La capa de uso del suelo no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.")
+            raise ValueError(tr_text("La capa de uso del suelo no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular."))
     if not _is_finite_positive(max_radius_m):
-        raise ValueError("El radio máximo debe ser mayor que 0.")
+        raise ValueError(tr_text("El radio máximo debe ser mayor que 0."))
     if not _is_finite_positive(grid_resolution_m):
-        raise ValueError("La resolución del raster debe ser mayor que 0.")
+        raise ValueError(tr_text("La resolución del ráster debe ser mayor que 0."))
     if not _is_finite_positive(min_distance_m):
-        raise ValueError("La distancia mínima debe ser mayor que 0.")
+        raise ValueError(tr_text("La distancia mínima debe ser mayor que 0."))
     if not _is_finite_positive(receiver_height_m, allow_zero=True):
-        raise ValueError("The receiver height is not valid.")
+        raise ValueError(tr_text("La altura de receptor no es válida."))
     if not _is_finite_positive(receiver_limit_dba, allow_zero=True):
-        raise ValueError("El límite acústico no es válido.")
+        raise ValueError(tr_text("El límite acústico no es válido."))
     if not _is_finite_positive(alpha_db_per_m, allow_zero=True):
-        raise ValueError("El coeficiente α no es válido.")
+        raise ValueError(tr_text("El coeficiente α no es válido."))
     cfg_errors = _validate_model_cfg(model_cfg)
     if cfg_errors:
-        raise ValueError("Configuración acústica inválida:\n- " + "\n- ".join(cfg_errors[:8]))
+        raise ValueError(tr_text("Configuración acústica inválida:") + "\n- " + "\n- ".join(cfg_errors[:8]))
 
     # Spectrum library setup
     spectrum_library = None
@@ -182,10 +185,10 @@ def compute_noise(
 
     sources, src_diag = _collect_sources(prj, model_cfg, dem_layer, spectrum_library=spectrum_library, source_layer_ids=source_layer_ids)
     if not sources:
-        raise ValueError("No se han detectado turbinas/layout válidos para el cálculo acústico.")
+        raise ValueError(tr_text("No se han detectado turbinas/layout válidos para el cálculo acústico."))
     receivers = _build_receiver_feature_list(receiver_layer, receiver_height_m, dem_layer, receiver_height_field=receiver_height_field, receiver_type_field=receiver_type_field, receiver_limit_day_field=receiver_limit_field_day, receiver_limit_night_field=receiver_limit_field_night, receiver_limit_custom_field=receiver_limit_field_custom, receiver_source_field=receiver_source_field)
     if not receivers:
-        raise ValueError("The receiver layer contains no valid features for calculation.")
+        raise ValueError(tr_text("La capa de receptores no contiene entidades válidas para el cálculo."))
 
     _log(f"[Noise] Método acústico: consultoría eólica fuente-receptor (Adiv + Aatm + Aground) | alpha={alpha_db_per_m:.4f} dB/m | G={ground_factor_g:.2f} | modo_suelo={ground_mode} | radio={max_radius_m:.0f} m")
     _log(f"[NOISE] Proyecto: {prj.baseName() or 'Proyecto sin nombre'} | CRS={prj.crs().authid()}")
@@ -227,7 +230,7 @@ def compute_noise(
         sources=sources,
         receivers=receivers,
         input_fields=receiver_layer.fields(),
-        crs_authid=prj.crs().authid() or 'EPSG:25830',
+        crs_authid=portable_crs_definition(prj.crs()),
         max_radius_m=float(max_radius_m),
         alpha_db_per_m=float(alpha_db_per_m),
         ground_factor_g=float(ground_factor_g),
@@ -268,7 +271,7 @@ def compute_noise(
     path_diagnostics = evaluation.path_diagnostics
 
     geom_type = QgsWkbTypes.displayString(receiver_layer.wkbType())
-    result = QgsVectorLayer(f"{geom_type}?crs={prj.crs().authid() or 'EPSG:25830'}", result_layer_name, "memory")
+    result = memory_layer_with_crs(geom_type, result_layer_name, prj.crs())
     pr = result.dataProvider()
     pr.addAttributes(out_fields)
     result.updateFields()
@@ -276,7 +279,7 @@ def compute_noise(
     pr.addFeatures(out_feats)
     try:
         result.setCustomProperty("velantis/noise_output", True)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     QgsProject.instance().addMapLayer(result)
     _set_field_aliases(result, {
@@ -343,6 +346,7 @@ def compute_noise(
         link_layer=link_layer,
         grid_layer=grid_layer,
         iso_layer=iso_layer,
+        iso_requested=bool(create_iso_layer),
         uncovered_layer=uncovered_layer,
         sources=sources,
         receivers=receivers,

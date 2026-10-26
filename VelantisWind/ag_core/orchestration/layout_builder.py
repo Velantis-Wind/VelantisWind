@@ -9,6 +9,9 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
 
+from ..log_text import log_error, log_text
+from ..results.summary import build_names_by_type
+
 
 def _read_fallback_turbines_csv(layout_csv: str) -> Tuple[List[float], List[float], List[int]]:
     """Read ``turbines.csv`` with columns x,y and optional model_id/type."""
@@ -48,7 +51,7 @@ def _read_fallback_turbines_csv(layout_csv: str) -> Tuple[List[float], List[floa
                 try:
                     x = float(row[0])
                     y = float(row[1])
-                except Exception:
+                except Exception:  # nosec B112
                     continue
             xs_tmp.append(x)
             ys_tmp.append(y)
@@ -87,16 +90,16 @@ def build_layout_arrays(
 
     for index, model in enumerate(models):
         csv_path = (model.get("coords_csv") or "").strip()
-        name = model.get("name") or f"Modelo {index + 1}"
+        name = model.get("name") or log_text("Modelo {n}", n=index + 1)
         coords_xy = model.get("coords_xy")
         if coords_xy:
             try:
                 xi = [float(point[0]) for point in coords_xy]
                 yi = [float(point[1]) for point in coords_xy]
             except Exception as exc:
-                raise RuntimeError(f"coords_xy inválido para «{name}»: {exc}")
+                raise log_error(RuntimeError, "coords_xy inválido para «{name}»: {error}", name=name, error=exc)
             if len(xi) != len(yi):
-                raise RuntimeError(f"coords_xy corrupto para «{name}» (len mismatch)")
+                raise log_error(RuntimeError, "coords_xy corrupto para «{name}» (longitudes distintas)", name=name)
             xs_all += xi
             ys_all += yi
             type_i_all += [index] * len(xi)
@@ -105,10 +108,10 @@ def build_layout_arrays(
         if not csv_path:
             continue
         if not os.path.isfile(csv_path):
-            raise RuntimeError(f"CSV de coordenadas no válido para «{name}»: {csv_path}")
+            raise log_error(RuntimeError, "CSV de coordenadas no válido para «{name}»: {path}", name=name, path=csv_path)
         xi, yi = read_xy_csv(csv_path)
         if len(xi) != len(yi):
-            raise RuntimeError(f"CSV de coordenadas corrupto para «{name}»: {csv_path}")
+            raise log_error(RuntimeError, "CSV de coordenadas corrupto para «{name}»: {path}", name=name, path=csv_path)
         xs_all += xi
         ys_all += yi
         type_i_all += [index] * len(xi)
@@ -124,17 +127,16 @@ def build_layout_arrays(
                 base_layout_dir = os.path.dirname(str(wrg_paths[0]))
 
         if not base_layout_dir:
-            raise RuntimeError(
-                "No se pudieron resolver las coordenadas del layout: faltan los CSV por modelo "
+            raise log_error(
+                RuntimeError, "No se pudieron resolver las coordenadas del layout: faltan los CSV por modelo "
                 "y no existe una carpeta base válida para buscar turbines.csv."
             )
 
         layout_csv = os.path.join(base_layout_dir, "turbines.csv")
         if not os.path.isfile(layout_csv):
-            raise RuntimeError(
-                f"No se encuentra '{layout_csv}'. "
-                "Selecciona los CSV de coordenadas por modelo en el diálogo "
-                "o crea un turbines.csv con columnas x,y[,model_id]."
+            raise log_error(
+                RuntimeError, "No se encuentra '{path}'. Selecciona los CSV de coordenadas por modelo en el diálogo "
+                "o crea un turbines.csv con columnas x,y[,model_id].", path=layout_csv,
             )
         xs_all, ys_all, type_i_all = _read_fallback_turbines_csv(layout_csv)
 
@@ -147,10 +149,19 @@ def build_layout_arrays(
     inside_mask = (xs >= x_min) & (xs <= x_max) & (ys >= y_min) & (ys <= y_max)
     inside = np.where(inside_mask)[0]
     skipped = int((~inside_mask).sum())
+    # Count excluded turbines by the input model index, before the filtering
+    # removes their type information. Do not collapse all rows into model 0.
+    # Same names as the rest of the result, so the breakdown matches the per-model tables.
+    names = build_names_by_type(models)
+    skipped_by_model: Dict[str, int] = {}
+    for pos in np.flatnonzero(~inside_mask):
+        model_index = int(type_i_all[pos]) if use_types else 0
+        name = names.get(model_index, f"WT_{model_index}")
+        skipped_by_model[name] = skipped_by_model.get(name, 0) + 1
 
     if inside.size == 0:
-        raise RuntimeError(
-            "Todas las turbinas del CSV están fuera del área del grid WAsP. "
+        raise log_error(
+            RuntimeError, "Todas las turbinas del CSV están fuera del área del grid WAsP. "
             "Revisa unidades (m vs km) y reproyección."
         )
 
@@ -164,4 +175,5 @@ def build_layout_arrays(
         "type_i": type_i,
         "use_types": use_types,
         "skipped": skipped,
+        "skipped_by_model": skipped_by_model,
     }

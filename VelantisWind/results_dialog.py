@@ -13,9 +13,32 @@ import html as html_mod
 import os
 import re
 
+from .ag_core.results.model_config_html import (POSITIONS_V1, POSITIONS_V2, _component_text, linked,
+                                                model_config_html, model_config_html_v2, format_report_note)
+from .ag_core.log_text import shown
+from .ag_core.wake_setup.notices import result_warnings
+from .ui_core.wake_controls import CollapsibleSection
+from .ag_core.results.coverage import partial_aep_warning
+from .ag_core.results.coverage_translations import register_coverage_translations
+from .ag_core.results.model_config_translations import register_model_config_translations
+from .ag_core.wake_setup.catalog_translations import register_catalog_translations
+from .ag_core.wake_setup.messages_translations import register_messages_translations
+from .ag_core.results import breakdown as _bd
+from .ag_core.edge_cases import non_finite_label
+from .number_format import format_number, format_percent
+from .ag_core.results.breakdown_translations import register_breakdown_translations
+from .ag_core.results.result_v2 import result_schema
+
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtGui import QIcon, QPixmap
-from .i18n import apply_i18n, install_runtime_i18n_patches, translate_html, tr_text as _tr, current_language
+from .i18n import (apply_i18n, install_runtime_i18n_patches, mark_translated, translate_html, tr_text as _tr,
+                   current_language)
+
+register_model_config_translations()
+register_coverage_translations()
+register_catalog_translations()
+register_messages_translations()
+register_breakdown_translations()
 
 
 
@@ -110,9 +133,47 @@ def _localized_report_html(text: str) -> str:
     try:
         if str(current_language()).lower().startswith("de"):
             out = _cleanup_german_aep_html(out)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     return out
+
+
+# User data (model names, scenario labels, notes filled with data) must not go through the report localization:
+# the HTML carries a slot tag for each text and _fill_slots puts the escaped text back afterwards. Every text in
+# the HTML is escaped, so a slot tag can only come from _slot.
+_SLOT = re.compile(r"<vw-slot-(\d+)>")
+
+
+def _slot(texts: List[str], text: Any) -> str:
+    text = str(text)
+    if text not in texts:
+        texts.append(text)
+    return f"<vw-slot-{texts.index(text)}>"
+
+
+class _Html(str):
+    """HTML already translated (the configuration of a schema-2 result): put back as it is, not escaped."""
+
+
+def _slot_html(texts: List[str], html: str) -> str:
+    """A slot for translated HTML: the report localization would translate it a second time and spoil it."""
+    texts.append(_Html(html))
+    return f"<vw-slot-{len(texts) - 1}>"
+
+
+def _fill_slots(texts: List[str], html: str) -> str:
+    """In one pass, so a text put back is never read as another slot."""
+    def back(m):
+        text = texts[int(m.group(1))]
+        return text if isinstance(text, _Html) else html_mod.escape(text)
+    return _SLOT.sub(back, html)
+
+
+def _note_html(texts: List[str], note: Any) -> str:
+    """A note translated here, kept from the report localization, which only translates by fragments: a note with
+    data by its template, a plain Spanish note by its entry."""
+    text = format_report_note(note, _tr)
+    return _slot(texts, text if getattr(note, "template_item", None) else _tr(text))
 
 
 def _is_debug_enabled() -> bool:
@@ -125,14 +186,14 @@ def _debug_print(message: str) -> None:
 
 
 def _fmt_mwh(v) -> str:
-    """Formatea MWh con un decimal, usando coma como separador decimal."""
+    """Formatea MWh con un decimal en el idioma del plugin; un no finito, con su rótulo (#63)."""
     try:
         x = float(v)
     except Exception:
         return "-"
-    # 12345.6 -> "12.345,6"
-    txt = f"{x:,.1f}"
-    return txt.replace(",", "X").replace(".", ",").replace("X", ".")
+    if non_finite_label(x):
+        return non_finite_label(x)
+    return format_number(x)
 
 
 def _fmt_mw(v) -> str:
@@ -143,27 +204,32 @@ def _fmt_mw(v) -> str:
         x = float(v)
     except Exception:
         return "-"
+    if non_finite_label(x):
+        return non_finite_label(x)
     if x <= 0:
         return "-"
-    txt = f"{x:,.3f}"
-    return txt.replace(".", ",")
+    return format_number(x, ',.3f')
 
 
 def _fmt_pct(v) -> str:
-    """Formatea porcentaje con un decimal."""
+    """Formatea porcentaje con un decimal; un no finito, con su rótulo (#63)."""
     try:
         x = float(v)
     except Exception:
         return "-"
-    return f"{x:.1f} %"
+    if non_finite_label(x):
+        return non_finite_label(x)
+    return format_percent(x)
 
 
 def _fmt_signed_mwh(v) -> str:
-    """MWh con signo explícito para impactos incrementales."""
+    """MWh con signo explícito para impactos incrementales; un no finito, con su rótulo (#63)."""
     try:
         x = float(v)
     except Exception:
         return "-"
+    if non_finite_label(x):
+        return non_finite_label(x)
     sign = "+" if x > 0 else ""
     return sign + _fmt_mwh(x)
 
@@ -173,18 +239,50 @@ def _fmt_signed_pct(v) -> str:
         x = float(v)
     except Exception:
         return "-"
+    if non_finite_label(x):
+        return non_finite_label(x)
     sign = "+" if x > 0 else ""
-    return f"{sign}{x:.1f} %"
+    return sign + format_percent(x)
+
+
+# The label of a result of the previous schema, read with its own fields (P0 of the wake-model plan, section 8).
+SCHEMA_1_NOTE = ("Resultado del esquema anterior (calculado con una versión previa del complemento): sus pérdidas "
+                 "siguen la definición antigua, sin signo ni estados.")
+
+_STATE_TEXT = {
+    _bd.NOT_MODELLED: "no modelado",
+    _bd.NOT_REQUESTED: "no solicitado",
+    _bd.FAILED: "no disponible (falló su cálculo)",
+}
+
+
+def _term_text(entry: Dict[str, Any], signed: bool = True) -> str:
+    """A term of the schema-2 breakdown: «value MWh (pct %)», or its state; a zero by construction says why."""
+    state = entry.get("state")
+    if entry.get("mwh") is None:
+        return _tr(_STATE_TEXT.get(state, "no disponible"))
+    value = (_fmt_signed_mwh if signed else _fmt_mwh)(entry["mwh"]) + " MWh"
+    if entry.get("pct") is not None:
+        value += f" ({(_fmt_signed_pct if signed else _fmt_pct)(entry['pct'])})"
+    if state == _bd.ZERO_BY_CONSTRUCTION:
+        value += " · " + _tr("sin efecto: el déficit no usa la TI efectiva")
+    return value
+
+
+def _term_cell(entry: Dict[str, Any], signed: bool = True) -> str:
+    """A term for a table cell: the value in MWh, or «n/d» (translated: the cells are set again after apply_i18n)."""
+    if entry is None or entry.get("mwh") is None:
+        return _tr("n/d")
+    return (_fmt_signed_mwh if signed else _fmt_mwh)(entry["mwh"])
 
 
 def _fmt_len(v) -> str:
-    """Formatea longitudes (D, Hub) con 1 decimal y coma."""
+    """Formatea longitudes (D, Hub) con un decimal en el idioma del plugin."""
     try:
         x = float(v)
     except Exception:
         return "-"
-    txt = f"{x:.1f}"
-    return txt.replace(".", ",")
+    return non_finite_label(x) or format_number(x)
 
 
 def _extract_rated_mw(rec: Dict[str, Any]) -> float:
@@ -199,14 +297,14 @@ def _extract_rated_mw(rec: Dict[str, Any]) -> float:
         if k in rec and rec[k] not in (None, ""):
             try:
                 return float(rec[k])
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     for k in candidates_kw:
         if k in rec and rec[k] not in (None, ""):
             try:
                 return float(rec[k]) / 1000.0
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     return 0.0
@@ -217,7 +315,7 @@ def _extract_coord(rec: Dict[str, Any], keys: List[str]) -> float:
         if k in rec and rec[k] not in (None, ""):
             try:
                 return float(rec[k])
-            except Exception:
+            except Exception:  # nosec B112
                 continue
     return float("nan")
 
@@ -251,7 +349,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 self.resize(w, h)
                 self.setMinimumSize(min_w, min_h)
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.resize(default_w, default_h)
         self.setMinimumSize(640, 420)
@@ -287,14 +385,17 @@ class AEPResultsDialog(QtWidgets.QDialog):
             if logo_url else '<b>Velantis Wind</b>'
         )
         generated = QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm")
+        # Translated here: kept from the second translation of the report.
+        title = _slot(self._user_texts, _tr("Informe técnico AEP"))
+        subtitle = _slot(self._user_texts, _tr("Módulo Energía · Flujo PyWake") + " · " + generated)
         return f'''
         <div style="border:1px solid #d8e2dc; border-radius:10px; padding:12px; margin-bottom:12px; background:#f8fbfa;">
           <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
             <tr>
               <td style="vertical-align:middle; width:70px;">{logo_html}</td>
               <td style="vertical-align:middle; text-align:left; color:#1f3d36;">
-                <div style="font-size:18px; font-weight:700;">{html_mod.escape("Technischer AEP-Bericht" if str(current_language()).lower().startswith("de") else _tr("Informe técnico AEP"))}</div>
-                <div style="font-size:11px; color:#6b7d78;">{html_mod.escape(("Energiemodul · PyWake-Workflow" if str(current_language()).lower().startswith("de") else _tr("Módulo Energía · Flujo PyWake")) + " · " + generated)}</div>
+                <div style="font-size:18px; font-weight:700;">{title}</div>
+                <div style="font-size:11px; color:#6b7d78;">{subtitle}</div>
               </td>
             </tr>
           </table>
@@ -324,7 +425,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 for src, dst in sorted(mapping.items(), key=lambda kv: len(kv[0]), reverse=True):
                     if src and src in s:
                         s = s.replace(src, dst)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         # Last-mile report strings that come from runtime notes and can otherwise
         # remain half-translated in exported HTML.
@@ -333,7 +434,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             "active (": "active (",
             "vertical approximation": "vertical approximation",
             "se ha usado un único raster de ambient TI": "a single ambient TI raster was used",
-            "si mezclas varios hub heights, esa TI se replica/interpela como vertical approximation": "if several hub heights are mixed, that TI is replicated/interpolated as a vertical approximation",
+            "si mezclas varios hub heights, esa TI se replica/interpola como vertical approximation": "if several hub heights are mixed, that TI is replicated/interpolated as a vertical approximation",
             "ayes que": "so",
             "versusl": "versus",
             "Pérdidas no clasificadas": "Unclassified losses",
@@ -348,11 +449,14 @@ class AEPResultsDialog(QtWidgets.QDialog):
 
     def _wrap_report_document(self, body_html: str) -> str:
         """Wrap the AEP report as a standalone localized HTML document."""
+        # Translated here: kept from the second translation of the report.
+        title = _slot(self._user_texts, _tr("Velantis Wind · Informe técnico AEP"))
+        footer = _slot(self._user_texts, _tr("Generado por Velantis Wind · Módulo Energía de QGIS · Flujo AEP basado en PyWake."))
         doc = f'''<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>{html_mod.escape("Velantis Wind · Technischer AEP-Bericht" if str(current_language()).lower().startswith("de") else _tr("Velantis Wind · AEP technical report"))}</title>
+  <title>{title}</title>
   <style>
     body {{ font-family: Arial, Helvetica, sans-serif; margin: 28px; color: #1f2933; }}
     h3 {{ color: #17443b; margin-top: 22px; border-bottom: 1px solid #d8e2dc; padding-bottom: 4px; }}
@@ -369,10 +473,12 @@ class AEPResultsDialog(QtWidgets.QDialog):
 </head>
 <body>
 {body_html}
-<div class="vw-footer">{html_mod.escape("Erstellt mit Velantis Wind · QGIS-Energiemodul · PyWake-basierter AEP-Workflow." if str(current_language()).lower().startswith("de") else _tr("Generated by Velantis Wind · QGIS energy module · PyWake-based AEP workflow."))}</div>
+<div class="vw-footer">{footer}</div>
 </body>
 </html>'''
-        return _localized_report_html(doc)
+        # Export localization runs AFTER _build_full_report_html. Inject the
+        # warning only now, preserving model identities through both passes.
+        return self._insert_coverage_banner(_fill_slots(self._user_texts, _localized_report_html(doc)))
 
     def __init__(self, parent=None, results: Dict[str, Any] = None):
         install_runtime_i18n_patches()
@@ -385,12 +491,60 @@ class AEPResultsDialog(QtWidgets.QDialog):
         self._fit_dialog_to_screen(980, 600)
         self.setSizeGripEnabled(True)
         self.results = results or {}
+        try:
+            self.HOURS_YEAR = float(self.results.get("hours_per_year", 8760.0) or 8760.0)
+        except Exception:
+            self.HOURS_YEAR = 8760.0
         self._last_report_html = ""
         self._last_report_html_raw = ""
+        # Model names are user data: the report holds slots for them and the tables restore them after apply_i18n.
+        self._user_texts: List[str] = []
+        self._name_items: List[Tuple[QtWidgets.QTableWidgetItem, str]] = []
 
         self._init_ui()
         self._populate()
         apply_i18n(self)
+        if result_schema(self.results) == 2:
+            # apply_i18n translates the contents of the widgets a second time, which spoils a text already
+            # translated; the contents of a schema-2 result are translated when they are set, so they are set again.
+            self._name_items = []
+            self._populate()
+        # apply_i18n translates widget contents again, including arbitrary
+        # model names already inserted into the dynamically assembled notice.
+        # Restore user-supplied names after static widgets have been localized.
+        self._restore_coverage_after_i18n()
+        self._show_wake_configuration()  # class names and warnings are data: shown again after apply_i18n
+        for item, name in self._name_items:
+            item.setText(name)
+
+    _COVERAGE_PLACEHOLDER = "VW_AEP_COVERAGE_NOTICE_0_1_17"
+
+    def _coverage_banner_html(self) -> str:
+        """Build user-data-bearing HTML only after all report translations."""
+        coverage = partial_aep_warning(self.results or {}, _tr)
+        if not coverage:
+            return ""
+        return (
+            "<p style='background:#fff3d9;border:1px solid #d8a34c;padding:10px;'>"
+            "<b>" + html_mod.escape(_tr("Aviso de cobertura del recurso:")) + "</b> "
+            + html_mod.escape(coverage) + "</p>"
+        )
+
+    def _insert_coverage_banner(self, localized_html: str) -> str:
+        """Preserve turbine model names across every HTML localization pass."""
+        banner = self._coverage_banner_html()
+        if not banner:
+            return localized_html
+        # Only fixed texts precede the placeholder: its first occurrence is the banner's, even if a model has its name.
+        return localized_html.replace(self._COVERAGE_PLACEHOLDER, banner, 1)
+
+    def _restore_coverage_after_i18n(self) -> None:
+        """Undo a second translation of dynamic model names in visible widgets."""
+        coverage = partial_aep_warning(self.results or {}, _tr)
+        self.lbl_coverage_warning.setText(coverage)
+        self.lbl_coverage_warning.setVisible(bool(coverage))
+        # apply_i18n may retranslate the contents of QTextBrowser as well.
+        self.txt_report.setHtml(self._last_report_html)
 
     # ---------------------------------------------------------
     #  UI
@@ -439,7 +593,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
         # --- Pestaña 4: Por sector (rosa de pérdidas) — solo si hay datos
         try:
             self._init_tab_sector()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Botones abajo
@@ -448,6 +602,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
             QtCore.Qt.Horizontal,
             self,
         )
+        # A standard button follows the language of QGIS, not that of the plugin.
+        btns.button(QtWidgets.QDialogButtonBox.Close).setText(_tr("Cerrar"))
         self.btn_export_report_html = QtWidgets.QPushButton("Exportar informe HTML…", self)
         self.btn_export_report_html.setToolTip("Guarda el resumen AEP con logo Velantis Wind y formato corporativo en un archivo HTML.")
         btns.addButton(self.btn_export_report_html, QtWidgets.QDialogButtonBox.ActionRole)
@@ -467,13 +623,13 @@ class AEPResultsDialog(QtWidgets.QDialog):
         try:
             per_turb = (self.results or {}).get("per_turbine_table", []) or []
             if not per_turb:
-                QtWidgets.QMessageBox.information(self, "Exportar CSV por turbina", "No hay datos por turbina para exportar.")
+                QtWidgets.QMessageBox.information(self, _tr("Exportar CSV por turbina"), _tr("No hay datos por turbina para exportar."))
                 return
             path, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
-                "Exportar CSV por turbina",
+                _tr("Exportar CSV por turbina"),
                 "velantiswind_aep_per_turbine_summary.csv",
-                "CSV (*.csv);;Todos los archivos (*)",
+                "CSV (*.csv);;" + _tr("Todos los archivos (*)"),
             )
             if not path:
                 return
@@ -483,12 +639,16 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 from .ag_core.qgis_io.export import export_per_turbine_to_csv
             except Exception:
                 from .ag_core.export_results import export_per_turbine_to_csv
-            export_per_turbine_to_csv(per_turb, path)
-            QtWidgets.QMessageBox.information(self, "CSV exportado", f"CSV por turbina exportado correctamente:\n{path}")
+            export_per_turbine_to_csv(per_turb, path, self.results)
+            QtWidgets.QMessageBox.information(
+                self, _tr("CSV exportado"), _tr("CSV por turbina exportado correctamente:\n{path}").format(path=path)
+            )
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "No se pudo exportar el CSV", f"No se pudo exportar el CSV por turbina:\n{e}")
+            QtWidgets.QMessageBox.warning(
+                self, _tr("No se pudo exportar el CSV"), _tr("No se pudo exportar el CSV por turbina:\n{error}").format(error=e)
+            )
 
-    def _qtable_to_html(self, table: QtWidgets.QTableWidget, max_rows: Optional[int] = 500) -> str:
+    def _qtable_to_html(self, table: QtWidgets.QTableWidget, max_rows: Optional[int] = 500, name_col: Optional[int] = None) -> str:
         """Convert a QTableWidget to HTML.
 
         ``max_rows=None`` exports every row. This is important for the wind-sector
@@ -502,11 +662,12 @@ class AEPResultsDialog(QtWidgets.QDialog):
         except Exception:
             return ""
         if rows <= 0 or cols <= 0:
-            return "<p><i>Sin datos disponibles.</i></p>"
+            return "<p><i>" + _slot(self._user_texts, _tr("Sin datos disponibles.")) + "</i></p>"
         headers = []
         for c in range(cols):
             item = table.horizontalHeaderItem(c)
-            headers.append(html_mod.escape(item.text() if item is not None else f"Col {c+1}"))
+            # A header is already translated in the window: kept from the second translation of the report.
+            headers.append(_slot(self._user_texts, item.text()) if item is not None else f"Col {c+1}")
         html = ["<div class='table-wrap'><table class='data-table'><thead><tr>"]
         html.extend(f"<th>{h}</th>" for h in headers)
         html.append("</tr></thead><tbody>")
@@ -516,79 +677,100 @@ class AEPResultsDialog(QtWidgets.QDialog):
             for c in range(cols):
                 item = table.item(r, c)
                 val = item.text() if item is not None else ""
-                html.append(f"<td>{html_mod.escape(str(val))}</td>")
+                html.append(f"<td>{_slot(self._user_texts, val) if c == name_col else html_mod.escape(str(val))}</td>")
             html.append("</tr>")
         html.append("</tbody></table></div>")
         if max_rows is not None and int(max_rows) > 0 and rows > int(max_rows):
-            html.append(f"<p><small>Table truncated in the HTML report: showing {max_rows} of {rows} rows. The CSV export contains the full detail.</small></p>")
+            html.append("<p><small>" + _slot(self._user_texts, _tr(
+                "Tabla truncada en el informe HTML: se muestran {shown} de {total} filas. La exportación CSV contiene "
+                "el detalle completo.").format(shown=format_number(int(max_rows), ",d"), total=format_number(rows, ",d"))) + "</small></p>")
         return "".join(html)
 
     def _global_kpi_html(self) -> str:
-        rows = [
-            ("AEP bruto (free-stream)", getattr(self, "lbl_aep_free", None)),
-            ("AEP neto (operativo)", getattr(self, "lbl_aep_net", None)),
-            ("Pérdidas por estelas", getattr(self, "lbl_loss_wake", None)),
-            ("Impacto TI/turbulencia", getattr(self, "lbl_loss_ti", None)),
-            ("Pérdidas por bloqueo", getattr(self, "lbl_loss_blk", None)),
-            ("Otras pérdidas", getattr(self, "lbl_loss_other", None)),
-            ("Pérdidas totales", getattr(self, "lbl_loss_total", None)),
-            ("Nº de aerogeneradores", getattr(self, "lbl_n_turb", None)),
-            ("Potencia instalada", getattr(self, "lbl_p_inst_mw", None)),
-            ("Factor de capacidad neto", getattr(self, "lbl_cf_net", None)),
-            ("Energía específica neta", getattr(self, "lbl_spec_yield", None)),
-        ]
+        if result_schema(self.results or {}) == 2:
+            # The rows as the summary shows them (their titles change with the schema, #75 row 4.13).
+            rows = [(re.sub(r"<[^>]+>", "", t.text()).strip().rstrip(":"), w) for t, w in self._global_rows]
+        else:
+            rows = [
+                ("AEP bruto (flujo libre)", getattr(self, "lbl_aep_free", None)),
+                ("AEP neto (operativo)", getattr(self, "lbl_aep_net", None)),
+                ("Pérdidas por estelas", getattr(self, "lbl_loss_wake", None)),
+                ("Impacto TI/turbulencia", getattr(self, "lbl_loss_ti", None)),
+                ("Pérdidas por bloqueo", getattr(self, "lbl_loss_blk", None)),
+                ("Otras pérdidas", getattr(self, "lbl_loss_other", None)),
+                ("Pérdidas totales", getattr(self, "lbl_loss_total", None)),
+                ("Nº de aerogeneradores", getattr(self, "lbl_n_turb", None)),
+                ("Potencia instalada", getattr(self, "lbl_p_inst_mw", None)),
+                ("Factor de capacidad neto", getattr(self, "lbl_cf_net", None)),
+                ("Energía específica neta", getattr(self, "lbl_spec_yield", None)),
+            ]
         out = ["<table class='kpi-table'>"]
         for label, widget in rows:
             # Saltar filas cuyo widget se ha ocultado deliberadamente (p.ej.
             # "Otras pérdidas" cuando el residuo es despreciable).
             try:
-                if widget is not None and not widget.isVisible():
+                # A row is left out only when it was hidden on purpose, also with another tab active (#75, row 6.9):
+                # isVisible() is false for every widget of a tab that is not shown.
+                hidden = widget.isHidden()
+                if widget is not None and hidden:
                     continue
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 value = widget.text() if widget is not None else "-"
             except Exception:
                 value = "-"
-            out.append(f"<tr><td><b>{html_mod.escape(label)}</b></td><td>{html_mod.escape(str(value))}</td></tr>")
+            if result_schema(self.results or {}) != 2:
+                label = _tr(label)
+            # Translated here or in the window: kept from the second pass.
+            label, value = _slot(self._user_texts, label), _slot(self._user_texts, value)
+            out.append(f"<tr><td><b>{label}</b></td><td>{value}</td></tr>")
         out.append("</table>")
         return "".join(out)
 
     def _build_full_report_html(self) -> str:
         """Informe HTML completo: resumen, pestaña por modelo, por turbina y por sector."""
+        def t(text):
+            # Translated here: kept from the second translation of the report (_localized_report_html).
+            return _slot(self._user_texts, _tr(text))
         parts = []
         base_report = getattr(self, "_last_report_html_raw", "") or self._last_report_html or ""
         if base_report:
             parts.append(base_report)
         else:
             parts.append(self._report_header_html())
-        parts.append("<h3>Resumen global</h3>")
+        parts.append(f"<h3>{t('Resumen global')}</h3>")
         parts.append(self._global_kpi_html())
-        parts.append("<h3>Por modelo de aerogenerador</h3>")
-        parts.append(self._qtable_to_html(getattr(self, "table_models", None), max_rows=200))
-        parts.append("<h3>Por aerogenerador</h3>")
-        parts.append("<p><small>Esta tabla replica el resumen por turbina visible en la interfaz. Para análisis GIS/Excel, usa también el CSV por turbina que genera el flujo AEP.</small></p>")
-        parts.append(self._qtable_to_html(getattr(self, "table_turbines", None), max_rows=500))
+        parts.append(f"<h3>{t('Por modelo de aerogenerador')}</h3>")
+        parts.append(self._qtable_to_html(getattr(self, "table_models", None), max_rows=200, name_col=0))
+        parts.append(f"<h3>{t('Por aerogenerador')}</h3>")
+        parts.append("<p><small>" + t("Esta tabla replica el resumen por turbina visible en la interfaz. Para análisis "
+                                      "GIS/Excel, usa también el CSV por turbina que genera el flujo AEP.") + "</small></p>")
+        parts.append(self._qtable_to_html(getattr(self, "table_turbines", None), max_rows=500, name_col=1))
+        aggregation = (self.results or {}).get("ti_aggregation") if result_schema(self.results or {}) == 2 else None
+        if aggregation:
+            parts.append("<p><small>" + _slot(self._user_texts, _tr(
+                "TI ambiente: {ambient}. TI efectiva: {effective}.").format(
+                ambient=_tr(aggregation.get("ti_ambient", "")), effective=_tr(aggregation.get("ti_effective", "")))
+            ) + "</small></p>")
         sector_table = getattr(self, "table_sector", None)
         if sector_table is not None:
-            parts.append("<h3>Por sector de viento</h3>")
+            parts.append(f"<h3>{t('Por sector de viento')}</h3>")
             parts.append(self._qtable_to_html(sector_table, max_rows=None))
         joined = "\n".join(parts)
-        # Keep the exported report in the language selected in the VelantisWind hub.
-        # The body is authored in Spanish and then translated by the multi-language
-        # i18n engine (Spanish/English/French/German).
+        # Keep the placeholder until _wrap_report_document has finished its
+        # second localization pass; otherwise user names may be translated.
         return _localized_report_html(joined)
 
     def _export_report_html(self) -> None:
         """Exporta el informe AEP visual como HTML con cabecera corporativa."""
         try:
             default_name = "velantiswind_aep_technical_report.html"
-            _lang = str(current_language()).lower()
             path, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
-                ("AEP-Bericht exportieren" if _lang.startswith("de") else _tr("Exportar informe AEP")),
+                _tr("Exportar informe AEP"),
                 default_name,
-                ("HTML (*.html);;Alle Dateien (*)" if _lang.startswith("de") else _tr("HTML (*.html);;Todos los archivos (*)")),
+                _tr("HTML (*.html);;Todos los archivos (*)"),
             )
             if not path:
                 return
@@ -600,14 +782,14 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 f.write(html_doc)
             QtWidgets.QMessageBox.information(
                 self,
-                "Informe exportado",
-                f"Informe AEP exportado correctamente:\n{path}",
+                _tr("Informe exportado"),
+                _tr("Informe AEP exportado correctamente:\n{path}").format(path=path),
             )
         except Exception as e:
             QtWidgets.QMessageBox.warning(
                 self,
-                "No se pudo exportar el informe",
-                f"No se pudo exportar el informe AEP:\n{e}",
+                _tr("No se pudo exportar el informe"),
+                _tr("No se pudo exportar el informe AEP:\n{error}").format(error=e),
             )
 
     def _init_tab_global(self):
@@ -655,7 +837,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
 
         row = 0
         rows = [
-            ("<b>AEP bruto (free-stream):</b>", self.lbl_aep_free),
+            ("<b>AEP bruto (flujo libre):</b>", self.lbl_aep_free),
             ("<b>AEP neto (operativo):</b>", self.lbl_aep_net),
             ("Pérdidas por estelas:", self.lbl_loss_wake),
             ("Impacto TI/turbulencia:", self.lbl_loss_ti),
@@ -671,6 +853,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
         # la fila entera cuando el residuo sea numéricamente irrelevante (la
         # decomposición wake/TI/bloqueo ya cierra el balance).
         self.lbl_loss_other_title = None
+        self._global_rows = []
         for title, value_widget in rows:
             title_lbl = QtWidgets.QLabel(title)
             title_lbl.setMinimumWidth(0)
@@ -679,9 +862,47 @@ class AEPResultsDialog(QtWidgets.QDialog):
             form.addWidget(value_widget, row, 1)
             if value_widget is self.lbl_loss_other:
                 self.lbl_loss_other_title = title_lbl
+            self._global_rows.append((title_lbl, value_widget))
             row += 1
 
         layout.addWidget(group, 0)
+
+        self.lbl_coverage_warning = QtWidgets.QLabel(self.tab_global)
+        # Model names are user data: show the notice as text, never interpreted HTML.
+        self.lbl_coverage_warning.setTextFormat(QtCore.Qt.PlainText)
+        self.lbl_coverage_warning.setWordWrap(True)
+        self.lbl_coverage_warning.setStyleSheet(
+            "background:#fff3d9; color:#6a3900; border:1px solid #d8a34c; padding:10px;"
+        )
+        self.lbl_coverage_warning.setVisible(False)
+        layout.insertWidget(0, self.lbl_coverage_warning)
+        self.lbl_schema_note = QtWidgets.QLabel(self.tab_global)
+        self.lbl_schema_note.setWordWrap(True)
+        self.lbl_schema_note.setStyleSheet("background:#eef1f5; color:#33414f; border:1px solid #b9c4d0; padding:8px;")
+        self.lbl_schema_note.setVisible(False)
+        layout.insertWidget(1, self.lbl_schema_note)
+        # Schema 2: the identification of the configuration and, before the figures, its warnings (persistent,
+        # adaptations and convergence); after the figures, the executed configuration, folded.
+        self.lbl_wake_id = QtWidgets.QLabel(self.tab_global)
+        self.lbl_wake_id.setTextFormat(QtCore.Qt.PlainText)
+        self.lbl_wake_id.setWordWrap(True)
+        self.lbl_wake_id.setStyleSheet("color:#24584d; font-weight:bold; padding:4px;")
+        self.lbl_wake_id.setVisible(False)
+        layout.insertWidget(2, self.lbl_wake_id)
+        self.lbl_wake_warnings = QtWidgets.QLabel(self.tab_global)
+        self.lbl_wake_warnings.setTextFormat(QtCore.Qt.RichText)  # the link of a predefined model's note, opened
+        self.lbl_wake_warnings.setOpenExternalLinks(True)
+        self.lbl_wake_warnings.setWordWrap(True)
+        self.lbl_wake_warnings.setStyleSheet("background:#fff3d9; color:#6a3900; border:1px solid #d8a34c; padding:8px;")
+        self.lbl_wake_warnings.setVisible(False)
+        layout.insertWidget(3, self.lbl_wake_warnings)
+        self.sec_executed = CollapsibleSection(_tr("Configuración ejecutada"), self.tab_global)
+        self.txt_executed = QtWidgets.QTextBrowser(self.sec_executed.body)
+        self.txt_executed.setReadOnly(True)
+        self.txt_executed.setMinimumHeight(160)
+        self.sec_executed.body_layout.addWidget(self.txt_executed)
+        self.sec_executed.setVisible(False)
+        layout.insertWidget(layout.indexOf(group) + 1, self.sec_executed)
 
         # Gráfico de balance global: bruto vs neto + pérdidas. Sirve como
         # comprobación visual rápida de que el desglose cuadra con el resumen.
@@ -711,7 +932,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
         self.table_models.setHorizontalHeaderLabels([
             "Modelo",
             "D [m]",
-            "Hub [m]",
+            "Altura de buje [m]",
             "Nº turbinas",
             "Potencia inst. [MW]",
             "AEP bruto [MWh]",
@@ -767,7 +988,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
         """Pestaña «Por sector»: rosa de pérdidas por dirección.
 
         Solo se construye si los datos están disponibles. Si no, no se añade tab.
-        Requiere matplotlib (lo usa también graficar.py, así que está garantizado).
+        Requiere matplotlib; si no está disponible, la pestaña no se añade.
         """
         r = self.results or {}
         wd = r.get("sector_directions_deg")
@@ -784,10 +1005,10 @@ class AEPResultsDialog(QtWidgets.QDialog):
         try:
             import matplotlib
             try:
-                # Backend Qt; el plugin ya lo fuerza en graficar.py
+                # Backend Qt para incrustar la figura en el diálogo
                 if not matplotlib.get_backend().lower().startswith(("qt", "module://")):
                     matplotlib.use("QtAgg", force=True)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -804,7 +1025,11 @@ class AEPResultsDialog(QtWidgets.QDialog):
 
         # Cabecera explicativa breve
         intro = QtWidgets.QLabel(_tr(
-            "<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por "
+            "<b>Rosa de pérdidas por sector.</b> Distribución del AEP bruto y neto por "
+            "dirección del viento. La diferencia entre cada barra es la pérdida total en ese sector "
+            "(estelas, turbulencia y bloqueo), con su signo: negativa si el sector gana producción."
+        ) if result_schema(r) == 2 else _tr(
+            "<b>Rosa de pérdidas por sector.</b> Distribución del AEP bruto y neto por "
             "dirección del viento. La diferencia entre cada barra representa las pérdidas "
             "por estela en ese sector — útil para ver qué direcciones limitan más el "
             "rendimiento del parque."
@@ -817,9 +1042,14 @@ class AEPResultsDialog(QtWidgets.QDialog):
         wd_arr = np.asarray(wd, dtype=float)
         free_arr = np.asarray(free_per_wd, dtype=float)
         wake_arr = np.asarray(wake_per_wd, dtype=float)
-        loss_arr = np.maximum(free_arr - wake_arr, 0.0)
+        # Schema 2: the gross minus the net of each sector is the total loss (wakes, turbulence and blockage), with
+        # its sign: a sector that gains is not clipped to zero (#75, row 4.11).
+        v2 = result_schema(r) == 2
+        loss_arr = (free_arr - wake_arr) if v2 else np.maximum(free_arr - wake_arr, 0.0)
+        loss_name = _tr("Pérdida total") if v2 else _tr("Pérdidas por estela")
         with np.errstate(divide="ignore", invalid="ignore"):
-            loss_pct = np.where(free_arr > 0, 100.0 * loss_arr / free_arr, 0.0)
+            # Schema 2: a percentage over a gross AEP that is not positive is not available (P0, section 8), never 0.
+            loss_pct = np.where(free_arr > 0, 100.0 * loss_arr / free_arr, np.nan if v2 else 0.0)
 
         # Totales por sector y contraste con el resumen global.
         sum_free = float(np.nansum(free_arr))
@@ -831,11 +1061,14 @@ class AEPResultsDialog(QtWidgets.QDialog):
         d_net = sum_net - global_net if global_net > 0 else 0.0
         tol = max(1.0, 0.001 * max(abs(global_net), abs(sum_net), 1.0))
         ok_txt = "OK" if abs(d_net) <= tol else _tr("revisar")
-        total_lbl = QtWidgets.QLabel(
-            f"<b>{_tr('Total sectores')}:</b> {_tr('AEP libre')} {_fmt_mwh(sum_free)} MWh · "
-            f"{_tr('AEP neto')} {_fmt_mwh(sum_net)} MWh · {_tr('pérdidas')} {_fmt_mwh(sum_loss)} MWh. "
-            f"{_tr('Comparación con resumen')}: Δ {_tr('neto')} = {_fmt_mwh(d_net)} MWh ({ok_txt})."
-        )
+        if non_finite_label(sum_net) or non_finite_label(global_net):  # #63: a NaN is never «OK»
+            ok_txt = _tr("no comparable: valor no finito")
+        total_lbl = QtWidgets.QLabel(_tr(
+            "<b>Total sectores:</b> AEP bruto {gross} MWh · AEP neto {net} MWh · pérdidas {loss} MWh. "
+            "Comparación con resumen: Δ neto = {delta} MWh ({check})."
+        ).format(gross=_fmt_mwh(sum_free), net=_fmt_mwh(sum_net), loss=_fmt_mwh(sum_loss), delta=_fmt_mwh(d_net),
+                 check=ok_txt))
+        mark_translated(total_lbl)  # composed with data: apply_i18n would translate it a second time
         total_lbl.setWordWrap(True)
         total_lbl.setStyleSheet("color: #4f5d6b; background: #f7f9fb; border: 1px solid #d8e0e8; padding: 6px;")
         layout.addWidget(total_lbl)
@@ -850,7 +1083,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             ax1.set_theta_direction(-1)  # convención meteorológica (CW desde N)
             ax1.bar(theta, free_arr, width=width, alpha=0.45,
                     color="#1f7dc2", edgecolor="white", linewidth=0.5,
-                    label=_tr("AEP libre"))
+                    label=_tr("AEP bruto"))
             ax1.bar(theta, wake_arr, width=width, alpha=0.85,
                     color="#103b67", edgecolor="white", linewidth=0.5,
                     label=_tr("AEP neto"))
@@ -862,8 +1095,9 @@ class AEPResultsDialog(QtWidgets.QDialog):
             ax2.bar(wd_arr, loss_pct, width=max(width * 360 / (2 * np.pi) * 0.9, 1.0),
                     color="#b8860b", alpha=0.85, edgecolor="white", linewidth=0.5)
             ax2.set_xlabel(_tr("Dirección [°]"), fontsize=10)
-            ax2.set_ylabel(_tr("Pérdidas por estela [%]"), fontsize=10)
-            ax2.set_title(_tr("Pérdidas por estela por sector"), fontsize=11, color="#103b67")
+            ax2.set_ylabel(f"{loss_name} [%]", fontsize=10)
+            ax2.set_title(_tr("Pérdida total por sector") if v2 else _tr("Pérdidas por estela por sector"),
+                          fontsize=11, color="#103b67")
             ax2.set_xlim(0, 360)
             ax2.grid(True, alpha=0.3, linestyle=":")
             ax2.tick_params(labelsize=9)
@@ -875,7 +1109,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
             layout.addWidget(canvas, 1)
         except Exception as e:
             _debug_print(f"[Results] Error renderizando rosa de sectores: {e}")
-            err_lbl = QtWidgets.QLabel(f"{_tr('No se pudo generar la rosa de sectores')}: {e}")
+            err_lbl = QtWidgets.QLabel(_tr("No se pudo generar la rosa de sectores: {error}").format(error=e))
+            mark_translated(err_lbl)
             err_lbl.setStyleSheet("color: #b00;")
             layout.addWidget(err_lbl)
             return
@@ -885,21 +1120,24 @@ class AEPResultsDialog(QtWidgets.QDialog):
         self.table_sector = tbl
         tbl.setHorizontalHeaderLabels([
             "Dirección [°]",
-            "AEP libre [MWh]",
+            "AEP bruto [MWh]",
             "AEP neto [MWh]",
-            "Pérd. estela [MWh]",
-            "Pérd. estela [%]",
+            "Pérd. total [MWh]" if v2 else "Pérd. estela [MWh]",
+            "Pérd. total [%]" if v2 else "Pérd. estela [%]",
         ])
         tbl.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         for i in range(len(wd_arr)):
-            tbl.setItem(i, 0, QtWidgets.QTableWidgetItem(f"{wd_arr[i]:.1f}"))
+            tbl.setItem(i, 0, QtWidgets.QTableWidgetItem(format_number(wd_arr[i], '.1f')))
             tbl.setItem(i, 1, QtWidgets.QTableWidgetItem(_fmt_mwh(float(free_arr[i]))))
             tbl.setItem(i, 2, QtWidgets.QTableWidgetItem(_fmt_mwh(float(wake_arr[i]))))
-            tbl.setItem(i, 3, QtWidgets.QTableWidgetItem(_fmt_mwh(float(loss_arr[i]))))
-            tbl.setItem(i, 4, QtWidgets.QTableWidgetItem(_fmt_pct(float(loss_pct[i]))))
+            tbl.setItem(i, 3, QtWidgets.QTableWidgetItem((_fmt_signed_mwh if v2 else _fmt_mwh)(float(loss_arr[i]))))
+            pct_text = (_tr("n/d") if v2 and not np.isfinite(loss_pct[i])
+                        else (_fmt_signed_pct if v2 else _fmt_pct)(float(loss_pct[i])))
+            tbl.setItem(i, 4, QtWidgets.QTableWidgetItem(pct_text))
         total_row = len(wd_arr)
-        total_loss_pct = (100.0 * sum_loss / sum_free) if sum_free > 0 else 0.0
-        total_values = ["TOTAL", _fmt_mwh(sum_free), _fmt_mwh(sum_net), _fmt_mwh(sum_loss), _fmt_pct(total_loss_pct)]
+        total_loss_pct = (100.0 * sum_loss / sum_free) if sum_free > 0 else (None if v2 else 0.0)
+        total_values = ["TOTAL", _fmt_mwh(sum_free), _fmt_mwh(sum_net), _fmt_mwh(sum_loss),
+                        _tr("n/d") if total_loss_pct is None else _fmt_pct(total_loss_pct)]
         for col, val in enumerate(total_values):
             item = QtWidgets.QTableWidgetItem(str(val))
             font = item.font()
@@ -926,6 +1164,13 @@ class AEPResultsDialog(QtWidgets.QDialog):
 
     def _populate_global(self):
         r = self.results or {}
+        coverage = partial_aep_warning(r, _tr)
+        self.lbl_coverage_warning.setText(coverage)
+        self.lbl_coverage_warning.setVisible(bool(coverage))
+        if result_schema(r) == 2:
+            return self._populate_global_v2()
+        self.lbl_schema_note.setText(_tr(SCHEMA_1_NOTE))
+        self.lbl_schema_note.setVisible(True)
 
         # AEP global (claves de aep_compute.py)
         aep_free = float(r.get("aep_free_MWh", 0.0) or 0.0)
@@ -989,7 +1234,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
                             float(per_model_rated.get(m, 0.0) or 0.0) * cnt
                             for m, cnt in counts.items()
                         ))
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
 
         cf_net = None
@@ -1039,7 +1284,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             f"{_fmt_mwh(loss_total)} MWh ({_fmt_pct(pct(loss_total))})"
         )
 
-        self.lbl_n_turb.setText(str(n_turb))
+        self.lbl_n_turb.setText(format_number(n_turb, ",d"))
         self.lbl_p_inst_mw.setText(f"{_fmt_mw(p_inst_mw)} MW" if p_inst_mw > 0 else "-")
 
         if cf_net is not None:
@@ -1048,7 +1293,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
             self.lbl_cf_net.setText("-")
 
         if spec_yield is not None:
-            self.lbl_spec_yield.setText(f"{_fmt_mwh(spec_yield)} MWh/MW·año")
+            self.lbl_spec_yield.setText(f"{_fmt_mwh(spec_yield)} {_tr('MWh/MW·año')}")
         else:
             self.lbl_spec_yield.setText("-")
 
@@ -1077,11 +1322,11 @@ class AEPResultsDialog(QtWidgets.QDialog):
         delta = balance - aep_free if aep_free > 0 else 0.0
         tol = max(1.0, 0.001 * max(abs(aep_free), abs(balance), 1.0))
         ok = abs(delta) <= tol
-        lbl = QtWidgets.QLabel(
-            f"{_tr('Bruto')}: <b>{_fmt_mwh(aep_free)} MWh</b> · {_tr('Neto + pérdidas')}: "
-            f"<b>{_fmt_mwh(balance)} MWh</b> · Δ = {_fmt_mwh(delta)} MWh "
-            f"({'OK' if ok else _tr('revisar')})"
-        )
+        lbl = QtWidgets.QLabel(_tr(
+            "Bruto: <b>{gross} MWh</b> · Neto + pérdidas: <b>{balance} MWh</b> · Δ = {delta} MWh ({check})"
+        ).format(gross=_fmt_mwh(aep_free), balance=_fmt_mwh(balance), delta=_fmt_mwh(delta),
+                 check="OK" if ok else _tr("revisar")))
+        mark_translated(lbl)  # composed with data: apply_i18n would translate it a second time
         lbl.setWordWrap(True)
         lbl.setStyleSheet("color: #4f5d6b;")
         layout.addWidget(lbl)
@@ -1091,12 +1336,13 @@ class AEPResultsDialog(QtWidgets.QDialog):
             try:
                 if not matplotlib.get_backend().lower().startswith(("qt", "module://")):
                     matplotlib.use("QtAgg", force=True)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         except Exception as e:
-            err = QtWidgets.QLabel(f"{_tr('No se pudo generar el gráfico total')}: {e}")
+            err = QtWidgets.QLabel(_tr("No se pudo generar el gráfico total: {error}").format(error=e))
+            mark_translated(err)
             err.setWordWrap(True)
             err.setStyleSheet("color: #b00;")
             layout.addWidget(err)
@@ -1131,13 +1377,16 @@ class AEPResultsDialog(QtWidgets.QDialog):
             canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             layout.addWidget(canvas, 1)
         except Exception as e:
-            err = QtWidgets.QLabel(f"{_tr('No se pudo renderizar el balance total')}: {e}")
+            err = QtWidgets.QLabel(_tr("No se pudo renderizar el balance total: {error}").format(error=e))
+            mark_translated(err)
             err.setWordWrap(True)
             err.setStyleSheet("color: #b00;")
             layout.addWidget(err)
 
     def _populate_models(self):
         r = self.results or {}
+        if result_schema(r) == 2:
+            return self._populate_models_v2()
 
         per_aep = r.get("per_model_aep_MWh", {}) or {}
         per_aep_free = r.get("per_model_aep_free_MWh", {}) or {}
@@ -1210,7 +1459,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 model,
                 _fmt_len(D) if D not in (None, "") else "-",
                 _fmt_len(HH) if HH not in (None, "") else "-",
-                str(n_t) if n_t > 0 else "",
+                format_number(n_t, ",d") if n_t > 0 else "",
                 _fmt_mw(p_inst_mw) if p_inst_mw > 0 else "",
                 _fmt_mwh(aep_b),
                 _fmt_mwh(aep_n),
@@ -1219,7 +1468,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 _fmt_signed_mwh(lt_signed),
                 _fmt_pct(cf_net) if cf_net is not None else "-",
                 _fmt_mwh(spec_yield) if spec_yield is not None else "-",
-                f"{pct(lw):.1f}" if base > 0 else "-",
+                format_number(pct(lw), '.1f') if base > 0 else "-",
             ]
 
             for col, val in enumerate(values):
@@ -1227,6 +1476,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 # Columna 0 (nombre) a la izquierda, resto numéricas a la derecha
                 if col > 0:
                     item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                else:
+                    self._name_items.append((item, str(val)))
                 self.table_models.setItem(row, col, item)
 
         self.table_models.resizeRowsToContents()
@@ -1246,6 +1497,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
         if not per_turb:
             self.table_turbines.setRowCount(0)
             return
+        if result_schema(r) == 2:
+            return self._populate_turbines_v2()
 
         self.table_turbines.setRowCount(len(per_turb))
 
@@ -1302,8 +1555,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
             vals = [
                 str(tid),
                 str(model),
-                f"{x:.2f}" if x == x else "",  # x==x comprueba no-NaN
-                f"{y:.2f}" if y == y else "",
+                format_number(x, ',.2f') if x == x else "",  # x==x comprueba no-NaN
+                format_number(y, ',.2f') if y == y else "",
                 _fmt_mw(p_nom_mw) if p_nom_mw > 0 else "",
                 _fmt_mwh(aep_net),
                 _fmt_mwh(aep_b),
@@ -1316,6 +1569,8 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 item = QtWidgets.QTableWidgetItem(str(val))
                 if col >= 2:
                     item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                elif col == 1:
+                    self._name_items.append((item, str(val)))
                 self.table_turbines.setItem(row, col, item)
 
         self.table_turbines.resizeRowsToContents()
@@ -1323,6 +1578,12 @@ class AEPResultsDialog(QtWidgets.QDialog):
     def _populate_report(self):
         """Texto estilo informe, similar a WAsP, con resumen global + clusters/modelos."""
         r = self.results or {}
+        if result_schema(r) == 2:
+            return self._populate_report_v2()
+
+        def t(text):
+            # Translated here: kept from the second translation of the report (_localized_report_html).
+            return _slot(self._user_texts, _tr(text))
 
         # --- Global ---
         aep_free = float(r.get("aep_free_MWh", 0.0) or 0.0)
@@ -1377,7 +1638,7 @@ class AEPResultsDialog(QtWidgets.QDialog):
                             float(per_model_rated.get(m, 0.0) or 0.0) * cnt
                             for m, cnt in counts.items()
                         ))
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
         cf_net = None
         spec_yield = None
@@ -1415,19 +1676,20 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 D = geom.get("D") or geom.get("diameter") or None
                 HH = geom.get("HH") or geom.get("hub_height") or None
 
-                clusters_html += "<h4>Modelo de aerogenerador</h4><p>"
-                clusters_html += f"<b>{m}</b>: {n_t} aerogenerador(es)"
+                clusters_html += f"<h4>{t('Modelo de aerogenerador')}</h4><p>"
+                clusters_html += (f"<b>{_slot(self._user_texts, m)}</b>: "
+                                  f"{_slot(self._user_texts, _tr('{n} aerogenerador(es)').format(n=format_number(n_t, ',d')))}")
                 extra = []
                 if D:
                     extra.append(f"D = {_fmt_len(D)} m")
                 if HH:
-                    extra.append(f"Hub = {_fmt_len(HH)} m")
+                    extra.append(f"{t('Altura de buje')} = {_fmt_len(HH)} m")
                 if extra:
                     clusters_html += " (" + ", ".join(extra) + ")"
                 clusters_html += "</p>"
             else:
                 # Varios modelos -> resumen por cluster
-                clusters_html += "<h4>Modelos / clusters de aerogeneradores</h4><ul>"
+                clusters_html += f"<h4>{t('Modelos / clusters de aerogeneradores')}</h4><ul>"
                 for m in model_names:
                     n_t = int(per_model_n.get(m, 0) or 0)
                     geom = per_model_geom.get(m, {}) or {}
@@ -1446,77 +1708,37 @@ class AEPResultsDialog(QtWidgets.QDialog):
                     loss_pct_m = 100.0 * loss_tot_m / base_m if base_m > 0 else 0.0
 
                     clusters_html += "<li>"
-                    clusters_html += f"<b>{m}</b> – {n_t} aerogenerador(es)"
+                    clusters_html += (f"<b>{_slot(self._user_texts, m)}</b> – "
+                                      f"{_slot(self._user_texts, _tr('{n} aerogenerador(es)').format(n=format_number(n_t, ',d')))}")
                     extras = []
                     if D:
                         extras.append(f"D = {_fmt_len(D)} m")
                     if HH:
-                        extras.append(f"Hub = {_fmt_len(HH)} m")
+                        extras.append(f"{t('Altura de buje')} = {_fmt_len(HH)} m")
                     if extras:
                         clusters_html += " (" + ", ".join(extras) + ")"
                     clusters_html += "<br>"
-                    clusters_html += (
-                        f"&nbsp;&nbsp;AEP neta del cluster: {_fmt_mwh(aep_n_m)} MWh"
-                    )
+                    clusters_html += "&nbsp;&nbsp;" + _slot(self._user_texts, _tr(
+                        "AEP neto del cluster: {aep} MWh").format(aep=_fmt_mwh(aep_n_m)))
                     if share > 0.0:
-                        clusters_html += f" ({share:.1f} % del AEP neto del parque)"
+                        clusters_html += " (" + _slot(self._user_texts, _tr(
+                            "{pct} % del AEP neto del parque").format(pct=format_number(share, '.1f'))) + ")"
                     if loss_tot_m > 0.0:
                         clusters_html += "<br>"
-                        clusters_html += (
-                            f"&nbsp;&nbsp;Pérdida total (wake/TI/bloqueo): "
-                            f"{_fmt_mwh(loss_tot_m)} MWh ({loss_pct_m:.1f} % sobre AEP bruto del cluster)"
-                        )
+                        clusters_html += "&nbsp;&nbsp;" + _slot(self._user_texts, _tr(
+                            "Pérdida total (estelas/TI/bloqueo): {loss} MWh ({pct} % sobre AEP bruto del cluster)"
+                        ).format(loss=_fmt_mwh(loss_tot_m), pct=format_number(loss_pct_m, '.1f')))
                     clusters_html += "</li>"
                 clusters_html += "</ul>"
 
         # --- Configuración del cálculo ---
-        sel_user = r.get("selection_user", {}) or {}
-        sel_req = r.get("selection_requested", {}) or {}
-        sel_exec = r.get("selection_executed", {}) or {}
         sim_notes = r.get("simulation_notes", []) or []
-        sim_degraded = bool(r.get("simulation_degraded", False))
-        sim_deg_label = r.get("simulation_degradation_label") or ""
-
-        def cfg_block(title: str, cfg: Dict[str, Any]) -> str:
-            if not cfg:
-                return ""
-            rows = []
-            labels = {
-                "engine": "Motor",
-                "wake_deficit": "Déficit de estela",
-                "turbulence": "Modelo de turbulencia",
-                "blockage": "Modelo de bloqueo",
-                "rotor_avg": "Promedio rotor",
-                "superposition": "Superposición",
-            }
-            for key in ("engine", "wake_deficit", "turbulence", "blockage", "rotor_avg", "superposition"):
-                if key in cfg:
-                    rows.append(f"<li><b>{labels.get(key, key)}:</b> {html_mod.escape(str(cfg.get(key, '-')))}</li>")
-            if not rows:
-                return ""
-            return f"<h4>{html_mod.escape(title)}</h4><ul>{''.join(rows)}</ul>"
 
         notes_html = ""
         if sim_notes:
-            items = ''.join(f"<li>{html_mod.escape(str(n))}</li>" for n in sim_notes if str(n).strip())
+            items = ''.join(f"<li>{_note_html(self._user_texts, n)}</li>" for n in sim_notes if str(n).strip())
             if items:
-                notes_html = f"<h4>Notas físicas y de compatibilidad</h4><ul>{items}</ul>"
-
-        exec_banner = ""
-        if sim_degraded:
-            if isinstance(sim_deg_label, str) and sim_deg_label.startswith("bloqueo alternativo:"):
-                alt_name = sim_deg_label.split(":", 1)[1].strip() or "alternativo"
-                msg = (
-                    f"La combinación de wake TI-driven con SelfSimilarity2020 no convergió en "
-                    f"PyWake. Se ha mantenido el bloqueo sustituyéndolo por {alt_name} "
-                    f"(acoplamiento más estable). El resto de la selección se ha respetado."
-                )
-                exec_banner = f"<p style='background:#e6f4ea;border:1px solid #7fc89a;padding:8px;'><b>Sustitución de modelo de bloqueo:</b> {html_mod.escape(msg)}</p>"
-            else:
-                msg = "La simulación no pudo ejecutarse exactamente con la combinación pedida y PyWake requirió una degradación automática."
-                if sim_deg_label:
-                    msg += f" Paso aplicado: {sim_deg_label}."
-                exec_banner = f"<p style='background:#fff3cd;border:1px solid #e0c36d;padding:8px;'><b>Aviso de compatibilidad:</b> {html_mod.escape(msg)}</p>"
+                notes_html = f"<h4>{t('Notas físicas y de compatibilidad')}</h4><ul>{items}</ul>"
 
         # Banner TI fallback: muy visible, NO enterrado en la lista de notas
         ti_banner = ""
@@ -1527,30 +1749,31 @@ class AEPResultsDialog(QtWidgets.QDialog):
                 ti_pct = 10.0
             ti_banner = (
                 "<p style='background:#fff8e6;border:1px solid #e0c36d;border-radius:6px;padding:8px;'>"
-                "<b>Aviso de TI ambiente:</b> no se ha proporcionado un raster de TI. "
-                f"El cálculo ha usado <b>TI = {ti_pct:.1f} %</b> uniforme como fallback. "
-                "Este valor afecta directamente al AEP en wakes TI-driven (Niayifar, Zong, "
-                "TurboGaussian, TurboNOJ). Para resultados representativos, carga un raster "
-                "TI en la sección de recurso o revisa la sensibilidad de turbulencia.</p>"
+                f"<b>{t('Aviso de TI ambiente:')}</b> " + _slot_html(self._user_texts, _tr(
+                    "no se ha proporcionado un ráster de TI. El cálculo ha usado <b>TI = {ti} %</b> uniforme como "
+                    "valor de respaldo. Este valor afecta directamente al AEP con los modelos de estela que dependen "
+                    "de la TI (Niayifar, Zong, TurboGaussian, TurboNOJ). Para resultados representativos, carga un "
+                    "ráster de TI en la sección de recurso o revisa la sensibilidad de turbulencia."
+                ).format(ti=format_number(ti_pct, '.1f'))) + "</p>"
             )
 
         # Bloque "Métricas adicionales" — solo se muestra si tenemos potencia instalada
         # útil; si no, todo serían placeholders y no aporta nada al informe.
         if p_inst_mw and p_inst_mw > 0:
             extras_html = f"""
-        <h4>Métricas adicionales</h4>
+        <h4>{t('Métricas adicionales')}</h4>
         <ul>
-          <li><b>Potencia instalada:</b> {_fmt_mw(p_inst_mw)} MW</li>
-          <li><b>Factor de capacidad neto:</b> {_fmt_pct(cf_net) if cf_net is not None else "-"} </li>
-          <li><b>Energía específica neta:</b> {_fmt_mwh(spec_yield) if spec_yield is not None else "-"} MWh/MW·año</li>
+          <li><b>{t('Potencia instalada:')}</b> {_fmt_mw(p_inst_mw)} MW</li>
+          <li><b>{t('Factor de capacidad neto:')}</b> {_fmt_pct(cf_net) if cf_net is not None else "-"} </li>
+          <li><b>{t('Energía específica neta:')}</b> {_fmt_mwh(spec_yield) if spec_yield is not None else "-"} {t('MWh/MW·año')}</li>
         </ul>
 """
         else:
             extras_html = (
                 "<p style='color:#888; font-style:italic;'>"
-                "<small>Métricas adicionales no disponibles: no se pudo determinar la potencia "
-                "nominal de las turbinas. Vuelve a definir el modelo desde «Definir…» para que "
-                "la curva de potencia se guarde con la metadata.</small></p>"
+                "<small>" + t("Métricas adicionales no disponibles: no se pudo determinar la potencia "
+                              "nominal de las turbinas. Vuelve a definir el modelo desde «Definir…» para que "
+                              "la curva de potencia se guarde con la metadata.") + "</small></p>"
             )
 
         # "Otras pérdidas" en el HTML solo cuando el residuo sea numéricamente
@@ -1561,52 +1784,342 @@ class AEPResultsDialog(QtWidgets.QDialog):
         _residual_threshold_pct = 0.05
         if loss_other > _residual_threshold_mwh and pct(loss_other) > _residual_threshold_pct:
             loss_other_html = (
-                f"<li><b>Otras pérdidas:</b> {_fmt_mwh(loss_other)} MWh "
-                f"({pct(loss_other):.1f} %)</li>"
+                f"<li><b>{t('Otras pérdidas:')}</b> {_fmt_mwh(loss_other)} MWh "
+                f"({_fmt_pct(pct(loss_other))})</li>"
             )
         else:
             loss_other_html = ""
+
+        # Keep the user-data-bearing banner out of the translation pipeline:
+        # the report is localized again for the full HTML and export. Static
+        # text is translated first; the banner is only inserted afterwards.
+        coverage_banner = (
+            self._COVERAGE_PLACEHOLDER
+            if int(r.get("skipped_outside_grid") or 0) > 0 else ""
+        )
 
         # --- HTML final ---
         report_body = f"""
         {self._report_header_html()}
         <div style="border-left:4px solid #24584d; padding-left:10px; margin-bottom:10px;">
-          <h3 style="margin-bottom:4px;">Resumen AEP del parque</h3>
-          <div style="color:#6b7d78; font-size:11px;">Informe técnico generado desde el módulo Energía de Velantis Wind.</div>
+          <h3 style="margin-bottom:4px;">{t('Resumen AEP del parque')}</h3>
+          <div style="color:#6b7d78; font-size:11px;">{t('Informe técnico generado desde el módulo Energía de Velantis Wind.')}</div>
         </div>
-        {exec_banner}
+        {coverage_banner}
+        <p style="background:#eef1f5;border:1px solid #b9c4d0;padding:6px;">{t(SCHEMA_1_NOTE)}</p>
+        {_slot_html(self._user_texts, model_config_html(r, _tr))}
         {ti_banner}
         <table width="100%" cellspacing="0" cellpadding="6" style="border-collapse:collapse; margin:8px 0 12px 0;">
           <tr style="background:#eef5f2;">
-            <td><b>AEP bruto (free-stream)</b></td>
+            <td><b>{t('AEP bruto (flujo libre)')}</b></td>
             <td align="right">{_fmt_mwh(aep_free)} MWh</td>
           </tr>
           <tr>
-            <td><b>AEP neto (operativo)</b></td>
+            <td><b>{t('AEP neto (operativo)')}</b></td>
             <td align="right">{_fmt_mwh(aep_net)} MWh</td>
           </tr>
           <tr style="background:#eef5f2;">
-            <td><b>Pérdidas totales</b></td>
-            <td align="right">{_fmt_mwh(loss_total)} MWh ({pct(loss_total):.1f} %)</td>
+            <td><b>{t('Pérdidas totales')}</b></td>
+            <td align="right">{_fmt_mwh(loss_total)} MWh ({_fmt_pct(pct(loss_total))})</td>
           </tr>
         </table>
-        <h4>Desglose de pérdidas</h4>
+        <h4>{t('Desglose de pérdidas')}</h4>
         <ul>
-          <li><b>Estelas:</b> {_fmt_mwh(loss_wake)} MWh ({pct(loss_wake):.1f} %)</li>
-          <li><b>Impacto TI/turbulencia:</b> {(_fmt_signed_mwh(ti_impact) + " MWh (" + _fmt_signed_pct(pct(ti_impact)) + ")") if ti_impact is not None else "n/d"}<br><small>Diagnóstico incremental: positivo = recupera AEP frente al wake-only; negativo = reduce AEP. No se debe interpretar siempre como pérdida contable.</small></li>
-          <li><b>Bloqueo:</b> {_fmt_mwh(loss_blk)} MWh ({pct(loss_blk):.1f} %)</li>
+          <li><b>{t('Estelas:')}</b> {_fmt_mwh(loss_wake)} MWh ({_fmt_pct(pct(loss_wake))})</li>
+          <li><b>{t('Impacto TI/turbulencia:')}</b> {(_fmt_signed_mwh(ti_impact) + " MWh (" + _fmt_signed_pct(pct(ti_impact)) + ")") if ti_impact is not None else t("n/d")}<br><small>{t('Diagnóstico incremental: positivo = recupera AEP frente al caso con solo estelas; negativo = reduce AEP. No se debe interpretar siempre como pérdida contable.')}</small></li>
+          <li><b>{t('Bloqueo:')}</b> {_fmt_mwh(loss_blk)} MWh ({_fmt_pct(pct(loss_blk))})</li>
           {loss_other_html}
         </ul>
         {extras_html}
-        {cfg_block("Selección del usuario", sel_user)}
-        {cfg_block("Configuración solicitada al solver", sel_req)}
-        {cfg_block("Configuración finalmente ejecutada", sel_exec)}
         {notes_html}
         {clusters_html}
         """
 
         self._last_report_html_raw = report_body
-        self._last_report_html = _localized_report_html(report_body)
+        self._last_report_html = self._insert_coverage_banner(_fill_slots(self._user_texts, _localized_report_html(report_body)))
+        self.txt_report.setHtml(self._last_report_html)
+
+
+    # ------------------------------------------------------------------------------------------------------------
+    # Schema 2 (the signed breakdown of the wake-model plan, P0 section 8; closes #58). A schema-1 result keeps the
+    # methods above, with its own fields.
+    # ------------------------------------------------------------------------------------------------------------
+    _GLOBAL_TITLES_V2 = (
+        ("lbl_aep_free", "<b>AEP bruto (A_0, sin estelas ni bloqueo):</b>"),
+        ("lbl_aep_net", "<b>AEP neto (configuración calculada):</b>"),
+        ("lbl_loss_wake", "Pérdida por estelas (L_W):"),
+        ("lbl_loss_ti", "Impacto de la turbulencia añadida (Δ_T):"),
+        ("lbl_loss_blk", "Impacto del bloqueo (Δ_B):"),
+        ("lbl_loss_other", "Interacción turbulencia-bloqueo (diagnóstico, fuera del balance):"),
+        ("lbl_loss_total", "<b>Pérdida total (L_total = L_W − Δ_T − Δ_B):</b>"),
+    )
+
+    def _installed_mw(self, r: Dict[str, Any]) -> float:
+        per_model_inst = r.get("per_model_p_inst_MW") or {}
+        try:
+            return float(sum(float(v or 0.0) for v in per_model_inst.values()))
+        except Exception:
+            return 0.0
+
+    def _show_wake_configuration(self) -> None:
+        """The identification, the warnings and the executed configuration of a result of schema 2 (hidden else)."""
+        r = self.results or {}
+        wc = r.get("wake_config") if result_schema(r) == 2 else None
+        warnings = [str(shown(w, _tr)) for w in result_warnings(r)] if wc else []
+        self.lbl_wake_id.setText(str(shown(wc.get("identification") or "", _tr)) if wc else "")
+        self.lbl_wake_id.setVisible(bool(wc))
+        # Rich text: the line breaks inside a warning (a reason of a convergence warning) kept, as in plain text.
+        self.lbl_wake_warnings.setText("<br>".join("⚠ " + linked(w).replace("\n", "<br>") for w in warnings))
+        self.lbl_wake_warnings.setVisible(bool(warnings))
+        self.txt_executed.setHtml(model_config_html_v2(r, _tr) if wc else "")
+        self.sec_executed.setVisible(bool(wc))
+
+    def _populate_global_v2(self) -> None:
+        r = self.results or {}
+        b = r.get("breakdown") or {}
+        self._show_wake_configuration()
+        for title_lbl, widget in self._global_rows:
+            for attr, text in self._GLOBAL_TITLES_V2:
+                if widget is getattr(self, attr, None):
+                    title_lbl.setText(_tr(text))
+        aep_net = float(r.get("aep_wake_MWh") or 0.0)
+        self.lbl_aep_free.setText(_term_text(b["A_0"], signed=False))
+        self.lbl_aep_net.setText(f"{_fmt_mwh(aep_net)} MWh")
+        self.lbl_loss_wake.setText(_term_text(b["L_W"]))
+        self.lbl_loss_ti.setText(_term_text(b["D_T"]))
+        self.lbl_loss_blk.setText(_term_text(b["D_B"]))
+        interaction = b.get("I_TB") or {}
+        show_interaction = interaction.get("state") != _bd.NOT_MODELLED
+        self.lbl_loss_other.setText(_term_text(interaction) if show_interaction else "")
+        self.lbl_loss_other.setVisible(show_interaction)
+        if self.lbl_loss_other_title is not None:
+            self.lbl_loss_other_title.setVisible(show_interaction)
+        self.lbl_loss_total.setText(_term_text(b["L_total"]))
+        per_turb = r.get("per_turbine_table", []) or []
+        self.lbl_n_turb.setText(format_number(len(per_turb), ",d"))
+        p_inst_mw = self._installed_mw(r)
+        self.lbl_p_inst_mw.setText(f"{_fmt_mw(p_inst_mw)} MW" if p_inst_mw > 0 else "-")
+        hours = float(r.get("hours_per_year") or self.HOURS_YEAR)
+        if p_inst_mw > 0:
+            self.lbl_cf_net.setText(_fmt_pct(100.0 * aep_net / (p_inst_mw * hours)))
+            self.lbl_spec_yield.setText(f"{_fmt_mwh(aep_net / p_inst_mw)} {_tr('MWh/MW·año')}")
+        else:
+            self.lbl_cf_net.setText("-")
+            self.lbl_spec_yield.setText("-")
+        self._populate_balance_chart_v2(b, aep_net)
+
+    def _populate_balance_chart_v2(self, b: Dict[str, Any], aep_net: float) -> None:
+        """The balance A_0 − L_W + Δ_T + Δ_B = net, as a waterfall with the sign of each term (#75, row 4.10)."""
+        layout = getattr(self, "balance_layout", None)
+        if layout is None:
+            return
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget() is not None:
+                item.widget().setParent(None)
+        values = {t: b[t]["mwh"] for t in ("A_0", "L_W", "D_T", "D_B")}
+        if values["A_0"] is None or values["L_W"] is None:
+            lbl = QtWidgets.QLabel(_tr("El balance no se puede dibujar: falta el AEP bruto o la pérdida por estelas."))
+            lbl.setWordWrap(True)
+            layout.addWidget(lbl)
+            return
+        steps = [(_tr("Estelas"), -values["L_W"])]
+        if b["D_T"]["state"] != _bd.NOT_MODELLED and values["D_T"] is not None:
+            steps.append((_tr("Turbulencia"), values["D_T"]))
+        if b["D_B"]["state"] != _bd.NOT_MODELLED and values["D_B"] is not None:
+            steps.append((_tr("Bloqueo"), values["D_B"]))
+        end = values["A_0"] + sum(v for _n, v in steps)
+        delta = end - aep_net
+        ok = abs(delta) <= max(1e-6, 1e-9 * max(abs(aep_net), 1.0))
+        missing = [n for n, t in ((_tr("turbulencia"), "D_T"), (_tr("bloqueo"), "D_B"))
+                   if b[t]["state"] not in (_bd.NOT_MODELLED, _bd.OK, _bd.ZERO_BY_CONSTRUCTION)]
+        text = (f"{_tr('Bruto')} {_fmt_mwh(values['A_0'])} MWh " + " ".join(
+            (f"{'+' if v >= 0 else '−'} {n} {_fmt_mwh(abs(v))}" if not non_finite_label(v) else f"{n} {_fmt_mwh(v)}")
+            for n, v in steps)
+                + f" = {_fmt_mwh(end)} MWh · {_tr('Neto')} {_fmt_mwh(aep_net)} MWh · Δ = {_fmt_signed_mwh(delta)} MWh ")
+        if non_finite_label(delta):  # #63: a balance with a value that is not finite is not checked
+            text += f"({_tr('no comparable: valor no finito')})"
+        else:
+            text += (f"({'OK' if ok else _tr('revisar')})" if not missing
+                     else f"({_tr('incompleto')}: {', '.join(missing)})")
+        lbl = QtWidgets.QLabel(text)
+        lbl.setWordWrap(True)
+        lbl.setStyleSheet("color: #4f5d6b;")
+        layout.addWidget(lbl)
+        try:
+            import matplotlib
+            try:
+                if not matplotlib.get_backend().lower().startswith(("qt", "module://")):
+                    matplotlib.use("QtAgg", force=True)
+            except Exception:  # nosec B110
+                pass
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+            fig = plt.Figure(figsize=(5.0, 3.4), tight_layout=True)
+            ax = fig.add_subplot(1, 1, 1)
+            labels = [_tr("Bruto")] + [n for n, _v in steps] + [_tr("Neto")]
+            ax.bar([0], [values["A_0"]], color="#1f7dc2")
+            level = values["A_0"]
+            for i, (_n, v) in enumerate(steps, start=1):
+                ax.bar([i], [abs(v)], bottom=[min(level, level + v)], color="#2e8b57" if v >= 0 else "#b8860b")
+                level += v
+            ax.bar([len(steps) + 1], [aep_net], color="#103b67")
+            ax.set_xticks(list(range(len(labels))))
+            ax.set_xticklabels(labels)
+            ax.set_ylabel(_tr("MWh/año"))
+            ax.set_title(_tr("Comprobación del balance total"))
+            ax.grid(True, axis="y", alpha=0.25, linestyle=":")
+            canvas = FigureCanvasQTAgg(fig)
+            canvas.setMinimumHeight(220)
+            canvas.setMaximumHeight(360)
+            layout.addWidget(canvas, 1)
+        except Exception as e:
+            err = QtWidgets.QLabel(_tr("No se pudo renderizar el balance total: {error}").format(error=e))
+            mark_translated(err)
+            err.setWordWrap(True)
+            layout.addWidget(err)
+
+    _MODEL_HEADERS_V2 = ["Modelo", "D [m]", "Altura de buje [m]", "Nº turbinas", "Potencia inst. [MW]", "AEP bruto [MWh]",
+                         "AEP neto [MWh]", "Pérd. estelas L_W [MWh]", "Impacto turb. Δ_T [MWh]",
+                         "Impacto bloqueo Δ_B [MWh]", "Pérd. total [MWh]", "FC neto [%]", "AEP/MW [MWh/MW·año]",
+                         "Pérd. estelas L_W [%]"]
+
+    def _populate_models_v2(self) -> None:
+        r = self.results or {}
+        per_model = r.get("per_model_breakdown") or {}
+        counts = r.get("per_model_n_turbines") or {}
+        p_inst = r.get("per_model_p_inst_MW") or {}
+        geoms = r.get("per_model_geom") or {}
+        self.table_models.setColumnCount(len(self._MODEL_HEADERS_V2))
+        self.table_models.setHorizontalHeaderLabels([_tr(h) for h in self._MODEL_HEADERS_V2])
+        self.table_models.setRowCount(len(per_model))
+        hours = float(r.get("hours_per_year") or self.HOURS_YEAR)
+        for row, (model, e) in enumerate(per_model.items()):
+            geom = geoms.get(model, {}) or {}
+            net = e["A_WTB"]["mwh"]
+            mw = float(p_inst.get(model, 0.0) or 0.0)
+            values = [
+                model,
+                _fmt_len(geom.get("D")) if geom.get("D") not in (None, "") else "-",
+                _fmt_len(geom.get("HH")) if geom.get("HH") not in (None, "") else "-",
+                format_number(int(counts.get(model, 0) or 0), ",d"),
+                _fmt_mw(mw) if mw > 0 else "",
+                _term_cell(e["A_0"], signed=False), _term_cell(e["A_WTB"], signed=False),
+                _term_cell(e["L_W"]), _term_cell(e["D_T"]), _term_cell(e["D_B"]), _term_cell(e["L_total"]),
+                _fmt_pct(100.0 * net / (mw * hours)) if mw > 0 and net is not None else "-",
+                _fmt_mwh(net / mw) if mw > 0 and net is not None else "-",
+                _fmt_signed_pct(e["L_W"]["pct"]) if e["L_W"]["pct"] is not None else _tr("n/d"),
+            ]
+            for col, val in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(str(val))
+                if col > 0:
+                    item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                else:
+                    self._name_items.append((item, str(val)))
+                self.table_models.setItem(row, col, item)
+        self.table_models.resizeRowsToContents()
+
+    _TURBINE_HEADERS_V2 = ["ID", "Modelo", "X", "Y", "P_nom [MW]", "AEP neto [MWh]", "AEP bruto [MWh]",
+                           "Pérd. estelas L_W [MWh]", "Impacto turb. Δ_T [MWh]", "Impacto bloqueo Δ_B [MWh]",
+                           "Pérd. total [MWh]", "TI ambiente", "TI efectiva", "FC neto [%]"]
+
+    def _populate_turbines_v2(self) -> None:
+        r = self.results or {}
+        rows = r.get("per_turbine_table", []) or []
+        self.table_turbines.setColumnCount(len(self._TURBINE_HEADERS_V2))
+        self.table_turbines.setHorizontalHeaderLabels([_tr(h) for h in self._TURBINE_HEADERS_V2])
+        # Each TI says how it is aggregated (decision 21), as this result recorded it.
+        for key, header in (("ti_ambient", "TI ambiente"), ("ti_effective", "TI efectiva")):
+            aggregation = (r.get("ti_aggregation") or {}).get(key)
+            item = self.table_turbines.horizontalHeaderItem(self._TURBINE_HEADERS_V2.index(header))
+            if item is not None and aggregation:
+                item.setToolTip(_tr(aggregation))
+        self.table_turbines.setRowCount(len(rows))
+        hours = float(r.get("hours_per_year") or self.HOURS_YEAR)
+
+        def cell(v, signed=True):
+            return _tr("n/d") if v is None else (_fmt_signed_mwh if signed else _fmt_mwh)(v)
+
+        for row, rec in enumerate(rows):
+            p_nom = float(rec.get("p_nom_mw") or 0.0)
+            net = rec.get("aep_mwh")
+            vals = [
+                str(rec.get("id", row + 1)), str(rec.get("model") or ""),
+                format_number(float(rec['x']), ',.2f'), format_number(float(rec['y']), ',.2f'),
+                _fmt_mw(p_nom) if p_nom > 0 else "",
+                cell(net, signed=False), cell(rec.get("aep_free_mwh"), signed=False),
+                cell(rec.get("l_wake_mwh")), cell(rec.get("d_turb_mwh")), cell(rec.get("d_blk_mwh")),
+                cell(rec.get("l_total_mwh")),
+                format_number(rec['ti_ambient'], '.4f') if rec.get("ti_ambient") is not None else _tr("n/d"),
+                format_number(rec['ti_effective'], '.4f') if rec.get("ti_effective") is not None else _tr("n/d"),
+                _fmt_pct(100.0 * net / (p_nom * hours)) if p_nom > 0 and net is not None else "-",
+            ]
+            for col, val in enumerate(vals):
+                item = QtWidgets.QTableWidgetItem(str(val))
+                if col >= 2:
+                    item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                elif col == 1:
+                    self._name_items.append((item, str(val)))
+                self.table_turbines.setItem(row, col, item)
+        self.table_turbines.resizeRowsToContents()
+
+    def _populate_report_v2(self) -> None:
+        r = self.results or {}
+        b = r.get("breakdown") or {}
+
+        def t(text):
+            # A text translated here, kept from the second translation of the report (_localized_report_html).
+            return _slot(self._user_texts, text)
+        rows = [("AEP bruto (A_0, sin estelas ni bloqueo)", b["A_0"], False),
+                ("AEP neto (configuración calculada)", b["A_WTB"], False),
+                ("Pérdida por estelas (L_W = A_0 − A_W)", b["L_W"], True),
+                ("Impacto de la turbulencia añadida (Δ_T = A_WT − A_W)", b["D_T"], True),
+                ("Impacto del bloqueo (Δ_B = A_WTB − A_WT)", b["D_B"], True),
+                ("Pérdida total (L_total = A_0 − A_WTB = L_W − Δ_T − Δ_B)", b["L_total"], True)]
+        table = "".join(
+            f"<tr><td><b>{t(_tr(label))}</b></td><td align='right'>{t(_term_text(e, s))}</td></tr>"
+            for label, e, s in rows)
+        interaction = ""
+        if b.get("I_TB", {}).get("state") != _bd.NOT_MODELLED:
+            interaction = (f"<p><small>{t(_tr('Interacción turbulencia-bloqueo (diagnóstico, fuera del balance):'))} "
+                           f"{t(_term_text(b['I_TB']))}</small></p>")
+        sign_note = _tr("Con signo: una pérdida (L) positiva resta producción; un impacto (Δ) positivo la suma. "
+                        "Los porcentajes son sobre el AEP bruto. Un término no disponible no se cuenta como cero.")
+        # Translated already (the errors of PyWake and of the physics): kept from the second pass of the report.
+        errors = "".join(_slot_html(self._user_texts,
+                                    f"<li>{html_mod.escape(term)}: {html_mod.escape(str(shown(e.get('error'), _tr)))}</li>")
+                         for term, e in b.items() if isinstance(e, dict) and e.get("error"))
+        errors_html = f"<h4>{t(_tr('Variantes que no se pudieron calcular'))}</h4><ul>{errors}</ul>" if errors else ""
+        models = ""
+        per_model = r.get("per_model_breakdown") or {}
+        if len(per_model) > 1:
+            items = "".join(
+                f"<li><b>{_slot(self._user_texts, m)}</b>: {t(_tr('AEP neto'))} {_fmt_mwh(e['A_WTB']['mwh'])} MWh · "
+                f"L_W {t(_term_text(e['L_W']))} · Δ_T {t(_term_text(e['D_T']))} · "
+                f"Δ_B {t(_term_text(e['D_B']))} · {t(_tr('Pérdida total'))} "
+                f"{t(_term_text(e['L_total']))}</li>" for m, e in per_model.items())
+            models = f"<h4>{t(_tr('Por modelo de aerogenerador'))}</h4><ul>{items}</ul>"
+        notes = "".join(f"<li>{_note_html(self._user_texts, n)}</li>" for n in (r.get("simulation_notes") or []) if str(n).strip())
+        notes_html = f"<h4>{t(_tr('Notas físicas y de compatibilidad'))}</h4><ul>{notes}</ul>" if notes else ""
+        coverage_banner = self._COVERAGE_PLACEHOLDER if int(r.get("skipped_outside_grid") or 0) > 0 else ""
+        report_body = f"""
+        {self._report_header_html()}
+        <div style="border-left:4px solid #24584d; padding-left:10px; margin-bottom:10px;">
+          <h3 style="margin-bottom:4px;">{t(_tr('Resumen AEP del parque'))}</h3>
+          <div style="color:#6b7d78; font-size:11px;">{t(_tr('Informe técnico generado desde el módulo Energía de Velantis Wind.'))}</div>
+        </div>
+        {coverage_banner}
+        {_slot_html(self._user_texts, model_config_html(r, _tr))}
+        <h4>{t(_tr('Desglose de pérdidas'))}</h4>
+        <table width="100%" cellspacing="0" cellpadding="6" style="border-collapse:collapse; margin:8px 0 12px 0;">{table}</table>
+        <p><small>{t(sign_note)}</small></p>
+        {interaction}
+        {errors_html}
+        {models}
+        {notes_html}
+        """
+        self._last_report_html_raw = report_body
+        self._last_report_html = self._insert_coverage_banner(_fill_slots(self._user_texts, _localized_report_html(report_body)))
         self.txt_report.setHtml(self._last_report_html)
 
 
@@ -1627,7 +2140,7 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
                 self.resize(w, h)
                 self.setMinimumSize(min_w, min_h)
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self.resize(default_w, default_h)
         self.setMinimumSize(640, 420)
@@ -1650,7 +2163,8 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         self.result_b = result_b or {}
         self.label_a = label_a or "Escenario A"
         self.label_b = label_b or "Escenario B"
-        self.setWindowTitle("Comparador de escenarios AEP")
+        self._user_texts: List[str] = []
+        self.setWindowTitle(_tr("Comparador de escenarios AEP"))
         icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
@@ -1658,7 +2172,27 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         self.setSizeGripEnabled(True)
         self._init_ui()
 
+    def _summary_v2(self, r: Dict[str, Any]) -> Dict[str, Optional[float]]:
+        """The compared values of a schema-2 result: a term that is not available is ``None``, never zero."""
+        b = r.get("breakdown") or {}
+        net = float(r.get("aep_wake_MWh") or 0.0)
+        p_inst = 0.0
+        try:
+            p_inst = float(sum(float(v or 0.0) for v in (r.get("per_model_p_inst_MW") or {}).values()))
+        except Exception:  # nosec B110
+            pass
+        hours = float(r.get("hours_per_year") or 8760.0)
+        return {
+            "aep_net": net, "aep_free": b.get("A_0", {}).get("mwh"), "loss_total": b.get("L_total", {}).get("mwh"),
+            "wake_loss": b.get("L_W", {}).get("mwh"), "ti_impact": b.get("D_T", {}).get("mwh"),
+            "blk_loss": b.get("D_B", {}).get("mwh"), "n_turb": float(len(r.get("per_turbine_table") or [])),
+            # A net AEP of zero has a capacity factor of zero (only its relative change is not available).
+            "p_inst": p_inst, "cf_net": 100.0 * net / (p_inst * hours) if p_inst > 0 and hours > 0 else None,
+        }
+
     def _summary(self, r: Dict[str, Any]) -> Dict[str, float]:
+        if result_schema(r) == 2:
+            return self._summary_v2(r)
         aep_free = float(r.get("aep_free_MWh", 0.0) or 0.0)
         aep_net = float(r.get("aep_wake_MWh", r.get("aep_op_MWh", r.get("aep_MWh", 0.0))) or 0.0)
         wake_loss = float(r.get("wake_loss_MWh", r.get("loss_wake_MWh", 0.0)) or 0.0)
@@ -1684,7 +2218,11 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
                 p_inst = 0.0
         if p_inst <= 0.0:
             p_inst = sum(_extract_rated_mw(rec) for rec in per_turb)
-        cf_net = 100.0 * aep_net / (p_inst * self.HOURS_YEAR) if p_inst > 0 and aep_net > 0 else 0.0
+        try:
+            hours_year = float(r.get("hours_per_year", 8760.0) or 8760.0)
+        except Exception:
+            hours_year = 8760.0
+        cf_net = 100.0 * aep_net / (p_inst * hours_year) if p_inst > 0 and aep_net > 0 else 0.0
         return {
             "aep_free": aep_free,
             "aep_net": aep_net,
@@ -1700,11 +2238,35 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
     def _init_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
         intro = QtWidgets.QLabel(
-            f"<b>{html_mod.escape(self.label_a)}</b> frente a <b>{html_mod.escape(self.label_b)}</b>. "
-            "El delta se calcula como B − A."
+            _tr("<b>{a}</b> frente a <b>{b}</b>. El delta se calcula como B − A.").format(
+                a=html_mod.escape(self.label_a), b=html_mod.escape(self.label_b)
+            )
         )
         intro.setWordWrap(True)
         layout.addWidget(intro)
+        old = [slot for slot, r in (("A", self.result_a), ("B", self.result_b)) if result_schema(r) != 2]
+        if old:
+            schema_note = QtWidgets.QLabel(_tr("{slot}: {text}").format(slot=", ".join(old), text=_tr(SCHEMA_1_NOTE)), self)
+            schema_note.setWordWrap(True)
+            schema_note.setStyleSheet("background:#eef1f5; color:#33414f; border:1px solid #b9c4d0; padding:8px;")
+            layout.addWidget(schema_note)
+
+        # A partial scenario was calculated with fewer turbines: its deltas compare different farms.
+        coverage = []
+        for slot, r in (("A", self.result_a), ("B", self.result_b)):
+            text = partial_aep_warning(r, _tr)
+            if text:
+                coverage.append(_tr("{slot}: {text}").format(slot=slot, text=text))
+        self.lbl_coverage_warning = None
+        if coverage:
+            self.lbl_coverage_warning = QtWidgets.QLabel("\n".join(coverage), self)
+            # Model names are user data: show the notice as text, never interpreted HTML.
+            self.lbl_coverage_warning.setTextFormat(QtCore.Qt.PlainText)
+            self.lbl_coverage_warning.setWordWrap(True)
+            self.lbl_coverage_warning.setStyleSheet(
+                "background:#fff3d9; color:#6a3900; border:1px solid #d8a34c; padding:10px;"
+            )
+            layout.addWidget(self.lbl_coverage_warning)
 
         tabs = QtWidgets.QTabWidget(self)
         tabs.setMinimumWidth(0)
@@ -1717,7 +2279,7 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         vg.setSpacing(8)
         tbl = QtWidgets.QTableWidget(tab_global)
         tbl.setColumnCount(5)
-        tbl.setHorizontalHeaderLabels(["Métrica", "A", "B", "Δ B−A", "Δ %"])
+        tbl.setHorizontalHeaderLabels([_tr("Métrica"), "A", "B", "Δ B−A", "Δ %"])
         tbl.setMinimumWidth(0)
         tbl.setWordWrap(False)
         tbl.setTextElideMode(QtCore.Qt.ElideRight)
@@ -1728,7 +2290,7 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         vg.addWidget(tbl, 1)
         self._fill_global_table(tbl)
         self._add_global_chart(vg)
-        tabs.addTab(tab_global_scroll, "Resumen delta")
+        tabs.addTab(tab_global_scroll, _tr("Resumen delta"))
 
         tab_models_scroll, tab_models = self._make_scroll_tab()
         vm = QtWidgets.QVBoxLayout(tab_models)
@@ -1736,7 +2298,9 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         vm.setSpacing(8)
         tblm = QtWidgets.QTableWidget(tab_models)
         tblm.setColumnCount(6)
-        tblm.setHorizontalHeaderLabels(["Modelo", "AEP neto A [MWh]", "AEP neto B [MWh]", "Δ MWh", "Δ %", "Nº turb. A/B"])
+        tblm.setHorizontalHeaderLabels(
+            [_tr("Modelo"), _tr("AEP neto A [MWh]"), _tr("AEP neto B [MWh]"), "Δ MWh", "Δ %", _tr("Nº turb. A/B")]
+        )
         tblm.setMinimumWidth(0)
         tblm.setWordWrap(False)
         tblm.setTextElideMode(QtCore.Qt.ElideRight)
@@ -1746,17 +2310,20 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         tblm.horizontalHeader().setMinimumSectionSize(80)
         vm.addWidget(tblm, 1)
         self._fill_models_table(tblm)
-        tabs.addTab(tab_models_scroll, "Por modelo")
+        tabs.addTab(tab_models_scroll, _tr("Por modelo"))
 
         tab_cfg_scroll, tab_cfg = self._make_scroll_tab()
         vc = QtWidgets.QVBoxLayout(tab_cfg)
         vc.setContentsMargins(8, 8, 8, 8)
         txt = QtWidgets.QTextBrowser(tab_cfg)
-        txt.setHtml(translate_html(self._config_html()))
+        txt.setOpenExternalLinks(True)
+        txt.setHtml(_fill_slots(self._user_texts, translate_html(self._config_html())))
         vc.addWidget(txt, 1)
-        tabs.addTab(tab_cfg_scroll, "Configuración")
+        tabs.addTab(tab_cfg_scroll, _tr("Configuración"))
 
         btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, QtCore.Qt.Horizontal, self)
+        # A standard button follows the language of QGIS, not that of the plugin.
+        btns.button(QtWidgets.QDialogButtonBox.Close).setText(_tr("Cerrar"))
         btns.rejected.connect(self.reject)
         btns.accepted.connect(self.accept)
         layout.addWidget(btns)
@@ -1764,24 +2331,57 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
     def _fill_global_table(self, tbl: QtWidgets.QTableWidget) -> None:
         a = self._summary(self.result_a)
         b = self._summary(self.result_b)
-        rows = [
-            ("AEP neto", "aep_net", "mwh"),
-            ("AEP bruto", "aep_free", "mwh"),
-            ("Pérdidas totales", "loss_total", "mwh"),
-            ("Pérdidas por estela", "wake_loss", "mwh"),
-            ("Impacto TI/turbulencia", "ti_impact", "signed_mwh"),
-            ("Pérdidas por bloqueo", "blk_loss", "mwh"),
-            ("Nº aerogeneradores", "n_turb", "num"),
-            ("Potencia instalada", "p_inst", "mw"),
-            ("Factor de capacidad neto", "cf_net", "pct"),
-        ]
+        schemas = {result_schema(self.result_a), result_schema(self.result_b)}
+        if 2 in schemas:
+            rows = [
+                ("AEP neto", "aep_net", "mwh"),
+                ("AEP bruto", "aep_free", "mwh"),
+                ("Pérdida total", "loss_total", "signed_mwh"),
+                ("Pérdida por estelas (L_W)", "wake_loss", "signed_mwh"),
+                ("Impacto de la turbulencia añadida (Δ_T)", "ti_impact", "signed_mwh"),
+                ("Impacto del bloqueo (Δ_B)", "blk_loss", "signed_mwh"),
+                ("Nº aerogeneradores", "n_turb", "num"),
+                ("Potencia instalada", "p_inst", "mw"),
+                ("Factor de capacidad neto", "cf_net", "pct"),
+            ]
+        else:
+            rows = [
+                ("AEP neto", "aep_net", "mwh"),
+                ("AEP bruto", "aep_free", "mwh"),
+                ("Pérdidas totales", "loss_total", "mwh"),
+                ("Pérdidas por estela", "wake_loss", "mwh"),
+                ("Impacto TI/turbulencia", "ti_impact", "signed_mwh"),
+                ("Pérdidas por bloqueo", "blk_loss", "mwh"),
+                ("Nº aerogeneradores", "n_turb", "num"),
+                ("Potencia instalada", "p_inst", "mw"),
+                ("Factor de capacidad neto", "cf_net", "pct"),
+            ]
+        # Two schemas define the loss terms differently: only what means the same is compared.
+        comparable = {"aep_net", "aep_free", "n_turb", "p_inst", "cf_net"}
         tbl.setRowCount(len(rows))
         for i, (label, key, kind) in enumerate(rows):
-            va = float(a.get(key, 0.0) or 0.0)
-            vb = float(b.get(key, 0.0) or 0.0)
+            raw_a, raw_b = a.get(key), b.get(key)
+            if len(schemas) > 1 and key not in comparable:
+                raw_a = raw_b = None
+            if 2 in schemas and (raw_a is None or raw_b is None):
+                # Not available is not zero: no delta and no -100 % (#75, row 4.13).
+                missing = _tr("n/d")
+                vals = [_tr(label), self._fmt_value(raw_a, kind) if raw_a is not None else missing,
+                        self._fmt_value(raw_b, kind) if raw_b is not None else missing, missing, missing]
+                for c, val in enumerate(vals):
+                    it = QtWidgets.QTableWidgetItem(str(val))
+                    if c > 0:
+                        it.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                    tbl.setItem(i, c, it)
+                continue
+            va = float(raw_a or 0.0)
+            vb = float(raw_b or 0.0)
             d = vb - va
             dp = (100.0 * d / va) if abs(va) > 1e-12 else 0.0
-            vals = [label, self._fmt_value(va, kind), self._fmt_value(vb, kind), self._fmt_value(d, "signed_mwh" if kind in ("mwh", "signed_mwh") else kind, signed=True), _fmt_signed_pct(dp)]
+            if non_finite_label(va) or non_finite_label(vb):  # #63: never «0.0 %» with a value that is not finite
+                dp = float("nan")
+            pct_text = _fmt_signed_pct(dp) if (abs(va) > 1e-12 or 2 not in schemas or non_finite_label(dp)) else _tr("n/d")
+            vals = [_tr(label), self._fmt_value(va, kind), self._fmt_value(vb, kind), self._fmt_value(d, "signed_mwh" if kind in ("mwh", "signed_mwh") else kind, signed=True), pct_text]
             for c, val in enumerate(vals):
                 it = QtWidgets.QTableWidgetItem(str(val))
                 if c > 0:
@@ -1795,11 +2395,13 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         if kind == "signed_mwh":
             return _fmt_signed_mwh(v) + " MWh"
         if kind == "mw":
-            return (_fmt_signed_mwh(v) if signed else _fmt_mw(v)) + " MW"
+            if signed:
+                return (non_finite_label(v) or (("+" if v > 0 else "") + format_number(v, ",.3f"))) + " MW"
+            return _fmt_mw(v) + " MW"
         if kind == "pct":
             return _fmt_signed_pct(v) if signed else _fmt_pct(v)
         if kind == "num":
-            return f"{v:+.0f}" if signed else f"{v:.0f}"
+            return format_number(v, "+,.0f" if signed else ",.0f")
         return str(v)
 
     def _add_global_chart(self, layout: QtWidgets.QVBoxLayout) -> None:
@@ -1808,7 +2410,7 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
             try:
                 if not matplotlib.get_backend().lower().startswith(("qt", "module://")):
                     matplotlib.use("QtAgg", force=True)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -1817,13 +2419,18 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         try:
             a = self._summary(self.result_a)
             b = self._summary(self.result_b)
+            # Only the metrics both scenarios have, with the same meaning: a missing one is not drawn as zero.
+            same = result_schema(self.result_a) == result_schema(self.result_b)
+            metrics = [(k, n) for k, n in (("aep_net", _tr("AEP neto")), ("loss_total", _tr("Pérd. total")),
+                                           ("wake_loss", _tr("Pérdida por estelas")))
+                       if a.get(k) is not None and b.get(k) is not None and (same or k == "aep_net")]
             fig = plt.Figure(figsize=(7.2, 2.4), tight_layout=True)
             ax = fig.add_subplot(1, 1, 1)
-            labels = [_tr("AEP neto"), _tr("Pérd. total"), _tr("Wake")]
-            ax.bar([0, 1, 2], [a["aep_net"], a["loss_total"], a["wake_loss"]], width=0.35, label="A")
-            ax.bar([0.35, 1.35, 2.35], [b["aep_net"], b["loss_total"], b["wake_loss"]], width=0.35, label="B")
-            ax.set_xticks([0.175, 1.175, 2.175])
-            ax.set_xticklabels(labels)
+            xs = list(range(len(metrics)))
+            ax.bar(xs, [a[k] for k, _n in metrics], width=0.35, label="A")
+            ax.bar([x + 0.35 for x in xs], [b[k] for k, _n in metrics], width=0.35, label="B")
+            ax.set_xticks([x + 0.175 for x in xs])
+            ax.set_xticklabels([n for _k, n in metrics])
             ax.set_ylabel(_tr("MWh/año"))
             ax.set_title(_tr("Comparación global"))
             ax.grid(True, axis="y", alpha=0.25, linestyle=":")
@@ -1848,7 +2455,9 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
             vb = float(pb.get(m, 0.0) or 0.0)
             d = vb - va
             dp = (100.0 * d / va) if abs(va) > 1e-12 else 0.0
-            vals = [m, _fmt_mwh(va), _fmt_mwh(vb), _fmt_signed_mwh(d), _fmt_signed_pct(dp), f"{int(na.get(m,0) or 0)}/{int(nb.get(m,0) or 0)}"]
+            if non_finite_label(va) or non_finite_label(vb):  # #63: never «0.0 %» with a value that is not finite
+                dp = float("nan")
+            vals = [m, _fmt_mwh(va), _fmt_mwh(vb), _fmt_signed_mwh(d), _fmt_signed_pct(dp), f"{format_number(int(na.get(m,0) or 0), ',d')}/{format_number(int(nb.get(m,0) or 0), ',d')}"]
             for c, val in enumerate(vals):
                 it = QtWidgets.QTableWidgetItem(str(val))
                 if c > 0:
@@ -1857,14 +2466,40 @@ class ScenarioComparisonDialog(QtWidgets.QDialog):
         tbl.resizeRowsToContents()
 
     def _config_html(self) -> str:
+        colon = " :" if str(current_language()).lower().startswith("fr") else ":"
+
         def block(title: str, r: Dict[str, Any]) -> str:
-            cfg = r.get("selection_executed", {}) or r.get("selection_requested", {}) or r.get("selection_user", {}) or {}
             rows = []
-            for k in ("engine", "wake_deficit", "turbulence", "blockage", "rotor_avg", "superposition"):
-                if k in cfg:
-                    rows.append(f"<li><b>{html_mod.escape(k)}:</b> {html_mod.escape(str(cfg.get(k)))}</li>")
+            if r.get("wake_config"):
+                # Schema 2: what was executed at the eight positions, the ground included (#75, row 6.5), with its
+                # arguments and nodes (row 6.6); where it is not the user's selection, both; and its warnings.
+                wc = r["wake_config"]
+                selected, executed = wc.get("selected") or {}, wc.get("executed") or {}
+                differing = {d.get("position") for d in wc.get("differences_vs_selection") or []}
+                if wc.get("provenance"):  # a predefined model: its name first
+                    rows.append("<li>" + html_mod.escape(str(shown(wc.get("identification") or "", _tr))) + "</li>")
+                for position, label in POSITIONS_V2:
+                    text = _component_text(executed.get(position), _tr)
+                    if position in differing:
+                        text = f"{_component_text(selected.get(position), _tr)} → {text} ⚠"
+                    rows.append(f"<li><b>{html_mod.escape(_tr(label))}{colon}</b> {html_mod.escape(text)}</li>")
+                if differing:
+                    rows.append("<li>" + html_mod.escape(_tr("⚠: lo ejecutado difiere de la selección del usuario.")) + "</li>")
+                for warning in result_warnings(r):
+                    rows.append("<li>⚠ " + linked(shown(warning, _tr)) + "</li>")
+                # Translated already: kept from the second translation of the comparator's HTML.
+                rows = [_slot_html(self._user_texts, "".join(rows))]
+            cfg = r.get("selection_executed", {}) or r.get("selection_requested", {}) or r.get("selection_user", {}) or {}
+            # Schema 1: each position by its label, as the report names it.
+            selection = "".join(f"<li><b>{html_mod.escape(_tr(label))}{colon}</b> {html_mod.escape(str(cfg.get(k)))}</li>"
+                                for k, label in POSITIONS_V1 if k in cfg)
+            if selection:
+                rows.append(_slot_html(self._user_texts, selection))
             notes = r.get("simulation_notes", []) or []
             if notes:
-                rows.append("<li><b>Notas:</b><ul>" + "".join(f"<li>{html_mod.escape(str(n))}</li>" for n in notes) + "</ul></li>")
-            return f"<h3>{html_mod.escape(title)}</h3><ul>{''.join(rows) or '<li>Sin configuración registrada</li>'}</ul>"
+                rows.append(f"<li><b>{_slot(self._user_texts, _tr('Notas:'))}</b><ul>"
+                            + "".join(f"<li>{_note_html(self._user_texts, n)}</li>" for n in notes) + "</ul></li>")
+            empty = f"<li>{_slot(self._user_texts, _tr('Sin configuración registrada'))}</li>"
+            return f"<h3>{_slot(self._user_texts, title)}</h3><ul>{''.join(rows) or empty}</ul>"
         return block(self.label_a, self.result_a) + block(self.label_b, self.result_b)
+

@@ -71,15 +71,15 @@ class SpacingSpec:
         out = cls()
         try:
             out.long_d = max(0.1, float(d.get("long_d", out.long_d)))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             out.trans_d = max(0.1, float(d.get("trans_d", out.trans_d)))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             out.angle_deg = normalize_azimuth(float(d.get("angle_deg", out.angle_deg)))
-        except Exception:
+        except Exception:  # nosec B110
             pass
         mode = str(d.get("mode", out.mode) or out.mode)
         if mode in (MODE_AUTO, MODE_MANUAL_ANGLE, MODE_MANUAL_SCREEN):
@@ -181,7 +181,7 @@ def evaluate_conflicts(
             # QGIS < 3.30 API antigua
             try:
                 index.insertFeature(f)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     # Radio característico por envolvente (semieje mayor aprox. desde bbox)
@@ -213,7 +213,7 @@ def evaluate_conflicts(
                     d = g.distance(og)
                     if 0.0 <= d < near_tol:
                         status[fid] = STATUS_NEAR
-            except Exception:
+            except Exception:  # nosec B112
                 continue
     return status
 

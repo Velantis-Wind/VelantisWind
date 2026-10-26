@@ -9,6 +9,8 @@ from qgis.PyQt import QtWidgets, QtCore
 from qgis.core import Qgis
 from qgis.utils import iface
 
+from .translation import tr
+
 
 def qgis_level_from_severity(severity: str) -> Any:
     severity_norm = str(severity or "info").lower()
@@ -30,7 +32,7 @@ def show_message_bar(title: str, message: str, level: Any = None, duration: int 
             level=level if level is not None else Qgis.Info,
             duration=int(duration),
         )
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -43,8 +45,8 @@ def show_user_critical(parent: Any, title: str, message: str) -> None:
 
 
 def create_progress_dialog(parent: Any, title: str = "Calculando AEP", label: str = "Inicializando cálculo…") -> Any:
-    progress_dlg = QtWidgets.QProgressDialog(str(label), "Cancelar", 0, 100, parent)
-    progress_dlg.setWindowTitle(str(title))
+    progress_dlg = QtWidgets.QProgressDialog(tr(str(label)), tr("Cancelar"), 0, 100, parent)
+    progress_dlg.setWindowTitle(tr(str(title)))
     progress_dlg.setWindowModality(QtCore.Qt.WindowModal)
     progress_dlg.setMinimumDuration(0)
     progress_dlg.setAutoClose(True)
@@ -53,7 +55,7 @@ def create_progress_dialog(parent: Any, title: str = "Calculando AEP", label: st
         # Cancel real requeriría ejecución en thread/task. Se oculta para no dar
         # una falsa sensación de cancelación mientras PyWake corre en primer plano.
         progress_dlg.setCancelButton(None)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     progress_dlg.setValue(0)
     progress_dlg.show()
@@ -67,7 +69,7 @@ def make_progress_callback(progress_dlg: Any) -> Callable[[int, str], None]:
             progress_dlg.setValue(int(value))
             progress_dlg.setLabelText(str(message))
             QtWidgets.QApplication.processEvents()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     return _on_progress
@@ -80,5 +82,5 @@ def close_progress_dialog(progress_dlg: Optional[Any], value: Optional[int] = No
         if value is not None:
             progress_dlg.setValue(int(value))
         progress_dlg.close()
-    except Exception:
+    except Exception:  # nosec B110
         pass

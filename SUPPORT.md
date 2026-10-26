@@ -78,7 +78,7 @@ Monthly sponsorship helps support the long-term maintenance and evolution of Vel
 | Professional Sponsor |  €25 / month | Name and optional link                                                                           |
 | Workflow Sponsor     | €100 / month | Small logo or organization mention                                                               |
 | Validation Sponsor   | €250 / month | Logo recognition and validation sponsor mention                                                  |
-| Technical Sponsor    | €500 / month | Featured logo recognition in GitHub, documentation, website or the plugin About/Sponsors section |
+| Partner Sponsor      | €500 / month | Featured logo recognition in GitHub, documentation, website or the plugin About/Sponsors section |
 
 Monthly sponsorship does not create ownership, exclusivity or control over the open-source roadmap.
 

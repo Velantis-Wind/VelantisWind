@@ -256,11 +256,17 @@ def get_sun_positions_vectorized(
             from .timezone_utils import get_tzinfo
             tz = get_tzinfo(timezone_name or "UTC")
         except Exception as e:
-            raise RuntimeError(
+            from .i18n_local import tr4 as _ml
+            raise RuntimeError(_ml(
                 f"No se pudo inicializar la zona horaria IANA '{timezone_name}'. "
-                "Instala tzdata en el Python de QGIS/OSGeo4W o usa modo UTC offset fijo. "
-                f"Detalle: {e}"
-            )
+                f"Instala tzdata en el Python de QGIS/OSGeo4W o usa el modo de desfase UTC fijo. Detalle: {e}",
+                f"Could not initialise the IANA time zone '{timezone_name}'. "
+                f"Install tzdata in the QGIS/OSGeo4W Python or use the fixed UTC offset mode. Detail: {e}",
+                f"Impossible d’initialiser le fuseau horaire IANA '{timezone_name}'. "
+                f"Installez tzdata dans le Python de QGIS/OSGeo4W ou utilisez le mode à décalage UTC fixe. Détail : {e}",
+                f"Die IANA-Zeitzone '{timezone_name}' konnte nicht initialisiert werden. "
+                f"Installieren Sie tzdata im Python von QGIS/OSGeo4W oder verwenden Sie den festen UTC-Offset-Modus. Detail: {e}",
+            ))
 
         # Iterate in UTC to avoid nonexistent/duplicated local civil times at DST transitions.
         start_local = datetime(year, 1, 1, 0, 0, tzinfo=tz)

@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProject, QgsRasterLayer, QgsVectorLayer
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProject, QgsRasterLayer, QgsVectorLayer
+from ...crs_utils import memory_layer_with_crs
+from ...i18n import tr_text
 
 from ..noise_common import NoiseSource, NoiseReceiver
 from ..results.evaluator import build_receiver_output_fields
@@ -56,7 +58,7 @@ def _source_objects(snapshot: Dict[str, Any]) -> List[NoiseSource]:
                 lw_octave={int(k): float(v) for k, v in ((src.get("lw_octave") or {}).items())},
                 spectrum_source=str(src.get("spectrum_source") or ""),
             ))
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return out
 
@@ -79,7 +81,7 @@ def _receiver_objects(snapshot: Dict[str, Any]) -> List[NoiseReceiver]:
                 attrs=list(rec.get("attrs") or []),
                 meta=dict(rec.get("meta") or {}),
             ))
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return out
 
@@ -95,14 +97,14 @@ def _add_grid_layer_from_diag(prj: QgsProject, diag: Dict[str, Any], layer_name:
     if lyr.isValid():
         try:
             lyr.setCustomProperty("velantis/noise_output", True)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             min_val = float(diag.get("grid_min_noise", 0.0))
             max_val = float(diag.get("grid_max_noise", 0.0))
             if max_val > min_val:
                 _apply_raster_heatmap_style(lyr, min_val, max_val)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         prj.addMapLayer(lyr)
         grid_layer = lyr
@@ -111,13 +113,13 @@ def _add_grid_layer_from_diag(prj: QgsProject, diag: Dict[str, Any], layer_name:
             if iface is not None:
                 try:
                     iface.layerTreeView().refreshLayerSymbology(lyr.id())
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 try:
                     iface.mapCanvas().refreshAllLayers()
                 except Exception:
                     iface.mapCanvas().refresh()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         if create_iso:
             iso_layer = _build_isophones_layer_from_raster(prj, raster_path, iso_levels or [35.0, 40.0, 45.0, 50.0], iso_layer_name)
@@ -221,13 +223,22 @@ def apply_noise_task_result(snapshot: Dict[str, Any], task_result: Dict[str, Any
         names_to_remove.append(grid_layer_name)
     if bool(params.get("create_iso_layer", False)):
         names_to_remove.append(iso_layer_name)
-    _remove_existing_layers_by_name(prj, names_to_remove)
-
     input_fields = _input_fields_from_specs(snapshot.get("field_specs") or [])
     out_fields = build_receiver_output_fields(input_fields)
     geom_type = str(snapshot.get("geometry_type") or "Point")
-    crs_authid = str(snapshot.get("crs_authid") or prj.crs().authid() or "EPSG:25830")
-    result = QgsVectorLayer(f"{geom_type}?crs={crs_authid}", result_layer_name, "memory")
+    snapshot_wkt = str(snapshot.get("crs_wkt") or "")
+    snapshot_authid = str(snapshot.get("crs_authid") or "")
+    if snapshot_wkt:
+        layer_crs = QgsCoordinateReferenceSystem.fromWkt(snapshot_wkt)
+    elif snapshot_authid:
+        layer_crs = QgsCoordinateReferenceSystem(snapshot_authid)
+    else:
+        layer_crs = prj.crs()
+    if not layer_crs.isValid():
+        raise ValueError(tr_text("El CRS del resultado acústico no es válido; no se asignará uno supuesto."))
+    result = memory_layer_with_crs(geom_type, result_layer_name, layer_crs)
+    # A refused CRS or failed memory-layer creation must keep previous outputs.
+    _remove_existing_layers_by_name(prj, names_to_remove)
     pr = result.dataProvider()
     pr.addAttributes(out_fields)
     result.updateFields()
@@ -253,12 +264,12 @@ def apply_noise_task_result(snapshot: Dict[str, Any], task_result: Dict[str, Any
                 attrs = attrs[:n_fields]
             feat.setAttributes(attrs)
             out_feats.append(feat)
-        except Exception:
+        except Exception:  # nosec B112
             continue
     pr.addFeatures(out_feats)
     try:
         result.setCustomProperty("velantis/noise_output", True)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     prj.addMapLayer(result)
     _set_field_aliases(result, {
@@ -270,9 +281,11 @@ def apply_noise_task_result(snapshot: Dict[str, Any], task_result: Dict[str, Any
     sources = _source_objects(snapshot)
     receivers = _receiver_objects(snapshot)
     src_stats = {int(k): v for k, v in (eval_res.get("src_stats") or {}).items()}
-    src_layer = _build_source_layer(prj, sources, src_stats, sources_layer_name) if bool(params.get("create_sources_layer", True)) else None
-    link_layer = _build_dominant_links_layer(prj, list(eval_res.get("dom_links") or []), links_layer_name) if bool(params.get("create_links_layer", True)) else None
-    uncovered_layer = _build_uncovered_receivers_layer(prj, receivers, list(eval_res.get("uncovered_ids") or []), uncovered_layer_name)
+    # Every layer of the calculation in the CRS it was calculated in (the snapshot's), already validated, never the
+    # CRS the project has when the task finishes.
+    src_layer = _build_source_layer(prj, sources, src_stats, sources_layer_name, crs=layer_crs) if bool(params.get("create_sources_layer", True)) else None
+    link_layer = _build_dominant_links_layer(prj, list(eval_res.get("dom_links") or []), links_layer_name, crs=layer_crs) if bool(params.get("create_links_layer", True)) else None
+    uncovered_layer = _build_uncovered_receivers_layer(prj, receivers, list(eval_res.get("uncovered_ids") or []), uncovered_layer_name, crs=layer_crs)
 
     grid_layer = None
     iso_layer = None
@@ -306,6 +319,7 @@ def apply_noise_task_result(snapshot: Dict[str, Any], task_result: Dict[str, Any
         link_layer=link_layer,
         grid_layer=grid_layer,
         iso_layer=iso_layer,
+        iso_requested=bool(params.get("create_iso_layer", False)),
         uncovered_layer=uncovered_layer,
         sources=sources,
         receivers=receivers,

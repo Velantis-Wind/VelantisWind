@@ -23,7 +23,7 @@ def _ground_g_from_attributes(feat, default_g: float) -> float:
                 gv = float(v)
                 if math.isfinite(gv):
                     return max(0.0, min(1.0, gv))
-        except Exception:
+        except Exception:  # nosec B110
             pass
     txt_names = ['uso_suelo', 'uso', 'clase', 'landuse', 'cover', 'type']
     txt = ''
@@ -33,7 +33,7 @@ def _ground_g_from_attributes(feat, default_g: float) -> float:
             if v is not None and str(v).strip():
                 txt = str(v).strip().lower()
                 break
-        except Exception:
+        except Exception:  # nosec B110
             pass
     if txt:
         if any(k in txt for k in ['urb', 'asfalt', 'roca', 'duro', 'edif', 'industrial']):
@@ -75,7 +75,7 @@ def _effective_ground_g(src: NoiseSource, rec: NoiseReceiver, landuse_layer: Opt
                 gv = _ground_g_from_attributes(feat, g0)
                 weighted += gv * ilen
                 used += ilen
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         if used > 0:
             return max(0.0, min(1.0, weighted / used))
@@ -86,7 +86,7 @@ def _effective_ground_g(src: NoiseSource, rec: NoiseReceiver, landuse_layer: Opt
                 geom = feat.geometry()
                 if geom and geom.contains(mid):
                     return _ground_g_from_attributes(feat, g0)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
     except Exception:
         return g0

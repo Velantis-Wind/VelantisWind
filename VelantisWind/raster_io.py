@@ -16,6 +16,11 @@ from typing import Any, Optional
 
 import numpy as np
 
+try:
+    from .ag_core.log_text import log_error
+except ImportError:  # imported on its own, outside the plugin package
+    from ag_core.log_text import log_error  # type: ignore
+
 
 def read_float64_pixel(
     band: Any,
@@ -35,10 +40,10 @@ def read_float64_pixel(
         buf_type=gdal_module.GDT_Float64,
     )
     if raw is None:
-        raise RuntimeError("GDAL returned no data while reading a raster cell.")
+        raise log_error(RuntimeError, "GDAL no devolvió datos al leer una celda del ráster.")
     values = np.frombuffer(raw, dtype=np.float64, count=1)
     if values.size != 1:
-        raise RuntimeError("GDAL returned an incomplete raster-cell buffer.")
+        raise log_error(RuntimeError, "GDAL devolvió un búfer incompleto al leer una celda del ráster.")
     return float(values[0])
 
 
@@ -53,7 +58,7 @@ def read_float64_band(
     width = int(width)
     height = int(height)
     if width <= 0 or height <= 0:
-        raise ValueError("The raster band must contain at least one cell.")
+        raise log_error(ValueError, "La banda del ráster debe tener al menos una celda.")
     raw = band.ReadRaster(
         0,
         0,
@@ -64,10 +69,10 @@ def read_float64_band(
         buf_type=gdal_module.GDT_Float64,
     )
     if raw is None:
-        raise RuntimeError("GDAL returned no data while reading the raster band.")
+        raise log_error(RuntimeError, "GDAL no devolvió datos al leer la banda del ráster.")
     values = np.frombuffer(raw, dtype=np.float64, count=width * height)
     if values.size != width * height:
-        raise RuntimeError("GDAL returned an incomplete raster-band buffer.")
+        raise log_error(RuntimeError, "GDAL devolvió un búfer incompleto al leer la banda del ráster.")
     return values.reshape((height, width))
 
 
@@ -86,14 +91,15 @@ def write_float32_band(
     """
     data = np.asarray(array, dtype=np.float32)
     if data.ndim != 2:
-        raise ValueError(f"A 2-D raster array is required; received shape {data.shape!r}.")
+        raise log_error(ValueError, "Se necesita una matriz ráster 2-D; se ha recibido la forma {shape}.",
+                        shape=repr(data.shape))
     if flip_vertical:
         data = np.flipud(data)
     data = np.ascontiguousarray(data, dtype=np.float32)
 
     height, width = (int(data.shape[0]), int(data.shape[1]))
     if width <= 0 or height <= 0:
-        raise ValueError("The raster array must contain at least one cell.")
+        raise log_error(ValueError, "La matriz ráster debe tener al menos una celda.")
 
     result = band.WriteRaster(
         0,
@@ -106,7 +112,7 @@ def write_float32_band(
         buf_type=gdal_module.GDT_Float32,
     )
     if result not in (None, 0):
-        raise RuntimeError(f"GDAL WriteRaster failed with error code {result}.")
+        raise log_error(RuntimeError, "GDAL WriteRaster falló con el código de error {code}.", code=result)
     if nodata is not None:
         band.SetNoDataValue(float(nodata))
     return 0 if result is None else int(result)

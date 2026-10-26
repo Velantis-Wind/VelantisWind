@@ -5,7 +5,6 @@
                                  A QGIS plugin
  Wind farm pre-assessment: Energy/AEP, Noise and Shadow Flicker
                               -------------------
-        version              : 0.1.16
         copyright            : (C) 2026 by VelantisWind contributors
         email                : info@velantiswind.com
  ***************************************************************************/
@@ -34,6 +33,8 @@ from .resources import *
 from .aep_setup_dialog import AEPSetupDialog
 from .hub_dialog import VelantisHubDialog
 from .i18n import install_runtime_i18n_patches, tr_text as _tr
+
+_STATUS_TIP = 'Abrir el hub principal de Velantis Wind'
 
 
 class VelantisWindPlugin:
@@ -173,12 +174,16 @@ class VelantisWindPlugin:
             icon_path,
             text=_tr('Velantis Wind'),
             callback=self.run,
-            status_tip=_tr('Abrir el hub principal de Velantis Wind'),
+            status_tip=_tr(_STATUS_TIP),
             parent=self.iface.mainWindow(),
         )
 
         # will be set False in run()
         self.first_start = True
+
+    def _retranslate_actions(self):
+        for action in self.actions:
+            action.setStatusTip(_tr(_STATUS_TIP))
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -206,33 +211,38 @@ class VelantisWindPlugin:
                 energy_dialog_factory=lambda parent=None: AEPSetupDialog(parent=parent or self.iface.mainWindow()),
                 iface=self.iface
             )
+            # The action lives outside the hub: its status tip follows the language chosen there.
+            self.dlg.languageChanged.connect(self._retranslate_actions)
             # Apply the plugin icon here as well for environments that ignore dialog defaults.
             try:
                 self.dlg.setWindowIcon(QIcon(os.path.join(self.plugin_dir, 'icon.png')))
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         # If the Energy module is already open from the hub, focus it instead of duplicating it.
         try:
             child = getattr(self.dlg, '_energy_dialog', None)
             if child is not None and child.isVisible():
+                # A minimized window is still visible: bring it back, keeping it maximized if it was.
+                child.setWindowState(child.windowState() & ~QtCore.Qt.WindowMinimized)
                 child.show()
                 child.raise_()
                 child.activateWindow()
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         # Keep the hub non-modal so map tools and interactive layout editing can continue working.
         try:
             self.dlg.setModal(False)
             self.dlg.setWindowModality(QtCore.Qt.NonModal)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
+        self.dlg.setWindowState(self.dlg.windowState() & ~QtCore.Qt.WindowMinimized)
         self.dlg.show()
         try:
             self.dlg.raise_()
             self.dlg.activateWindow()
-        except Exception:
+        except Exception:  # nosec B110
             pass

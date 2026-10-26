@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Submódulos físicos del cálculo AEP.
+"""Physical helpers of the AEP calculation: the air density (``air_density``) and the logger helper of ``common``.
 
-Paquetes principales:
-- wake: wake deficits, wind-farm engines y superposición.
-- turbulence: modelos de turbulencia/fallback TI.
-- blockage: modelos de inducción/bloqueo.
-- rotor_average: rotor-average models.
+The wake physics (deficits, engines, superposition, turbulence, blockage, rotor average) is built by
+``ag_core/wake_setup/`` since #46.
 """

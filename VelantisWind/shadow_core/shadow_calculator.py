@@ -536,7 +536,7 @@ def _format_turbine_geometry_for_export(turbines: Optional[List[Dict[str, object
     for turbine in turbines or []:
         try:
             value = float(turbine.get(key))
-        except Exception:
+        except Exception:  # nosec B112
             continue
         if np.isfinite(value):
             values.append(value)
@@ -551,7 +551,7 @@ def _format_turbine_geometry_for_export(turbines: Optional[List[Dict[str, object
     
     try:
         from .i18n_local import tr4 as _ml
-        unique_label = _ml("valores únicos", "unique values", "valeurs uniques", "einzigartige Werte")
+        unique_label = _ml("valores únicos", "unique values", "valeurs uniques", "verschiedene Werte")
     except Exception:
         unique_label = "unique values"
     return f"{min(values):.2f}-{max(values):.2f} {unit} ({len(unique_values)} {unique_label})"
@@ -592,7 +592,7 @@ def _shadow_export_lang_labels():
         },
         "fr": {
             "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
-            "title": "Heures d’ombres et scintillement par mois et heure de la journée",
+            "title": "Heures d’ombres portées par mois et heure de la journée",
             "config": "CONFIGURATION DU CALCUL",
             "year": "Année", "timezone": "Fuseau horaire", "time_step": "Pas temporel", "availability": "Disponibilité",
             "max_dist": "Distance maximale d’ombre", "solar_limits": "Limites d’élévation solaire",
@@ -605,7 +605,7 @@ def _shadow_export_lang_labels():
             "title": "Schattenwurfstunden nach Monat und Tagesstunde",
             "config": "BERECHNUNGSKONFIGURATION",
             "year": "Jahr", "timezone": "Zeitzone", "time_step": "Zeitschritt", "availability": "Verfügbarkeit",
-            "max_dist": "Maximaler Schattenabstand", "solar_limits": "Grenzwerte der Sonnenhöhe",
+            "max_dist": "Maximale Schattenentfernung", "solar_limits": "Grenzwerte der Sonnenhöhe",
             "n_turbines": "Anzahl Windturbinen", "hub": "Verwendete Nabenhöhe", "diam": "Verwendeter Rotordurchmesser",
             "receiver": "Rezeptor", "hour": "Stunde", "summary": "ZUSAMMENFASSUNG",
             "total": "Gesamt h/Jahr", "max_min": "Max. Minuten/Tag", "max_date": "Datum des stärksten Schattenwurfs", "days": "Betroffene Tage",
@@ -654,8 +654,8 @@ def export_shadow_12x24_csv(
         # Calculation metadata / exported summary context
         writer.writerow([labels['config']])
         if calculator is not None:
-            writer.writerow(['Latitude', f"{getattr(calculator, 'latitude', 0.0):.5f}"])
-            writer.writerow(['Longitude', f"{getattr(calculator, 'longitude', 0.0):.5f}"])
+            writer.writerow([_t('Latitud'), f"{getattr(calculator, 'latitude', 0.0):.5f}"])
+            writer.writerow([_t('Longitud'), f"{getattr(calculator, 'longitude', 0.0):.5f}"])
             writer.writerow([labels['year'], getattr(calculator, 'year', 'N/A')])
             writer.writerow([
                 labels['timezone'],
@@ -682,7 +682,7 @@ def export_shadow_12x24_csv(
                 continue
 
             # Header del receptor
-            writer.writerow([f"{labels['receiver']} : {result.receptor_name}"])
+            writer.writerow([_t("Receptor: {name}").format(name=result.receptor_name)])
             writer.writerow([labels['hour']] + months)
 
             # 24 filas (una por hora)

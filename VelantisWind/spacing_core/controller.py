@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """spacing_core/controller.py — Pegamento del módulo de envolventes.
 
-El controller mantiene una capa de envolventes independiente por cada
-capa/modelo de turbinas del proyecto. El modelo activo sigue siendo el que se
-edita en pantalla, pero el refresco, la validación y la exportación abarcan
-todos los modelos definidos que tengan una capa de puntos asociada.
+El controller mantiene una capa de envolventes independiente por cada capa de
+turbinas elegida en las filas del diálogo de Energía: el parque que calculan el
+AEP y el ráster (#96). El modelo seleccionado es el que se edita, pero el
+refresco, la validación y la exportación abarcan todas las capas de las filas, y
+ninguna otra capa del proyecto.
 """
 
 from __future__ import annotations
 
+from ..number_format import format_number
 from typing import Dict, List, Optional
 
 from qgis.PyQt import QtCore
-from qgis.core import QgsProject, QgsVectorLayer, QgsWkbTypes
+from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsPointXY, QgsProject, QgsVectorLayer, QgsWkbTypes
 from qgis.utils import iface
 
 try:
@@ -32,6 +34,7 @@ from .envelope_manager import (
     layer_spacing_spec,
     read_overrides,
     write_overrides,
+    set_spacing_property,
 )
 from .geometry import MODE_AUTO, SpacingSpec, ellipse_polygon
 from .map_tool import EllipseDefineTool
@@ -41,12 +44,21 @@ from .panel import VALIDATE_BLOCK, VALIDATE_VIEW, SpacingEnvelopePanel
 try:
     from . import i18n_spacing
     i18n_spacing.register()
-except Exception:
+except Exception:  # nosec B110
     pass
+
+try:
+    from ..wake_core.controller import is_projected_in_metres
+except Exception:  # pragma: no cover
+    from wake_core.controller import is_projected_in_metres  # type: ignore
 
 _HOOK_ATTR = "_spacing_notify_layout_changed"
 _CHECK_ATTR = "_spacing_check_candidate"
 _ROW_KEY_PREFIX = "row:"
+_DEFINE_RULE_STATUS = (
+    "«Definir elipse en pantalla» solo funciona con la capa de turbinas y el mapa en el mismo sistema de "
+    "coordenadas, proyectado y en metros."
+)
 
 
 def _row_key(index: int) -> str:
@@ -63,9 +75,25 @@ def _row_index_from_key(key: str) -> Optional[int]:
         return None
 
 
-class SpacingController(QtCore.QObject):
-    """Orquesta las envolventes de todos los modelos del proyecto."""
+def _crosses_a_cut(geometry: QgsGeometry, transform: QgsCoordinateTransform) -> bool:
+    """Si algún lado del polígono salta, al transformarse, un corte del sistema de destino (el antimeridiano, un polo):
+    el punto medio del lado no cae cerca del medio del lado transformado, aunque la geometría transformada sea válida
+    y no tenga el interior de la original. Es una heurística: en los usos normales la desviación es minúscula, pero
+    una curvatura extrema (a metros de un polo) también puede superar el umbral y bloquear sin conflicto."""
+    points = [QgsPointXY(p.x(), p.y()) for p in geometry.vertices()]
+    for p, q in zip(points, points[1:]):
+        tp, tq = transform.transform(p), transform.transform(q)
+        tm = transform.transform(QgsPointXY((p.x() + q.x()) / 2.0, (p.y() + q.y()) / 2.0))
+        middle = QgsPointXY((tp.x() + tq.x()) / 2.0, (tp.y() + tq.y()) / 2.0)
+        if tm.distance(middle) > 0.25 * tp.distance(tq):
+            return True
+    return False
 
+
+class SpacingController(QtCore.QObject):
+    """Orquesta las envolventes de las capas de las filas del diálogo de Energía."""
+
+    tool_started = QtCore.pyqtSignal()
     tool_finished = QtCore.pyqtSignal()
 
     def __init__(self, ctl, canvas, parent=None):
@@ -75,6 +103,7 @@ class SpacingController(QtCore.QObject):
         self.panel = SpacingEnvelopePanel()
         self.manager = EnvelopeManager()
         self._tool: Optional[EllipseDefineTool] = None
+        self._define_crs_signals: list = []
         self._prev_tool = None
         self._torn_down = False
         self._selected_layer_id = ""
@@ -91,11 +120,11 @@ class SpacingController(QtCore.QObject):
 
         try:
             setattr(self.ctl, _HOOK_ATTR, self._on_layout_changed)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             setattr(self.ctl, _CHECK_ATTR, self.check_candidate)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         self._refresh_model_selector(sync_fields=True)
@@ -123,33 +152,21 @@ class SpacingController(QtCore.QObject):
                     if isinstance(layer, QgsVectorLayer) and layer.isValid():
                         return layer
                 return None
-            try:
-                layer = QgsProject.instance().mapLayer(key)
-            except Exception:
-                layer = None
-            if isinstance(layer, QgsVectorLayer) and layer.isValid():
-                return layer
-            return None
+            # Solo la capa de una fila: una seleccionada antes puede haber salido de ellas.
+            return next((layer for layer in self._turbine_layers() if layer.id() == key), None)
         try:
-            return self.ctl._get_interactive_target_layer(allow_auto_pick=True)
-        except TypeError:
-            try:
-                return self.ctl._get_interactive_target_layer()
-            except Exception:
-                return None
+            return self.ctl._get_interactive_target_layer()
         except Exception:
             return None
 
     def _turbine_layers(self) -> List[QgsVectorLayer]:
-        """Una capa de puntos representativa por cada modelo definido.
+        """Las capas elegidas en las filas del diálogo, sin repetir y en su orden.
 
-        Usa la asociación oficial fila/modelo del diálogo. Como fallback,
-        conserva la capa activa para mantener compatibilidad con integraciones
-        antiguas o capas cargadas manualmente.
+        Son el parque de Energía: ni las capas del proyecto marcadas como turbinas por otro uso (otra
+        fila antes, una importación) ni la seleccionada antes entran en las separaciones (#96).
         """
         layers: List[QgsVectorLayer] = []
         seen = set()
-
         rows = list(getattr(self.ctl, "_rows", []) or [])
         finder = getattr(self.ctl, "_find_interactive_layer_for_row", None)
         if callable(finder):
@@ -164,46 +181,12 @@ class SpacingController(QtCore.QObject):
                     continue
                 try:
                     layer_id = layer.id()
-                except Exception:
+                except Exception:  # nosec B112
                     continue
                 if layer_id in seen:
                     continue
                 seen.add(layer_id)
                 layers.append(layer)
-
-        # Capas importadas directamente desde CSV en Energía/Ruido/Sombras.
-        # Esto permite que el selector funcione aunque la capa no esté ligada a
-        # una fila del diálogo de Energía.
-        try:
-            project_layers = QgsProject.instance().mapLayers().values()
-        except Exception:
-            project_layers = []
-        for layer in project_layers:
-            if not isinstance(layer, QgsVectorLayer):
-                continue
-            try:
-                if layer.geometryType() != QgsWkbTypes.PointGeometry:
-                    continue
-                role = str(layer.customProperty("velantis/layer_role", "") or "")
-                if role not in {"energy_turbines", "turbine_layout"}:
-                    continue
-                layer_id = layer.id()
-            except Exception:
-                continue
-            if layer_id in seen:
-                continue
-            seen.add(layer_id)
-            layers.append(layer)
-
-        active = self._turbine_layer()
-        if isinstance(active, QgsVectorLayer):
-            try:
-                active_id = active.id()
-            except Exception:
-                active_id = None
-            if active_id and active_id not in seen:
-                layers.append(active)
-
         return layers
 
     def _wrg_path(self) -> Optional[str]:
@@ -215,7 +198,7 @@ class SpacingController(QtCore.QObject):
                 path = str(getter() or "").strip()
                 if path:
                     return path
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         return None
 
@@ -231,7 +214,7 @@ class SpacingController(QtCore.QObject):
                 layer.setCustomProperty(MODEL_MODE_PROP, str(defaults.mode))
             if layer.customProperty(MODEL_ANGLE_PROP, None) in (None, ""):
                 layer.setCustomProperty(MODEL_ANGLE_PROP, float(defaults.angle_deg))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _selected_row_index(self, layer: Optional[QgsVectorLayer] = None) -> Optional[int]:
@@ -241,14 +224,12 @@ class SpacingController(QtCore.QObject):
         target = layer if isinstance(layer, QgsVectorLayer) else self._turbine_layer()
         if target is None:
             return None
-        for prop in ("velantis/row_index", "velantis/model_index"):
-            try:
-                raw = target.customProperty(prop, None)
-                if raw not in (None, ""):
-                    return int(raw)
-            except Exception:
-                continue
-        return None
+        # La fila la da el selector del diálogo, no los metadatos de la capa, que pueden ser de otra fila.
+        finder = getattr(self.ctl, "_row_index_for_layer", None)
+        try:
+            return finder(target) if callable(finder) else None
+        except Exception:
+            return None
 
     def _row_spacing_spec(self, row_idx: int) -> SpacingSpec:
         defaults = self._fallback_spec
@@ -291,13 +272,14 @@ class SpacingController(QtCore.QObject):
             refresh_header = getattr(self.ctl, "_refresh_model_row_header", None)
             if callable(refresh_header):
                 refresh_header(int(row_idx))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
-    def _refresh_model_selector(self, sync_fields: bool = True) -> None:
+    def _refresh_model_selector(self, sync_fields: bool = True, *, migrate: bool = True) -> None:
         layers = self._turbine_layers()
-        for layer in layers:
-            self._ensure_model_properties(layer)
+        if migrate:
+            for layer in layers:
+                self._ensure_model_properties(layer)
 
         rows = list(getattr(self.ctl, "_rows", []) or [])
         finder = getattr(self.ctl, "_find_interactive_layer_for_row", None)
@@ -306,24 +288,32 @@ class SpacingController(QtCore.QObject):
         row_primary_layer = {}
 
         # Primero se muestran todos los modelos definidos en el diálogo, aunque
-        # todavía no tengan una capa/CSV. Esto permite configurar su elipse antes
+        # todavía no tengan capa. Esto permite configurar su elipse antes
         # de cargar las coordenadas.
         for idx, row in enumerate(rows):
             if not isinstance(row, dict):
                 continue
             model_name = str(row.get("name") or "").strip()
-            if not model_name and row.get("wt") is None:
-                continue
-            model_name = model_name or f"Modelo {idx + 1}"
             layer = None
             if callable(finder):
                 try:
                     layer = finder(idx)
                 except Exception:
                     layer = None
-            if isinstance(layer, QgsVectorLayer) and layer.isValid():
+            has_layer = isinstance(layer, QgsVectorLayer) and layer.isValid()
+            # Una fila sin modelo se muestra si tiene capa, como su fila: no con el modelo que la capa guarde de otra
+            # fila, porque se edita en esta (#96).
+            if not model_name and row.get("wt") is None and not has_layer:
+                continue
+            model_name = model_name or tr_text("Modelo {n}").format(n=idx + 1)
+            if has_layer:
                 key = layer.id()
                 row_primary_layer[idx] = key
+                # Una capa elegida en varias filas es de la primera, como en el diálogo: se muestra y se edita en ella,
+                # una sola vez (#96).
+                owner = getattr(self.ctl, "_row_index_for_layer", None)
+                if callable(owner) and owner(layer) not in (None, idx):
+                    continue
                 used_layer_ids.add(key)
                 try:
                     count = int(layer.featureCount())
@@ -342,12 +332,11 @@ class SpacingController(QtCore.QObject):
                 label = f"{model_name} · {tr_text('sin capa')}"
             labels.append((label, key))
 
-        # Después se añaden capas directas o generaciones alternativas que no
-        # sean la capa primaria ya representada por una fila.
+        # Después, cualquier capa de las filas que el bucle anterior no haya mostrado.
         for layer in layers:
             try:
                 layer_id = layer.id()
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             if layer_id in used_layer_ids:
                 continue
@@ -376,7 +365,7 @@ class SpacingController(QtCore.QObject):
             preferred = ""
         if not preferred:
             try:
-                active = self.ctl._get_interactive_target_layer(allow_auto_pick=False)
+                active = self.ctl._get_interactive_target_layer()
             except Exception:
                 active = None
             if isinstance(active, QgsVectorLayer) and active.id() in valid_keys:
@@ -411,7 +400,7 @@ class SpacingController(QtCore.QObject):
         if row_idx is not None and 0 <= row_idx < len(rows):
             row = rows[row_idx] if isinstance(rows[row_idx], dict) else {}
             meta = row.get("meta") if isinstance(row, dict) else None
-            model_name = str(row.get("name") or f"Modelo {row_idx + 1}")
+            model_name = str(row.get("name") or tr_text("Modelo {n}").format(n=row_idx + 1))
             diameter = None
             try:
                 if isinstance(meta, dict) and meta.get("diam") is not None:
@@ -425,7 +414,7 @@ class SpacingController(QtCore.QObject):
                 turbine_count=0,
             )
             self.panel.set_status(
-                "Modelo definido sin capa de turbinas. Carga un CSV o genera la capa de puntos para crear sus elipses."
+                "Modelo definido sin capa de turbinas. Elige una capa en su fila, o usa «Cargar nueva capa» o «Generar capas de puntos», para crear sus elipses."
             )
             return
 
@@ -436,11 +425,11 @@ class SpacingController(QtCore.QObject):
             fn = getattr(self.ctl, "_set_interactive_edit_layer", None)
             if callable(fn) and fn(layer.id()):
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             iface.setActiveLayer(layer)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _on_model_selected(self, layer_id: str) -> None:
@@ -466,11 +455,11 @@ class SpacingController(QtCore.QObject):
                 self._fallback_spec = spec
             return
         try:
-            layer.setCustomProperty(MODEL_LONG_D_PROP, float(spec.long_d))
-            layer.setCustomProperty(MODEL_TRANS_D_PROP, float(spec.trans_d))
-            layer.setCustomProperty(MODEL_MODE_PROP, str(spec.mode))
-            layer.setCustomProperty(MODEL_ANGLE_PROP, float(spec.angle_deg))
-        except Exception:
+            set_spacing_property(layer, MODEL_LONG_D_PROP, float(spec.long_d))
+            set_spacing_property(layer, MODEL_TRANS_D_PROP, float(spec.trans_d))
+            set_spacing_property(layer, MODEL_MODE_PROP, str(spec.mode))
+            set_spacing_property(layer, MODEL_ANGLE_PROP, float(spec.angle_deg))
+        except Exception:  # nosec B110
             pass
         if row_idx is not None:
             self._write_row_spacing_spec(row_idx, spec)
@@ -507,8 +496,8 @@ class SpacingController(QtCore.QObject):
         if layer is not None:
             model_name = layer_model_name(layer)
             self.panel.set_status(
-                f"Configuración aplicada al modelo «{model_name}» · "
-                f"{spec.long_d:g}D×{spec.trans_d:g}D · capa de elipses actualizada."
+                "Configuración aplicada al modelo «{model_name}» · {spacing_dims} · capa de elipses actualizada.",
+                model_name=model_name, spacing_dims=f"{format_number(spec.long_d, 'g')}D×{format_number(spec.trans_d, 'g')}D",
             )
             return
 
@@ -516,15 +505,36 @@ class SpacingController(QtCore.QObject):
         model_name = ""
         if row_idx is not None and 0 <= row_idx < len(rows):
             row = rows[row_idx] if isinstance(rows[row_idx], dict) else {}
-            model_name = str(row.get("name") or f"Modelo {row_idx + 1}")
+            model_name = str(row.get("name") or tr_text("Modelo {n}").format(n=row_idx + 1))
+        if not model_name:
+            self.panel.set_status(
+                "Configuración guardada para el modelo «seleccionado» · "
+                "se utilizará automáticamente al elegir su capa de turbinas."
+            )
+            return
         self.panel.set_status(
-            f"Configuración guardada para el modelo «{model_name or 'seleccionado'}» · "
-            "se utilizará automáticamente al cargar su CSV."
+            "Configuración guardada para el modelo «{model_name}» · "
+            "se utilizará automáticamente al elegir su capa de turbinas.",
+            model_name=model_name,
         )
+
+    def retranslate(self):
+        """Refresh text only; keep pending dimensions and do not rebuild map layers."""
+        if self._torn_down:
+            return
+        self._refresh_model_selector(sync_fields=False, migrate=False)
+        self.panel.retranslate()
+        summary = getattr(self, "_last_summary", None)
+        if not self.panel.is_enabled():
+            self.panel.set_status("—")
+        elif self._tool is not None and self.canvas.mapTool() is self._tool:
+            self._tool._push_status()
+        elif summary is not None and self.panel._status_source is None:
+            self._summarize(*summary, notify=False)
 
     # ------------------------------------------------------------- refresco
     def refresh(self):
-        """Reconstruye una capa de envolventes por cada modelo del proyecto."""
+        """Reconstruye una capa de envolventes por cada capa de las filas de Energía."""
         if self._torn_down:
             return
         if not self.panel.is_enabled():
@@ -538,7 +548,7 @@ class SpacingController(QtCore.QObject):
             self.manager.clear()
             if self._selected_row_index() is not None:
                 self.panel.set_status(
-                    "Modelo definido sin capa de turbinas. Carga un CSV o genera la capa de puntos para crear sus elipses."
+                    "Modelo definido sin capa de turbinas. Elige una capa en su fila, o usa «Cargar nueva capa» o «Generar capas de puntos», para crear sus elipses."
                 )
             else:
                 self.panel.set_status("No hay modelos de aerogenerador definidos.")
@@ -567,43 +577,49 @@ class SpacingController(QtCore.QObject):
         status_by_layer: Dict[str, Dict[int, str]],
         auto_angle,
         defaults: SpacingSpec,
+        notify: bool = True,
     ):
+        self._last_summary = (status_by_layer, auto_angle, defaults)
         model_count = len(status_by_layer)
         statuses = [status for per_layer in status_by_layer.values() for status in per_layer.values()]
         n = len(statuses)
         n_conf = sum(1 for status in statuses if status == "conflict")
         n_near = sum(1 for status in statuses if status == "near")
 
-        model_word = "modelo" if model_count == 1 else "modelos"
-        parts = [f"{model_count} {model_word}", f"{n} envolvente(s)"]
+        parts = [
+            tr_text("{n} modelo" if model_count == 1 else "{n} modelos").format(n=model_count),
+            tr_text("{n} envolvente(s)").format(n=n),
+        ]
         model_specs = []
         for source in self._turbine_layers():
             try:
                 spec = layer_spacing_spec(source, defaults)
-                token = f"{spec.long_d:g}D×{spec.trans_d:g}D"
+                token = f"{format_number(spec.long_d, 'g')}D×{format_number(spec.trans_d, 'g')}D"
                 if token not in model_specs:
                     model_specs.append(token)
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         if model_specs:
-            parts.append("dimensiones: " + ", ".join(model_specs))
+            parts.append(tr_text("dimensiones: {spacing_dims}").format(spacing_dims=", ".join(model_specs)))
         if auto_angle is not None:
-            parts.append(f"sector más energético: {auto_angle:.0f}°")
+            parts.append(tr_text("sector más energético: {angle_deg}°").format(angle_deg=format_number(auto_angle, ".0f")))
         if n_conf:
-            parts.append(f"⚠ {n_conf} conflicto(s) de spacing")
+            parts.append(tr_text("⚠ {n} conflicto(s) de separación").format(n=n_conf))
         if n_near:
-            parts.append(f"{n_near} cerca del límite")
+            parts.append(tr_text("{n} cerca del límite").format(n=n_near))
         if not n_conf and not n_near and n:
-            parts.append("sin conflictos")
-        self.panel.set_status(" · ".join(parts))
+            parts.append(tr_text("sin conflictos"))
+        self.panel.set_status(" · ".join(parts), translated=True)
 
-        if n_conf and self.panel.validation_mode() != VALIDATE_VIEW:
+        if notify and n_conf and self.panel.validation_mode() != VALIDATE_VIEW:
             try:
                 iface.messageBar().pushWarning(
                     tr_text("Envolvente de separación"),
-                    tr_text(f"La disposición multimodelo incumple la separación mínima en {n_conf} turbina(s)."),
+                    tr_text(
+                        "La disposición multimodelo incumple la separación mínima en {n} turbina(s)."
+                    ).format(n=n_conf),
                 )
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     def _on_toggled(self, checked: bool):
@@ -624,17 +640,19 @@ class SpacingController(QtCore.QObject):
             pruned = {fid: spec for fid, spec in overrides.items() if fid in alive}
             if len(pruned) != len(overrides):
                 write_overrides(layer, pruned)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _on_layout_changed(self, layer=None):
-        """Hook tras crear, recargar, añadir o borrar turbinas."""
-        if isinstance(layer, QgsVectorLayer):
+        """Hook tras crear, recargar, añadir o borrar turbinas, o tras cambiar las capas de las filas.
+
+        Selecciona la capa si es de una fila. No activa las separaciones: con ellas desactivadas no se
+        crea ninguna envolvente (#96).
+        """
+        if isinstance(layer, QgsVectorLayer) and layer.id() in {source.id() for source in self._turbine_layers()}:
             self._prune_overrides(layer)
             self._ensure_model_properties(layer)
             self._selected_layer_id = layer.id()
-            if not self.panel.is_enabled():
-                self.panel.set_enabled(True, emit=False)
         else:
             for source in self._turbine_layers():
                 self._prune_overrides(source)
@@ -652,9 +670,12 @@ class SpacingController(QtCore.QObject):
                     "El modelo seleccionado todavía no tiene una capa de turbinas para dibujar."
                 )
             else:
-                self.panel.set_status("No hay capa de turbinas activa para dibujar.")
+                self.panel.set_status("Ninguna fila tiene una capa de turbinas para dibujar.")
             return
         if self._tool is not None:
+            return
+        if not self._can_define_on(layer):
+            self.panel.set_status(_DEFINE_RULE_STATUS)
             return
 
         # El dibujo en pantalla es una excepción individual y se mantiene
@@ -675,7 +696,7 @@ class SpacingController(QtCore.QObject):
             diameter,
             defaults,
             on_defined=self._on_ellipse_defined,
-            on_status=self.panel.set_status,
+            on_status=lambda text: self.panel.set_status(text, translated=True),
             on_cancelled=lambda: self._stop_define_tool(restore=True),
             sector_magnets_deg=magnets,
         )
@@ -684,48 +705,95 @@ class SpacingController(QtCore.QObject):
         except Exception:
             self._tool = None
             return
+        # La herramienta mide en el sistema del mapa y en el de la capa: si cambia alguno, se cancela.
+        self._define_crs_signals = [self.canvas.destinationCrsChanged, layer.crsChanged]
+        for signal in self._define_crs_signals:
+            signal.connect(self._cancel_define_on_crs_change)
         try:
             self.panel.btn_define.setEnabled(False)
-        except Exception:
+        except Exception:  # nosec B110
             pass
+        self.tool_started.emit()
+
+    def _can_define_on(self, layer: Optional[QgsVectorLayer]) -> bool:
+        """La capa y el mapa, en el mismo sistema (comparando sistemas, no identificadores), proyectado en metros."""
+        try:
+            return bool(
+                layer is not None
+                and layer.crs() == self.canvas.mapSettings().destinationCrs()
+                and is_projected_in_metres(layer.crs())
+            )
+        except Exception:
+            return False
+
+    def cancel_definition(self, layer_id: str) -> None:
+        """Cancela la definición en pantalla en curso si es sobre la capa ``layer_id``."""
+        try:
+            on_layer = self._tool is not None and self._tool.layer.id() == layer_id
+        except RuntimeError:  # la capa ya no existe
+            on_layer = True
+        if on_layer:
+            self._stop_define_tool(restore=True)
+
+    def _cancel_define_on_crs_change(self, *_args):
+        self._stop_define_tool(restore=True)
+        self.panel.set_status("Definición cancelada: ha cambiado el sistema de coordenadas del mapa o de la capa.")
 
     def _on_ellipse_defined(self, fid: int, spec: SpacingSpec):
-        layer = self._turbine_layer()
+        # Solo guarda la herramienta activa, y en la capa en la que se empezó a definir, no en la
+        # seleccionada al terminar.
+        if self._tool is None:
+            return
+        layer = self._tool.layer
+        if layer is None or layer.id() not in {source.id() for source in self._turbine_layers()}:
+            # La capa ha salido de las filas mientras se dibujaba: la excepción no se guarda en ella.
+            self._stop_define_tool(restore=True)
+            return
+        if not self._can_define_on(layer):
+            self._stop_define_tool(restore=True)
+            self.panel.set_status(_DEFINE_RULE_STATUS)
+            return
         if layer is not None:
             overrides = read_overrides(layer)
             overrides[int(fid)] = spec
             write_overrides(layer, overrides)
         self.refresh()
         self.panel.set_status(
-            f"Excepción guardada para la turbina {int(fid)} del modelo «{layer_model_name(layer)}»."
-            if layer is not None else "Excepción de envolvente guardada."
+            "Excepción guardada para la turbina {turbine_id} del modelo «{model_name}».",
+            turbine_id=int(fid), model_name=layer_model_name(layer),
         )
 
     def _stop_define_tool(self, restore: bool = True):
         tool, self._tool = self._tool, None
+        for signal in self._define_crs_signals:
+            try:
+                signal.disconnect(self._cancel_define_on_crs_change)
+            except Exception:  # nosec B110
+                pass
+        self._define_crs_signals = []
         if tool is not None:
             try:
                 tool.deactivate()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         if restore:
             try:
                 if self._prev_tool is not None:
                     self.canvas.setMapTool(self._prev_tool)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         self._prev_tool = None
         try:
             self.panel.btn_define.setEnabled(
                 self.panel.is_enabled() and bool(self.panel.selected_model_id())
             )
-        except Exception:
+        except Exception:  # nosec B110
             pass
         if not self._torn_down:
             self.refresh()
         try:
             self.tool_finished.emit()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     @property
@@ -737,17 +805,18 @@ class SpacingController(QtCore.QObject):
         layer = self._turbine_layer()
         if layer is not None:
             write_overrides(layer, {})
-            model_name = layer_model_name(layer)
-        else:
-            model_name = "activo"
         self.refresh()
+        if layer is None:
+            self.panel.set_status("Excepciones del modelo «activo» eliminadas · usando su plantilla de modelo.")
+            return
         self.panel.set_status(
-            f"Excepciones del modelo «{model_name}» eliminadas · usando su plantilla de modelo."
+            "Excepciones del modelo «{model_name}» eliminadas · usando su plantilla de modelo.",
+            model_name=layer_model_name(layer),
         )
 
     # ------------------------------------------------ bloqueo de inserción
     def check_candidate(self, layer, x: float, y: float) -> bool:
-        """Comprueba el candidato frente a las envolventes de todos los modelos."""
+        """Comprueba el candidato frente a las envolventes de las capas de las filas."""
         try:
             if not self.panel.is_enabled():
                 return True
@@ -768,40 +837,68 @@ class SpacingController(QtCore.QObject):
                 return True
             eps = 1e-6
             for envelope_layer in envelope_layers:
-                # Las capas generadas por el diálogo comparten CRS. Si aparece
-                # una capa externa en otro CRS, se omite para evitar comparar
-                # coordenadas incompatibles (fail-open).
+                # La capa de una fila puede estar en cualquier sistema: el candidato se compara en el de la envolvente.
+                # Si algo de la comparación falla, se bloquea y se avisa, en vez de dejar pasar una turbina sin
+                # comprobarla.
                 try:
+                    here = candidate
                     if layer is not None and envelope_layer.crs() != layer.crs():
-                        continue
-                except Exception:
-                    pass
-                for feature in envelope_layer.getFeatures():
-                    try:
-                        intersection = candidate.intersection(feature.geometry())
+                        here = QgsGeometry(candidate)
+                        to_envelope = QgsCoordinateTransform(layer.crs(), envelope_layer.crs(), QgsProject.instance())
+                        # Una transformación que funciona puede dar, al cruzar un corte del destino, una elipse no
+                        # válida o una válida que no tiene su interior.
+                        if (
+                            not to_envelope.isValid()
+                            or _crosses_a_cut(candidate, to_envelope)
+                            or here.transform(to_envelope) != 0
+                            or not here.isGeosValid()
+                        ):
+                            raise ValueError(envelope_layer.name())
+                    for feature in envelope_layer.getFeatures():
+                        intersection = here.intersection(feature.geometry())
+                        # GEOS puede fallar sin excepción: un resultado nulo con su error. Uno vacío es que no hay solape.
+                        if intersection is None or intersection.isNull() or intersection.lastError():
+                            return self._block_uncompared()
                         if (
                             intersection is not None
                             and not intersection.isEmpty()
                             and intersection.area() > eps
                         ):
                             try:
-                                other_model = str(feature["model_name"] or "otro modelo")
+                                other_model = str(feature["model_name"] or "")
                             except Exception:
-                                other_model = "otro modelo"
-                            try:
-                                iface.messageBar().pushWarning(
-                                    tr_text("Envolvente de separación"),
-                                    tr_text("La turbina invade la envolvente de una turbina "
-                                    f"del modelo «{other_model}» · inserción bloqueada."),
+                                other_model = ""
+                            if other_model:
+                                text = tr_text(
+                                    "La turbina invade la envolvente de una turbina del modelo «{model_name}» · "
+                                    "inserción bloqueada."
+                                ).format(model_name=other_model)
+                            else:
+                                text = tr_text(
+                                    "La turbina invade la envolvente de una turbina del modelo «otro modelo» · "
+                                    "inserción bloqueada."
                                 )
-                            except Exception:
+                            try:
+                                iface.messageBar().pushWarning(tr_text("Envolvente de separación"), text)
+                            except Exception:  # nosec B110
                                 pass
                             return False
-                    except Exception:
-                        continue
+                except Exception:
+                    return self._block_uncompared()
             return True
         except Exception:
             return True
+
+    def _block_uncompared(self) -> bool:
+        """Bloquea, con un aviso, una inserción que no se pudo comparar con una envolvente: nunca pasa sin comprobar."""
+        try:
+            iface.messageBar().pushWarning(
+                tr_text("Envolvente de separación"),
+                tr_text("No se pudo comparar la turbina con las envolventes de separación · inserción bloqueada."),
+            )
+        except Exception:  # nosec B110
+            pass
+        return False
 
     # ------------------------------------------------------------ export
     def _export_envelopes(self):
@@ -827,16 +924,23 @@ class SpacingController(QtCore.QObject):
             path += ".gpkg"
         ok, error, count = self.manager.export_all_to_gpkg(path)
         if ok:
-            self.panel.set_status(f"{count} capa(s) de modelo exportadas: {path}")
+            self.panel.set_status(
+                "{layer_count} capa(s) de modelo exportadas: {file_path}",
+                layer_count=count, file_path=path,
+            )
             try:
                 iface.messageBar().pushSuccess(
                     tr_text("Envolvente de separación"),
-                    tr_text(f"Se exportaron {count} capas de modelo a {path}"),
+                    tr_text("Se exportaron {layer_count} capas de modelo a {file_path}").format(
+                        layer_count=count, file_path=path
+                    ),
                 )
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         else:
-            self.panel.set_status(f"No se pudo exportar: {error}")
+            self.panel.set_status(
+                "No se pudo exportar: {error_text}", error_text=error
+            )
 
     # ------------------------------------------------------------- limpieza
     def teardown(self):
@@ -850,10 +954,11 @@ class SpacingController(QtCore.QObject):
         try:
             if getattr(self.ctl, _HOOK_ATTR, None) == self._on_layout_changed:
                 delattr(self.ctl, _HOOK_ATTR)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             if getattr(self.ctl, _CHECK_ATTR, None) == self.check_candidate:
                 delattr(self.ctl, _CHECK_ATTR)
-        except Exception:
+        except Exception:  # nosec B110
             pass
+

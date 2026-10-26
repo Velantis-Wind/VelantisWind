@@ -115,8 +115,8 @@ def run_shadow_point_calculation_for_page(self):
                 return
 
             try:
-                hub_height = float(self.tbl_models.item(0, 2).text())
-                rotor_diameter = float(self.tbl_models.item(0, 3).text())
+                hub_height = float(self.tbl_models.item(0, 2).text().replace(",", "."))
+                rotor_diameter = float(self.tbl_models.item(0, 3).text().replace(",", "."))
             except (ValueError, AttributeError):
                 QtWidgets.QMessageBox.warning(
                     self,
@@ -214,7 +214,7 @@ def run_shadow_point_calculation_for_page(self):
 
             # Crear diálogo de progreso
             progress_dialog = QtWidgets.QProgressDialog(
-                _ml("Cálculo de sombras y parpadeo…", "Shadow flicker calculation…", "Calcul des ombres et du scintillement…", "Schattenwurfberechnung…"),
+                _ml("Cálculo de sombras y parpadeo…", "Shadow flicker calculation…", "Calcul des ombres portées…", "Schattenwurfberechnung…"),
                 cancel_label(),
                 0,
                 100,

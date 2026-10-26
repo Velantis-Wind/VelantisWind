@@ -444,7 +444,7 @@ def evaluate_noise_snapshot(
         try:
             value = progress_start + (progress_end - progress_start) * float(i) / float(max(1, total))
             progress_callback(max(0.0, min(100.0, value)))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _canceled() -> bool:

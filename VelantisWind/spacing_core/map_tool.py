@@ -22,7 +22,7 @@ Modificadores durante el arrastre:
 
 La herramienta NO escribe en capas: entrega el resultado por callback
 (``on_defined(fid, spec)``) y publica texto de estado en vivo por
-``on_status(text)`` (ángulo, separaciones en D y en metros).
+``on_status(text)``, ya traducido (ángulo, separaciones en D y en metros).
 """
 
 from __future__ import annotations
@@ -34,6 +34,12 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsGeometry, QgsPointXY, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsMapTool, QgsRubberBand, QgsVertexMarker
+
+try:
+    from ..i18n import tr_text
+except Exception:  # pragma: no cover
+    def tr_text(text):
+        return text
 
 from .geometry import (
     MODE_MANUAL_SCREEN,
@@ -97,7 +103,7 @@ class EllipseDefineTool(QgsMapTool):
         self._rb_axis.setWidth(2)
         try:
             self._rb_axis.setLineStyle(Qt.DashLine)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         self._marker = QgsVertexMarker(canvas)
@@ -131,7 +137,7 @@ class EllipseDefineTool(QgsMapTool):
         for f in self.layer.getFeatures():
             try:
                 p = f.geometry().asPoint()
-            except Exception:
+            except Exception:  # nosec B112
                 continue
             d2 = (lp.x() - p.x()) ** 2 + (lp.y() - p.y()) ** 2
             if best_d2 is None or d2 < best_d2:
@@ -149,19 +155,19 @@ class EllipseDefineTool(QgsMapTool):
     def _push_status(self):
         try:
             if self._state == _ST_CENTER:
-                self.on_status("Clic sobre una turbina para definir su envolvente · Esc cancela")
+                self.on_status(tr_text("Clic sobre una turbina para definir su envolvente · Esc cancela"))
             elif self._state == _ST_MAJOR:
-                self.on_status(
-                    f"Eje mayor · Ángulo: {self._angle_deg:.1f}° · "
-                    f"Long: {self._fmt_d(self._a_m)} · Ctrl=snap 5°/sector, Shift=snap 0.5D"
-                )
+                self.on_status(tr_text(
+                    "Eje mayor · Ángulo: {angle_deg}° · Long: {long_d} · "
+                    "Ctrl=ajuste a 5°/sector, Mayús=ajuste a 0,5D"
+                ).format(angle_deg=f"{self._angle_deg:.1f}", long_d=self._fmt_d(self._a_m)))
             else:
-                self.on_status(
-                    f"Eje menor · Ángulo: {self._angle_deg:.1f}° · "
-                    f"Long: {self._fmt_d(self._a_m)} · Trans: {self._fmt_d(self._b_m)} · "
-                    f"Clic para confirmar"
-                )
-        except Exception:
+                self.on_status(tr_text(
+                    "Eje menor · Ángulo: {angle_deg}° · Long: {long_d} · Trans: {trans_d} · Clic para confirmar"
+                ).format(
+                    angle_deg=f"{self._angle_deg:.1f}", long_d=self._fmt_d(self._a_m), trans_d=self._fmt_d(self._b_m)
+                ))
+        except Exception:  # nosec B110
             pass
 
     def _redraw(self):
@@ -171,7 +177,7 @@ class EllipseDefineTool(QgsMapTool):
         try:
             geom = ellipse_polygon(c.x(), c.y(), self._a_m, self._b_m, self._angle_deg)
             self._rb_ellipse.setToGeometry(geom, None)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             th = math.radians(self._angle_deg)
@@ -179,7 +185,7 @@ class EllipseDefineTool(QgsMapTool):
             p0 = QgsPointXY(c.x() - self._a_m * ux, c.y() - self._a_m * uy)
             p1 = QgsPointXY(c.x() + self._a_m * ux, c.y() + self._a_m * uy)
             self._rb_axis.setToGeometry(QgsGeometry.fromPolylineXY([p0, p1]), None)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def _reset_preview(self):
@@ -187,7 +193,7 @@ class EllipseDefineTool(QgsMapTool):
             self._rb_ellipse.reset(QgsWkbTypes.PolygonGeometry)
             self._rb_axis.reset(QgsWkbTypes.LineGeometry)
             self._marker.hide()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ------------------------------------------------------------- eventos
@@ -235,14 +241,14 @@ class EllipseDefineTool(QgsMapTool):
         if self._state == _ST_CENTER:
             hit = self._nearest_turbine(e.mapPoint())
             if hit is None:
-                self.on_status("No hay turbina cerca del clic · pincha sobre un aerogenerador")
+                self.on_status(tr_text("No hay turbina cerca del clic · pincha sobre un aerogenerador"))
                 return
             self._fid, layer_pt = hit
             self._center = self._to_map_point(layer_pt)
             try:
                 self._marker.setCenter(self._center)
                 self._marker.show()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             self._state = _ST_MAJOR
             self._redraw()
@@ -258,11 +264,11 @@ class EllipseDefineTool(QgsMapTool):
             if e.key() == Qt.Key_Escape:
                 self._step_back()
                 return
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             super().keyPressEvent(e)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # ------------------------------------------------------------- flujo
@@ -299,7 +305,7 @@ class EllipseDefineTool(QgsMapTool):
         self._center = None
         try:
             self.on_defined(int(fid), spec)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         self._push_status()
 
@@ -310,7 +316,7 @@ class EllipseDefineTool(QgsMapTool):
         self._center = None
         try:
             self.on_cancelled()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def deactivate(self):
@@ -320,11 +326,11 @@ class EllipseDefineTool(QgsMapTool):
             for item in (self._rb_ellipse, self._rb_axis, self._marker):
                 try:
                     scene.removeItem(item)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             super().deactivate()
-        except Exception:
+        except Exception:  # nosec B110
             pass

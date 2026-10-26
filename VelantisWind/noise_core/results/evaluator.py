@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Any
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
+    QgsCoordinateReferenceSystem,
     QgsFeature,
     QgsField,
     QgsFields,
@@ -23,6 +24,8 @@ from qgis.core import (
     QgsVectorLayer,
 )
 
+from ...crs_utils import memory_layer_with_crs
+from ...i18n import tr_text
 from ..noise_common import NoiseSource, NoiseReceiver
 from ..noise_engine_fast import propagate_fast
 from ..noise_engine_iso import propagate_iso
@@ -144,7 +147,12 @@ def build_source_spatial_index(sources: List[NoiseSource], crs_authid: str) -> t
     """Create an in-memory source layer and spatial index used for radius queries."""
     source_fields = QgsFields()
     source_fields.append(QgsField("src_idx", QVariant.Int))
-    source_mem = QgsVectorLayer(f"Point?crs={crs_authid or 'EPSG:25830'}", "_noise_sources_idx", "memory")
+    crs = QgsCoordinateReferenceSystem(crs_authid) if crs_authid else QgsCoordinateReferenceSystem()
+    if not crs.isValid() and crs_authid:
+        crs = QgsCoordinateReferenceSystem.fromWkt(crs_authid)
+    if not crs.isValid():
+        raise ValueError(tr_text("El CRS de las fuentes acústicas no es válido."))
+    source_mem = memory_layer_with_crs("Point", "_noise_sources_idx", crs)
     spr = source_mem.dataProvider()
     spr.addAttributes(source_fields)
     source_mem.updateFields()
@@ -343,7 +351,7 @@ def evaluate_receivers_for_noise(
             try:
                 src_idx = int(f["src_idx"])
                 src = sources[src_idx]
-            except Exception:
+            except Exception:  # nosec B112
                 continue
 
             path_src_z_m = _ground_z_or_none(src)

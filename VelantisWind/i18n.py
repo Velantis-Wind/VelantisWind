@@ -9,9 +9,12 @@ using the same language selected in the hub.
 from __future__ import annotations
 
 import re
+import string
 from typing import Dict
 
 from qgis.PyQt import QtCore, QtWidgets
+
+from .i18n_aliases import FOREIGN_KEYS
 
 _ORG = "VelantisWind"
 _APP = "VelantisWindPlugin"
@@ -73,12 +76,12 @@ def is_source_language() -> bool:
 # widget can already be in English and the user can switch back to Spanish.
 _TO_EN: Dict[str, str] = {
     # Hub / global
-    "Velantis Wind · Hub principal": "Velantis Wind · Main hub",
+
     "Selecciona el módulo de trabajo. Los tres módulos están operativos: Energía (AEP y wakes), Ruido, y Sombras (shadow flicker).": "Select the work module. The three modules are available: Energy (AEP and wakes), Noise, and Shadow Flicker.",
     "Idioma": "Language",
-    "Idioma del plugin:": "Plugin language:",
-    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "The selected language will be applied to the hub, modules, warnings and generated summaries.",
-    "Energía\nAEP y wakes": "Energy\nAEP and wakes",
+
+
+
     "Ruido": "Noise",
     "Sombras y\nparpadeo": "Shadow\nflicker",
     "Inicio": "Home",
@@ -87,7 +90,7 @@ _TO_EN: Dict[str, str] = {
     "Resumen del proyecto": "Project summary",
     "Proyecto:": "Project:",
     "CRS:": "CRS:",
-    "Layout activo:": "Active layout:",
+
     "Recurso:": "Resource:",
     "TI WRG:": "WRG TI:",
     "Estado módulos:": "Module status:",
@@ -96,32 +99,32 @@ _TO_EN: Dict[str, str] = {
     "CRS no disponible": "CRS unavailable",
     "Sin capas de coordenadas generadas todavía": "No coordinate layers generated yet",
     "Sin recurso seleccionado todavía": "No resource selected yet",
-    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Not selected (expected fallback to TI=10% in WRG flow)",
+
     "No se ha encontrado la factoría del módulo de energía.": "The energy module factory was not found.",
     "No se pudo abrir el módulo de energía.": "Could not open the energy module.",
     "Apoyar VelantisWind": "Support VelantisWind",
-    "♡ Apoyar VelantisWind": "♡ Support VelantisWind",
+
     "Apoya el mantenimiento, la documentación y el desarrollo open source futuro.": "Support maintenance, documentation and future open-source development.",
-    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Support maintenance, documentation, testing and future open-source development.",
+
 
     # Energy module
     "Calcular AEP · Modelos, coordenadas y recurso eólico": "Calculate AEP · Models, coordinates and wind resource",
     "Energía · AEP del parque": "Energy · Wind farm AEP",
-    "Cálculo de AEP con PyWake: define los modelos de aerogenerador, selecciona el recurso eólico (WAsP/Surfer grids o WRG), elige los modelos físicos (estela, turbulencia, bloqueo, rotor-average) y lanza el cálculo. Los resultados se vuelcan automáticamente sobre las capas de coordenadas del proyecto.": "AEP calculation with PyWake: define turbine models, select the wind resource (WAsP/Surfer grids or WRG), choose the physical models (wake, turbulence, blockage, rotor-average) and run the calculation. Results are automatically written to the project coordinate layers.",
+
     "Modelos de aerogenerador": "Wind turbine models",
     "Número de modelos:": "Number of models:",
     "Carpeta con grids WAsP": "Folder with WAsP grids",
     "Carpeta:": "Folder:",
     "Elegir carpeta…": "Choose folder…",
-    "Unión Recurso": "Merge resource",
+
     "Modelo de PyWake": "PyWake model",
     "¿Qué modelo quieres utilizar?": "Which model do you want to use?",
-    "Modelo de estela (PyWake)": "Wake deficit model (PyWake)",
+    "Modelo de estela (PyWake)": "Wake model (PyWake)",
     "¿Qué modelo de estela quieres usar?": "Which wake model do you want to use?",
     "Modelo de turbulencia añadida": "Added turbulence model",
     "Modelo de bloqueo": "Blockage model",
-    "Modelo rotor-average": "Rotor-average model",
-    "Recurso eólico (WAsP grids / WRG)": "Wind resource (WAsP grids / WRG)",
+    "Modelo rotor-average": "Rotor averaging model",
+
     "Archivo WRG/ZIP": "WRG/ZIP file",
     "Acciones": "Actions",
     "Generar capas de puntos": "Generate point layers",
@@ -134,7 +137,7 @@ _TO_EN: Dict[str, str] = {
     "Comparar escenarios": "Compare scenarios",
     "Comparar A/B": "Compare A/B",
     "Volver al hub": "Back to hub",
-    "Cierra el módulo de energía y vuelve al hub principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.": "Close the energy module and return to the Velantis Wind main hub without deleting project layers or loaded results.",
+
     "Modelo": "Model",
     "sin definir": "not defined",
     "Definir…": "Define…",
@@ -152,7 +155,7 @@ _TO_EN: Dict[str, str] = {
     "Último cálculo": "Last calculation",
     "No se pudo abrir la comparación:": "Could not open the comparison:",
     "No se pudo activar el modo interactivo:": "Could not activate interactive mode:",
-    "No se pudo obtener el map canvas de QGIS.": "Could not access the QGIS map canvas.",
+
     "El archivo no existe:": "The file does not exist:",
     "Extensión no soportada (use .wrg o .zip):": "Unsupported extension (use .wrg or .zip):",
     "No se pudo abrir el diálogo de turbina:": "Could not open the turbine dialog:",
@@ -163,7 +166,7 @@ _TO_EN: Dict[str, str] = {
 
     # AEP result dialog
     "Resultados AEP": "AEP results",
-    "Resultados AEP – Cálculo AEP (PyWake)": "AEP Results – AEP calculation (PyWake)",
+    "Resultados AEP – Cálculo AEP (PyWake)": "AEP results – AEP calculation (PyWake)",
     "Abrir el hub principal de Velantis Wind": "Open the main Velantis Wind hub",
     "Resumen global": "Global summary",
     "Por modelo": "By model",
@@ -171,19 +174,19 @@ _TO_EN: Dict[str, str] = {
     "Por sector": "By sector",
     "Informe": "Report",
     "Configuración": "Configuration",
-    "AEP libre": "Free-flow AEP",
+    "AEP libre": "Free-stream AEP",
     "AEP neta": "Net AEP",
     "Pérdidas wake": "Wake losses",
     "Pérdidas turbulencia": "Turbulence losses",
     "Pérdidas bloqueo": "Blockage losses",
     "Otras pérdidas": "Other losses",
     "Pérdidas totales": "Total losses",
-    "Nº turbinas": "No. turbines",
+    "Nº turbinas": "No. of turbines",
     "Potencia instalada": "Installed power",
     "Factor de capacidad neto": "Net capacity factor",
     "Producción específica": "Specific yield",
     "año": "year",
-    "Modelo WT": "WT model",
+
     "Turbinas": "Turbines",
     "Energía": "Energy",
     "Pérdida": "Loss",
@@ -216,7 +219,7 @@ _TO_EN: Dict[str, str] = {
     "Altura de receptor [m]:": "Receiver height [m]:",
     "Resumen": "Summary",
     "Modelos": "Models",
-    "Top receptores": "Top receivers",
+
     "Capas creadas": "Created layers",
     "Exportar resumen…": "Export summary…",
     "Exportar informe…": "Export report…",
@@ -495,7 +498,7 @@ _FRAGMENT_TO_ES.update({
     "Receiver": "Receptor",
     "Receivers": "Receptores",
     "Limit": "Límite",
-    "Pass": "Cumple",
+    "Pass": "Cumple",  # nosec B105
     "Exceeds": "Excede",
     "Yes": "Sí",
     "hours/year": "horas/año",
@@ -516,13 +519,13 @@ _I18N_EXTRA_TO_EN = {
     "WRG:": "WRG:",
 
     # Energy module labels / tooltips / dynamic messages
-    "Modelo rotor-average (PyWake)": "Rotor-average model (PyWake)",
-    "¿Qué modelo de rotor-average quieres usar?": "Which rotor-average model do you want to use?",
+    "Modelo rotor-average (PyWake)": "Rotor averaging model (PyWake)",
+    "¿Qué modelo de rotor-average quieres usar?": "Which rotor averaging model do you want to use?",
     "Modelo de bloqueo (PyWake)": "Blockage model (PyWake)",
     "¿Qué modelo de bloqueo quieres usar?": "Which blockage model do you want to use?",
     "Modelo de turbulencia (PyWake)": "Turbulence model (PyWake)",
     "¿Qué modelo de turbulencia quieres usar?": "Which turbulence model do you want to use?",
-    "Recurso eólico (WAsP grids / WRG)": "Wind resource (WAsP grids / WRG)",
+
     "WAsP/Surfer grids:": "WAsP/Surfer grids:",
     "Selecciona una carpeta con grids WAsP/Surfer compatibles con PyWake.": "Select a folder with WAsP/Surfer grids compatible with PyWake.",
     "Si el recurso ya viene preparado en formato pywake_compat, el plugin lo priorizará automáticamente.": "If the resource is already prepared in pywake_compat format, the plugin will prioritize it automatically.",
@@ -534,7 +537,7 @@ _I18N_EXTRA_TO_EN = {
     "Ninguno": "None",
     "Limpiar": "Clear",
     "Elegir WRG/ZIP…": "Choose WRG/ZIP…",
-    "Elegir raster(s) TI…": "Choose TI raster(s)…",
+
     "WRG/ZIP:": "WRG/ZIP:",
     "TI raster(s) (opcional):": "TI raster(s) (optional):",
     "Alturas TI override [m]:": "TI height override [m]:",
@@ -574,7 +577,7 @@ _I18N_EXTRA_TO_EN = {
     "Pérdidas por estela": "Wake losses",
     "Impacto TI/turbulencia": "TI/turbulence impact",
     "Pérdidas por bloqueo": "Blockage losses",
-    "Nº aerogeneradores": "No. turbines",
+    "Nº aerogeneradores": "No. of turbines",
     "Comparación global": "Global comparison",
     "Pérd. total": "Total loss",
     "Wake": "Wake",
@@ -589,6 +592,7 @@ _I18N_EXTRA_TO_EN = {
     "AEP bruto (free-stream):": "Gross AEP (free-stream):",
     "AEP neto (operativo):": "Net AEP (operational):",
     "Pérdidas por estelas:": "Wake losses:",
+    "Pérdidas por estelas": "Wake losses",
     "Impacto TI/turbulencia:": "TI/turbulence impact:",
     "Pérdidas por bloqueo:": "Blockage losses:",
     "Otras pérdidas:": "Other losses:",
@@ -609,13 +613,13 @@ _I18N_EXTRA_TO_EN = {
     "Potencia inst. [MW]": "Installed power [MW]",
     "AEP/MW [MWh/MW·año]": "AEP/MW [MWh/MW·year]",
     "Pérd. estelas [%]": "Wake loss [%]",
-    "Rosa de pérdidas por sector.": "Sector loss rose.",
-    "Distribución del AEP libre y neto por dirección del viento.": "Distribution of free-flow and net AEP by wind direction.",
+    "Rosa de pérdidas por sector.": "Loss rose by sector.",
+    "Distribución del AEP libre y neto por dirección del viento.": "Distribution of free-stream and net AEP by wind direction.",
     "dirección del viento": "wind direction",
     "pérdidas por estela": "wake losses",
     "rendimiento del parque": "wind farm performance",
     "Total sectores:": "Sector totals:",
-    "AEP libre": "Free-flow AEP",
+    "AEP libre": "Free-stream AEP",
     "pérdidas": "losses",
     "Comparación con resumen:": "Comparison with summary:",
     "revisar": "review",
@@ -625,7 +629,7 @@ _I18N_EXTRA_TO_EN = {
     "Evaluación de ruido generado por aerogeneradores": "Assessment of wind turbine noise",
     "RESUMEN EJECUTIVO": "EXECUTIVE SUMMARY",
     "Aerogeneradores": "Wind turbines",
-    "Receptores Evaluados": "Evaluated receptors",
+    "Receptores Evaluados": "Evaluated receivers",
     "Nivel Máximo (dB(A))": "Maximum level (dB(A))",
     "Cobertura de Análisis": "Analysis coverage",
     "receptores dentro del radio": "receivers within the radius",
@@ -729,9 +733,9 @@ _I18N_EXTRA_TO_EN = {
     "Regenerate filtered TIF": "Regenerar TIF filtrado",
     "Check configuration": "Comprobar configuración",
     "Calculate Shadow Flicker": "Calcular shadow flicker",
-    "Unnamed project": "Proyecto sin nombre",
+
     "— Select turbine layer —": "— Selecciona capa de turbinas —",
-    "— Select receiver layer —": "— Selecciona capa de receptores —",
+
     "— No DEM (flat terrain) —": "— Sin DEM/MDT (terreno plano) —",
     "Coordinates detected": "Coordenadas detectadas",
     "No turbine layer selected.": "No hay capa de turbinas seleccionada.",
@@ -826,7 +830,7 @@ _I18N_EXTRA2_TO_EN = {
     "Motor de cálculo:": "Calculation engine:",
     "⚡ Rápido - LwA global simplificado": "⚡ Fast - simplified global LwA",
     "Motor rápido: cálculo simplificado para cribado acústico\nMotor ISO: cálculo por bandas según ISO 9613-2:2024": "Fast engine: simplified screening calculation\nISO engine: band-based calculation following ISO 9613-2:2024",
-    "⛅ Condiciones Atmosféricas (Motor ISO)": "⛅ Atmospheric conditions (ISO engine)",
+
     "Presión atmosférica:": "Atmospheric pressure:",
     "💡 Usa condiciones típicas del emplazamiento": "💡 Use typical site conditions",
     "Configuración de grupos fuente acústicos": "Acoustic source-group configuration",
@@ -843,7 +847,7 @@ _I18N_EXTRA2_TO_EN = {
     "Limpiar espectro del grupo seleccionado": "Clear spectrum of the selected source group",
     "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Normalize the spectrum to the group LwA (use shape only)",
     "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV with columns freq_hz and Lw_dB (absolute) or Lw_dB_rel (relative shape). Comma, semicolon or tab separators are accepted.",
-    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Disabled: the absolute OEM spectrum is used as-is and the group operational LwA becomes the A-weighted sum of the spectrum (recommended to compare against other software). Enabled: the spectrum is used as a shape only and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+
     "Ruido · Espectro OEM por bandas de octava": "Noise · OEM octave-band spectrum",
     "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Enter the sound power level Lw per octave band (absolute manufacturer values in dB). If you enter a relative shape (all values below 20 dB), it will be treated as a shape and normalized to the group LwA.",
     "Banda [Hz]": "Band [Hz]",
@@ -904,14 +908,14 @@ _I18N_EXTRA2_TO_EN = {
 
     # AEP runtime remaining messages
     "Parámetros avanzados del modelo (opcional)": "Advanced model parameters (optional)",
-    "Override de parámetros físicos del modelo. Si dejas «Default PyWake», se usa el valor canónico del modelo seleccionado.": "Override physical model parameters. If you leave 'Default PyWake', the canonical value for the selected model is used.",
+    "Override de parámetros físicos del modelo. Si dejas «Default PyWake», se usa el valor canónico del modelo seleccionado.": "Override physical model parameters. If you leave 'PyWake default value', the canonical value for the selected model is used.",
     "Ayuda · Modelo de estela": "Help · Wake model",
     "Ayuda · Turbulencia": "Help · Turbulence",
     "Ayuda · Bloqueo": "Help · Blockage",
     "Ayuda · Turbulencia WRG": "Help · WRG turbulence",
     "Sin bloqueo:": "No blockage:",
     "Sin turbulencia añadida:": "No added turbulence:",
-    "Ahora mismo has dejado el modelo de turbulencia en Ninguno": "You currently left the turbulence model as None",
+    "Ahora mismo has dejado el modelo de turbulencia en Ninguno": "You have currently left the turbulence model set to None",
     "Con PropagateDownwind, el bloqueo se desactiva automáticamente.": "With PropagateDownwind, blockage is disabled automatically.",
     "Inicializando cálculo…": "Initializing calculation…",
     "Pérdidas:": "Losses:",
@@ -919,7 +923,7 @@ _I18N_EXTRA2_TO_EN = {
     "Guarda primero un escenario A y un escenario B.": "Save scenario A and scenario B first.",
     "Exportar layout editado": "Export edited layout",
     "Activa primero una capa de turbinas": "Activate a turbine layer first",
-    "Click izq: añadir turbina · Click der: borrar · ESC: salir": "Left click: add turbine · Right click: delete · ESC: exit",
+
     "¿Continuar?": "Continue?",
     "Ocurrió un error:": "An error occurred:",
     "La simulación requirió degradación automática:": "The simulation required automatic degradation:",
@@ -946,6 +950,7 @@ _I18N_EXTRA2_TO_EN = {
     "Configuración solicitada al solver": "Configuration requested from solver",
     "Configuración finalmente ejecutada": "Configuration finally executed",
     "No se pudo generar el gráfico total:": "Could not generate the total chart:",
+    "No se pudo renderizar el balance total": "Could not render the total balance",
 
     # Shadow remaining UI / dialogs
     "Raster cell size\n100 m = fast, less detail\n50 m = medium\n25 m = slow, maximum detail": "Tamaño de celda raster\n100 m = rápido, menos detalle\n50 m = medio\n25 m = lento, máximo detalle",
@@ -1018,7 +1023,7 @@ _I18N_EXTRA3_TO_EN = {
     "ajuste empírico clásico. Constantes fijas del paper.": "classic empirical fit. Fixed paper constants.",
     "Para mover la sensibilidad del AEP a turbulencia": "To adjust AEP sensitivity to turbulence",
     "ajusta la": "adjust the",
-    "TI ambiente": "ambient TI",
+    "TI ambiente": "Ambient TI",
     "o cambia a un wake model TI-driven": "or switch to a TI-driven wake model",
     "Las constantes internas del modelo no se exponen porque están fijadas por el paper de referencia.": "The model internal constants are not exposed because they are fixed by the reference paper.",
     "recomendado para benchmarking, estudios rápidos y muchos casos offshore limpios.": "recommended for benchmarking, quick studies and many clean offshore cases.",
@@ -1031,7 +1036,7 @@ _I18N_EXTRA3_TO_EN = {
     "opción gaussiana sensible a TI": "TI-sensitive Gaussian option",
     "No todos los modelos de estela usan la TI del mismo modo": "Not all wake models use TI in the same way",
     "consulta la ayuda para elegir una combinación físicamente coherente.": "check the help dialog to choose a physically consistent combination.",
-    "Ahora mismo has dejado el modelo de turbulencia en Ninguno": "You currently left the turbulence model as None",
+    "Ahora mismo has dejado el modelo de turbulencia en Ninguno": "You have currently left the turbulence model set to None",
     "el cálculo seguirá": "the calculation will continue",
     "pero la TI añadida por estela no entrará explícitamente.": "but wake-added TI will not explicitly enter the calculation.",
     "Con PropagateDownwind, el bloqueo se desactiva automáticamente.": "With PropagateDownwind, blockage is automatically disabled.",
@@ -1068,7 +1073,7 @@ _I18N_EXTRA3_TO_EN = {
     "muy ligera computacionalmente": "computationally very light",
     "Guía práctica muy corta": "Very short practical guide",
     "rapidez": "speed",
-    "Screening masivo": "large-scale screening",
+    "Screening masivo": "Large-scale screening",
     "Nota": "Note",
     "La explicación detallada": "The detailed explanation",
     "está en el botón de información": "is in the information button",
@@ -1122,7 +1127,7 @@ _I18N_EXTRA3_TO_EN = {
     "Por qué no se exponen las constantes internas del modelo": "Why the model internal constants are not exposed",
     "calibraciones del paper de referencia": "calibrations from the reference paper",
     "no perillas de sitio": "not site-specific knobs",
-    "Cambiarlos rompe la citabilidad del modelo": "Changing them breaks the model traceability/citability",
+    "Cambiarlos rompe la citabilidad del modelo": "Changing them breaks the citability of the model",
     "Turbulencia opcional para WRG": "Optional turbulence for WRG",
     "Este campo solo se usa con": "This field is only used with",
     "Si no seleccionas raster TI": "If you do not select a TI raster",
@@ -1145,21 +1150,21 @@ _I18N_EXTRA3_TO_EN = {
     "Nombre:": "Name:",
     "Diámetro rotor:": "Rotor diameter:",
     "Altura buje:": "Hub height:",
-    "Velocidad viento (m/s):": "Wind speed (m/s):",
+
     "Potencia (kW):": "Power (kW):",
     "Potencia en kW, misma longitud que ws": "Power in kW, same length as ws",
     "opcional": "optional",
     "Crear turbina (Manual)": "Create turbine (Manual)",
     "Fichero TXT/CSV:": "TXT/CSV file:",
-    "Selecciona TXT/CSV…": "Select TXT/CSV…",
+    "Selecciona TXT/CSV…": "Select a TXT/CSV file…",
     "Examinar…": "Browse…",
     "Delimitador:": "Delimiter:",
     "Tabulación": "Tab",
     "Coma": "Comma",
     "Punto y coma": "Semicolon",
     "Espacio": "Space",
-    "Columna ws (0-based):": "ws column (0-based):",
-    "Columna potencia kW (0-based):": "power kW column (0-based):",
+
+
     "Incluir columna CT": "Include CT column",
     "Filas de cabecera a saltar:": "Header rows to skip:",
     "Crear turbina (TXT/CSV)": "Create turbine (TXT/CSV)",
@@ -1251,24 +1256,34 @@ def _build() -> None:
     if LANG_EN not in _REGISTERED:
         _REGISTERED[LANG_EN] = {"full": dict(_TO_EN), "frag": dict(_FRAGMENT_TO_EN)}
 
+    # Every map is built in a fixed order (languages, then keys), so that it does not depend on the order in which the
+    # tables were imported (#67).
+    known = (LANG_EN, LANG_FR, LANG_DE)
+    order = [lang for lang in known if lang in _REGISTERED] + sorted(lang for lang in _REGISTERED if lang not in known)
     full = {_SOURCE_LANG: {}}
     frag = {_SOURCE_LANG: {}}
-    for lang, data in _REGISTERED.items():
-        full[lang] = dict(data.get("full") or {})
-        frag[lang] = dict(data.get("frag") or {})
+    for lang in order:
+        data = _REGISTERED[lang]
+        full[lang] = dict(sorted((data.get("full") or {}).items()))
+        frag[lang] = dict(sorted((data.get("frag") or {}).items()))
 
     # Reverse maps: any translated text -> canonical Spanish (the pivot step).
     # Do not reverse a target fragment if that same text is also a known Spanish
     # source fragment.  Otherwise Spanish source strings such as "Raster(s) TI"
     # can be damaged during normalization before being translated to FR/DE.
+    # The pivot is always Spanish: a key that is not a Spanish source (FOREIGN_KEYS) is never a reverse target, nor
+    # does it stop a translated text from being reversed.
     source_full_keys = set()
     for _m in full.values():
-        source_full_keys.update((_m or {}).keys())
+        source_full_keys.update(k for k in (_m or {}) if k not in FOREIGN_KEYS)
     source_frag_keys = set()
     for _m in frag.values():
-        source_frag_keys.update((_m or {}).keys())
+        source_frag_keys.update(k for k in (_m or {}) if k not in FOREIGN_KEYS)
 
-    reverse_fragment_blocklist = {"Raster"}
+    # Short words that are also words of another language of the plugin: as fragments they would turn correct text
+    # into another language ("an" -> "año", "In " -> "Dans ", "real" -> "réel", "{loss}" -> "{pérdida}").
+    reverse_fragment_blocklist = {"Raster", "an", "In ", "real", "None", "WT", "Hour", "Year", "Net", "net", "Yes", "loss",
+                                  "Type", "Name:"}
 
     src_full: Dict[str, str] = {}
     src_frag = []
@@ -1276,14 +1291,15 @@ def _build() -> None:
         if lang == _SOURCE_LANG:
             continue
         for es, tgt in m.items():
-            if tgt and tgt != es and tgt not in source_full_keys:
+            if tgt and tgt != es and tgt not in source_full_keys and es not in FOREIGN_KEYS:
                 src_full.setdefault(tgt, es)
     src_frag_map: Dict[str, str] = {}
     for lang, m in frag.items():
         if lang == _SOURCE_LANG:
             continue
         for es, tgt in m.items():
-            if tgt and tgt != es and tgt not in source_frag_keys and tgt not in reverse_fragment_blocklist:
+            if (tgt and tgt != es and tgt not in source_frag_keys and tgt not in reverse_fragment_blocklist
+                    and es not in FOREIGN_KEYS):
                 src_frag_map.setdefault(tgt, es)
 
     _STATE.clear()
@@ -1293,8 +1309,10 @@ def _build() -> None:
         full_norm={lang: {_norm_key(es): tgt for es, tgt in m.items()} for lang, m in full.items()},
         src_full=src_full,
         src_full_norm={_norm_key(k): v for k, v in src_full.items()},
-        frag_sorted={lang: sorted(m.items(), key=lambda kv: len(kv[0]), reverse=True) for lang, m in frag.items()},
-        src_frag_sorted=sorted(src_frag_map.items(), key=lambda kv: len(kv[0]), reverse=True),
+        # Longest first; between entries of the same length, by the entry, so that overlaps resolve always alike.
+        frag_sorted={lang: sorted(m.items(), key=lambda kv: (-len(kv[0]), kv[0])) for lang, m in frag.items()},
+        src_frag_sorted=sorted(src_frag_map.items(), key=lambda kv: (-len(kv[0]), kv[0])),
+        sources=source_full_keys | source_frag_keys,
     )
     _BUILT = True
 
@@ -1415,10 +1433,16 @@ def _final_language_cleanup(text: str, lang: str) -> str:
     }.get(l, [])
     for a, b in maps:
         if a in s:
-            s = s.replace(a, b)
+            # Whole words (or their plural in -s) only: "capa" must not touch
+            # "capacity", nor "non" "none"; a single word is not a prefix
+            # either ("non-standard").
+            end = "[\\w-]" if a.isalnum() else "\\w"
+            pattern = ("(?<!\\w)" if a[0].isalnum() else "") + re.escape(a) + (f"(?=s?(?!{end}))" if a[-1].isalnum() else "")
+            s, _ = _sub_outside_placeholders(re.compile(pattern), b, s, b)
     # Avoid over-correcting established technical compounds.
     if l == LANG_DE:
-        s = s.replace('Open-Quelle', 'Open-Source').replace('Open source', 'Open Source').replace('Open-Source', 'Open-Source')
+        for a, b in (('Open-Quelle', 'Open-Source'), ('Open source', 'Open Source')):
+            s, _ = _sub_outside_placeholders(re.compile(re.escape(a)), b, s, b)
     return s
 
 # Turbine-catalogue terminology refinements
@@ -1446,11 +1470,13 @@ def tr_text(text):
     # Normalize the incoming text to the Spanish pivot first (it may already be
     # in English or French because setters get re-applied on language switch).
     base = _to_source(s)
-    base = base if base is not None else s
+    translated = base is not None
+    base = base if translated else s
 
     if lang == _SOURCE_LANG:
         result = base
     else:
+        translated = True
         fmap = _STATE["full"][lang]  # type: ignore[index]
         if base in fmap:
             result = fmap[base]
@@ -1468,9 +1494,59 @@ def tr_text(text):
                     result = _fragment_impl(base, lang)
                 else:
                     result = base
-    result = _final_language_cleanup(result, lang)
+                    translated = False
+    # The last cleanup is for translations: a text without one (a name, a value) stays as it is.
+    if translated:
+        result = _final_language_cleanup(result, lang)
     _CACHE[key] = result
+    _remember(base, result)
     return result
+
+
+# A placeholder of a template ({model}, {n:.1f}) is code, not text: no entry may change it, or the ``.format`` that
+# fills it fails. The fields are found by str.format's own parser (also those nested in a spec), and only one named
+# like a field of the code ({name}, {0}, {name.attr}, {name[0]}) is held back; a text that str.format cannot read is
+# not a template.
+_FIELD_NAME = re.compile(r"(?:\d+|[A-Za-z_]\w*)?(?:\.\w+|\[[^\]]*\])*")
+
+
+def _placeholder_spans(s: str, offset: int = 0):
+    try:
+        parsed = list(string.Formatter().parse(s))
+    except ValueError:
+        return []
+    spans, pos = [], 0
+    for literal, name, spec, conversion in parsed:
+        pos += len(literal) + literal.count("{") + literal.count("}")  # escaped braces are two characters
+        if name is None:
+            continue
+        start = pos
+        pos += 1 + len(name) + (1 + len(conversion) if conversion else 0)
+        nested = []
+        if s[pos:pos + 1] == ":":
+            nested = _placeholder_spans(spec, offset + pos + 1)
+            pos += 1 + len(spec)
+        pos += 1
+        if _FIELD_NAME.fullmatch(name):
+            spans.append((offset + start, offset + pos))
+        else:
+            spans.extend(nested)
+    return spans
+
+
+def _sub_outside_placeholders(pattern, token: str, s: str, dst: str):
+    """``pattern.subn(token, s)``, except for a match that touches a placeholder without keeping it in ``dst``."""
+    spans = _placeholder_spans(s) if "{" in s else []
+    if not spans:
+        return pattern.subn(token, s)
+
+    def replace(m):
+        for a, b in spans:
+            if m.start() < b and a < m.end() and not (m.start() <= a and b <= m.end() and s[a:b] in dst):
+                return m.group(0)
+        return token
+
+    return pattern.subn(replace, s)
 
 
 def _apply_fragments(s: str, pairs) -> str:
@@ -1486,19 +1562,25 @@ def _apply_fragments(s: str, pairs) -> str:
     """
     replacements = []
     for src, dst in pairs:
-        if not src:
+        # An entry that is not in the text cannot match it: skip it before compiling anything (#66).
+        if not src or src not in s:
             continue
         token = f"\uE000VW_I18N_{len(replacements)}\uE000"
         # Single word keys must be whole words.  This prevents reverse maps such
         # as Model->Modelo from touching the Spanish source word Modelo.
         if all((ch.isalnum() or ch == "_") for ch in src):
             pattern = re.compile(r"(?<!\w)" + re.escape(src) + r"(?!\w)")
-            s, n = pattern.subn(token, s)
+            s, n = _sub_outside_placeholders(pattern, token, s, dst)
             if n:
                 replacements.append((token, dst))
-        elif src in s:
-            s = s.replace(src, token)
-            replacements.append((token, dst))
+        else:
+            # A key that starts or ends with a word must not take part of a longer one either: 'et ' is not the end
+            # of 'gestartet ', nor 'mit ' of 'limit '.
+            pattern = re.compile(("(?<!\\w)" if src[0].isalnum() else "") + re.escape(src)
+                                 + ("(?!\\w)" if src[-1].isalnum() else ""))
+            s, n = _sub_outside_placeholders(pattern, token, s, dst)
+            if n:
+                replacements.append((token, dst))
     for token, dst in replacements:
         s = s.replace(token, dst)
     return s
@@ -1515,6 +1597,14 @@ def _fragment_impl(text: str, lang: str) -> str:
 
 
 def translate_fragment(text):
+    out = _translate_fragment(text)
+    if out is not None and out is not text:
+        s = str(text)
+        _remember(_to_source(s) or s, out)
+    return out
+
+
+def _translate_fragment(text):
     if text is None:
         return text
     s = str(text)
@@ -1528,9 +1618,10 @@ def translate_fragment(text):
     # long paragraph may become a mixed Spanish/French text because short words
     # such as "sí" -> "oui" are still replaced.
     base = _to_source(s)
-    base = base if base is not None else s
     if lang == _SOURCE_LANG:
-        return _final_language_cleanup(base, lang)
+        # As in tr_text: the last cleanup only goes over a translation.
+        return s if base is None else _final_language_cleanup(base, lang)
+    base = base if base is not None else s
 
     fmap = _STATE["full"].get(lang, {})  # type: ignore[index,union-attr]
     if base in fmap:
@@ -1541,6 +1632,25 @@ def translate_fragment(text):
         return _final_language_cleanup(hit, lang)
 
     return _final_language_cleanup(_fragment_impl(base, lang), lang)
+
+
+# Each text tr_text and translate_fragment produce in this session, with the Spanish sources it came from: a widget
+# made in another language gives back its source this way, when only one source produced it (#37).
+_PRODUCED: Dict[str, set] = {}
+
+
+def _remember(source, out) -> None:
+    # Only a Spanish key of the tables is a source: a text composed through fragments may have gone through another
+    # language, and keeping only the keys bounds the memory to the size of the tables.
+    if out != source and source in _STATE.get("sources", ()):
+        _PRODUCED.setdefault(out, set()).add(source)
+
+
+def _source_of(text: str) -> str:
+    """The Spanish source of a text this session produced, if only one produced it; otherwise the text itself, which
+    tr_text maps back through its reverse table, as before."""
+    sources = _PRODUCED.get(text)
+    return next(iter(sources)) if sources and len(sources) == 1 else text
 
 
 def translate_html(html):
@@ -1585,53 +1695,137 @@ def _safe_call(fn, *args, **kwargs):
         return None
 
 
+# A widget whose texts are set translated already (``mark_translated``): apply_i18n leaves it and its children alone,
+# because a second translation spoils a translated text (it is read back as Spanish fragments).
+_TRANSLATED = "vw_translated"
+
+
+def mark_translated(widget: QtWidgets.QWidget) -> None:
+    widget.setProperty(_TRANSLATED, True)
+
+
+# A table cell or a combo item that holds user data (a name, a path): apply_i18n leaves its text as it is.
+_DATA_ROLE = int(QtCore.Qt.UserRole) + 0x5657
+
+
+def mark_data(item, index=None) -> None:
+    """Mark a ``QTableWidgetItem``, or the item ``index`` of a ``QComboBox``, as user data."""
+    if index is None:
+        item.setData(_DATA_ROLE, True)
+    else:
+        item.setItemData(index, True, _DATA_ROLE)
+
+
+# The layer and field combos of QGIS only show the user's layers and fields.
+_DATA_COMBOS = ("QgsMapLayerComboBox", "QgsFieldComboBox")
+
+
+def _translated_already(widget: QtWidgets.QWidget) -> bool:
+    w = widget
+    while w is not None:
+        if w.property(_TRANSLATED):
+            return True
+        w = w.parentWidget()
+    return False
+
+
+_SIGNAL_WIDGETS = (QtWidgets.QTableWidget, QtWidgets.QComboBox, QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)
+
+# The Spanish source each widget text was translated from, with the text the widget gave back after it was set (in
+# HTML, the one Qt normalises): a widget property {attribute: (source, shown)}, and a role for cells and combo items.
+# The next translation starts from that source while the widget still shows that text; a text the code has changed
+# since is a new source (#37).
+_SOURCE = "vw_i18n_source"
+_SOURCE_ROLE = _DATA_ROLE + 1
+_SETTERS = {"text": ("text", "setText", tr_text), "title": ("title", "setTitle", tr_text),
+            "windowTitle": ("windowTitle", "setWindowTitle", tr_text),
+            "specialValueText": ("specialValueText", "setSpecialValueText", tr_text),
+            "toolTip": ("toolTip", "setToolTip", translate_fragment),
+            "placeholderText": ("placeholderText", "setPlaceholderText", translate_fragment)}
+
+
+def _source_for(stored, text: str) -> str:
+    return stored[0] if stored and stored[1] == text else _source_of(text)
+
+
+def _translate(widget, attr, getter, setter, fn, source=None) -> None:
+    text = getter()
+    if not text and source is None:
+        return
+    store = dict(widget.property(_SOURCE) or {})
+    source = _source_for(store.get(attr), text) if source is None else source
+    setter(fn(source))
+    store[attr] = (source, getter())
+    widget.setProperty(_SOURCE, store)
+
+
+def _translate_item(text, stored, set_text, shown, set_stored) -> None:
+    if text:
+        source = _source_for(stored, text)
+        set_text(tr_text(source))
+        set_stored((source, shown()))
+
+
+def set_source(widget, attr: str, source: str) -> None:
+    """Set the text ``attr`` of ``widget`` (``"text"``, ``"title"``, ``"toolTip"``…) from its Spanish ``source``,
+    translated, and keep that source for the next change of language. Only for a text without data in it: a text
+    composed with data is translated by its owner, who marks the widget with ``mark_translated``."""
+    get, set_, fn = _SETTERS[attr]
+    _translate(widget, attr, getattr(widget, get), getattr(widget, set_), fn, source)
+
+
 def apply_i18n(widget: QtWidgets.QWidget) -> None:
-    """Translate visible text in an already-built widget tree."""
+    """Translate visible text in an already-built widget tree (except what ``mark_translated`` marks), each text from
+    the Spanish source it was last translated from."""
     if widget is None:
         return
     try:
         if hasattr(widget, "windowTitle") and hasattr(widget, "setWindowTitle"):
-            title = widget.windowTitle()
-            if title:
-                widget.setWindowTitle(tr_text(title))
-    except Exception:
+            _translate(widget, "windowTitle", widget.windowTitle, widget.setWindowTitle, tr_text)
+    except Exception:  # nosec B110
         pass
 
+    def cell(item):
+        if item is not None and not item.data(_DATA_ROLE):
+            _translate_item(item.text(), item.data(_SOURCE_ROLE), item.setText, item.text,
+                            lambda v: item.setData(_SOURCE_ROLE, v))
+
     for w in [widget] + list(widget.findChildren(QtWidgets.QWidget)):
+        if _translated_already(w) or w.metaObject().className() in _DATA_COMBOS:
+            continue
+        # A signal emitted half-way (a table or a combo that saves or rebuilds itself on a change) would store a
+        # translated text or change the widget while it is walked.
+        blocked = w.blockSignals(True) if isinstance(w, _SIGNAL_WIDGETS) else None
         try:
             # Tooltips and input placeholder texts are user-visible too.
             try:
                 if hasattr(w, "toolTip") and hasattr(w, "setToolTip"):
-                    tip = w.toolTip()
-                    if tip:
-                        w.setToolTip(translate_fragment(tip))
-            except Exception:
+                    _translate(w, "toolTip", w.toolTip, w.setToolTip, translate_fragment)
+            except Exception:  # nosec B110
                 pass
             try:
                 if isinstance(w, QtWidgets.QLineEdit):
-                    ph = w.placeholderText()
-                    if ph:
-                        w.setPlaceholderText(translate_fragment(ph))
-            except Exception:
+                    _translate(w, "placeholderText", w.placeholderText, w.setPlaceholderText, translate_fragment)
+            except Exception:  # nosec B110
                 pass
 
-            if isinstance(w, QtWidgets.QLabel):
-                txt = w.text()
-                if txt:
-                    w.setText(tr_text(txt))
-            elif isinstance(w, (QtWidgets.QPushButton, QtWidgets.QCheckBox, QtWidgets.QRadioButton)):
-                txt = w.text()
-                if txt:
-                    w.setText(tr_text(txt))
+            if isinstance(w, (QtWidgets.QLabel, QtWidgets.QPushButton, QtWidgets.QCheckBox, QtWidgets.QRadioButton)):
+                _translate(w, "text", w.text, w.setText, tr_text)
             elif isinstance(w, QtWidgets.QGroupBox):
-                txt = w.title()
-                if txt:
-                    w.setTitle(tr_text(txt))
+                _translate(w, "title", w.title, w.setTitle, tr_text)
             elif isinstance(w, QtWidgets.QTabWidget):
                 for i in range(w.count()):
-                    txt = w.tabText(i)
-                    if txt:
-                        w.setTabText(i, tr_text(txt))
+                    _translate(w, f"tab{i}", lambda i=i: w.tabText(i), lambda v, i=i: w.setTabText(i, v), tr_text)
+                # Qt's overflow arrows otherwise follow the host application's locale.
+                for name, source in (("ScrollLeftButton", "Desplazar a la izquierda"),
+                                     ("ScrollRightButton", "Desplazar a la derecha")):
+                    button = w.tabBar().findChild(QtWidgets.QToolButton, name)
+                    if button is not None:
+                        _translate(button, "toolTip", button.toolTip, button.setToolTip, tr_text, source)
+                        _translate(button, "accessibleName", button.accessibleName,
+                                   button.setAccessibleName, tr_text, source)
+            elif isinstance(w, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
+                _translate(w, "specialValueText", w.specialValueText, w.setSpecialValueText, tr_text)
             elif isinstance(w, QtWidgets.QComboBox):
                 # Language names are deliberately shown in their native form
                 # (Español, English, Français, Deutsch). Do not translate these
@@ -1640,39 +1834,29 @@ def apply_i18n(widget: QtWidgets.QWidget) -> None:
                 try:
                     if hasattr(w, "objectName") and w.objectName() == "languageSelector":
                         continue
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 for i in range(w.count()):
-                    txt = w.itemText(i)
-                    if txt:
-                        w.setItemText(i, tr_text(txt))
+                    if not w.itemData(i, _DATA_ROLE):
+                        _translate_item(w.itemText(i), w.itemData(i, _SOURCE_ROLE),
+                                        lambda v, i=i: w.setItemText(i, v), lambda i=i: w.itemText(i),
+                                        lambda v, i=i: w.setItemData(i, v, _SOURCE_ROLE))
             elif isinstance(w, QtWidgets.QTableWidget):
                 for c in range(w.columnCount()):
-                    item = w.horizontalHeaderItem(c)
-                    if item is not None and item.text():
-                        item.setText(tr_text(item.text()))
+                    cell(w.horizontalHeaderItem(c))
                 for r in range(w.rowCount()):
-                    item = w.verticalHeaderItem(r)
-                    if item is not None and item.text():
-                        item.setText(tr_text(item.text()))
+                    cell(w.verticalHeaderItem(r))
                     for c in range(w.columnCount()):
-                        item = w.item(r, c)
-                        if item is not None and item.text():
-                            item.setText(tr_text(item.text()))
+                        cell(w.item(r, c))
             elif isinstance(w, QtWidgets.QTextBrowser):
-                html = w.toHtml()
-                if html:
-                    w.setHtml(translate_html(html))
-            elif isinstance(w, QtWidgets.QTextEdit):
-                txt = w.toPlainText()
-                if txt:
-                    w.setPlainText(translate_fragment(txt))
-            elif isinstance(w, QtWidgets.QPlainTextEdit):
-                txt = w.toPlainText()
-                if txt:
-                    w.setPlainText(translate_fragment(txt))
-        except Exception:
+                _translate(w, "html", w.toHtml, w.setHtml, translate_html)
+            elif isinstance(w, (QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)):
+                _translate(w, "plainText", w.toPlainText, w.setPlainText, translate_fragment)
+        except Exception:  # nosec B112
             continue
+        finally:
+            if blocked is not None:
+                w.blockSignals(blocked)
 
 
 def install_runtime_i18n_patches() -> None:
@@ -1738,7 +1922,7 @@ _I18N_COVERAGE4_NOISE_TO_EN = {
     "EXCEDE": "EXCEEDS",
     "Modelo dominante": "Dominant model",
     "Grupo fuente": "Source group",
-    "Nº turbinas": "No. turbines",
+    "Nº turbinas": "No. of turbines",
     "Distancia": "Distance",
     "Desglose de Atenuaciones": "Attenuation breakdown",
     "Los valores mostrados a continuación son las magnitudes de atenuación usadas por el modelo. En la ecuación principal estos términos se restan al nivel de fuente.": "The values shown below are the attenuation magnitudes used by the model. In the main equation these terms are subtracted from the source level.",
@@ -1841,7 +2025,7 @@ _I18N_COVERAGE4_NOISE_TO_ES.update({
     "Total level": "Nivel total",
     "Applicable limit": "Límite aplicable",
     "Margin": "Margen",
-    "PASS": "CUMPLE",
+    "PASS": "CUMPLE",  # nosec B105
     "EXCEEDS": "EXCEDE",
     "Dominant model": "Modelo dominante",
     "Source group": "Grupo fuente",
@@ -1932,8 +2116,8 @@ _FRAGMENT_TO_ES.update(_I18N_COVERAGE5_NOISE_TO_ES)
 
 # Coverage pass 5b: atmospheric-pressure UI help.
 _I18N_COVERAGE5B_TO_EN = {
-    "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible.": "Local atmospheric pressure in kPa. Usual reference value at sea level: 101.325 kPa. Use a measured or altitude-adjusted value if available.",
-    "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.": "💡 Use typical site conditions. If you do not have measured pressure, 101.325 kPa is a standard sea-level reference; at altitude it is usually lower.",
+
+
 }
 _TO_EN.update(_I18N_COVERAGE5B_TO_EN)
 _FRAGMENT_TO_EN.update(_I18N_COVERAGE5B_TO_EN)
@@ -1953,14 +2137,14 @@ _I18N_ENERGY_FINAL_TO_EN = {
     "TI ambiente fallback:": "Ambient TI fallback:",
     "TI ambiente constante usada cuando no hay raster TI disponible.": "Constant ambient TI used when no TI raster is available.",
     "Se pasa al Site de PyWake como fracción, por ejemplo 10% = 0.10.": "It is passed to the PyWake Site as a fraction, for example 10% = 0.10.",
-    "Modelo rotor-average (PyWake)": "Rotor-average model (PyWake)",
-    "¿Qué modelo de rotor-average quieres usar?": "Which rotor-average model do you want to use?",
+    "Modelo rotor-average (PyWake)": "Rotor averaging model (PyWake)",
+    "¿Qué modelo de rotor-average quieres usar?": "Which rotor averaging model do you want to use?",
     "Fast · RotorCenter": "Fast · RotorCenter",
     "Balanced · CGIRotorAvg(7)": "Balanced · CGIRotorAvg(7)",
     "Accurate · CGIRotorAvg(9)": "Accurate · CGIRotorAvg(9)",
     "Very accurate · CGIRotorAvg(21)": "Very accurate · CGIRotorAvg(21)",
         "RotorCenter es rápido; CGIRotorAvg(7) es el equilibrio recomendado; CGIRotorAvg(9/21) aumenta precisión y coste computacional.": "RotorCenter is fast; CGIRotorAvg(7) is the recommended balanced option; CGIRotorAvg(9/21) increases accuracy and computation time.",
-    "Sin rotor-average: PyWake evaluará la velocidad efectiva en el centro del rotor.": "No rotor-average: PyWake will evaluate the effective wind speed at the rotor centre.",
+    "Sin rotor-average: PyWake evaluará la velocidad efectiva en el centro del rotor.": "No rotor averaging: PyWake will evaluate the effective wind speed at the rotor centre.",
     "Fast: RotorCenter es el modo más rápido y recomendado para iteraciones rápidas o mapa interactivo.": "Fast: RotorCenter is the fastest mode and is recommended for quick iterations or the interactive map.",
     "Balanced: CGIRotorAvg(7) es el valor recomendado para cálculo AEP normal.": "Balanced: CGIRotorAvg(7) is the recommended value for normal AEP calculations.",
     "Accurate: CGIRotorAvg(9) aumenta algo la fidelidad y el coste computacional.": "Accurate: CGIRotorAvg(9) slightly increases fidelity and computation time.",
@@ -1970,22 +2154,22 @@ _I18N_ENERGY_FINAL_TO_EN = {
     "Modelo de superposición de estelas (PyWake)": "Wake superposition model (PyWake)",
     "¿Cómo se combinan las estelas de varias turbinas?": "How are wakes from several turbines combined?",
     "Ayuda sobre LinearSum, SquaredSum, MaxSum y WeightedSum": "Help about LinearSum, SquaredSum, MaxSum and WeightedSum",
-    "Auto recomendado": "Recommended auto",
+    "Auto recomendado": "Auto (recommended)",
     "WeightedSum (avanzado · Gaussian)": "WeightedSum (advanced · Gaussian)",
-    "Auto recomendado elige una opción segura según wake/rotor-average. LinearSum es conservador; SquaredSum es habitual en arrays densos; WeightedSum se reserva para modelos gaussianos compatibles.": "Recommended auto chooses a safe option based on wake/rotor-average. LinearSum is conservative; SquaredSum is common for dense arrays; WeightedSum is reserved for compatible Gaussian models.",
-    "Auto recomendado: el plugin elige una superposición segura según el wake deficit y el rotor-average activo.": "Recommended auto: the plugin chooses a safe superposition according to the active wake deficit and rotor-average model.",
+    "Auto recomendado elige una opción segura según wake/rotor-average. LinearSum es conservador; SquaredSum es habitual en arrays densos; WeightedSum se reserva para modelos gaussianos compatibles.": "Auto (recommended) chooses a safe option based on wake/rotor-average. LinearSum is conservative; SquaredSum is common for dense arrays; WeightedSum is reserved for compatible Gaussian models.",
+    "Auto recomendado: el plugin elige una superposición segura según el wake deficit y el rotor-average activo.": "Auto (recommended): the plugin chooses a safe superposition according to the active wake deficit and rotor-average model.",
     "LinearSum suma los déficits linealmente; suele ser conservador en parques densos.": "LinearSum adds deficits linearly; it is usually conservative in dense wind farms.",
     "SquaredSum usa raíz de suma de cuadrados; es una opción habitual para arrays densos y evita sumar déficits de forma tan agresiva como LinearSum.": "SquaredSum uses the square root of the sum of squares; it is a common option for dense arrays and avoids adding deficits as aggressively as LinearSum.",
     "MaxSum considera solo el déficit más severo; útil como comprobación robusta, pero puede infraestimar pérdidas acumuladas.": "MaxSum considers only the most severe deficit; useful as a robust check, but it may underestimate cumulative losses.",
     "WeightedSum es avanzado y se reserva para déficits gaussianos compatibles; si PyWake no acepta la combinación, el solver degradará automáticamente.": "WeightedSum is advanced and reserved for compatible Gaussian deficits; if PyWake rejects the combination, the solver will automatically degrade it.",
     "Selecciona cómo se combinan las estelas de varias turbinas antes de calcular la velocidad efectiva.": "Select how wakes from several turbines are combined before calculating the effective wind speed.",
     "PyWake permite varias formas de combinar déficits de velocidad cuando una turbina recibe varias estelas.": "PyWake allows several ways of combining wind-speed deficits when a turbine receives several wakes.",
-    "• Auto recomendado: selección segura del plugin.": "• Recommended auto: safe plugin selection.",
+    "• Auto recomendado: selección segura del plugin.": "• Auto (recommended): safe plugin selection.",
     "• LinearSum: suma lineal; conservador en parques densos.": "• LinearSum: linear sum; conservative in dense wind farms.",
     "• SquaredSum: raíz de suma de cuadrados; buena opción práctica para arrays densos.": "• SquaredSum: square root of the sum of squares; a good practical option for dense arrays.",
     "• MaxSum: solo domina la estela más severa; útil para diagnóstico.": "• MaxSum: only the most severe wake dominates; useful for diagnostics.",
     "• WeightedSum: avanzado, pensado para modelos gaussianos compatibles y más sensible al coste/compatibilidad.": "• WeightedSum: advanced, intended for compatible Gaussian models and more sensitive to cost/compatibility.",
-    "Para pruebas, usa Auto recomendado o SquaredSum como referencia de sensibilidad.": "For testing, use Recommended auto or SquaredSum as the sensitivity reference.",
+    "Para pruebas, usa Auto recomendado o SquaredSum como referencia de sensibilidad.": "For testing, use Auto (recommended) or SquaredSum as the sensitivity reference.",
     "Nota: con PropagateUpDownIterative se fuerza automáticamente use_effective_ws=True (wake y bloqueo) para evitar errores de compatibilidad.": "Note: with PropagateUpDownIterative, use_effective_ws=True is automatically forced for wake and blockage to avoid compatibility errors.",
     "Exportar informe HTML…": "Export HTML report…",
     "Guarda el resumen AEP con logo Velantis Wind y formato corporativo en un archivo HTML.": "Save the AEP summary with the Velantis Wind logo and corporate formatting as an HTML file.",
@@ -1998,7 +2182,7 @@ _I18N_ENERGY_FINAL_TO_EN = {
     "AEP technical report": "Informe técnico AEP",
     "Energy module · PyWake workflow": "Módulo Energía · Flujo PyWake",
     "Informe técnico generado desde el módulo Energía de Velantis Wind.": "Technical report generated from the Velantis Wind Energy module.",
-    "AEP bruto (free-stream)": "Free-flow AEP",
+    "AEP bruto (free-stream)": "Gross AEP (free-stream)",
     "AEP neto (operativo)": "Net AEP (operational)",
     "Desglose de pérdidas": "Loss breakdown",
     "Generated by Velantis Wind · QGIS energy module · PyWake-based AEP workflow.": "Generado por Velantis Wind · Módulo Energía de QGIS · Flujo AEP basado en PyWake.",
@@ -2058,20 +2242,20 @@ _FRAGMENT_TO_ES.update(_I18N_ENERGY_FINAL_FIX_TO_ES)
 _I18N_ENERGY_UX_POLISH_TO_EN = {
     "Motor de propagación PyWake": "PyWake propagation engine",
     "¿Cómo debe propagar PyWake las estelas entre turbinas?": "How should PyWake propagate wakes between turbines?",
-    "Modelo de pérdida por estela (wake deficit)": "Wake-loss model (wake deficit)",
+    "Modelo de pérdida por estela (wake deficit)": "Wake deficit model",
     "¿Cómo quieres calcular la pérdida de viento detrás de cada turbina?": "How do you want to calculate wind-speed loss behind each turbine?",
-    "Raster(s) de turbulencia TI (opcional):": "TI turbulence raster(s) (optional):",
+
     "Alturas de TI por archivo [m]:": "TI heights per file [m]:",
-    "Opcional: altura de cada raster TI, ej. 90;120": "Optional: height of each TI raster, e.g. 90;120",
-    "TI ambiente manual si no hay raster:": "Manual ambient TI if no raster:",
-    "Promedio sobre el rotor (rotor-average)": "Rotor-disk averaging (rotor-average)",
+
+
+    "Promedio sobre el rotor (rotor-average)": "Rotor averaging (rotor-average)",
     "¿Cómo debe promediarse el viento dentro del disco del rotor?": "How should wind speed be averaged across the rotor disk?",
-    "Combinación de varias estelas (superposición)": "Combination of multiple wakes (superposition)",
+    "Combinación de varias estelas (superposición)": "Wake superposition (combination of several wakes)",
     "Si una turbina recibe varias estelas, ¿cómo se suman sus efectos?": "If a turbine receives several wakes, how should their effects be combined?",
     "Parámetros avanzados del modelo (opcional · dejar por defecto salvo calibración)": "Advanced model parameters (optional · keep defaults unless calibrating)",
-    "Valor PyWake por defecto": "PyWake default",
+    "Valor PyWake por defecto": "PyWake default value",
     "Parámetros activos:": "Active parameters:",
-    "Ayuda · Rotor-average": "Help · Rotor-average",
+    "Ayuda · Rotor-average": "Help · Rotor averaging",
     "Ayuda · Superposición de estelas": "Help · Wake superposition",
     "Ayuda · Wake effect y modelo de estela": "Help · Wake effect and wake model",
     "Ayuda · Turbulencia TI": "Help · TI turbulence",
@@ -2123,7 +2307,7 @@ _FRAGMENT_TO_ES.update(_I18N_ENERGY_UX_POLISH_TO_ES)
 
 _I18N_ENERGY_CSV_BUTTON_TO_EN = {
     "Exportar CSV por turbina…": "Export per-turbine CSV…",
-    "Guarda una tabla limpia con una fila por aerogenerador: coordenadas, modelo, AEP neto/bruto y pérdidas principales.": "Save a clean table with one row per turbine: coordinates, model, net/free-flow AEP and main losses.",
+    "Guarda una tabla limpia con una fila por aerogenerador: coordenadas, modelo, AEP neto/bruto y pérdidas principales.": "Save a clean table with one row per turbine: coordinates, model, net/gross AEP and main losses.",
     "Exportar CSV por turbina": "Export per-turbine CSV",
     "No hay datos por turbina para exportar.": "There are no per-turbine data to export.",
     "CSV exportado": "CSV exported",
@@ -2150,7 +2334,7 @@ _FRAGMENT_TO_ES.update(_I18N_ENERGY_CSV_BUTTON_TO_ES)
 # ---------------------------------------------------------------------------
 _I18N_ENERGY_FINAL_UX2_TO_EN = {
     "Unir recurso": "Merge resource",
-    "Grids WAsP/Surfer:": "WAsP/Surfer grids:",
+
     "Motor de cálculo PyWake": "PyWake calculation engine",
     "¿Cómo se calculan las interacciones entre turbinas?": "How should turbine interactions be calculated?",
     "Modelo de estela: pérdida de velocidad": "Wake model: wind-speed loss",
@@ -2163,17 +2347,17 @@ _I18N_ENERGY_FINAL_UX2_TO_EN = {
     "Automático": "Automatic",
     "WeightedSum (solo gaussianos)": "WeightedSum (Gaussian only)",
     "Parámetros avanzados del modelo (opcional · dejar por defecto salvo calibración)": "Advanced model parameters (optional · keep defaults unless calibrating)",
-    "Ayuda · Promedio sobre el rotor": "Help · Rotor-disk averaging",
+    "Ayuda · Promedio sobre el rotor": "Help · Rotor averaging",
     "Modelo de estela: pérdida de velocidad": "Wake model: wind-speed loss",
-    "Promedio sobre el rotor (rotor-average)": "Rotor-disk averaging (rotor-average)",
-    "Combinación de varias estelas (superposición)": "Combination of multiple wakes (superposition)",
+    "Promedio sobre el rotor (rotor-average)": "Rotor averaging (rotor-average)",
+    "Combinación de varias estelas (superposición)": "Wake superposition (combination of several wakes)",
     "Modelo de bloqueo (PyWake)": "Blockage model (PyWake)",
     "¿Qué modelo de bloqueo quieres usar?": "Which blockage model should be used?",
     "Modelo de turbulencia (PyWake)": "Turbulence model (PyWake)",
     "¿Qué modelo de turbulencia quieres usar?": "Which turbulence model should be used?",
     "Elegir carpeta…": "Choose folder…",
     "Elegir WRG/ZIP…": "Choose WRG/ZIP…",
-    "Elegir raster(s) TI…": "Choose TI raster(s)…",
+
     "Limpiar": "Clear",
 }
 _TO_EN.update(_I18N_ENERGY_FINAL_UX2_TO_EN)
@@ -2228,26 +2412,26 @@ _FRAGMENT_TO_ES.update(_I18N_ENERGY_FINAL_UX2_TO_ES)
 # ---------------------------------------------------------------------------
 _I18N_ENERGY_HELP_NOTES_TO_EN = {
     # Resource section labels / buttons / introductory notes
-    "Recurso eólico (WAsP grids / WRG)": "Wind resource (WAsP grids / WRG)",
-    "Grids WAsP/Surfer:": "WAsP/Surfer grids:",
+
+
     "Elegir carpeta...": "Choose folder...",
-    "Elegir carpeta…": "Choose folder...",
+    "Elegir carpeta…": "Choose folder…",
     "Unir recurso": "Merge resource",
     "Elegir WRG/ZIP...": "Choose WRG/ZIP...",
     "Elegir WRG/ZIP…": "Choose WRG/ZIP...",
     "Elegir raster(s) TI...": "Choose TI raster(s)...",
-    "Elegir raster(s) TI…": "Choose TI raster(s)...",
+
     "Limpiar": "Clear",
-    "Raster(s) de turbulencia TI (opcional):": "TI turbulence raster(s) (optional):",
+
     "Alturas de TI por archivo [m]:": "TI heights per file [m]:",
-    "TI ambiente manual si no hay raster:": "Manual ambient TI if no raster:",
-    "Opcional: altura de cada raster TI, ej. 90;120": "Optional: height of each TI raster, e.g. 90;120",
-    "Selecciona una carpeta con grids WAsP/Surfer compatibles con PyWake. Si el recurso ya viene preparado en formato pywake_compat, el plugin lo priorizará automáticamente.": "Select a folder with WAsP/Surfer grids compatible with PyWake. If the resource is already prepared in pywake_compat format, the plugin will prioritize it automatically.",
-    "El recurso eólico describe el viento que llega al parque antes de aplicar estelas: frecuencia por dirección, velocidades y, según el formato, parámetros Weibull. Puedes usar WAsP/Surfer grids o WRG/ZIP. Si aportas varios WRG a distintas alturas, PyWake podrá interpolar por altura cuando sea necesario.": "The wind resource describes the wind arriving at the wind farm before wake effects: directional frequency, wind speeds and, depending on the format, Weibull parameters. You can use WAsP/Surfer grids or WRG/ZIP. If you provide WRG files at several heights, PyWake can interpolate by height when needed.",
+
+
+
+
     "La TI es la intensidad de turbulencia ambiente: una medida de lo variable o 'mezclado' que llega el viento al rotor. Si no cargas raster TI, se usa el valor manual de arriba como hipótesis uniforme. La TI no siempre cambia mucho el AEP: se nota sobre todo en modelos TI-sensitive como Niayifar, Zong, TurboGaussian o TurboNOJ. Los raster(s) TI se reproyectarán al CRS del proyecto actual": "TI is ambient turbulence intensity: a measure of how variable or mixed the wind is when it reaches the rotor. If you do not load a TI raster, the manual value above is used as a uniform assumption. TI does not always change AEP strongly: it is mainly visible in TI-sensitive models such as Niayifar, Zong, TurboGaussian or TurboNOJ. TI raster(s) will be reprojected to the current project CRS",
     "si hace falta.": "if needed.",
-    "Explica qué es la TI, cuándo usar raster de turbulencia y cómo afecta al AEP": "Explains what TI is, when to use a turbulence raster and how it affects AEP",
-    "Valor de turbulencia ambiente que se usa si no cargas un raster TI. Ejemplo: 10 % significa TI = 0.10 dentro del Site de PyWake.": "Ambient turbulence value used if no TI raster is loaded. Example: 10% means TI = 0.10 inside the PyWake Site.",
+
+
 
     # Engine/wake model section
     "Motor de cálculo PyWake": "PyWake calculation engine",
@@ -2282,7 +2466,7 @@ _I18N_ENERGY_HELP_NOTES_TO_EN = {
     "A expansión TurboPark": "A TurboPark expansion",
 
     # Rotor-average / superposition
-    "Promedio sobre el rotor (rotor-average)": "Rotor-disk averaging (rotor-average)",
+    "Promedio sobre el rotor (rotor-average)": "Rotor averaging (rotor-average)",
     "¿Cómo debe promediarse el viento dentro del disco del rotor?": "How should wind speed be averaged across the rotor disk?",
     "Explica por qué el rotor no debe tratarse siempre como un solo punto": "Explains why the rotor should not always be treated as a single point",
     "Ninguno": "None",
@@ -2298,7 +2482,7 @@ _I18N_ENERGY_HELP_NOTES_TO_EN = {
     "CGIRotorAvg(21): usa muchos puntos del rotor. Es más pesado y solo compensa si buscas una sensibilidad de mayor fidelidad.": "CGIRotorAvg(21): uses many rotor points. It is heavier and mainly useful for higher-fidelity sensitivity checks.",
     "Rotor-average significa promediar el viento en varios puntos del rotor en vez de mirar un único punto central. Más puntos = más realismo y más coste.": "Rotor averaging means averaging wind speed at several rotor points instead of looking at one central point. More points = more realism and more computation.",
     "El rotor-average calcula el viento en varios puntos del disco del rotor, no solo en el centro. Más puntos dan más realismo cuando una estela corta parte del rotor, pero aumentan el tiempo de cálculo.": "Rotor averaging calculates wind speed at several points of the rotor disk, not only at the centre. More points add realism when a wake cuts part of the rotor, but increase computation time.",
-    "Combinación de varias estelas (superposición)": "Combination of multiple wakes (superposition)",
+    "Combinación de varias estelas (superposición)": "Wake superposition (combination of several wakes)",
     "Si una turbina recibe varias estelas, ¿cómo se suman sus efectos?": "If a turbine receives several wakes, how should their effects be combined?",
     "Explica qué pasa cuando varias estelas llegan a la misma turbina": "Explains what happens when several wakes reach the same turbine",
     "Automático": "Automatic",
@@ -2412,22 +2596,22 @@ _I18N_COVERAGE6_TO_EN = {
     'Modelo que estima cuánto viento pierde una turbina cuando está dentro de la estela de otra. Algunos modelos usan la turbulencia TI y otros apenas la notan.': "Model that estimates how much wind a turbine loses when it is inside another turbine's wake. Some models use TI turbulence and others barely notice it.",
     'Perímetro del recurso': 'Resource boundary',
     'Capas para estelas': 'Layers for wakes',
-    'Dibuja una capa temporal con los límites del WRG o de los grids WAsP/Surfer. Sirve para comprobar si el layout queda dentro del dominio del recurso.': 'Draws a temporary layer with the boundaries of the WRG or the WAsP/Surfer grids. It is used to check whether the layout lies inside the resource domain.',
+
     'Vuelve a dibujar el perímetro del recurso eólico seleccionado.': 'Redraws the boundary of the selected wind resource.',
     'Elimina del proyecto la capa temporal del perímetro del recurso.': 'Removes the temporary resource-boundary layer from the project.',
-    "Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.": "Enable 'Show resource boundary on the map' to draw it.",
+    "Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.": "Enable “Show resource boundary on the map” to draw it.",
     'No había perímetro del recurso que limpiar.': 'There was no resource boundary to clear.',
     'Perímetro del recurso eliminado del mapa.': 'Resource boundary removed from the map.',
     'Perímetro del recurso no disponible en esta instalación.': 'Resource boundary not available in this installation.',
     'No se pudo limpiar el perímetro del recurso:': 'Could not clear the resource boundary:',
     'Ver la curva de potencia (y Ct si está disponible) de la turbina definida.\nÚtil para detectar errores de carga (kW vs W, columnas invertidas, etc.).': 'View the power curve (and Ct if available) of the defined turbine.\nUseful to detect loading errors (kW vs W, swapped columns, etc.).',
     'Esta turbina no tiene la curva guardada en metadatos. Vuelve a pulsar «Definir…» para regenerarla.': 'This turbine has no curve stored in its metadata. Press “Define…” again to regenerate it.',
-    'Altura manual de cada raster TI, en el mismo orden que los archivos. Útil si el nombre del archivo no indica claramente 90 m, 120 m, etc.': 'Manual height for each TI raster, in the same order as the files. Useful when the file name does not clearly indicate 90 m, 120 m, etc.',
+
     'Has definido varios hub heights pero no has seleccionado raster(s) TI. El cálculo seguirá con TI uniforme =': 'You have defined several hub heights but have not selected TI raster(s). The calculation will continue with a uniform TI =',
     '%. Es válido para una prueba, pero no representa variación vertical de turbulencia.': '%. It is valid for a test, but it does not represent vertical variation of turbulence.',
     ', sin altura)': ', no height)',
     '. El plugin aplicará esa TI a todas las alturas como aproximación.': '. The plugin will apply that TI to all heights as an approximation.',
-    'Se han seleccionado varios raster(s) TI, pero no he podido identificar al menos dos alturas distintas en sus nombres. El plugin no podrá reconstruir una TI vertical fiable; revisa nombres como TImean.90.asc o TI_120m.tif.': 'Several TI raster(s) were selected, but at least two different heights could not be identified in their names. The plugin will not be able to reconstruct a reliable vertical TI; check names such as TImean.90.asc or TI_120m.tif.',
+
     'Raster(s) TI no seleccionado(s) → fallback automático a': 'TI raster(s) not selected → automatic fallback to',
     'No hay capas de turbinas válidas con puntos para calcular.\n\nCrea una capa con «Generar capas de puntos», define su modelo de turbina y añade al menos un aerogenerador en el mapa.': 'There are no valid turbine layers with points to calculate.\n\nCreate a layer with “Generate point layers”, define its turbine model and add at least one turbine on the map.',
     'No encuentro una capa de turbinas «{Modelo} (CSV)» para editar.\n\nPulsa primero «Generar capas de puntos» o carga una capa del modelo en el proyecto.': 'No turbine layer “{Modelo} (CSV)” was found to edit.\n\nPress “Generate point layers” first, or load a model layer into the project.',
@@ -2445,23 +2629,23 @@ _I18N_COVERAGE6_TO_EN = {
     'BastankhahGaussianDeficit usa una k fija: la TI ambiente y el modelo de turbulencia apenas cambian el déficit base del wake.': 'BastankhahGaussianDeficit uses a fixed k: ambient TI and the turbulence model barely change the base wake deficit.',
     'GaussianOverlapAvgModel se ha sustituido por CGIRotorAvg(7) por compatibilidad.': 'GaussianOverlapAvgModel was replaced by CGIRotorAvg(7) for compatibility.',
     'Has seleccionado PropagateDownwind: PyWake no calcula bloqueo con este engine y el plugin lo ha desactivado automáticamente.': 'You selected PropagateDownwind: PyWake does not calculate blockage with this engine and the plugin has disabled it automatically.',
-    'Hay varios hub heights pero solo una TI ambiente verticalmente uniforme; el cálculo sigue siendo válido, aunque es una aproximación en altura.': 'There are several hub heights but only a vertically uniform ambient TI; the calculation is still valid, although it is an approximation in height.',
+
     'La simulación principal no pudo ejecutarse con la combinación pedida y PyWake requirió la degradación automática:': 'The main simulation could not run with the requested combination and PyWake required automatic degradation:',
     'NOJDeficit usa una expansión top-hat constante: el modelo de turbulencia no cambia el AEP en la configuración estándar.': 'NOJDeficit uses a constant top-hat expansion: the turbulence model does not change AEP in the standard configuration.',
     'No se pudo instanciar el modelo de turbulencia seleccionado; el plugin ha intentado un fallback seguro (STF2017/STF2005/GCL).': 'The selected turbulence model could not be instantiated; the plugin attempted a safe fallback (STF2017/STF2005/GCL).',
     'Sustitución del modelo de bloqueo: la combinación seleccionada con': 'Blockage-model substitution: the selected combination with',
-    'WRG: no se ha proporcionado raster TI, así que la TI ambiente se ha fijado al valor fallback definido por el usuario como campo uniforme.': 'WRG: no TI raster was provided, so the ambient TI was set to the user-defined fallback value as a uniform field.',
-    'WRG: se ha usado un único raster de TI ambiente; si mezclas varios hub heights, esa TI se replica/interpela como aproximación vertical.': 'WRG: a single ambient TI raster was used; if you mix several hub heights, that TI is replicated/interpolated as a vertical approximation.',
+
+
     'ZongGaussianDeficit requiere un modelo de turbulencia añadida; se ha forzado STF2017.': 'ZongGaussianDeficit requires an added-turbulence model; STF2017 was forced.',
     'como modelo alternativo de acoplamiento más débil con la TI efectiva. Esto preserva la partida de pérdidas por bloqueo manteniendo intactos wake, rotor-average y modelo de turbulencia.': 'as an alternative model with weaker coupling to the effective TI. This preserves the blockage-loss component while keeping wake, rotor-average and the turbulence model intact.',
     'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando': 'did not converge in PyWake (the coverage pass between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using',
     'puede ser sensible a la TI, pero se ha ejecutado sin modelo de turbulencia añadida; la sensibilidad queda limitada a la TI ambiente disponible.': 'can be sensitive to TI, but it ran without an added-turbulence model; the sensitivity is limited to the available ambient TI.',
     'puede usar la TI ambiente/efectiva para abrir la estela; el modelo de turbulencia activo (': 'can use ambient/effective TI to open the wake; the active turbulence model (',
     'raster(s) de TI ambiente para reconstruir TI por altura cuando es posible.': 'ambient TI raster(s) to reconstruct TI by height when possible.',
-    'sin bloqueo + sin turbulencia': 'no blockage + no turbulence',
-    'sin rotor-average + sin bloqueo': 'no rotor-average + no blockage',
-    'sin rotor-average + sin bloqueo + sin turbulencia': 'no rotor-average + no blockage + no turbulence',
-    'sin rotor-average + sin turbulencia': 'no rotor-average + no turbulence',
+    'sin bloqueo + sin turbulencia': "without blockage or turbulence",
+    'sin rotor-average + sin bloqueo': "without rotor averaging or blockage",
+    'sin rotor-average + sin bloqueo + sin turbulencia': "without rotor averaging, blockage or turbulence",
+    'sin rotor-average + sin turbulencia': "without rotor averaging or turbulence",
     'Cerrar esta ventana y volver al diálogo principal sin crear la capa.': 'Close this window and return to the main dialog without creating the layer.',
     'Plantillas de screening: rellenan D, hub, potencia nominal y una curva genérica editable. No sustituyen la curva oficial del fabricante.': 'Screening templates: they fill in D, hub height, rated power and a generic editable curve. They do not replace the official manufacturer curve.',
     'Cálculo AEP': 'AEP calculation',
@@ -2477,34 +2661,34 @@ _I18N_COVERAGE6_TO_EN = {
     ': faltan coordenadas. Selecciona CSV o añade puntos en el mapa.': ': coordinates are missing. Select a CSV or add points on the map.',
     'Extensión WRG no soportada. Usa .wrg o .zip:': 'Unsupported WRG extension. Use .wrg or .zip:',
     'No se ha definido ningún modelo de aerogenerador.': 'No turbine model has been defined.',
-    'No se ha seleccionado raster TI para WRG; se usará TI fija/fallback si el modelo lo necesita.': 'No TI raster was selected for WRG; a fixed/fallback TI will be used if the model needs it.',
+
     'PropagateDownwind no aplica bloqueo; el cálculo lo desactivará automáticamente.': 'PropagateDownwind does not apply blockage; the calculation will disable it automatically.',
-    'No hay turbina cerca del clic.': 'There is no turbine near the click.',
+    'No hay turbina cerca del clic.': "No turbine was found near the click.",
     'No se pudo añadir turbina:': 'Could not add turbine:',
     'No se pudo borrar turbina:': 'Could not delete turbine:',
-    'Ya existe una turbina en ese punto.': 'There is already a turbine at that point.',
+    'Ya existe una turbina en ese punto.': "A turbine already exists at that point.",
     "<span style='color:#a85a00;'><b>Sin capa activa</b></span> de turbinas «<i>Modelo (CSV)</i>».<br>Selecciónala en el panel de capas, o usa «Generar capas de puntos» en el diálogo.": "<span style='color:#a85a00;'><b>No active layer</b></span> of turbines “<i>Model (CSV)</i>”.<br>Select it in the layers panel, or use “Generate point layers” in the dialog.",
     'Actualizar lista de capas de turbinas editables.': 'Refresh the list of editable turbine layers.',
-    'Calcula AEP con la capa de turbinas activa y los modelos seleccionados.': 'Calculate AEP with the active turbine layer and the selected models.',
-    'Deja la lista de raster(s) TI vacía.': 'Leaves the TI raster(s) list empty.',
+    'Calcula AEP con la capa de turbinas activa y los modelos seleccionados.': "Calculate AEP with the active turbine layer and selected models.",
+
     'Dibuja mapas de estelas (N/E/S/O) con los modelos seleccionados.': 'Draws wake maps (N/E/S/W) with the selected models.',
-    'Elige qué capa/modelo editas con el click izquierdo/derecho del mapa. Esto permite modificar cualquiera de las capas cargadas, no solo la última creada.': 'Choose which layer/model you edit with the left/right click on the map. This lets you modify any of the loaded layers, not only the last one created.',
-    'Exporta los puntos editados de la capa activa a CSV. No sobrescribe el CSV original sin confirmar.': 'Exports the edited points of the active layer to CSV. It does not overwrite the original CSV without confirmation.',
-    'Guarda el último cálculo como escenario A.': 'Saves the latest calculation as scenario A.',
-    'Guarda el último cálculo como escenario B.': 'Saves the latest calculation as scenario B.',
+
+    'Exporta los puntos editados de la capa activa a CSV. No sobrescribe el CSV original sin confirmar.': "Export edited points from the active layer to CSV. The original CSV is not overwritten without confirmation.",
+    'Guarda el último cálculo como escenario A.': "Save the latest calculation as scenario A.",
+    'Guarda el último cálculo como escenario B.': "Save the latest calculation as scenario B.",
     'No se pudo activar la capa seleccionada:': 'Could not activate the selected layer:',
     'Salir del modo interactivo (ESC también funciona).': 'Exit interactive mode (ESC also works).',
-    'Selecciona uno o varios raster(s) .asc/.tif de TI ambiente (p.ej. de Vortex). Si no hay ninguno, se usa TI=10% como fallback.': 'Select one or more ambient-TI .asc/.tif raster(s) (e.g. from Vortex). If none is provided, TI=10% is used as fallback.',
+
     'Sin capas editables': 'No editable layers',
-    'Vuelve al diálogo principal de Velantis Wind sin perder la edición.': 'Return to the main Velantis Wind dialog without losing your edits.',
+    'Vuelve al diálogo principal de Velantis Wind sin perder la edición.': "Return to the Velantis Wind main dialog without losing edits.",
     'Vuelve al diálogo principal sin salir del modo interactivo.': 'Return to the main dialog without leaving interactive mode.',
     'falló:': 'failed:',
     'más)</span>': 'more)</span>',
     'EPSG no válido. Se seguirá usando EPSG:': 'Invalid EPSG. EPSG will keep being used:',
     'No se seleccionó carpeta de salida.': 'No output folder was selected.',
-    "Se generará UNA carpeta con GRD mosaico (Sector/Altura/Variable).\nSelecciona 2 o más carpetas de tiles exportadas desde WAsP.\n• 'Sector All': se tomarán TODAS las variables presentes (mosaico por altura).\n• Además, se crea subcarpeta 'pywake_compat' estricta (sin necesidad de parches).\n• Salida en Surfer ASCII (DSAA) con formato WAsP.": "ONE folder with a GRD mosaic (Sector/Height/Variable) will be generated.\nSelect 2 or more tile folders exported from WAsP.\n• 'Sector All': ALL present variables will be taken (mosaic by height).\n• In addition, a strict 'pywake_compat' subfolder is created (no patches needed).\n• Output in Surfer ASCII (DSAA) with WAsP format.",
-    'Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el raster, si estaba activado, ya se han añadido al proyecto.': 'Acoustic calculation completed in the background.\n\nThe receiver/source layers, and the raster if it was enabled, have already been added to the project.',
-    'Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el raster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.': 'Acoustic calculation completed.\n\nThe receiver/source layers have already been added to the project. If the raster was enabled and does not use land use, it is being generated in the background when it is safe to do so.',
+
+
+
     'No se pudo calcular el ruido en segundo plano:': 'Could not calculate noise in the background:',
     'No se pudo calcular el ruido:': 'Could not calculate noise:',
     'No se pudo lanzar el cálculo en segundo plano:': 'Could not start the background calculation:',
@@ -2527,8 +2711,8 @@ _I18N_COVERAGE6_TO_EN = {
     ': altura de buje no válida.': ': invalid hub height.',
     ': modo curva activo pero sin CSV de curva acústica.': ': curve mode active but no acoustic-curve CSV.',
     ": no existe la curva acústica '": ": the acoustic curve does not exist '",
-    'El MDT/DSM no está en el mismo CRS que el proyecto.': 'The DTM/DSM is not in the same CRS as the project.',
-    'El MDT/DSM seleccionado no es raster válido y se ignorará.': 'The selected DTM/DSM is not a valid raster and will be ignored.',
+    'El MDT/DSM no está en el mismo CRS que el proyecto.': "The DEM/DSM is not in the same CRS as the project.",
+
     'El coeficiente α no es válido.': 'The α coefficient is not valid.',
     'El factor de suelo G debe estar entre 0 y 1.': 'The ground factor G must be between 0 and 1.',
     'El límite acústico no es válido.': 'The acoustic limit is not valid.',
@@ -2540,7 +2724,7 @@ _I18N_COVERAGE6_TO_EN = {
     'La capa de uso del suelo debe ser poligonal.': 'The land-use layer must be polygonal.',
     'La capa de uso del suelo no está en el mismo CRS que el proyecto.': 'The land-use layer is not in the same CRS as the project.',
     'La distancia mínima debe ser mayor que 0.': 'The minimum distance must be greater than 0.',
-    'La resolución del raster debe ser mayor que 0.': 'The raster resolution must be greater than 0.',
+
     'Selecciona una capa válida de receptores.': 'Select a valid receiver layer.',
     '(se muestreará terreno fuente/receptor en el método acústico).': '(source/receiver terrain will be sampled in the acoustic method).',
     ': LwA fijo inválido.': ': invalid fixed LwA.',
@@ -2548,16 +2732,17 @@ _I18N_COVERAGE6_TO_EN = {
     ": la capa '": ": the layer '",
     'Desde capa de uso del suelo': 'From land-use layer',
     'Modo suelo desde capa activo sin capa válida: will use G global como respaldo.': 'Ground-from-layer mode active without a valid layer: the global G will be used as fallback.',
-    'Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))': 'ISO-aligned method: ISO 9613-2 with octave bands (Adiv + Aatm(T,RH,P) + Agr(f))',
+
     'No hay capas activas de receptores por categoría.': 'There are no active receiver layers by category.',
     'Selecciona qué campo de límite se aplica a cada receptor. No cambia la física del ruido, solo el criterio de evaluación.': 'Select which limit field applies to each receiver. It does not change the noise physics, only the evaluation criterion.',
     'Selecciona una o varias capas fuente detectadas desde Energía. Si marcas varias, el cálculo de ruido usará todas ellas a la vez.': 'Select one or more source layers detected from Energy. If you select several, the noise calculation will use all of them at once.',
     'Sin layout detectado en el grupo de coordenadas por modelo': 'No layout detected in the per-model coordinate group',
     'grupo(s) con LwA válido.': 'group(s) with a valid LwA.',
     'nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.': 'duplicated name(s). It is advisable to rename them for export and traceability.',
-    'α se calcula automáticamente por banda en Motor ISO': 'α is calculated automatically per band in the ISO engine',
+
     '— Selecciona capa de receptores —': '— Select receiver layer —',
     '— Sin capa de uso del suelo —': '— No land-use layer —',
+    '— Sin MDT/DSM —': '— No DEM/DSM —',
     '• Altura de receptor: se toma de cada capa configurada en la tabla multi-capa.': '• Receiver height: taken from each layer configured in the multi-layer table.',
     '• Atenuación lineal α:': '• Linear attenuation α:',
     '• Criterio de límite por capa:': '• Per-layer limit criterion:',
@@ -2568,18 +2753,18 @@ _I18N_COVERAGE6_TO_EN = {
     '• Método actual: cálculo acústico fuente-receptor para consultoría eólica (Lp = LwA - Adiv - Aatm - Aground). Además puede crear capas GIS de fuentes, enlaces dominantes, receptores fuera de radio, mapa de ruido ráster e isófonas.': '• Current method: wind source-receiver acoustic calculation for consultancy (Lp = LwA - Adiv - Aatm - Aground). It can also create GIS layers of sources, dominant links, receivers outside the radius, a raster noise map and isophones.',
     '• No se han detectado capas de coordenadas por modelo. Genera primero el layout desde Energía.': '• No per-model coordinate layers were detected. Generate the layout from Energy first.',
     '• Parámetros de consultoría acústica: límite de receptor, isófonas y factor de suelo G para revisión rápida de cumplimiento e influencia del terreno.': '• Acoustic consultancy parameters: receiver limit, isophones and ground factor G for a quick review of compliance and terrain influence.',
-    '• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.': '• No DTM/DSM selected. The acoustic calculation will start in flat coordinates with relative source/receiver heights.',
+    '• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.': "• No DEM/DSM selected. The acoustic calculation will start in flat coordinates with relative source/receiver heights.",
     "• Suelo/terreno: desde capa de uso del suelo '": "• Ground/terrain: from land-use layer '",
     '• Suelo/terreno: modo capa activado pero sin capa válida; will use G global =': '• Ground/terrain: layer mode enabled but no valid layer; the global G will be used =',
     '.</p>\n                    <p><b>Qué representa cada columna:</b> <code>S_b^ref</code> es la plantilla espectral de referencia (si existe), <code>A_weight,b</code> la ponderación A de cada banda y <code>Lw,b</code> el nivel final en dB realmente usado por el cálculo.</p>': '.</p>\n                    <p><b>What each column represents:</b> <code>S_b^ref</code> is the reference spectral template (if any), <code>A_weight,b</code> the A-weighting of each band and <code>Lw,b</code> the final level in dB actually used by the calculation.</p>',
     "<div class='card'>\n                    <h4>2.1 Espectro usado por el grupo fuente:": "<div class='card'>\n                    <h4>2.1 Spectrum used by the source group:",
     '<li><b>α atmosférico:</b>': '<li><b>Atmospheric α:</b>',
-    'Exportar diagnóstico MDT': 'Export DTM diagnostics',
+    'Exportar diagnóstico MDT': "Export DEM diagnostics",
     'No hay diagnóstico por pares fuente-receptor disponible. Recalcula con motor ISO-aligned y fuentes dentro del radio. Este CSV es el que permite auditar cada turbina contra cada receptor.': 'No source-receiver pairwise diagnostics are available. Recalculate with the ISO-aligned engine and sources inside the radius. This CSV is the one that lets you audit each turbine against each receiver.',
     'No hay filas de Top receivers para exportar.': 'There are no Top receivers rows to export.',
     'No hay filas de receptores para exportar.': 'There are no receiver rows to export.',
-    'No hay filas de screening MDT para exportar.': 'There are no DTM screening rows to export.',
-    'No se pudo exportar el CSV de diagnóstico MDT:': 'Could not export the DTM diagnostics CSV:',
+    'No hay filas de screening MDT para exportar.': "There are no DEM screening rows to export.",
+    'No se pudo exportar el CSV de diagnóstico MDT:': "Could not export the DEM diagnostics CSV:",
     'Tabla resumida para consultoría: resultados acústicos por receptor, cumplimiento, fuente dominante y atenuaciones principales. Los diagnósticos internos MDT por pares se conservan en memoria, pero no se muestran por defecto.': 'Summary table for consultancy: acoustic results per receiver, compliance, dominant source and main attenuations. The internal pairwise DTM diagnostics are kept in memory, but are not shown by default.',
     'z acústica receptor m': 'receiver acoustic z m',
     'z acústica turb. dom. m': 'dominant turbine acoustic z m',
@@ -2635,7 +2820,7 @@ _I18N_COVERAGE7_TO_ES = {
     '💡 You can now regenerate TIFs filtered by month/hour\n   without recalculating (using the filter combos).': '💡 Ahora puedes regenerar TIF filtrados por mes/hora\n   sin recalcular (usando los desplegables de filtro).',
     'Export hour × month matrix to CSV': 'Exportar matriz hora × mes a CSV',
     'Hour × Month': 'Hora × Mes',
-    'Shadow Flicker - Calculation Summary': 'Shadow Flicker - Resumen del cálculo',
+    "Shadow flicker - Calculation summary": 'Shadow Flicker - Resumen del cálculo',
     'Time step:': 'Paso temporal:',
     'Observer height cannot be negative.': 'La altura del observador no puede ser negativa.',
     'Receiver layer not found in the current QGIS project.': 'No se encontró la capa de receptores en el proyecto QGIS actual.',
@@ -2663,11 +2848,11 @@ _I18N_COVERAGE7_TO_ES = {
     'Generates a continuous raster map of shadow flicker hours\nDisplays a color gradient across the whole analysis area\nWARNING: this may take several minutes depending on the area': 'Genera un mapa raster continuo de horas de shadow flicker\nMuestra un gradiente de color en toda el área de análisis\nAVISO: esto puede tardar varios minutos según el área',
     'Hourly table: local civil time with DST · Zone:': 'Tabla horaria: hora civil local con DST · Zona:',
     'IANA time zone, for example Europe/Madrid, America/Santiago or Asia/Tokyo.\nThe plugin includes a broad IANA catalogue and local TZif database to apply DST without timezonefinder.': 'Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA amplio y base TZif local para aplicar DST sin timezonefinder.',
-    'Maximum distance from a turbine to consider shadow flicker.\nDefault: 2000 m, matching the conservative Continuum-style screening distance.\nThis value is used for receiver filtering and for the raster extent/mask.': 'Distancia máxima desde una turbina para considerar shadow flicker.\nPor defecto: 2000 m, coincidiendo con la distancia de screening conservadora tipo Continuum.\nEste valor se usa para filtrar receptores y para el extent/máscara del raster.',
+
     'Maximum solar elevation to include (90° = no high-sun cut; lower values are an optional screening assumption)': 'Elevación solar máxima a incluir (90° = sin recorte de sol alto; valores menores son una hipótesis opcional de screening)',
     'Number of cores to use (your CPU has': 'Número de núcleos a usar (tu CPU tiene',
-    'Once the raster has been generated, you can regenerate filtered TIFs by month and/or hour\nwithout recalculating the full annual geometry.': 'Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.',
-    'Optional digital elevation model (MDT) raster.\nIf provided, the ground elevation under each turbine and receiver is\nsampled from the raster. This makes elev_diff = (hub + ground_turb) -\n(observer + ground_recv), using terrain-aware elevation correction.\nIf left empty, flat terrain (z=0) is assumed.': 'Raster de modelo digital de elevaciones (MDT) opcional.\nSi se proporciona, la elevación del terreno bajo cada turbina y receptor se\nmuestrea del raster. Así elev_diff = (buje + terreno_turb) -\n(observador + terreno_recep), usando corrección de elevación según terreno.\nSi se deja vacío, se asume terreno plano (z=0).',
+
+    "Optional digital elevation model (DEM) raster.\nIf provided, the ground elevation under each turbine and receiver is\nsampled from the raster. This makes elev_diff = (hub + ground_turb) -\n(observer + ground_recv), using terrain-aware elevation correction.\nIf left empty, flat terrain (z=0) is assumed.": 'Raster de modelo digital de elevaciones (MDT) opcional.\nSi se proporciona, la elevación del terreno bajo cada turbina y receptor se\nmuestrea del raster. Así elev_diff = (buje + terreno_turb) -\n(observador + terreno_recep), usando corrección de elevación según terreno.\nSi se deja vacío, se asume terreno plano (z=0).',
     'Please configure Hub Height and Rotor Diameter for all models.': 'Configura Hub Height y Rotor Diameter para todos los modelos.',
     'Select the point layer with receiver locations': 'Selecciona la capa de puntos con las ubicaciones de receptores',
     'Time step ONLY for the raster (independent from receivers).\n1 min  = maximum accuracy, VERY slow\n5 min  = recommended (accuracy >98%, 5x faster)\n10 min = very fast, accuracy ~95%\n20 min = ultra-fast for previewing': 'Paso temporal SOLO para el raster (independiente de los receptores).\n1 min  = máxima precisión, MUY lento\n5 min  = recomendado (precisión >98%, 5x más rápido)\n10 min = muy rápido, precisión ~95%\n20 min = ultrarrápido para previsualizar',
@@ -2686,11 +2871,11 @@ _I18N_COVERAGE7_TO_ES = {
     '• DEM/DSM was used to sample terrain elevation at sources and receivers.': '• Se usó DEM/DSM para muestrear la elevación del terreno en fuentes y receptores.',
     '• No DEM/DSM: calculation uses flat coordinates with relative source/receiver heights.': '• Sin DEM/DSM: el cálculo usa coordenadas planas con alturas relativas de fuente/receptor.',
     '• Receivers with at least one turbine inside the radius:': '• Receptores con al menos una turbina dentro del radio:',
-    '• GIS receivers-outside-radius layer created: Noise · Receivers fuera de radio (': '• Capa GIS de receptores fuera de radio creada: Noise · Receivers fuera de radio (',
+
     '• Acoustic sources: will use 1 source layer manually selected from Inputs.': '• Fuentes acústicas: se usará 1 capa de fuentes seleccionada manualmente en Entradas.',
     'rows. The CSV export contains the full detail.</small></p>': 'filas. La exportación CSV contiene el detalle completo.</small></p>',
-    'Site latitude (e.g. 42.465 for Logroño)': 'Latitud del emplazamiento (ej. 42.465 para Logroño)',
-    'Site longitude (e.g. -2.445 for Logroño)': 'Longitud del emplazamiento (ej. -2.445 para Logroño)',
+
+
 }
 _TO_ES.update(_I18N_COVERAGE7_TO_ES)
 _FRAGMENT_TO_ES.update(_I18N_COVERAGE7_TO_ES)
@@ -2710,15 +2895,15 @@ _I18N_COVERAGE8_TO_EN = {
     'A expansión TurbOPark': 'A TurbOPark expansion',
     'A expansión TurboNOJ': 'A TurboNOJ expansion',
     'Calcular con capas seleccionadas': 'Calculate with selected layers',
-    'Coeficiente de expansión dependiente de TI en la formulación Zong.': 'TI-dependent expansion coefficient in the Zong formulation.',
-    'Coeficiente que convierte la TI local/efectiva en expansión de estela.': 'Coefficient that converts local/effective TI into wake expansion.',
+    'Coeficiente de expansión dependiente de TI en la formulación Zong. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.001.': 'TI-dependent expansion coefficient in the Zong formulation. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.001.',
+    'Coeficiente que convierte la TI local/efectiva en expansión de estela. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.001.': 'Coefficient that converts local/effective TI into wake expansion. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.001.',
     'Constante principal de expansión de TurboGaussian/TurbOPark.': 'Main expansion constant for TurboGaussian/TurbOPark.',
     'Constante principal de expansión para la familia TurboNOJ cuando la versión de PyWake la expone.': 'Main expansion constant for the TurboNOJ family when the PyWake version exposes it.',
     'Lector WRG no disponible; no se puede dibujar el perímetro WRG.': 'WRG reader not available; the WRG boundary cannot be drawn.',
     'No se pudo dibujar el perímetro del recurso:': 'Could not draw the resource boundary:',
     'Número de palas usado en la longitud near-wake. Normalmente 3.': 'Number of blades used in the near-wake length. Usually 3.',
-    'Offset mínimo de expansión cuando la TI tiende a cero.': 'Minimum expansion offset when TI tends to zero.',
-    'Offset mínimo de expansión de la estela.': 'Minimum wake-expansion offset.',
+    'Offset mínimo de expansión cuando la TI tiende a cero. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.0001.': 'Minimum expansion offset when TI tends to zero. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.0001.',
+    'Offset mínimo de expansión de la estela. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.0001.': 'Minimum wake-expansion offset. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.0001.',
     'Pendiente de expansión del cono de estela top-hat. Subir k acelera la recuperación; bajarlo alarga la estela.': 'Expansion slope of the top-hat wake cone. Increasing k speeds up recovery; decreasing it lengthens the wake.',
     'Primer coeficiente de sensibilidad a TI. Solo se aplicará si la clase PyWake acepta cTI.': 'First TI-sensitivity coefficient. It is only applied if the PyWake class accepts cTI.',
     'Primer coeficiente que multiplica la TI en la formulación TurboGaussian.': 'First coefficient multiplying TI in the TurboGaussian formulation.',
@@ -2777,7 +2962,7 @@ _I18N_COVERAGE8_TO_EN = {
     'Introduce el EPSG en el que están las coordenadas de los tiles.\nPor ejemplo:\n  • 25829 → ETRS89 / UTM 29N (Galicia oeste)\n  • 25830 → ETRS89 / UTM 30N (gran parte de España)\n\nDeja vacío para usar': 'Enter the EPSG in which the tile coordinates are.\nFor example:\n  • 25829 → ETRS89 / UTM 29N (western Galicia)\n  • 25830 → ETRS89 / UTM 30N (most of Spain)\n\nLeave empty to use',
     'La capa activa no es de puntos.': 'The active layer is not a point layer.',
     'La capa activa no es vectorial.': 'The active layer is not a vector layer.',
-    'Click izq: añadir · Click der: borrar · ESC: salir': 'Left click: add · Right click: delete · ESC: exit',
+
     'Física PyWake': 'PyWake physics',
     "<br><span style='color:#a85a00;'>Aún no hay turbinas en esta capa: haz click izq en el mapa para añadirlas.</span>": "<br><span style='color:#a85a00;'>There are no turbines in this layer yet: left click on the map to add them.</span>",
     'capa(s) con': 'layer(s) with',
@@ -2826,10 +3011,10 @@ _I18N_COVERAGE8_TO_EN = {
     'Extensión no válida:': 'Invalid extent:',
     'Proporciona una capa de puntos válida.': 'Provide a valid point layer.',
     'El dataset WRG no contiene coordenadas x/y válidas': 'The WRG dataset does not contain valid x/y coordinates',
-    'GDAL.Warp devolvió None al alinear el raster TI al grid WRG': 'GDAL.Warp returned None while aligning the TI raster to the WRG grid',
-    'GDAL/OSR no disponible para leer el raster de turbulencia': 'GDAL/OSR not available to read the turbulence raster',
-    'No se han indicado raster(s) TI válidos': 'No valid TI raster(s) were provided',
-    'No se pudo resolver el CRS destino del WRG/proyecto para el raster TI': 'Could not resolve the target WRG/project CRS for the TI raster',
+
+
+
+
     'Raster TI no válido:': 'Invalid TI raster:',
     'xarray no disponible para construir TI por altura:': 'xarray not available to build TI by height:',
     "'; se conserva el primer raster para esa altura.": "'; the first raster for that height is kept.",
@@ -2839,9 +3024,9 @@ _I18N_COVERAGE8_TO_EN = {
     'nombres que no casan con py_wake en:': 'names that do not match py_wake in:',
     'pérdida': 'loss',
     'No se pudo ejecutar la simulación con los modelos seleccionados. Último error:': 'The simulation could not run with the selected models. Last error:',
-    'Listas `ws` y `power_kw` deben tener la misma longitud y no estar vacías.': 'Lists `ws` and `power_kw` must have the same length and not be empty.',
+    'Listas `ws` y `power_kw` deben tener la misma longitud y no estar vacías.': "The `ws` and `power_kw` lists must have the same length and must not be empty.",
     'No se han leído datos válidos de': 'No valid data were read from',
-    'Si aportas `ct`, su longitud debe coincidir con `ws`.': 'If you provide `ct`, its length must match `ws`.',
+    'Si aportas `ct`, su longitud debe coincidir con `ws`.': "If you provide `ct`, its length must match that of `ws`.",
     'No se pudo cargar PyWake para construir la turbina. Comprueba que py_wake está instalado en el Python de QGIS y que Windows no está bloqueando alguna DLL/.pyd de sus dependencias.': 'PyWake could not be loaded to build the turbine. Check that py_wake is installed in the QGIS Python and that Windows is not blocking a DLL/.pyd of its dependencies.',
     'No se encontró una PowerCtFunction válida.': 'No valid PowerCtFunction was found.',
     'PowerCtFunctionList no está disponible para combinar varios modelos.': 'PowerCtFunctionList is not available to combine several models.',
@@ -2864,7 +3049,7 @@ _I18N_COVERAGE8_TO_EN = {
     'Línea WRG incompleta: esperados >=': 'Incomplete WRG line: expected >=',
     'No se encontró ningún WRG legible en:': 'No readable WRG was found in:',
     'No se pudo leer ningún WRG válido': 'No valid WRG could be read',
-    'WRG con distinta resolución/extent: no se pueden combinar por altura': 'WRG files with different resolution/extent: they cannot be combined by height',
+
     'WRG con distinto dx: no se pueden combinar por altura': 'WRG files with different dx: they cannot be combined by height',
     'WRG con distinto origen x0/y0: no se pueden combinar por altura': 'WRG files with different origin x0/y0: they cannot be combined by height',
     'líneas esperadas; hay': 'expected lines; there are',
@@ -2876,7 +3061,7 @@ _I18N_COVERAGE8_TO_EN = {
     'Calculando ruido en segundo plano… 0%': 'Calculating noise in the background… 0%',
     'Añadiendo capas de resultados a QGIS…': 'Adding result layers to QGIS…',
     'Calculando receptores y resumen…': 'Calculating receivers and summary…',
-    'Calculando ruido y raster…': 'Calculating noise and raster…',
+
     'Preparando datos para cálculo en segundo plano…': 'Preparing data for the background calculation…',
     'Preparando fuentes, receptores y MDT para el cálculo en segundo plano…': 'Preparing sources, receivers and DTM for the background calculation…',
     'Velantis Wind · preparando ruido': 'Velantis Wind · preparing noise',
@@ -2886,32 +3071,32 @@ _I18N_COVERAGE8_TO_EN = {
     'Cálculo de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.': 'Noise calculation launched in the background. You can see it in the QGIS task manager.',
     'No se pudo completar el cálculo:': 'Could not complete the calculation:',
     'No se pudo generar el raster:': 'Could not generate the raster:',
-    'Raster de ruido generado y añadido al proyecto.': 'Noise raster generated and added to the project.',
-    'Raster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.': 'Noise raster launched in the background. You can see it in the QGIS task manager.',
+
+
     'celdas, resolución efectiva': 'cells, effective resolution',
     '• Cálculo pesado lanzado como QgsTask. Puedes seguir usando QGIS mientras avanza.': '• Heavy calculation launched as a QgsTask. You can keep using QGIS while it runs.',
     '• Isófonas terminadas en segundo plano:': '• Isophones finished in the background:',
     'Cálculo de ruido completado.': 'Noise calculation completed.',
-    'Raster de ruido completado.': 'Noise raster completed.',
-    'Raster de ruido finalizado con aviso.': 'Noise raster finished with a warning.',
+
+
     'Configura al menos una capa válida en la tabla de receptores por categoría.': 'Configure at least one valid layer in the receiver-category table.',
     'No hay configuración acústica de modelos.': 'There is no acoustic model configuration.',
     'La capa de uso del suelo debe ser vectorial poligonal.': 'The land-use layer must be a polygonal vector layer.',
     'No se han detectado turbinas/layout válidos para el cálculo acústico.': 'No valid turbines/layout were detected for the acoustic calculation.',
     'rápido (<5 seg para 100 receptores)': 'fast (<5 s for 100 receivers)',
-    'Experimental - Adiv ✓, Aatm ✓ (simplificado), Agr ✓ (simplificado), Abar ✓ (MDT/DSM básico)': 'Experimental - Adiv ✓, Aatm ✓ (simplified), Agr ✓ (simplified), Abar ✓ (basic DTM/DSM)',
+    'Experimental - Adiv ✓, Aatm ✓ (simplificado), Agr ✓ (simplificado), Abar ✓ (MDT/DSM básico)': "Experimental - Adiv ✓, Aatm ✓ (simplified), Agr ✓ (simplified), Abar ✓ (basic DEM/DSM)",
     'medio (~8x más lento que motor rápido)': 'medium (~8x slower than the fast engine)',
     'genérica': 'generic',
     'Espectro inválido:': 'Invalid spectrum:',
     'No se pudieron leer datos válidos de': 'Could not read valid data from',
-    'No se pudo invertir la geotransformación del MDT/DSM.': 'Could not invert the DTM/DSM geotransform.',
+    'No se pudo invertir la geotransformación del MDT/DSM.': "Could not invert the DEM/DSM geotransform.",
     'No hay fuentes acústicas válidas para crear el raster.': 'There are no valid acoustic sources to create the raster.',
     'GDAL no pudo crear el GeoTIFF del raster de ruido.': 'GDAL could not create the GeoTIFF of the noise raster.',
     'No se pudo cargar el raster generado:': 'Could not load the generated raster:',
     'Curva inválida -> fallback LwA fijo (': 'Invalid curve -> fixed LwA fallback (',
     'Sin fuentes válidas en la capa': 'No valid sources in the layer',
     'Rápido LwA global': 'Fast global LwA',
-    'Acoustic curve vacía': 'Empty acoustic curve',
+
     'No se pudieron leer pares ws/LwA válidos de': 'Could not read valid ws/LwA pairs from',
     'Sin ruta de curva acústica': 'No acoustic-curve path',
     'sin fuentes dentro del radio': 'no sources within the radius',
@@ -2931,10 +3116,10 @@ _I18N_COVERAGE8_TO_EN = {
     'Para empresas y equipos técnicos': 'For companies and technical teams',
     'Página de GitHub': 'GitHub page',
     'Tiempo dedicado a validar casos reales y mejorar la estabilidad del plugin.': 'Dedicated time for real-case validation and plugin stability improvements.',
-    '¿Qué ayuda a financiar el apoyo?': 'What does the support help fund?',
-    '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = a wake that widens and recovers sooner; decreasing it = a narrower, more persistent wake.<br><br><b>cεps</b> — Initial wake size next to the rotor (σ₀/D). PyWake default = 0.2. Rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
-    '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04 (default PyWake)<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.': '<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is a cylinder that widens linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u> it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. The larger k is, the faster the wake recovers and the smaller the far-field deficit.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04 (PyWake default)<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to compute k. If your site has high TI and you need that to show in AEP, use TurboNOJ or a TI-sensitive Gaussian model.',
-    '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Initial size σ₀/D. PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
+    '¿Qué ayuda a financiar el apoyo?': "What does your support help fund?",
+    '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + ε, with ε = cεps·√β and β a function of Ct. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = a wake that widens and recovers sooner; decreasing it = a narrower, more persistent wake.<br><br><b>cεps</b> — Coefficient of the initial wake width ε next to the rotor. PyWake default = 0.2. Rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
+    '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano. Default PyWake = 0.1.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.': '<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is a cylinder that widens linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u> it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. The larger k is, the faster the wake recovers and the smaller the far-field deficit. PyWake default = 0.1.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to compute k. If your site has high TI and you need that to show in AEP, use TurboNOJ or a TI-sensitive Gaussian model.',
+    '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
     '<b>Qué es TI</b><br><br>TI significa <b>turbulence intensity</b>. En simple: mide cuánto fluctúa el viento alrededor de su velocidad media. Más TI suele significar más mezcla del flujo y una recuperación de estela distinta.<br><br><b>Dos turbulencias diferentes</b><br>• <b>TI ambiente</b>: viene del recurso eólico o de un raster TI. Es el viento que llega al parque antes de las turbinas.<br>• <b>TI añadida por estela</b>: la genera cada turbina detrás de sí. La calcula el modelo de turbulencia de PyWake, si lo activas.<br><br><b>Qué hace el plugin</b><br>• Si cargas raster TI, se usa como turbulencia ambiente espacial.<br>• Si no cargas raster TI, se usa el valor manual de la interfaz como hipótesis uniforme.<br>• Si tienes varios raster a distintas alturas, puedes indicar 90;120;... para interpolar por altura de buje.<br><br><b>Cuándo importa más</b><br>BG/NOJ son robustos pero poco sensibles a TI. Niayifar, Zong, TurboGaussian y TurboNOJ hacen que la TI afecte más a la recuperación de estela y al AEP.<br><br><b>Idea sencilla</b><br>Si no tienes datos de turbulencia, una TI manual uniforme permite correr el cálculo. Para más realismo en onshore, terreno complejo o varias alturas de buje, usa raster TI, idealmente por altura.': '<b>What TI is</b><br><br>TI stands for <b>turbulence intensity</b>. In simple terms: it measures how much the wind fluctuates around its mean speed. More TI usually means more flow mixing and a different wake recovery.<br><br><b>Two different turbulences</b><br>• <b>Ambient TI</b>: comes from the wind resource or from a TI raster. It is the wind reaching the wind farm before the turbines.<br>• <b>Wake-added TI</b>: generated by each turbine behind it. It is computed by the PyWake turbulence model, if you enable it.<br><br><b>What the plugin does</b><br>• If you load a TI raster, it is used as spatial ambient turbulence.<br>• If you do not load a TI raster, the manual value in the interface is used as a uniform assumption.<br>• If you have several rasters at different heights, you can enter 90;120;... to interpolate by hub height.<br><br><b>When it matters most</b><br>BG/NOJ are robust but not very TI-sensitive. Niayifar, Zong, TurboGaussian and TurboNOJ make TI affect wake recovery and AEP more.<br><br><b>Simple idea</b><br>If you have no turbulence data, a uniform manual TI lets you run the calculation. For more realism onshore, in complex terrain or with several hub heights, use a TI raster, ideally by height.',
     '<b>Qué es el bloqueo</b><br><br>Además de crear una estela detrás, una turbina también puede frenar ligeramente el viento antes de que el flujo llegue al rotor. Ese efecto aguas arriba se llama <b>bloqueo</b> o <i>blockage</i>.<br><br><b>Compatibilidad</b><br>• No depende del recurso WRG/GRD: depende del motor de PyWake y del modelo de bloqueo.<br>• Con <b>PropagateDownwind</b> se desactiva, porque ese motor solo calcula efectos aguas abajo.<br>• Con <b>All2AllIterative</b> o <b>PropagateUpDownIterative</b> el plugin puede intentar incluirlo con los wake models disponibles.<br><br><b>Parámetros</b><br>En esta versión experimental no se exponen parámetros internos de bloqueo. Son calibraciones propias del modelo de PyWake; para comparar sensibilidad, cambia de modelo en lugar de tocar constantes internas.<br><br><b>Qué opción usar</b><br>SelfSimilarityDeficit2020 es la opción principal. VortexCylinder/VortexDipole/HybridInduction se dejan como alternativas si tu instalación de PyWake las soporta.': '<b>What blockage is</b><br><br>Besides creating a wake behind it, a turbine can also slow the wind slightly before the flow reaches the rotor. That upstream effect is called <b>blockage</b>.<br><br><b>Compatibility</b><br>• It does not depend on the WRG/GRD resource: it depends on the PyWake engine and the blockage model.<br>• With <b>PropagateDownwind</b> it is disabled, because that engine only computes downstream effects.<br>• With <b>All2AllIterative</b> or <b>PropagateUpDownIterative</b> the plugin can try to include it with the available wake models.<br><br><b>Parameters</b><br>In this experimental release no internal blockage parameters are exposed. They are model-specific PyWake calibrations; to compare sensitivity, switch model instead of touching internal constants.<br><br><b>Which option to use</b><br>SelfSimilarityDeficit2020 is the main option. VortexCylinder/VortexDipole/HybridInduction are left as alternatives if your PyWake installation supports them.',
     '<b>Qué es el wake effect, en simple</b><br><br>Cuando una turbina extrae energía del viento, detrás de ella queda una zona con menos velocidad y más turbulencia. Esa zona es la <b>estela</b>. Si otra turbina cae dentro, producirá menos AEP.<br><br>El <b>wake deficit model</b> decide cuánta velocidad se pierde y cómo se recupera la estela aguas abajo.<br><br><b>Cómo elegir sin ser experto</b><br>• <b>BastankhahGaussianDeficit</b>: opción robusta para comparar layouts y parques offshore limpios.<br>• <b>NiayifarGaussianDeficit</b>: parecido a Bastankhah, pero la turbulencia TI pesa más en la expansión de la estela.<br>• <b>ZongGaussianDeficit</b>: más avanzado; útil si quieres una representación más rica del near wake y de la recuperación por TI.<br>• <b>TurboGaussianDeficit</b>: gaussiano sensible a turbulencia efectiva; interesante cuando quieres que la TI ambiente/añadida influya en el AEP.<br>• <b>NOJDeficit</b>: muy rápido y clásico; bueno para screening masivo, pero más simplificado.<br>• <b>TurboNOJDeficit</b>: mantiene la ligereza de NOJ, pero permite que la TI influya más.<br><br><b>Idea sencilla</b><br>Para más realismo cuando la turbulencia debe influir en la recuperación de estela, usa <b>Niayifar/Zong/TurboGaussian</b>. Para un cálculo rápido, usa <b>NOJ/TurboNOJ</b>. Para una base robusta de comparación, usa <b>Bastankhah</b>.<br><br>Importante: cargar un raster TI no garantiza por sí solo que cambie mucho el AEP. El efecto se ve de verdad si el modelo de estela elegido usa la TI de forma explícita.': "<b>What the wake effect is, in simple terms</b><br><br>When a turbine extracts energy from the wind, a zone with lower speed and more turbulence is left behind it. That zone is the <b>wake</b>. If another turbine falls inside it, it will produce less AEP.<br><br>The <b>wake deficit model</b> decides how much speed is lost and how the wake recovers downstream.<br><br><b>How to choose without being an expert</b><br>• <b>BastankhahGaussianDeficit</b>: robust option for comparing layouts and clean offshore wind farms.<br>• <b>NiayifarGaussianDeficit</b>: similar to Bastankhah, but TI turbulence weighs more in the wake expansion.<br>• <b>ZongGaussianDeficit</b>: more advanced; useful if you want a richer representation of the near wake and TI-driven recovery.<br>• <b>TurboGaussianDeficit</b>: Gaussian model sensitive to effective turbulence; interesting when you want ambient/added TI to influence AEP.<br>• <b>NOJDeficit</b>: very fast and classic; good for large-scale screening, but more simplified.<br>• <b>TurboNOJDeficit</b>: keeps NOJ's lightness, but lets TI have more influence.<br><br><b>Simple idea</b><br>For more realism when turbulence should influence wake recovery, use <b>Niayifar/Zong/TurboGaussian</b>. For a quick calculation, use <b>NOJ/TurboNOJ</b>. For a robust comparison baseline, use <b>Bastankhah</b>.<br><br>Important: loading a TI raster does not by itself guarantee a large change in AEP. The effect really shows if the chosen wake model uses TI explicitly.",
@@ -2997,8 +3182,8 @@ _FRAGMENT_TO_EN.update(_I18N_COVERAGE8_EN2ES_REV)
 # report, Energy results/help, validation msgs). ES<->EN both directions.
 # ---------------------------------------------------------------------------
 _I18N_COVERAGE8_TO_EN = {
-    '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Slope of σ growth. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = wake that widens and recovers earlier; decreasing it = narrower, more persistent wake.<br><br><b>cεps</b> — Initial wake size near the rotor (σ₀/D). PyWake default = 0.2. It is rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
-    '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Initial size σ₀/D. PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
+    '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Slope of σ growth. σ(x)/D = k·(x/D) + ε, with ε = cεps·√β and β a function of Ct. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = wake that widens and recovers earlier; decreasing it = narrower, more persistent wake.<br><br><b>cεps</b> — Coefficient of the initial wake width ε next to the rotor. PyWake default = 0.2. It is rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
+    '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
     '<b>ZongGaussianDeficit</b><br><br>Modelo gaussiano avanzado (Zong &amp; Porté-Agel 2020) con near-wake explícito y pendiente k dependiente de TI local.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>δw/D, ε coeff, λ y B</b> — parámetros near-wake avanzados. El plugin fuerza STF2017 si lo dejas en Ninguno.': '<b>ZongGaussianDeficit</b><br><br>Advanced Gaussian model (Zong &amp; Porté-Agel 2020) with an explicit near wake and a slope k that depends on local TI.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>δw/D, ε coeff, λ and B</b> — advanced near-wake parameters. The plugin forces STF2017 if you leave it as None.',
     'Ayuda · Parámetros del modelo (': 'Help · Model parameters (',
     'Bastankhah: opción robusta para comparar layouts. Usa una formulación gaussiana con parámetros fijos; la TI ambiente no cambia mucho el déficit base.': 'Bastankhah: robust option for comparing layouts. It uses a Gaussian formulation with fixed parameters; ambient TI does not change the base deficit much.',
@@ -3008,8 +3193,8 @@ _I18N_COVERAGE8_TO_EN = {
     'Pendiente del ancho σ(x) de la estela gaussiana. Default PyWake ≈ 0.0324555.': 'Slope of the Gaussian wake width σ(x). PyWake default ≈ 0.0324555.',
     'Selecciona las capas de aerogeneradores que quieres incluir en este cálculo.\nPuedes marcar varias capas para simular un parque con varios modelos de turbina.': 'Select the turbine layers you want to include in this calculation.\nYou can check several layers to simulate a wind farm with several turbine models.',
     'Selecciona las capas de aerogeneradores que quieres incluir en los mapas de estelas.\nMarca varias capas si el parque combina distintos modelos de turbina.': 'Select the turbine layers you want to include in the wake maps.\nCheck several layers if the wind farm combines different turbine models.',
-    'Tamaño inicial de la estela en la base (σ₀/D). Default PyWake = 0.2.': 'Initial wake size at the base (σ₀/D). PyWake default = 0.2.',
-    'Tamaño inicial de la estela. Default PyWake = 0.25.': 'Initial wake size. PyWake default = 0.25.',
+    'Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.': 'Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.',
+    'Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.25.': 'Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.25.',
     'CSV de coordenadas corrupto para «': 'Corrupt coordinate CSV for «',
     ': usando SquaredSum (auto, opción robusta por defecto).': ': using SquaredSum (auto, robust default option).',
     'No hay wake deficit model disponible: ni BG ni NoWakeDeficit.': 'No wake deficit model available: neither BG nor NoWakeDeficit.',
@@ -3019,7 +3204,7 @@ _I18N_COVERAGE8_TO_EN = {
     'No hay una capa de turbinas válida activa para el mapa interactivo.': 'There is no valid active turbine layer for the interactive map.',
     ' % del AEP neto del parque)': ' % of the wind farm net AEP)',
     ' %</b> uniforme como fallback. Este valor afecta directamente al AEP en wakes TI-driven (Niayifar, Zong, TurboGaussian, TurboNOJ). Para resultados representativos, carga un raster TI en la sección de recurso o revisa la sensibilidad de turbulencia.</p>': ' %</b> uniformly as fallback. This value directly affects AEP in TI-driven wakes (Niayifar, Zong, TurboGaussian, TurboNOJ). For representative results, load a TI raster in the resource section or review the turbulence sensitivity.</p>',
-    '<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por dirección del viento. La diferencia entre cada barra representa las pérdidas por estela en ese sector — útil para ver qué direcciones limitan más el rendimiento del parque.': '<b>Sector loss rose.</b> Distribution of free-flow and net AEP by wind direction. The difference between each pair of bars represents the wake losses in that sector — useful to see which directions limit the wind farm performance the most.',
+
     '<br><small>Diagnóstico incremental: positivo = recupera AEP frente al wake-only; negativo = reduce AEP. No se debe interpretar siempre como pérdida contable.</small></li>\n          <li><b>Bloqueo:</b> ': '<br><small>Incremental diagnostics: positive = recovers AEP versus wake-only; negative = reduces AEP. It should not always be interpreted as an accountable loss.</small></li>\n          <li><b>Blockage:</b> ',
     '<h4>Notas físicas y de compatibilidad</h4><ul>': '<h4>Physical and compatibility notes</h4><ul>',
     "<p style='background:#fff8e6;border:1px solid #e0c36d;border-radius:6px;padding:8px;'><b>Aviso de TI ambiente:</b> no se ha proporcionado un raster de TI. El cálculo ha usado <b>TI = ": "<p style='background:#fff8e6;border:1px solid #e0c36d;border-radius:6px;padding:8px;'><b>Ambient TI warning:</b> no TI raster has been provided. The calculation used <b>TI = ",
@@ -3038,25 +3223,25 @@ _I18N_COVERAGE8_TO_EN = {
     'En modo curva, cada grupo fuente puede usar un CSV ws/LwA distinto.': 'In curve mode, each source group can use a different ws/LwA CSV.',
     'G=0 suelo duro · G=1 suelo poroso': 'G=0 hard ground · G=1 porous ground',
     'Puedes usar un LwA fijo por grupo fuente acústico o una curva acústica ws/LwA por grupo. Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso.': 'You can use a fixed LwA by acoustic source group or a ws/LwA acoustic curve per group. If you enable curve mode, the plugin will evaluate the emission at a specific wind speed or for the worst case.',
-    '📊 ISO-aligned - ISO 9613-2 por bandas': '📊 ISO-aligned - ISO 9613-2 by bands',
+
     "\n        \n        <div class='card'>\n            <h3>📊 Estadísticos de Atenuaciones (Receptores Cubiertos)</h3>\n        <p style='margin: 6px 0 10px 0; color:#495057;'><i>Se muestran magnitudes brutas de atenuación (no el signo algebraico dentro de la ecuación). Para Abar se usa el máximo entre las turbinas contribuyentes de cada receptor, no solo la trayectoria dominante.</i></p>\n            <table>\n                <tr>\n                    <th>Término</th>\n                    <th style='text-align: right;'>Media [dB]</th>\n                    <th style='text-align: right;'>Máximo [dB]</th>\n                </tr>\n                <tr>\n                    <td><b>Adiv</b> (divergencia geométrica)</td>\n                    <td style='text-align: right;'>": "\n        \n        <div class='card'>\n            <h3>📊 Attenuation statistics (covered receivers)</h3>\n        <p style='margin: 6px 0 10px 0; color:#495057;'><i>Raw attenuation magnitudes are shown (not the algebraic sign inside the equation). For Abar, the maximum among the contributing turbines of each receiver is used, not only the dominant path.</i></p>\n            <table>\n                <tr>\n                    <th>Term</th>\n                    <th style='text-align: right;'>Mean [dB]</th>\n                    <th style='text-align: right;'>Maximum [dB]</th>\n                </tr>\n                <tr>\n                    <td><b>Adiv</b> (geometrical divergence)</td>\n                    <td style='text-align: right;'>",
     "\n                </table>\n                <h4>5. Efecto suelo por regiones</h4>\n                <div class='formula'>Agr,b = As + Am + Ar</div>\n                <p>El término de suelo se descompone en <b>As</b> (región de fuente), <b>Am</b> (región media) y <b>Ar</b> (región de receptor). En esta implementación no se usan tres parámetros de suelo independientes <code>Gs/Gm/Gr</code>, sino un <b>único G por trayecto</b>. Matemáticamente, el plugin aplica:</p>\n                <div class='formula'>As = G_eff·A_ground(h_s)</div>\n                <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_medio)</div>\n                <div class='formula'>Ar = G_eff·A_ground(h_r)</div>\n                <p>donde <b>h_s</b> es la altura característica de la fuente, <b>h_r</b> la del receptor, <b>h_medio</b> la altura media del trayecto y <b>G_m≈0</b> en la aproximación actual para condiciones favorables de propagación. Ese valor único de suelo puede ser:</p>\n                <ul>\n                    <li><b>G manual/global</b>, si el usuario fija un único valor.</li>\n                    <li><b>G_eff</b>, si existe capa de uso del suelo y se calcula una media ponderada por longitud del trayecto.</li>\n                </ul>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <p><b>Significado físico de G:</b> representa el carácter acústico del terreno y controla cómo influye el suelo en la propagación. <b>G≈0</b> indica suelo duro (urbano, asfalto, roca), <b>G≈1</b> suelo blando/poroso (agrícola, pradera, forestal) y valores intermedios representan terreno mixto.</p>\n                <p><b>Qué significa “desde capa”:</b> el plugin corta el trayecto fuente–receptor contra la capa de uso del suelo, asigna un valor <b>G_i</b> a cada polígono interceptado y calcula un único <b>G_eff</b> para ese trayecto. Ese es el valor que entra realmente en <b>Agr,b</b>; el <b>G global</b> mostrado en el informe queda solo como respaldo.</p>\n                <p><b>Convención del informe:</b> <b>Agr,b</b> se muestra aquí como una <b>magnitud positiva de atenuación</b>. En la ecuación principal se resta al nivel de fuente igual que Adiv, Aatm y Abar.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>Término base A_ground(h)</th></tr>\n                    ": "\n                </table>\n                <h4>5. Ground effect by regions</h4>\n                <div class='formula'>Agr,b = As + Am + Ar</div>\n                <p>The ground term is split into <b>As</b> (source region), <b>Am</b> (middle region) and <b>Ar</b> (receiver region). This implementation does not use three independent ground parameters <code>Gs/Gm/Gr</code>, but a <b>single G per path</b>. Mathematically, the plugin applies:</p>\n                <div class='formula'>As = G_eff·A_ground(h_s)</div>\n                <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_mid)</div>\n                <div class='formula'>Ar = G_eff·A_ground(h_r)</div>\n                <p>where <b>h_s</b> is the characteristic source height, <b>h_r</b> the receiver height, <b>h_mid</b> the mean path height and <b>G_m≈0</b> in the current approximation for favourable propagation conditions. That single ground value can be:</p>\n                <ul>\n                    <li><b>Manual/global G</b>, if the user sets a single value.</li>\n                    <li><b>G_eff</b>, if a land-use layer exists and a length-weighted mean along the path is computed.</li>\n                </ul>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <p><b>Physical meaning of G:</b> it represents the acoustic character of the terrain and controls how the ground influences propagation. <b>G≈0</b> indicates hard ground (urban, asphalt, rock), <b>G≈1</b> soft/porous ground (agricultural, grassland, forest) and intermediate values represent mixed terrain.</p>\n                <p><b>What “from layer” means:</b> the plugin clips the source–receiver path against the land-use layer, assigns a <b>G_i</b> value to each intercepted polygon and computes a single <b>G_eff</b> for that path. That is the value actually entering <b>Agr,b</b>; the <b>global G</b> shown in the report is kept only as a fallback.</p>\n                <p><b>Report convention:</b> <b>Agr,b</b> is shown here as a <b>positive attenuation magnitude</b>. In the main equation it is subtracted from the source level just like Adiv, Aatm and Abar.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>Base term A_ground(h)</th></tr>\n                    ",
-    "\n                </table>\n                <h4>6. Apantallamiento topográfico con MDT</h4>\n                <p>El MDT <b>no cambia la emisión</b> de la turbina ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto</b> y alimentar el término <b>Abar,b</b>.</p>\n                <ol>\n                    <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con muestreo adaptativo.</li>\n                    <li><b>Línea de visión:</b> se construye la recta entre la altura efectiva de fuente y la altura del receptor. Si el terreno queda siempre por debajo, entonces <b>Abar,b = 0</b>.</li>\n                    <li><b>Obstáculo dominante:</b> si una loma o cresta sobresale, se calcula la altura sobre la línea de visión:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                <p>Cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                <ol start='4'>\n                    <li><b>Geometría real del obstáculo:</b> el plugin usa la posición real del obstáculo dominante y calcula <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor).</li>\n                    <li><b>Activación conservadora:</b> no se activa <b>Abar</b> por pequeñas irregularidades del MDT; se exige un umbral mínimo ligado a la resolución del raster.</li>\n                    <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos y un número de Fresnel:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>Ese número se transforma después en una atenuación <b>Abar,b</b> dependiente de la frecuencia mediante la aproximación actual del plugin:</p>\n                <div class='formula'>si C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>En la implementación actual, <b>Abar</b> se limita además a valores razonables (capado superior) para evitar sobreatenuaciones espurias. Si no hay MDT o no hay obstáculo relevante, entonces <b>Abar,b = 0</b>.</p>\n                <h4>7. Ponderación A usada al final</h4>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ": "\n                </table>\n                <h4>6. Topographic screening with DTM</h4>\n                <p>The DTM <b>does not change the emission</b> of the turbine nor the atmospheric absorption. Its role is to describe the <b>real path geometry</b> and feed the <b>Abar,b</b> term.</p>\n                <ol>\n                    <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with adaptive sampling.</li>\n                    <li><b>Line of sight:</b> the straight line between the effective source height and the receiver height is built. If the terrain always stays below, then <b>Abar,b = 0</b>.</li>\n                    <li><b>Dominant obstacle:</b> if a hill or ridge sticks out, its height above the line of sight is computed:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                <p>When <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                <ol start='4'>\n                    <li><b>Real obstacle geometry:</b> the plugin uses the real position of the dominant obstacle and computes <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver).</li>\n                    <li><b>Conservative activation:</b> <b>Abar</b> is not triggered by small DTM irregularities; a minimum threshold linked to the raster resolution is required.</li>\n                    <li><b>Fresnel-type diffraction:</b> from that geometry a path difference and a Fresnel number are estimated:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>That number is then turned into a frequency-dependent <b>Abar,b</b> attenuation through the plugin's current approximation:</p>\n                <div class='formula'>if C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>In the current implementation, <b>Abar</b> is additionally capped to reasonable values (upper cap) to avoid spurious over-attenuation. If there is no DTM or no relevant obstacle, then <b>Abar,b = 0</b>.</p>\n                <h4>7. A-weighting used at the end</h4>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ",
+    "\n                </table>\n                <h4>6. Apantallamiento topográfico con MDT</h4>\n                <p>El MDT <b>no cambia la emisión</b> de la turbina ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto</b> y alimentar el término <b>Abar,b</b>.</p>\n                <ol>\n                    <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con muestreo adaptativo.</li>\n                    <li><b>Línea de visión:</b> se construye la recta entre la altura efectiva de fuente y la altura del receptor. Si el terreno queda siempre por debajo, entonces <b>Abar,b = 0</b>.</li>\n                    <li><b>Obstáculo dominante:</b> si una loma o cresta sobresale, se calcula la altura sobre la línea de visión:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                <p>Cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                <ol start='4'>\n                    <li><b>Geometría real del obstáculo:</b> el plugin usa la posición real del obstáculo dominante y calcula <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor).</li>\n                    <li><b>Activación conservadora:</b> no se activa <b>Abar</b> por pequeñas irregularidades del MDT; se exige un umbral mínimo ligado a la resolución del raster.</li>\n                    <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos y un número de Fresnel:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>Ese número se transforma después en una atenuación <b>Abar,b</b> dependiente de la frecuencia mediante la aproximación actual del plugin:</p>\n                <div class='formula'>si C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>En la implementación actual, <b>Abar</b> se limita además a valores razonables (capado superior) para evitar sobreatenuaciones espurias. Si no hay MDT o no hay obstáculo relevante, entonces <b>Abar,b = 0</b>.</p>\n                <h4>7. Ponderación A usada al final</h4>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ": "\n                </table>\n                <h4>6. Topographic screening with DEM</h4>\n                <p>The DEM <b>does not change the emission</b> of the turbine nor the atmospheric absorption. Its role is to describe the <b>real path geometry</b> and feed the <b>Abar,b</b> term.</p>\n                <ol>\n                    <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DEM with adaptive sampling.</li>\n                    <li><b>Line of sight:</b> the straight line between the effective source height and the receiver height is built. If the terrain always stays below, then <b>Abar,b = 0</b>.</li>\n                    <li><b>Dominant obstacle:</b> if a hill or ridge sticks out, its height above the line of sight is computed:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                <p>When <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                <ol start='4'>\n                    <li><b>Real obstacle geometry:</b> the plugin uses the real position of the dominant obstacle and computes <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver).</li>\n                    <li><b>Conservative activation:</b> <b>Abar</b> is not triggered by small DEM irregularities; a minimum threshold linked to the raster resolution is required.</li>\n                    <li><b>Fresnel-type diffraction:</b> from that geometry a path difference and a Fresnel number are estimated:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>That number is then turned into a frequency-dependent <b>Abar,b</b> attenuation through the plugin's current approximation:</p>\n                <div class='formula'>if C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>In the current implementation, <b>Abar</b> is additionally capped to reasonable values (upper cap) to avoid spurious over-attenuation. If there is no DEM or no relevant obstacle, then <b>Abar,b = 0</b>.</p>\n                <h4>7. A-weighting used at the end</h4>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ",
     '\n                </table>\n                <p><b>Lectura del receptor crítico:</b> la tabla del apartado de receptor crítico muestra magnitudes de atenuación para trazabilidad. El <b>nivel resultante</b> no debe interpretarse como una resta directa de una sola turbina: se obtiene mediante suma energética por bandas y suma de las fuentes contribuyentes dentro del radio de cálculo.</p>\n            </div>\n            ': '\n                </table>\n                <p><b>Critical-receiver reading:</b> the table in the critical-receiver section shows attenuation magnitudes for traceability. The <b>resulting level</b> must not be interpreted as a direct subtraction from a single turbine: it is obtained through energetic summation across bands and over the contributing sources within the calculation radius.</p>\n            </div>\n            ',
-    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>\n                    <p>En esta corrida el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>\n                    <div class='formula'>G = ": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G calculation</h3>\n                    <p>In this run the ground effect was computed with a <b>single manual G</b> for the whole path:</p>\n                    <div class='formula'>G = ",
-    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>\n                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>\n                    <ul>\n                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>\n                        <li><b>G = 0.5</b>: terreno mixto.</li>\n                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>\n                    </ul>\n                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta corrida, el valor medio efectivo fue <b>": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G_eff calculation</h3>\n                    <p>When the ground mode is <b>from layer</b>, the calculation does not use a single manual value for the whole wind farm. For each source–receiver path a <b>G_eff</b> is computed from the land-use layer:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>where <b>G_i</b> is the value assigned to each polygon intercepted by the path and <b>L_i</b> is the path length inside that polygon.</p>\n                    <ul>\n                        <li><b>G = 0</b>: hard ground (urban/asphalt/rock).</li>\n                        <li><b>G = 0.5</b>: mixed terrain.</li>\n                        <li><b>G = 1</b>: soft/porous ground (agricultural, grassland, forest, vegetated).</li>\n                    </ul>\n                    <p><b>Important:</b> the <b>global G</b> shown in the report is only a fallback value. When a land-use layer exists, the calculation actually uses <b>G_eff</b> per path. In this run, the effective mean value was <b>",
-    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>Cómo entra el MDT en el cálculo</h4>\n                    <ol>\n                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>\n                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>\n                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                    <ol start='4'>\n                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>\n                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>\n                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>\n                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>\n                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>\n                    <p><b>MDT usado en esta corrida:</b> ": "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In the ISO-aligned engine, the DTM <b>does not change the turbine emission</b> nor the atmospheric absorption. Its role is to describe the <b>real source–receiver path geometry</b> and feed the topographic screening term <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>How the DTM enters the calculation</h4>\n                    <ol>\n                        <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with <b>adaptive sampling</b>, adjusted to distance and raster resolution. The profile is computed <b>only once</b> per source–receiver pair and reused across the 8 bands to reduce computation time.</li>\n                        <li><b>Direct line of sight:</b> the profile is compared with the straight line joining the acoustic source at its effective height and the receiver at its evaluation height. If the terrain always stays below that line, there is no relevant topographic obstacle and <b>Abar,b = 0</b>.</li>\n                        <li><b>Dominant-obstacle detection:</b> if a hill or ridge in the DTM rises above the line of sight, the model interprets that a topographic screen exists. The key magnitude is the obstacle height above the line of sight:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                    <p>when <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                    <ol start='4'>\n                        <li><b>Conservative activation:</b> Abar is not triggered by small relief irregularities; a minimum threshold linked to the DTM resolution is applied.</li>\n                        <li><b>Real obstacle geometry:</b> the calculation uses the <b>real position</b> of the dominant obstacle and obtains real <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver), instead of always assuming an obstacle at the midpoint.</li>\n                        <li><b>Fresnel-type diffraction:</b> from that geometry an approximate path difference is estimated and turned into a frequency-dependent attenuation:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>where <b>δ</b> is the approximate path difference, <b>f</b> the frequency and <b>c</b> the speed of sound. The number <b>C</b> is then translated into an <b>Abar,b</b> attenuation that grows the more the relief blocks the path. This is the same approximation implemented in the calculation.</p>\n                    <p><b>Physical interpretation:</b> on flat terrain or when there is no intersection with the line of sight, <b>Abar</b> is usually negligible. On complex terrain, the DTM can introduce several dB of additional attenuation and change the critical receiver.</p>\n                    <p><b>Current implementation:</b> single dominant obstacle, adaptive profile with cost limits, real obstacle geometry, conservative activation and attenuation capped to reasonable values.</p>\n                    <p><b>DTM used in this run:</b> ",
-    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En esta corrida <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>\n                </div>\n                ": "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In this run <b>no DTM/DSM was used</b>, so the topographic screening term is set to:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>The assessment is performed without introducing topographic screens. The path geometry is resolved without a terrain profile and the calculation depends on Lw,b, Adiv, Aatm,b and Agr,b.</p>\n                </div>\n                ",
+    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>\n                    <p>En esta ejecución el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>\n                    <div class='formula'>G = ": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G calculation</h3>\n                    <p>In this run the ground effect was computed with a <b>single manual G</b> for the whole path:</p>\n                    <div class='formula'>G = ",
+    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>\n                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>\n                    <ul>\n                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>\n                        <li><b>G = 0.5</b>: terreno mixto.</li>\n                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>\n                    </ul>\n                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta ejecución, el valor medio efectivo fue <b>": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G_eff calculation</h3>\n                    <p>When the ground mode is <b>from layer</b>, the calculation does not use a single manual value for the whole wind farm. For each source–receiver path a <b>G_eff</b> is computed from the land-use layer:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>where <b>G_i</b> is the value assigned to each polygon intercepted by the path and <b>L_i</b> is the path length inside that polygon.</p>\n                    <ul>\n                        <li><b>G = 0</b>: hard ground (urban/asphalt/rock).</li>\n                        <li><b>G = 0.5</b>: mixed terrain.</li>\n                        <li><b>G = 1</b>: soft/porous ground (agricultural, grassland, forest, vegetated).</li>\n                    </ul>\n                    <p><b>Important:</b> the <b>global G</b> shown in the report is only a fallback value. When a land-use layer exists, the calculation actually uses <b>G_eff</b> per path. In this run, the effective mean value was <b>",
+    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>Cómo entra el MDT en el cálculo</h4>\n                    <ol>\n                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>\n                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>\n                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                    <ol start='4'>\n                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>\n                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>\n                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>\n                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>\n                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>\n                    <p><b>MDT usado en esta ejecución:</b> ": "\n                <div class='card'>\n                    <h3>🗺️ DEM physics and topographic screening</h3>\n                    <p>In the ISO-aligned engine, the DEM <b>does not change the turbine emission</b> nor the atmospheric absorption. Its role is to describe the <b>real source–receiver path geometry</b> and feed the topographic screening term <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>How the DEM enters the calculation</h4>\n                    <ol>\n                        <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DEM with <b>adaptive sampling</b>, adjusted to distance and raster resolution. The profile is computed <b>only once</b> per source–receiver pair and reused across the 8 bands to reduce computation time.</li>\n                        <li><b>Direct line of sight:</b> the profile is compared with the straight line joining the acoustic source at its effective height and the receiver at its evaluation height. If the terrain always stays below that line, there is no relevant topographic obstacle and <b>Abar,b = 0</b>.</li>\n                        <li><b>Dominant-obstacle detection:</b> if a hill or ridge in the DEM rises above the line of sight, the model interprets that a topographic screen exists. The key magnitude is the obstacle height above the line of sight:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                    <p>when <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                    <ol start='4'>\n                        <li><b>Conservative activation:</b> Abar is not triggered by small relief irregularities; a minimum threshold linked to the DEM resolution is applied.</li>\n                        <li><b>Real obstacle geometry:</b> the calculation uses the <b>real position</b> of the dominant obstacle and obtains real <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver), instead of always assuming an obstacle at the midpoint.</li>\n                        <li><b>Fresnel-type diffraction:</b> from that geometry an approximate path difference is estimated and turned into a frequency-dependent attenuation:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>where <b>δ</b> is the approximate path difference, <b>f</b> the frequency and <b>c</b> the speed of sound. The number <b>C</b> is then translated into an <b>Abar,b</b> attenuation that grows the more the relief blocks the path. This is the same approximation implemented in the calculation.</p>\n                    <p><b>Physical interpretation:</b> on flat terrain or when there is no intersection with the line of sight, <b>Abar</b> is usually negligible. On complex terrain, the DEM can introduce several dB of additional attenuation and change the critical receiver.</p>\n                    <p><b>Current implementation:</b> single dominant obstacle, adaptive profile with cost limits, real obstacle geometry, conservative activation and attenuation capped to reasonable values.</p>\n                    <p><b>DEM used in this run:</b> ",
+    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En esta ejecución <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>\n                </div>\n                ": "\n                <div class='card'>\n                    <h3>🗺️ DEM physics and topographic screening</h3>\n                    <p>In this run <b>no DEM/DSM was used</b>, so the topographic screening term is set to:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>The assessment is performed without introducing topographic screens. The path geometry is resolved without a terrain profile and the calculation depends on Lw,b, Adiv, Aatm,b and Agr,b.</p>\n                </div>\n                ",
     "\n                <div class='note'>\n                    <b>Lectura correcta de Abar:</b> el valor <b>Abar trayectoria dominante</b> corresponde solo a la turbina que más contribuye al receptor y a su banda dominante. El nivel total del receptor se obtiene sumando energéticamente todas las turbinas y bandas.\n                    <br><b>Abar máximo entre turbinas contribuyentes:</b> ": "\n                <div class='note'>\n                    <b>Correct reading of Abar:</b> the <b>dominant-path Abar</b> value corresponds only to the turbine that contributes most to the receiver and to its dominant band. The total receiver level is obtained by energetically summing all turbines and bands.\n                    <br><b>Maximum Abar among contributing turbines:</b> ",
-    "\n                <h4>3. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor. Aquí <b>d</b> sale de las coordenadas de turbina y receptor junto con sus alturas de evaluación.</p>\n                <h4>4. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm,b = α(f, T, HR, P) · d</div>\n                <p>La absorción atmosférica se calcula por banda a partir de un coeficiente base de referencia y tres factores correctores. La dependencia física con temperatura, humedad relativa y presión <b>sí se representa</b>, pero mediante una <b>aproximación simplificada del plugin</b>, no mediante la formulación analítica completa de ISO 9613-1.</p>\n                <div class='formula'>α(f, T, HR, P) = α_ref(f) · corr_T · corr_HR · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_HR = 1 + 0.003·|HR - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretación de las correcciones:</b> <b>T</b> se introduce en °C respecto a una referencia de 15 °C; <b>HR</b> se compara con una humedad óptima de referencia del 50% y la corrección crece al alejarse de ese valor; y <b>P</b> se introduce en kPa respecto a una referencia de 101.325 kPa con una corrección inversa. Estos factores modifican únicamente el bloque atmosférico <b>Aatm,b</b>: no alteran ni la emisión de la turbina, ni el efecto del suelo, ni el término de MDT/apantallamiento.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ": "\n                <h4>3. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance. Here <b>d</b> comes from the turbine and receiver coordinates together with their evaluation heights.</p>\n                <h4>4. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm,b = α(f, T, RH, P) · d</div>\n                <p>Atmospheric absorption is computed per band from a reference base coefficient and three correction factors. The physical dependence on temperature, relative humidity and pressure <b>is represented</b>, but through a <b>simplified plugin approximation</b>, not through the full analytical formulation of ISO 9613-1.</p>\n                <div class='formula'>α(f, T, RH, P) = α_ref(f) · corr_T · corr_RH · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_RH = 1 + 0.003·|RH - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretation of the corrections:</b> <b>T</b> is entered in °C relative to a 15 °C reference; <b>RH</b> is compared with a reference optimum humidity of 50% and the correction grows as it moves away from that value; and <b>P</b> is entered in kPa relative to a 101.325 kPa reference with an inverse correction. These factors modify only the atmospheric block <b>Aatm,b</b>: they alter neither the turbine emission, nor the ground effect, nor the DTM/screening term.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ",
+    "\n                <h4>3. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor. Aquí <b>d</b> sale de las coordenadas de turbina y receptor junto con sus alturas de evaluación.</p>\n                <h4>4. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm,b = α(f, T, HR, P) · d</div>\n                <p>La absorción atmosférica se calcula por banda a partir de un coeficiente base de referencia y tres factores correctores. La dependencia física con temperatura, humedad relativa y presión <b>sí se representa</b>, pero mediante una <b>aproximación simplificada del plugin</b>, no mediante la formulación analítica completa de ISO 9613-1.</p>\n                <div class='formula'>α(f, T, HR, P) = α_ref(f) · corr_T · corr_HR · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_HR = 1 + 0.003·|HR - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretación de las correcciones:</b> <b>T</b> se introduce en °C respecto a una referencia de 15 °C; <b>HR</b> se compara con una humedad óptima de referencia del 50% y la corrección crece al alejarse de ese valor; y <b>P</b> se introduce en kPa respecto a una referencia de 101.325 kPa con una corrección inversa. Estos factores modifican únicamente el bloque atmosférico <b>Aatm,b</b>: no alteran ni la emisión de la turbina, ni el efecto del suelo, ni el término de MDT/apantallamiento.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ": "\n                <h4>3. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance. Here <b>d</b> comes from the turbine and receiver coordinates together with their evaluation heights.</p>\n                <h4>4. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm,b = α(f, T, RH, P) · d</div>\n                <p>Atmospheric absorption is computed per band from a reference base coefficient and three correction factors. The physical dependence on temperature, relative humidity and pressure <b>is represented</b>, but through a <b>simplified plugin approximation</b>, not through the full analytical formulation of ISO 9613-1.</p>\n                <div class='formula'>α(f, T, RH, P) = α_ref(f) · corr_T · corr_RH · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_RH = 1 + 0.003·|RH - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretation of the corrections:</b> <b>T</b> is entered in °C relative to a 15 °C reference; <b>RH</b> is compared with a reference optimum humidity of 50% and the correction grows as it moves away from that value; and <b>P</b> is entered in kPa relative to a 101.325 kPa reference with an inverse correction. These factors modify only the atmospheric block <b>Aatm,b</b>: they alter neither the turbine emission, nor the ground effect, nor the DEM/screening term.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ",
     "\n                <h4>3. Efecto suelo simplificado con uso del suelo</h4>\n                <p>En el motor rápido el término <b>Aground</b> sigue siendo empírico, pero el parámetro de suelo puede venir de la capa de uso del suelo como un <b>G_eff</b> por trayecto:</p>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>Ese <b>G_eff</b> se usa después dentro de la corrección simplificada de terreno del motor rápido. El valor global <b>G = ": "\n                <h4>3. Simplified ground effect with land use</h4>\n                <p>In the fast engine the <b>Aground</b> term is still empirical, but the ground parameter can come from the land-use layer as a per-path <b>G_eff</b>:</p>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>That <b>G_eff</b> is then used inside the fast engine's simplified terrain correction. The global value <b>G = ",
     "\n                <h4>3. Efecto suelo simplificado</h4>\n                <p>El término <b>Aground</b> es una corrección empírica del terreno controlada por un único parámetro manual:</p>\n                <div class='formula'>G = ": "\n                <h4>3. Simplified ground effect</h4>\n                <p>The <b>Aground</b> term is an empirical terrain correction controlled by a single manual parameter:</p>\n                <div class='formula'>G = ",
-    '\n                <h4>4. MDT / topografía</h4>\n                <p>En el motor rápido el MDT no introduce un término explícito de apantallamiento topográfico. Aunque exista una capa de relieve en el proyecto, este modo no calcula <b>Abar</b>, no extrae línea de visión ni aplica difracción; por tanto la física se basa únicamente en <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> y la corrección empírica de terreno <b>Aground</b>.</p>\n            ': '\n                <h4>4. DTM / topography</h4>\n                <p>In the fast engine the DTM does not introduce an explicit topographic screening term. Even if a relief layer exists in the project, this mode does not compute <b>Abar</b>, does not extract a line of sight and does not apply diffraction; therefore the physics relies only on <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> and the empirical terrain correction <b>Aground</b>.</p>\n            ',
-    '\n                <h4>5. Qué no hace este modo</h4>\n                <p>El motor rápido no trabaja por bandas, no calcula <b>Lw,b</b>, no introduce <b>Abar</b> y no extrae línea de visión ni difracción desde MDT. Por tanto, es apropiado para screening y comparativas rápidas, pero no para análisis espectral detallado.</p>\n            </div>\n            ': '\n                <h4>5. What this mode does not do</h4>\n                <p>The fast engine does not work by bands, does not compute <b>Lw,b</b>, does not introduce <b>Abar</b> and does not extract a line of sight or diffraction from a DTM. It is therefore appropriate for screening and quick comparisons, but not for detailed spectral analysis.</p>\n            </div>\n            ',
+    '\n                <h4>4. MDT / topografía</h4>\n                <p>En el motor rápido el MDT no introduce un término explícito de apantallamiento topográfico. Aunque exista una capa de relieve en el proyecto, este modo no calcula <b>Abar</b>, no extrae línea de visión ni aplica difracción; por tanto la física se basa únicamente en <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> y la corrección empírica de terreno <b>Aground</b>.</p>\n            ': "\n                <h4>4. DEM / topography</h4>\n                <p>In the fast engine the DEM does not introduce an explicit topographic screening term. Even if a relief layer exists in the project, this mode does not compute <b>Abar</b>, does not extract a line of sight and does not apply diffraction; therefore the physics relies only on <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> and the empirical terrain correction <b>Aground</b>.</p>\n            ",
+    '\n                <h4>5. Qué no hace este modo</h4>\n                <p>El motor rápido no trabaja por bandas, no calcula <b>Lw,b</b>, no introduce <b>Abar</b> y no extrae línea de visión ni difracción desde MDT. Por tanto, es apropiado para screening y comparativas rápidas, pero no para análisis espectral detallado.</p>\n            </div>\n            ': "\n                <h4>5. What this mode does not do</h4>\n                <p>The fast engine does not work by bands, does not compute <b>Lw,b</b>, does not introduce <b>Abar</b> and does not extract a line of sight or diffraction from a DEM. It is therefore appropriate for screening and quick comparisons, but not for detailed spectral analysis.</p>\n            </div>\n            ",
     "\n            <div class='card card-info'>\n                <h3>🧭 Cómo se ha ejecutado el cálculo ISO-aligned</h3>\n                <p>Esta sección explica el flujo real que sigue el plugin para que el resultado por receptor sea trazable. El nivel final de cada receptor <b>no sale de una única resta simple</b>, sino de calcular todas las contribuciones fuente–receptor dentro del radio de cálculo y sumarlas energéticamente.</p>\n                <ol>\n                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>": "\n            <div class='card card-info'>\n                <h3>🧭 How the ISO-aligned calculation was run</h3>\n                <p>This section explains the actual flow the plugin follows so that the per-receiver result is traceable. The final level of each receiver <b>does not come from a single simple subtraction</b>, but from computing all source–receiver contributions within the calculation radius and summing them energetically.</p>\n                <ol>\n                    <li><b>Reading GIS inputs:</b> the acoustic turbines/sources, the receivers, the receiver height, the maximum calculation radius (<b>",
     "\n            <div class='card card-info'>\n                <h3>🧭 Cómo se ha ejecutado el cálculo Screening</h3>\n                <p>Esta sección explica el flujo real que sigue el plugin en el modo rápido. El objetivo es obtener una estimación ágil para mapas, comparación de alternativas y detección inicial de receptores sensibles.</p>\n                <ol>\n                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>": "\n            <div class='card card-info'>\n                <h3>🧭 How the Screening calculation was run</h3>\n                <p>This section explains the actual flow the plugin follows in the fast mode. The goal is to obtain a quick estimate for maps, comparison of alternatives and initial detection of sensitive receivers.</p>\n                <ol>\n                    <li><b>Reading GIS inputs:</b> the acoustic turbines/sources, the receivers, the receiver height, the maximum calculation radius (<b>",
-    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>\n                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>\n                <p><b>Escenario operativo de esta corrida:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the ISO-aligned engine</h3>\n                <p>This engine works in <b>8 octave bands</b> (63–8000 Hz). The bands are not a calculation result, but the <b>frequency grid of the method</b>. To apply band-wise propagation, the calculation needs a per-band acoustic input <code>Lw,b</code> from the source. That input can come from a measured/imported spectrum or from a template/fallback adjusted to the global operating level.</p>\n                <p><b>Operating scenario of this run:</b> ",
-    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor rápido</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>\n                <p><b>Escenario operativo de esta corrida:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the fast engine</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>The fast engine works with a single global level <b>LwA</b> per source group. It is intended for screening, quick maps and fast comparisons, trading spectral detail for speed. In this mode there is <b>no band-wise propagation</b> and no explicit topographic screening term.</p>\n                <p><b>Operating scenario of this run:</b> ",
+    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>\n                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>\n                <p><b>Escenario operativo de esta ejecución:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the ISO-aligned engine</h3>\n                <p>This engine works in <b>8 octave bands</b> (63–8000 Hz). The bands are not a calculation result, but the <b>frequency grid of the method</b>. To apply band-wise propagation, the calculation needs a per-band acoustic input <code>Lw,b</code> from the source. That input can come from a measured/imported spectrum or from a template/fallback adjusted to the global operating level.</p>\n                <p><b>Operating scenario of this run:</b> ",
+    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor rápido</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>\n                <p><b>Escenario operativo de esta ejecución:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the fast engine</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>The fast engine works with a single global level <b>LwA</b> per source group. It is intended for screening, quick maps and fast comparisons, trading spectral detail for speed. In this mode there is <b>no band-wise propagation</b> and no explicit topographic screening term.</p>\n                <p><b>Operating scenario of this run:</b> ",
     ' Otros receptores sí presentan apantallamiento (Abar máx. ': ' Other receivers do show screening (max Abar ',
     ' Umbral de activación: ': ' Activation threshold: ',
     ' dB · <b>Abar ponderado por contribución energética:</b> ': ' dB · <b>Abar weighted by energetic contribution:</b> ',
@@ -3065,18 +3250,18 @@ _I18N_COVERAGE8_TO_EN = {
     ' m AGL · altura acústica receptor=': ' m AGL · receiver acoustic height=',
     ' m AGL · altura acústica turbina=': ' m AGL · turbine acoustic height=',
     ' m · terreno receptor=': ' m · receiver terrain=',
-    ' m</b>) y la capa de uso del suelo si existe.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta corrida: <b>': ' m</b>) and the land-use layer if it exists.</li>\n                    <li><b>Acoustic state of each source group:</b> each turbine model or group works with a single <b>operating LwA</b>, defined by a fixed value or by an <code>LwA(ws)</code> curve. In this run: <b>',
-    ' m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta corrida: <b>': ' m</b>), the land-use layer if it exists and the DTM/DSM if it is active.</li>\n                    <li><b>Acoustic state of each source group:</b> for each turbine model or group an <b>operating LwA</b> is obtained from a fixed value or from an <code>LwA(ws)</code> curve. In this run: <b>',
+    ' m</b>) y la capa de uso del suelo si existe.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta ejecución: <b>': ' m</b>) and the land-use layer if it exists.</li>\n                    <li><b>Acoustic state of each source group:</b> each turbine model or group works with a single <b>operating LwA</b>, defined by a fixed value or by an <code>LwA(ws)</code> curve. In this run: <b>',
+    ' m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta ejecución: <b>': " m</b>), the land-use layer if it exists and the DEM/DSM if it is active.</li>\n                    <li><b>Acoustic state of each source group:</b> for each turbine model or group an <b>operating LwA</b> is obtained from a fixed value or from an <code>LwA(ws)</code> curve. In this run: <b>",
     ' receptores</strong> dentro del radio<br>\n                <strong>': ' receivers</strong> within the radius<br>\n                <strong>',
     ' receptores</strong> superan límites<br>\n                <strong>': ' receivers</strong> exceed limits<br>\n                <strong>',
-    ".</p>\n                <h4>0. Inputs realmente usados en esta corrida</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>\n                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                </table>\n                <h4>2. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>\n                <h4>3. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>En esta corrida se ha usado <b>α = ": ".</p>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> a single global level <b>LwA</b> per source group.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> for the selected wind speed or worst case.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> in this mode T/RH/P are not used; absorption is summarized in a single coefficient <b>α</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> the DTM does not enter as explicit screening in this mode.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Global source input. It comes from a fixed value per group or from an <code>LwA(ws)</code> acoustic curve for the selected wind speed/worst case.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Computed with a single constant coefficient <code>α</code> multiplied by the distance.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Empirical ground-effect correction. The ground parameter can be a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</td></tr>\n                </table>\n                <h4>2. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance.</p>\n                <h4>3. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>In this run <b>α = ",
-    ".</p>\n                <p><b>Ecuación general por banda:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Suma A-ponderada final:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs realmente usados en esta corrida</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>\n                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Input acústico de fuente y bandas</h4>\n                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>\n                <p>El plugin combina dos piezas:</p>\n                <ul>\n                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>\n                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>\n                </ul>\n                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>\n                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>\n                ": ".</p>\n                <p><b>General per-band equation:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Final A-weighted sum:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> <code>Lw,b</code> by octave bands. If a specific spectrum of the source group exists, that is the input used. If not, the plugin uses a library/template/fallback and adjusts it to the global operating level.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> according to the selected scenario. That global level does not replace the bands: it sets the operating state and the spectrum provides the frequency distribution.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> temperature <b>T</b>, relative humidity <b>RH</b> and pressure <b>P</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> optional DTM/DSM. It only affects the calculation of <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Per-band acoustic input. It comes from the source-group spectrum (CSV, library, template or fallback adjusted to the global level). The LwA(ws) acoustic curve or the fixed LwA define the turbine's global operating level, and the band spectrum distributes that level among the 8 bands.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Computed per band with a base absorption table <code>α_ref(f)</code> and simplified corrections for temperature, relative humidity and pressure. The current implementation uses the plugin's exact math: <code>α = α_ref(f)·corr_T·corr_RH·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Computed as ground effect by regions. The ground parameter used is a <b>single G per path</b>: manual/global or <b>G_eff</b> derived from the land-use layer.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>It only enters if there is a DTM/DSM and topographic screening is detected. If there is no DTM or no relevant obstacle, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Source acoustic input and bands</h4>\n                <p>In this engine, the term <code>Lw,b</code> is a <b>per-band input datum</b>. The <b>octave bands</b> (63–8000 Hz) are not a result of the ISO nor a table computed by the plugin: they are the <b>frequency grid</b> on which propagation is solved.</p>\n                <p>The plugin combines two pieces:</p>\n                <ul>\n                    <li><b>Global acoustic curve LwA(ws)</b>: it sets the <b>global operating level</b> of the turbine for the selected wind speed or worst case.</li>\n                    <li><b>Band spectrum Lw,b</b>: it distributes that global level among the 8 bands and is the real input used in the band-wise equation.</li>\n                </ul>\n                <p>That spectrum can come from a specific manufacturer/user file or from a reference template. If only a global curve <code>LwA(ws)</code> is available, the plugin first sets the global operating level <code>LwA_target</code> and then builds an absolute per-band spectrum from a reference spectral shape <code>S_b^ref</code>.</p>\n                <p><b>Mathematical reconstruction of the bands when only LwA(ws) exists:</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_target - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>That is: the acoustic curve provides the <b>global operating level</b> and the template/library provides the <b>spectral shape</b>. The shift <b>Δ</b> is computed so that, when A-weighting and energetically summing the 8 bands, the reconstructed spectrum reproduces exactly the <code>LwA_target</code> of the imported curve.</p>\n                ",
+    ".</p>\n                <h4>0. Inputs realmente usados en esta ejecución</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>\n                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                </table>\n                <h4>2. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>\n                <h4>3. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>En esta ejecución se ha usado <b>α = ": ".</p>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> a single global level <b>LwA</b> per source group.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> for the selected wind speed or worst case.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> in this mode T/RH/P are not used; absorption is summarized in a single coefficient <b>α</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> the DEM does not enter as explicit screening in this mode.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Global source input. It comes from a fixed value per group or from an <code>LwA(ws)</code> acoustic curve for the selected wind speed/worst case.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Computed with a single constant coefficient <code>α</code> multiplied by the distance.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Empirical ground-effect correction. The ground parameter can be a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</td></tr>\n                </table>\n                <h4>2. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance.</p>\n                <h4>3. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>In this run <b>α = ",
+    ".</p>\n                <p><b>Ecuación general por banda:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Suma A-ponderada final:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs realmente usados en esta ejecución</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>\n                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Input acústico de fuente y bandas</h4>\n                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>\n                <p>El plugin combina dos piezas:</p>\n                <ul>\n                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>\n                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>\n                </ul>\n                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>\n                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>\n                ": ".</p>\n                <p><b>General per-band equation:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Final A-weighted sum:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> <code>Lw,b</code> by octave bands. If a specific spectrum of the source group exists, that is the input used. If not, the plugin uses a library/template/fallback and adjusts it to the global operating level.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> according to the selected scenario. That global level does not replace the bands: it sets the operating state and the spectrum provides the frequency distribution.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> temperature <b>T</b>, relative humidity <b>RH</b> and pressure <b>P</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> optional DEM/DSM. It only affects the calculation of <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Per-band acoustic input. It comes from the source-group spectrum (CSV, library, template or fallback adjusted to the global level). The LwA(ws) acoustic curve or the fixed LwA define the turbine's global operating level, and the band spectrum distributes that level among the 8 bands.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Computed per band with a base absorption table <code>α_ref(f)</code> and simplified corrections for temperature, relative humidity and pressure. The current implementation uses the plugin's exact math: <code>α = α_ref(f)·corr_T·corr_RH·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Computed as ground effect by regions. The ground parameter used is a <b>single G per path</b>: manual/global or <b>G_eff</b> derived from the land-use layer.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>It only enters if there is a DEM/DSM and topographic screening is detected. If there is no DEM or no relevant obstacle, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Source acoustic input and bands</h4>\n                <p>In this engine, the term <code>Lw,b</code> is a <b>per-band input datum</b>. The <b>octave bands</b> (63–8000 Hz) are not a result of the ISO nor a table computed by the plugin: they are the <b>frequency grid</b> on which propagation is solved.</p>\n                <p>The plugin combines two pieces:</p>\n                <ul>\n                    <li><b>Global acoustic curve LwA(ws)</b>: it sets the <b>global operating level</b> of the turbine for the selected wind speed or worst case.</li>\n                    <li><b>Band spectrum Lw,b</b>: it distributes that global level among the 8 bands and is the real input used in the band-wise equation.</li>\n                </ul>\n                <p>That spectrum can come from a specific manufacturer/user file or from a reference template. If only a global curve <code>LwA(ws)</code> is available, the plugin first sets the global operating level <code>LwA_target</code> and then builds an absolute per-band spectrum from a reference spectral shape <code>S_b^ref</code>.</p>\n                <p><b>Mathematical reconstruction of the bands when only LwA(ws) exists:</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_target - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>That is: the acoustic curve provides the <b>global operating level</b> and the template/library provides the <b>spectral shape</b>. The shift <b>Δ</b> is computed so that, when A-weighting and energetically summing the 8 bands, the reconstructed spectrum reproduces exactly the <code>LwA_target</code> of the imported curve.</p>\n                ",
     '</b> queda solo como respaldo si la capa no aporta información válida.</p>\n                <p><b>Capa usada:</b> ': '</b> is kept only as a fallback if the layer does not provide valid information.</p>\n                <p><b>Layer used:</b> ',
     '</b> y el del receptor crítico <b>': '</b> and that of the critical receiver <b>',
-    "</b>.</li>\n                    <li><b>Conversión a bandas:</b> el motor ISO-aligned necesita un espectro <code>Lw,b</code> en 8 bandas de octava. Si no hay espectro específico, el plugin reconstruye uno desde una plantilla/fallback y lo ajusta para reproducir el LwA operativo.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b> y no generan nivel acústico útil.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula distancia 3D, cotas acústicas, <b>G</b> o <b>G_eff</b> del suelo y, si hay MDT/DSM, el posible apantallamiento topográfico del trayecto.</li>\n                    <li><b>Propagación por banda:</b> en cada banda se aplica <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv depende de la distancia, Aatm,b de frecuencia/atmósfera, Agr,b del suelo y Abar,b del MDT si hay obstáculo relevante.</li>\n                    <li><b>Suma por fuente:</b> las 8 bandas se ponderan en A y se suman energéticamente para obtener el nivel A-ponderado de esa turbina en el receptor.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(LpA,fuente/10))</div>\n                <p><b>Lectura práctica:</b> el receptor crítico es el de mayor nivel total o el que queda con peor margen frente al límite. La columna “fuente dominante” identifica la turbina/grupo que más contribuye, pero el resultado final del receptor incluye todas las fuentes dentro del radio.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo Screening</h3>\n                <p>El modo ISO-aligned es más pesado pero más trazable: usa bandas de octava, ponderación A final, absorción atmosférica dependiente de frecuencia, suelo por regiones y apantallamiento topográfico <b>Abar</b> cuando hay MDT/DSM. Es el modo recomendado para informes técnicos preliminares y revisión de receptores sensibles.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Conversion to bands:</b> the ISO-aligned engine needs a spectrum <code>Lw,b</code> in 8 octave bands. If there is no specific spectrum, the plugin reconstructs one from a template/fallback and adjusts it to reproduce the operating LwA.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b> and do not generate a useful acoustic level.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine, the 3D distance, acoustic heights, ground <b>G</b> or <b>G_eff</b> and, if there is a DTM/DSM, the possible topographic screening of the path are computed.</li>\n                    <li><b>Per-band propagation:</b> in each band <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code> is applied. Adiv depends on distance, Aatm,b on frequency/atmosphere, Agr,b on ground and Abar,b on the DTM if there is a relevant obstacle.</li>\n                    <li><b>Per-source sum:</b> the 8 bands are A-weighted and summed energetically to obtain the A-weighted level of that turbine at the receiver.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(LpA,source/10))</div>\n                <p><b>Practical reading:</b> the critical receiver is the one with the highest total level or the worst margin against the limit. The “dominant source” column identifies the turbine/group that contributes the most, but the receiver's final result includes all sources within the radius.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the Screening mode</h3>\n                <p>The ISO-aligned mode is heavier but more traceable: it uses octave bands, a final A-weighting, frequency-dependent atmospheric absorption, ground by regions and topographic screening <b>Abar</b> when there is a DTM/DSM. It is the recommended mode for preliminary technical reports and review of sensitive receivers.</p>\n            </div>\n            ",
-    "</b>.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b>.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula la distancia 3D, la divergencia geométrica, una absorción atmosférica simplificada <code>α·d</code> y una corrección empírica de suelo.</li>\n                    <li><b>Uso del suelo:</b> si hay capa de land-use, el plugin puede calcular un <b>G_eff</b> por trayecto; si no, usa el <b>G global</b> definido por el usuario.</li>\n                    <li><b>Propagación simplificada:</b> se aplica <code>Lp = LwA - Adiv - Aatm - Aground</code>. No hay bandas de octava ni apantallamiento topográfico explícito <code>Abar</code>.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(Lp,fuente/10))</div>\n                <p><b>Lectura práctica:</b> este modo es útil para screening inicial. Si un receptor aparece cerca del límite o en excedencia, conviene recalcularlo con el modo ISO-aligned y revisar espectros, terreno, uso del suelo y límites aplicados.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo ISO-aligned</h3>\n                <p>El modo Screening sacrifica detalle para ganar velocidad. No propaga por bandas, no usa T/HR/P por frecuencia, no calcula <b>Abar</b> desde MDT y resume la atmósfera con un único coeficiente <b>α</b>. Por eso debe interpretarse como preevaluación rápida, no como informe acústico detallado.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b>.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine the 3D distance, the geometrical divergence, a simplified atmospheric absorption <code>α·d</code> and an empirical ground correction are computed.</li>\n                    <li><b>Land use:</b> if there is a land-use layer, the plugin can compute a per-path <b>G_eff</b>; otherwise it uses the <b>global G</b> defined by the user.</li>\n                    <li><b>Simplified propagation:</b> <code>Lp = LwA - Adiv - Aatm - Aground</code> is applied. There are no octave bands and no explicit topographic screening <code>Abar</code>.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(Lp,source/10))</div>\n                <p><b>Practical reading:</b> this mode is useful for initial screening. If a receiver appears close to the limit or in exceedance, it is advisable to recalculate it with the ISO-aligned mode and review spectra, terrain, land use and applied limits.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the ISO-aligned mode</h3>\n                <p>The Screening mode trades detail for speed. It does not propagate by bands, does not use T/RH/P per frequency, does not compute <b>Abar</b> from a DTM and summarizes the atmosphere with a single coefficient <b>α</b>. It should therefore be interpreted as a quick pre-assessment, not as a detailed acoustic report.</p>\n            </div>\n            ",
+    "</b>.</li>\n                    <li><b>Conversión a bandas:</b> el motor ISO-aligned necesita un espectro <code>Lw,b</code> en 8 bandas de octava. Si no hay espectro específico, el plugin reconstruye uno desde una plantilla/fallback y lo ajusta para reproducir el LwA operativo.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b> y no generan nivel acústico útil.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula distancia 3D, cotas acústicas, <b>G</b> o <b>G_eff</b> del suelo y, si hay MDT/DSM, el posible apantallamiento topográfico del trayecto.</li>\n                    <li><b>Propagación por banda:</b> en cada banda se aplica <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv depende de la distancia, Aatm,b de frecuencia/atmósfera, Agr,b del suelo y Abar,b del MDT si hay obstáculo relevante.</li>\n                    <li><b>Suma por fuente:</b> las 8 bandas se ponderan en A y se suman energéticamente para obtener el nivel A-ponderado de esa turbina en el receptor.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(LpA,fuente/10))</div>\n                <p><b>Lectura práctica:</b> el receptor crítico es el de mayor nivel total o el que queda con peor margen frente al límite. La columna “fuente dominante” identifica la turbina/grupo que más contribuye, pero el resultado final del receptor incluye todas las fuentes dentro del radio.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo Screening</h3>\n                <p>El modo ISO-aligned es más pesado pero más trazable: usa bandas de octava, ponderación A final, absorción atmosférica dependiente de frecuencia, suelo por regiones y apantallamiento topográfico <b>Abar</b> cuando hay MDT/DSM. Es el modo recomendado para informes técnicos preliminares y revisión de receptores sensibles.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Conversion to bands:</b> the ISO-aligned engine needs a spectrum <code>Lw,b</code> in 8 octave bands. If there is no specific spectrum, the plugin reconstructs one from a template/fallback and adjusts it to reproduce the operating LwA.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b> and do not generate a useful acoustic level.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine, the 3D distance, acoustic heights, ground <b>G</b> or <b>G_eff</b> and, if there is a DEM/DSM, the possible topographic screening of the path are computed.</li>\n                    <li><b>Per-band propagation:</b> in each band <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code> is applied. Adiv depends on distance, Aatm,b on frequency/atmosphere, Agr,b on ground and Abar,b on the DEM if there is a relevant obstacle.</li>\n                    <li><b>Per-source sum:</b> the 8 bands are A-weighted and summed energetically to obtain the A-weighted level of that turbine at the receiver.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(LpA,source/10))</div>\n                <p><b>Practical reading:</b> the critical receiver is the one with the highest total level or the worst margin against the limit. The “dominant source” column identifies the turbine/group that contributes the most, but the receiver's final result includes all sources within the radius.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the Screening mode</h3>\n                <p>The ISO-aligned mode is heavier but more traceable: it uses octave bands, a final A-weighting, frequency-dependent atmospheric absorption, ground by regions and topographic screening <b>Abar</b> when there is a DEM/DSM. It is the recommended mode for preliminary technical reports and review of sensitive receivers.</p>\n            </div>\n            ",
+    "</b>.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b>.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula la distancia 3D, la divergencia geométrica, una absorción atmosférica simplificada <code>α·d</code> y una corrección empírica de suelo.</li>\n                    <li><b>Uso del suelo:</b> si hay capa de land-use, el plugin puede calcular un <b>G_eff</b> por trayecto; si no, usa el <b>G global</b> definido por el usuario.</li>\n                    <li><b>Propagación simplificada:</b> se aplica <code>Lp = LwA - Adiv - Aatm - Aground</code>. No hay bandas de octava ni apantallamiento topográfico explícito <code>Abar</code>.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(Lp,fuente/10))</div>\n                <p><b>Lectura práctica:</b> este modo es útil para screening inicial. Si un receptor aparece cerca del límite o en excedencia, conviene recalcularlo con el modo ISO-aligned y revisar espectros, terreno, uso del suelo y límites aplicados.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo ISO-aligned</h3>\n                <p>El modo Screening sacrifica detalle para ganar velocidad. No propaga por bandas, no usa T/HR/P por frecuencia, no calcula <b>Abar</b> desde MDT y resume la atmósfera con un único coeficiente <b>α</b>. Por eso debe interpretarse como preevaluación rápida, no como informe acústico detallado.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b>.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine the 3D distance, the geometrical divergence, a simplified atmospheric absorption <code>α·d</code> and an empirical ground correction are computed.</li>\n                    <li><b>Land use:</b> if there is a land-use layer, the plugin can compute a per-path <b>G_eff</b>; otherwise it uses the <b>global G</b> defined by the user.</li>\n                    <li><b>Simplified propagation:</b> <code>Lp = LwA - Adiv - Aatm - Aground</code> is applied. There are no octave bands and no explicit topographic screening <code>Abar</code>.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(Lp,source/10))</div>\n                <p><b>Practical reading:</b> this mode is useful for initial screening. If a receiver appears close to the limit or in exceedance, it is advisable to recalculate it with the ISO-aligned mode and review spectra, terrain, land use and applied limits.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the ISO-aligned mode</h3>\n                <p>The Screening mode trades detail for speed. It does not propagate by bands, does not use T/RH/P per frequency, does not compute <b>Abar</b> from a DEM and summarizes the atmosphere with a single coefficient <b>α</b>. It should therefore be interpreted as a quick pre-assessment, not as a detailed acoustic report.</p>\n            </div>\n            ",
     '</div>\n                    <p>Ese valor se aplica en el término de suelo del modelo. No se ha derivado un G_eff desde capa de uso del suelo.</p>\n                </div>\n                ': '</div>\n                    <p>That value is applied in the ground term of the model. No G_eff was derived from a land-use layer.</p>\n                </div>\n                ',
-    "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>En esta corrida no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>\n                ": "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>In this run no G_eff was derived from a land-use layer. Here <b>d_xy</b> is the horizontal distance, <b>h_s</b> the source height and <b>h_r</b> the receiver height.</p>\n                ",
+    "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>En esta ejecución no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>\n                ": "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>In this run no G_eff was derived from a land-use layer. Here <b>d_xy</b> is the horizontal distance, <b>h_s</b> the source height and <b>h_r</b> the receiver height.</p>\n                ",
     '</p>\n        </div>\n\n        <h2>2. CÓMO SE HA GENERADO EL RESULTADO</h2>\n        ': '</p>\n        </div>\n\n        <h2>2. HOW THE RESULT WAS GENERATED</h2>\n        ',
     "</td>\n                    <td>Máximo Abar entre todas las turbinas que contribuyen al receptor</td>\n                </tr>\n                <tr>\n                    <td>Abar ponderado por energía</td>\n                    <td style='text-align: right;'>": "</td>\n                    <td>Maximum Abar among all turbines contributing to the receiver</td>\n                </tr>\n                <tr>\n                    <td>Energy-weighted Abar</td>\n                    <td style='text-align: right;'>",
     "</td>\n                    <td>Número de turbinas contribuyentes con Abar &gt; 0 dB</td>\n                </tr>\n                <tr style='background: #1e3a5f; color: white; font-weight: bold;'>\n                    <td>NIVEL RESULTANTE</td>\n                    <td style='text-align: right;'>": "</td>\n                    <td>Number of contributing turbines with Abar &gt; 0 dB</td>\n                </tr>\n                <tr style='background: #1e3a5f; color: white; font-weight: bold;'>\n                    <td>RESULTING LEVEL</td>\n                    <td style='text-align: right;'>",
@@ -3084,25 +3269,25 @@ _I18N_COVERAGE8_TO_EN = {
     "</td>\n                </tr>\n                <tr>\n                    <td><b>Abar</b> (máximo entre contribuyentes)</td>\n                    <td style='text-align: right;'>": "</td>\n                </tr>\n                <tr>\n                    <td><b>Abar</b> (maximum among contributors)</td>\n                    <td style='text-align: right;'>",
     "</td>\n                </tr>\n                <tr>\n                    <td>Abar máximo contribuyentes</td>\n                    <td style='text-align: right;'>": "</td>\n                </tr>\n                <tr>\n                    <td>Maximum contributors Abar</td>\n                    <td style='text-align: right;'>",
     "</ul>\n            </div>\n            <div class='card'>\n                <h3>✓ Cumplimiento por Categoría</h3>\n                <ul>": "</ul>\n            </div>\n            <div class='card'>\n                <h3>✓ Compliance by category</h3>\n                <ul>",
-    "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitaciones y recomendaciones</strong>\n            <p><b>Motor Rápido:</b> Apropiado para screening preliminar y mapas ágiles.</p>\n            <p><b>Motor ISO-aligned:</b> Apropiado para estudios técnicos preliminares, comparativas e iteración de diseño.</p>\n            <p><b>Simplificaciones conocidas:</b> Aatm simplificado (tablas + correcciones); Agr y Abar con aproximaciones básicas; directividad Dc asumida 0 dB; Cmet/corrección meteorológica de largo plazo no aplicada.</p>\n            <p><b>Modelos múltiples:</b> soportados mediante capas/grupos fuente independientes. Mezclar varios modelos dentro de una sola capa por atributos no está habilitado en esta versión experimental.</p>\n            <p><b>Raster ISO + MDT:</b> usa la misma lógica de apantallamiento topográfico que los receptores puntuales, pero puede ser costoso en mapas grandes.</p>\n            <p><b>Recomendación:</b> Para estudios regulatorios críticos, validar con mediciones o software comercial certificado.</p>\n        </div>\n        ": "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitations and recommendations</strong>\n            <p><b>Fast engine:</b> Appropriate for preliminary screening and quick maps.</p>\n            <p><b>ISO-aligned engine:</b> Appropriate for preliminary technical studies, comparisons and design iteration.</p>\n            <p><b>Known simplifications:</b> simplified Aatm (tables + corrections); Agr and Abar with basic approximations; directivity Dc assumed 0 dB; long-term Cmet/meteorological correction not applied.</p>\n            <p><b>Multiple models:</b> supported through independent source layers/groups. Mixing several models within a single layer by attributes is not enabled in this experimental release.</p>\n            <p><b>ISO raster + DTM:</b> it uses the same topographic-screening logic as point receivers, but it can be expensive on large maps.</p>\n            <p><b>Recommendation:</b> For critical regulatory studies, validate with measurements or certified commercial software.</p>\n        </div>\n        ",
+    "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitaciones y recomendaciones</strong>\n            <p><b>Motor Rápido:</b> Apropiado para screening preliminar y mapas ágiles.</p>\n            <p><b>Motor ISO-aligned:</b> Apropiado para estudios técnicos preliminares, comparativas e iteración de diseño.</p>\n            <p><b>Simplificaciones conocidas:</b> Aatm simplificado (tablas + correcciones); Agr y Abar con aproximaciones básicas; directividad Dc asumida 0 dB; Cmet/corrección meteorológica de largo plazo no aplicada.</p>\n            <p><b>Modelos múltiples:</b> soportados mediante capas/grupos fuente independientes. Mezclar varios modelos dentro de una sola capa por atributos no está habilitado en esta versión experimental.</p>\n            <p><b>Raster ISO + MDT:</b> usa la misma lógica de apantallamiento topográfico que los receptores puntuales, pero puede ser costoso en mapas grandes.</p>\n            <p><b>Recomendación:</b> Para estudios regulatorios críticos, validar con mediciones o software comercial certificado.</p>\n        </div>\n        ": "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitations and recommendations</strong>\n            <p><b>Fast engine:</b> Appropriate for preliminary screening and quick maps.</p>\n            <p><b>ISO-aligned engine:</b> Appropriate for preliminary technical studies, comparisons and design iteration.</p>\n            <p><b>Known simplifications:</b> simplified Aatm (tables + corrections); Agr and Abar with basic approximations; directivity Dc assumed 0 dB; long-term Cmet/meteorological correction not applied.</p>\n            <p><b>Multiple models:</b> supported through independent source layers/groups. Mixing several models within a single layer by attributes is not enabled in this experimental release.</p>\n            <p><b>ISO raster + DEM:</b> it uses the same topographic-screening logic as point receivers, but it can be expensive on large maps.</p>\n            <p><b>Recommendation:</b> For critical regulatory studies, validate with measurements or certified commercial software.</p>\n        </div>\n        ",
     '</ul>\n        </div>\n        \n        <h2>5. FÍSICA DETALLADA Y TRAZABILIDAD DEL CÁLCULO</h2>\n        ': '</ul>\n        </div>\n        \n        <h2>5. DETAILED PHYSICS AND CALCULATION TRACEABILITY</h2>\n        ',
     "</ul>\n        </div>\n        \n        <h2>7. DISTRIBUCIÓN POR TIPO DE RECEPTOR</h2>\n        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>\n            <div class='card'>\n                <h3>📍 Receptores por Categoría</h3>\n                <ul>": "</ul>\n        </div>\n        \n        <h2>7. DISTRIBUTION BY RECEIVER TYPE</h2>\n        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>\n            <div class='card'>\n                <h3>📍 Receivers by category</h3>\n                <ul>",
     '<br><b>Alturas trayectoria dominante:</b> terreno turbina=': '<br><b>Dominant-path heights:</b> turbine terrain=',
     '<br><b>Trayectoria con Abar máximo:</b> fuente=': '<br><b>Path with maximum Abar:</b> source=',
-    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: Abar=0 en el receptor crítico no implica que el MDT esté desactivado; significa que ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DTM reading: Abar=0 at the critical receiver does not imply that the DTM is disabled; it means that ",
-    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: obstáculo dominante estimado ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DTM reading: estimated dominant obstacle ",
+    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: Abar=0 en el receptor crítico no implica que el MDT esté desactivado; significa que ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DEM reading: Abar=0 at the critical receiver does not imply that the DEM is disabled; it means that ",
+    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: obstáculo dominante estimado ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DEM reading: estimated dominant obstacle ",
     '<p><b>Interpretación:</b> el espectro final <code>Lw,b</code> es el que entra realmente en la ecuación por bandas. Si existe <code>S_b^ref</code>, corresponde a la plantilla de referencia antes del ajuste global <code>Δ</code>.</p>': '<p><b>Interpretation:</b> the final spectrum <code>Lw,b</code> is the one that actually enters the band-wise equation. If <code>S_b^ref</code> exists, it corresponds to the reference template before the global adjustment <code>Δ</code>.</p>',
     '<p><b>Interpretación:</b> en este grupo no se ha usado una plantilla interna visible; el espectro final <code>Lw,b</code> procede directamente del espectro cargado/importado o de una biblioteca externa.</p>': '<p><b>Interpretation:</b> in this group no visible internal template was used; the final spectrum <code>Lw,b</code> comes directly from the loaded/imported spectrum or from an external library.</p>',
-    'Abar máx. dB': 'max Abar dB',
+    'Abar máx. dB': "max. Abar dB",
     'Adiv representa la divergencia geométrica, Aatm la atenuación atmosférica simplificada α·distancia y Aground una corrección simplificada del efecto suelo/terreno.': 'Adiv represents the geometrical divergence, Aatm the simplified atmospheric attenuation α·distance and Aground a simplified correction of the ground/terrain effect.',
-    'Adiv representa la divergencia geométrica. Aatm se calcula por banda y depende de T, HR y presión, con formulación simplificada. Agr se aplica como término de suelo/terreno y Abar como apantallamiento topográfico básico cuando hay MDT.': 'Adiv represents the geometrical divergence. Aatm is computed per band and depends on T, RH and pressure, with a simplified formulation. Agr is applied as a ground/terrain term and Abar as basic topographic screening when there is a DTM.',
-    'Atenuación por MDT en la trayectoria dominante': 'DTM attenuation on the dominant path',
+    'Adiv representa la divergencia geométrica. Aatm se calcula por banda y depende de T, HR y presión, con formulación simplificada. Agr se aplica como término de suelo/terreno y Abar como apantallamiento topográfico básico cuando hay MDT.': "Adiv represents the geometrical divergence. Aatm is computed per band and depends on T, RH and pressure, with a simplified formulation. Agr is applied as a ground/terrain term and Abar as basic topographic screening when there is a DEM.",
+    'Atenuación por MDT en la trayectoria dominante': "DEM attenuation on the dominant path",
     'Difracción topográfica': 'Topographic diffraction',
     'Efecto del terreno': 'Terrain effect',
-    'la línea de visión entre la turbina dominante y este receptor queda despejada según el MDT': 'the line of sight between the dominant turbine and this receiver is clear according to the DTM',
-    'no había MDT disponible en este trayecto': 'no DTM was available on this path',
+    'la línea de visión entre la turbina dominante y este receptor queda despejada según el MDT': "the line of sight between the dominant turbine and this receiver is clear according to the DEM",
+    'no había MDT disponible en este trayecto': "no DEM was available on this path",
     'no se detectó obstáculo topográfico relevante en el trayecto dominante': 'no relevant topographic obstacle was detected on the dominant path',
-    'no se pudo extraer un perfil MDT válido para el trayecto dominante': 'a valid DTM profile could not be extracted for the dominant path',
+    'no se pudo extraer un perfil MDT válido para el trayecto dominante': "a valid DEM profile could not be extracted for the dominant path",
     'se detectó relieve, pero por debajo del umbral conservador de activación': 'relief was detected, but below the conservative activation threshold',
     'sí · resolución pedida ': 'yes · requested resolution ',
     "La zona '{}' no existe en la base IANA incluida.": "Time zone '{}' does not exist in the bundled IANA database.",
@@ -3122,19 +3307,19 @@ _FRAGMENT_TO_ES.update(_I18N_COVERAGE8_TO_ES)
 _I18N_COVERAGE9_TO_ES = {
     'Velantis Wind · Noise calculation': 'Velantis Wind · Cálculo de ruido',
     'Noise · Calculation summary': 'Ruido · Resumen del cálculo',
-    'Variantes: wake-only / wake+TI / wake+bloqueo…': 'Variantes: solo estela / estela+TI / estela+bloqueo…',
+    "Variants: wake only / wake+TI / wake+blockage…": 'Variantes: solo estela / estela+TI / estela+bloqueo…',
     'Calculation cancelled by the user': 'Cálculo cancelado por el usuario',
     '\n\n💡 You can now regenerate TIFs filtered by month/hour\n   without recalculating (using the filter combos).': '\n\n💡 Ahora puedes regenerar TIF filtrados por mes/hora\n   sin recalcular (usando los desplegables de filtro).',
     'Raster map created successfully.\n\nCalculated points: ': 'Mapa raster creado correctamente.\n\nPuntos calculados: ',
     'No valid solar positions were found': 'No se encontraron posiciones solares válidas',
-    '<h2>Shadow Flicker Calculation Summary</h2>': '<h2>Resumen del cálculo de shadow flicker</h2>',
+    "<h2>Shadow flicker calculation summary</h2>": '<h2>Resumen del cálculo de shadow flicker</h2>',
     'CALCULATION CONFIGURATION': 'CONFIGURACIÓN DEL CÁLCULO',
-    'Shadow Flicker Hours by Month and Hour of Day': 'Horas de shadow flicker por mes y hora del día',
+    "Shadow flicker hours by month and hour of day": 'Horas de shadow flicker por mes y hora del día',
     'Time step': 'Paso temporal',
     'Latitude must be between -90° and 90°.': 'La latitud debe estar entre -90° y 90°.',
     'Longitude must be between -180° and 180°.': 'La longitud debe estar entre -180° y 180°.',
-    'Minimum sun elevation must be lower than maximum sun elevation.': 'La elevación solar mínima debe ser menor que la máxima.',
-    'Calculate Shadow Flicker': 'Calcular shadow flicker',
+    "Minimum solar elevation must be lower than maximum solar elevation.": 'La elevación solar mínima debe ser menor que la máxima.',
+    "Calculate shadow flicker": 'Calcular shadow flicker',
     'Beyond sponsoring the project, VelantisWind can be adapted to existing workflows: internal data formats, reporting templates, validation processes, team deployment, training, automation or specific features for wind-energy projects.': 'Además de patrocinar el proyecto, VelantisWind puede adaptarse a flujos de trabajo existentes: formatos internos de datos, plantillas de informe, procesos de validación, instalación en equipos, formación, automatización o funcionalidades específicas para proyectos eólicos.',
     'VelantisWind is an open-source QGIS plugin for early-stage wind farm assessment. If the tool saves you time or adds value to your workflow, you can support its maintenance or request professional support.': 'VelantisWind es un plugin open source para QGIS orientado a la evaluación preliminar de parques eólicos. Si la herramienta te ahorra tiempo o aporta valor a tu flujo de trabajo, puedes apoyar su mantenimiento o solicitar soporte profesional.',
 }
@@ -3156,22 +3341,22 @@ _CANON_TO_EN = {
     '\n\n💡 Ahora puedes regenerar TIF filtrados por mes/hora\n   sin recalcular (usando los desplegables de filtro).': '\n\n💡 You can now regenerate TIFs filtered by month/hour\n   without recalculating (using the filter combos).',
     "\n        \n        <div class='card'>\n            <h3>📊 Estadísticos de Atenuaciones (Receptores Cubiertos)</h3>\n        <p style='margin: 6px 0 10px 0; color:#495057;'><i>Se muestran magnitudes brutas de atenuación (no el signo algebraico dentro de la ecuación). Para Abar se usa el máximo entre las turbinas contribuyentes de cada receptor, no solo la trayectoria dominante.</i></p>\n            <table>\n                <tr>\n                    <th>Término</th>\n                    <th style='text-align: right;'>Media [dB]</th>\n                    <th style='text-align: right;'>Máximo [dB]</th>\n                </tr>\n                <tr>\n                    <td><b>Adiv</b> (divergencia geométrica)</td>\n                    <td style='text-align: right;'>": "\n        \n        <div class='card'>\n            <h3>📊 Attenuation statistics (covered receivers)</h3>\n        <p style='margin: 6px 0 10px 0; color:#495057;'><i>Raw attenuation magnitudes are shown (not the algebraic sign inside the equation). For Abar, the maximum among the contributing turbines of each receiver is used, not only the dominant path.</i></p>\n            <table>\n                <tr>\n                    <th>Term</th>\n                    <th style='text-align: right;'>Mean [dB]</th>\n                    <th style='text-align: right;'>Maximum [dB]</th>\n                </tr>\n                <tr>\n                    <td><b>Adiv</b> (geometrical divergence)</td>\n                    <td style='text-align: right;'>",
     "\n                </table>\n                <h4>5. Efecto suelo por regiones</h4>\n                <div class='formula'>Agr,b = As + Am + Ar</div>\n                <p>El término de suelo se descompone en <b>As</b> (región de fuente), <b>Am</b> (región media) y <b>Ar</b> (región de receptor). En esta implementación no se usan tres parámetros de suelo independientes <code>Gs/Gm/Gr</code>, sino un <b>único G por trayecto</b>. Matemáticamente, el plugin aplica:</p>\n                <div class='formula'>As = G_eff·A_ground(h_s)</div>\n                <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_medio)</div>\n                <div class='formula'>Ar = G_eff·A_ground(h_r)</div>\n                <p>donde <b>h_s</b> es la altura característica de la fuente, <b>h_r</b> la del receptor, <b>h_medio</b> la altura media del trayecto y <b>G_m≈0</b> en la aproximación actual para condiciones favorables de propagación. Ese valor único de suelo puede ser:</p>\n                <ul>\n                    <li><b>G manual/global</b>, si el usuario fija un único valor.</li>\n                    <li><b>G_eff</b>, si existe capa de uso del suelo y se calcula una media ponderada por longitud del trayecto.</li>\n                </ul>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <p><b>Significado físico de G:</b> representa el carácter acústico del terreno y controla cómo influye el suelo en la propagación. <b>G≈0</b> indica suelo duro (urbano, asfalto, roca), <b>G≈1</b> suelo blando/poroso (agrícola, pradera, forestal) y valores intermedios representan terreno mixto.</p>\n                <p><b>Qué significa “desde capa”:</b> el plugin corta el trayecto fuente–receptor contra la capa de uso del suelo, asigna un valor <b>G_i</b> a cada polígono interceptado y calcula un único <b>G_eff</b> para ese trayecto. Ese es el valor que entra realmente en <b>Agr,b</b>; el <b>G global</b> mostrado en el informe queda solo como respaldo.</p>\n                <p><b>Convención del informe:</b> <b>Agr,b</b> se muestra aquí como una <b>magnitud positiva de atenuación</b>. En la ecuación principal se resta al nivel de fuente igual que Adiv, Aatm y Abar.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>Término base A_ground(h)</th></tr>\n                    ": "\n                </table>\n                <h4>5. Ground effect by regions</h4>\n                <div class='formula'>Agr,b = As + Am + Ar</div>\n                <p>The ground term is split into <b>As</b> (source region), <b>Am</b> (middle region) and <b>Ar</b> (receiver region). This implementation does not use three independent ground parameters <code>Gs/Gm/Gr</code>, but a <b>single G per path</b>. Mathematically, the plugin applies:</p>\n                <div class='formula'>As = G_eff·A_ground(h_s)</div>\n                <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_mid)</div>\n                <div class='formula'>Ar = G_eff·A_ground(h_r)</div>\n                <p>where <b>h_s</b> is the characteristic source height, <b>h_r</b> the receiver height, <b>h_mid</b> the mean path height and <b>G_m≈0</b> in the current approximation for favourable propagation conditions. That single ground value can be:</p>\n                <ul>\n                    <li><b>Manual/global G</b>, if the user sets a single value.</li>\n                    <li><b>G_eff</b>, if a land-use layer exists and a length-weighted mean along the path is computed.</li>\n                </ul>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <p><b>Physical meaning of G:</b> it represents the acoustic character of the terrain and controls how the ground influences propagation. <b>G≈0</b> indicates hard ground (urban, asphalt, rock), <b>G≈1</b> soft/porous ground (agricultural, grassland, forest) and intermediate values represent mixed terrain.</p>\n                <p><b>What “from layer” means:</b> the plugin clips the source–receiver path against the land-use layer, assigns a <b>G_i</b> value to each intercepted polygon and computes a single <b>G_eff</b> for that path. That is the value actually entering <b>Agr,b</b>; the <b>global G</b> shown in the report is kept only as a fallback.</p>\n                <p><b>Report convention:</b> <b>Agr,b</b> is shown here as a <b>positive attenuation magnitude</b>. In the main equation it is subtracted from the source level just like Adiv, Aatm and Abar.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>Base term A_ground(h)</th></tr>\n                    ",
-    "\n                </table>\n                <h4>6. Apantallamiento topográfico con MDT</h4>\n                <p>El MDT <b>no cambia la emisión</b> de la turbina ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto</b> y alimentar el término <b>Abar,b</b>.</p>\n                <ol>\n                    <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con muestreo adaptativo.</li>\n                    <li><b>Línea de visión:</b> se construye la recta entre la altura efectiva de fuente y la altura del receptor. Si el terreno queda siempre por debajo, entonces <b>Abar,b = 0</b>.</li>\n                    <li><b>Obstáculo dominante:</b> si una loma o cresta sobresale, se calcula la altura sobre la línea de visión:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                <p>Cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                <ol start='4'>\n                    <li><b>Geometría real del obstáculo:</b> el plugin usa la posición real del obstáculo dominante y calcula <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor).</li>\n                    <li><b>Activación conservadora:</b> no se activa <b>Abar</b> por pequeñas irregularidades del MDT; se exige un umbral mínimo ligado a la resolución del raster.</li>\n                    <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos y un número de Fresnel:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>Ese número se transforma después en una atenuación <b>Abar,b</b> dependiente de la frecuencia mediante la aproximación actual del plugin:</p>\n                <div class='formula'>si C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>En la implementación actual, <b>Abar</b> se limita además a valores razonables (capado superior) para evitar sobreatenuaciones espurias. Si no hay MDT o no hay obstáculo relevante, entonces <b>Abar,b = 0</b>.</p>\n                <h4>7. Ponderación A usada al final</h4>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ": "\n                </table>\n                <h4>6. Topographic screening with DTM</h4>\n                <p>The DTM <b>does not change the emission</b> of the turbine nor the atmospheric absorption. Its role is to describe the <b>real path geometry</b> and feed the <b>Abar,b</b> term.</p>\n                <ol>\n                    <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with adaptive sampling.</li>\n                    <li><b>Line of sight:</b> the straight line between the effective source height and the receiver height is built. If the terrain always stays below, then <b>Abar,b = 0</b>.</li>\n                    <li><b>Dominant obstacle:</b> if a hill or ridge sticks out, its height above the line of sight is computed:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                <p>When <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                <ol start='4'>\n                    <li><b>Real obstacle geometry:</b> the plugin uses the real position of the dominant obstacle and computes <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver).</li>\n                    <li><b>Conservative activation:</b> <b>Abar</b> is not triggered by small DTM irregularities; a minimum threshold linked to the raster resolution is required.</li>\n                    <li><b>Fresnel-type diffraction:</b> from that geometry a path difference and a Fresnel number are estimated:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>That number is then turned into a frequency-dependent <b>Abar,b</b> attenuation through the plugin's current approximation:</p>\n                <div class='formula'>if C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>In the current implementation, <b>Abar</b> is additionally capped to reasonable values (upper cap) to avoid spurious over-attenuation. If there is no DTM or no relevant obstacle, then <b>Abar,b = 0</b>.</p>\n                <h4>7. A-weighting used at the end</h4>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ",
+    "\n                </table>\n                <h4>6. Apantallamiento topográfico con MDT</h4>\n                <p>El MDT <b>no cambia la emisión</b> de la turbina ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto</b> y alimentar el término <b>Abar,b</b>.</p>\n                <ol>\n                    <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con muestreo adaptativo.</li>\n                    <li><b>Línea de visión:</b> se construye la recta entre la altura efectiva de fuente y la altura del receptor. Si el terreno queda siempre por debajo, entonces <b>Abar,b = 0</b>.</li>\n                    <li><b>Obstáculo dominante:</b> si una loma o cresta sobresale, se calcula la altura sobre la línea de visión:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                <p>Cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                <ol start='4'>\n                    <li><b>Geometría real del obstáculo:</b> el plugin usa la posición real del obstáculo dominante y calcula <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor).</li>\n                    <li><b>Activación conservadora:</b> no se activa <b>Abar</b> por pequeñas irregularidades del MDT; se exige un umbral mínimo ligado a la resolución del raster.</li>\n                    <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos y un número de Fresnel:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>Ese número se transforma después en una atenuación <b>Abar,b</b> dependiente de la frecuencia mediante la aproximación actual del plugin:</p>\n                <div class='formula'>si C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>En la implementación actual, <b>Abar</b> se limita además a valores razonables (capado superior) para evitar sobreatenuaciones espurias. Si no hay MDT o no hay obstáculo relevante, entonces <b>Abar,b = 0</b>.</p>\n                <h4>7. Ponderación A usada al final</h4>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ": "\n                </table>\n                <h4>6. Topographic screening with DEM</h4>\n                <p>The DEM <b>does not change the emission</b> of the turbine nor the atmospheric absorption. Its role is to describe the <b>real path geometry</b> and feed the <b>Abar,b</b> term.</p>\n                <ol>\n                    <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DEM with adaptive sampling.</li>\n                    <li><b>Line of sight:</b> the straight line between the effective source height and the receiver height is built. If the terrain always stays below, then <b>Abar,b = 0</b>.</li>\n                    <li><b>Dominant obstacle:</b> if a hill or ridge sticks out, its height above the line of sight is computed:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                <p>When <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                <ol start='4'>\n                    <li><b>Real obstacle geometry:</b> the plugin uses the real position of the dominant obstacle and computes <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver).</li>\n                    <li><b>Conservative activation:</b> <b>Abar</b> is not triggered by small DEM irregularities; a minimum threshold linked to the raster resolution is required.</li>\n                    <li><b>Fresnel-type diffraction:</b> from that geometry a path difference and a Fresnel number are estimated:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>That number is then turned into a frequency-dependent <b>Abar,b</b> attenuation through the plugin's current approximation:</p>\n                <div class='formula'>if C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>In the current implementation, <b>Abar</b> is additionally capped to reasonable values (upper cap) to avoid spurious over-attenuation. If there is no DEM or no relevant obstacle, then <b>Abar,b = 0</b>.</p>\n                <h4>7. A-weighting used at the end</h4>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ",
     '\n                </table>\n                <p><b>Lectura del receptor crítico:</b> la tabla del apartado de receptor crítico muestra magnitudes de atenuación para trazabilidad. El <b>nivel resultante</b> no debe interpretarse como una resta directa de una sola turbina: se obtiene mediante suma energética por bandas y suma de las fuentes contribuyentes dentro del radio de cálculo.</p>\n            </div>\n            ': '\n                </table>\n                <p><b>Critical-receiver reading:</b> the table in the critical-receiver section shows attenuation magnitudes for traceability. The <b>resulting level</b> must not be interpreted as a direct subtraction from a single turbine: it is obtained through energetic summation across bands and over the contributing sources within the calculation radius.</p>\n            </div>\n            ',
-    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>\n                    <p>En esta corrida el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>\n                    <div class='formula'>G = ": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G calculation</h3>\n                    <p>In this run the ground effect was computed with a <b>single manual G</b> for the whole path:</p>\n                    <div class='formula'>G = ",
-    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>\n                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>\n                    <ul>\n                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>\n                        <li><b>G = 0.5</b>: terreno mixto.</li>\n                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>\n                    </ul>\n                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta corrida, el valor medio efectivo fue <b>": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G_eff calculation</h3>\n                    <p>When the ground mode is <b>from layer</b>, the calculation does not use a single manual value for the whole wind farm. For each source–receiver path a <b>G_eff</b> is computed from the land-use layer:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>where <b>G_i</b> is the value assigned to each polygon intercepted by the path and <b>L_i</b> is the path length inside that polygon.</p>\n                    <ul>\n                        <li><b>G = 0</b>: hard ground (urban/asphalt/rock).</li>\n                        <li><b>G = 0.5</b>: mixed terrain.</li>\n                        <li><b>G = 1</b>: soft/porous ground (agricultural, grassland, forest, vegetated).</li>\n                    </ul>\n                    <p><b>Important:</b> the <b>global G</b> shown in the report is only a fallback value. When a land-use layer exists, the calculation actually uses <b>G_eff</b> per path. In this run, the effective mean value was <b>",
-    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>Cómo entra el MDT en el cálculo</h4>\n                    <ol>\n                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>\n                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>\n                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                    <ol start='4'>\n                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>\n                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>\n                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>\n                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>\n                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>\n                    <p><b>MDT usado en esta corrida:</b> ": "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In the ISO-aligned engine, the DTM <b>does not change the turbine emission</b> nor the atmospheric absorption. Its role is to describe the <b>real source–receiver path geometry</b> and feed the topographic screening term <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>How the DTM enters the calculation</h4>\n                    <ol>\n                        <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with <b>adaptive sampling</b>, adjusted to distance and raster resolution. The profile is computed <b>only once</b> per source–receiver pair and reused across the 8 bands to reduce computation time.</li>\n                        <li><b>Direct line of sight:</b> the profile is compared with the straight line joining the acoustic source at its effective height and the receiver at its evaluation height. If the terrain always stays below that line, there is no relevant topographic obstacle and <b>Abar,b = 0</b>.</li>\n                        <li><b>Dominant-obstacle detection:</b> if a hill or ridge in the DTM rises above the line of sight, the model interprets that a topographic screen exists. The key magnitude is the obstacle height above the line of sight:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                    <p>when <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                    <ol start='4'>\n                        <li><b>Conservative activation:</b> Abar is not triggered by small relief irregularities; a minimum threshold linked to the DTM resolution is applied.</li>\n                        <li><b>Real obstacle geometry:</b> the calculation uses the <b>real position</b> of the dominant obstacle and obtains real <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver), instead of always assuming an obstacle at the midpoint.</li>\n                        <li><b>Fresnel-type diffraction:</b> from that geometry an approximate path difference is estimated and turned into a frequency-dependent attenuation:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>where <b>δ</b> is the approximate path difference, <b>f</b> the frequency and <b>c</b> the speed of sound. The number <b>C</b> is then translated into an <b>Abar,b</b> attenuation that grows the more the relief blocks the path. This is the same approximation implemented in the calculation.</p>\n                    <p><b>Physical interpretation:</b> on flat terrain or when there is no intersection with the line of sight, <b>Abar</b> is usually negligible. On complex terrain, the DTM can introduce several dB of additional attenuation and change the critical receiver.</p>\n                    <p><b>Current implementation:</b> single dominant obstacle, adaptive profile with cost limits, real obstacle geometry, conservative activation and attenuation capped to reasonable values.</p>\n                    <p><b>DTM used in this run:</b> ",
-    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En esta corrida <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>\n                </div>\n                ": "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In this run <b>no DTM/DSM was used</b>, so the topographic screening term is set to:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>The assessment is performed without introducing topographic screens. The path geometry is resolved without a terrain profile and the calculation depends on Lw,b, Adiv, Aatm,b and Agr,b.</p>\n                </div>\n                ",
+    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>\n                    <p>En esta ejecución el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>\n                    <div class='formula'>G = ": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G calculation</h3>\n                    <p>In this run the ground effect was computed with a <b>single manual G</b> for the whole path:</p>\n                    <div class='formula'>G = ",
+    "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>\n                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>\n                    <ul>\n                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>\n                        <li><b>G = 0.5</b>: terreno mixto.</li>\n                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>\n                    </ul>\n                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta ejecución, el valor medio efectivo fue <b>": "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G_eff calculation</h3>\n                    <p>When the ground mode is <b>from layer</b>, the calculation does not use a single manual value for the whole wind farm. For each source–receiver path a <b>G_eff</b> is computed from the land-use layer:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>where <b>G_i</b> is the value assigned to each polygon intercepted by the path and <b>L_i</b> is the path length inside that polygon.</p>\n                    <ul>\n                        <li><b>G = 0</b>: hard ground (urban/asphalt/rock).</li>\n                        <li><b>G = 0.5</b>: mixed terrain.</li>\n                        <li><b>G = 1</b>: soft/porous ground (agricultural, grassland, forest, vegetated).</li>\n                    </ul>\n                    <p><b>Important:</b> the <b>global G</b> shown in the report is only a fallback value. When a land-use layer exists, the calculation actually uses <b>G_eff</b> per path. In this run, the effective mean value was <b>",
+    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>Cómo entra el MDT en el cálculo</h4>\n                    <ol>\n                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>\n                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>\n                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                    <ol start='4'>\n                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>\n                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>\n                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>\n                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>\n                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>\n                    <p><b>MDT usado en esta ejecución:</b> ": "\n                <div class='card'>\n                    <h3>🗺️ DEM physics and topographic screening</h3>\n                    <p>In the ISO-aligned engine, the DEM <b>does not change the turbine emission</b> nor the atmospheric absorption. Its role is to describe the <b>real source–receiver path geometry</b> and feed the topographic screening term <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>How the DEM enters the calculation</h4>\n                    <ol>\n                        <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DEM with <b>adaptive sampling</b>, adjusted to distance and raster resolution. The profile is computed <b>only once</b> per source–receiver pair and reused across the 8 bands to reduce computation time.</li>\n                        <li><b>Direct line of sight:</b> the profile is compared with the straight line joining the acoustic source at its effective height and the receiver at its evaluation height. If the terrain always stays below that line, there is no relevant topographic obstacle and <b>Abar,b = 0</b>.</li>\n                        <li><b>Dominant-obstacle detection:</b> if a hill or ridge in the DEM rises above the line of sight, the model interprets that a topographic screen exists. The key magnitude is the obstacle height above the line of sight:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                    <p>when <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                    <ol start='4'>\n                        <li><b>Conservative activation:</b> Abar is not triggered by small relief irregularities; a minimum threshold linked to the DEM resolution is applied.</li>\n                        <li><b>Real obstacle geometry:</b> the calculation uses the <b>real position</b> of the dominant obstacle and obtains real <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver), instead of always assuming an obstacle at the midpoint.</li>\n                        <li><b>Fresnel-type diffraction:</b> from that geometry an approximate path difference is estimated and turned into a frequency-dependent attenuation:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>where <b>δ</b> is the approximate path difference, <b>f</b> the frequency and <b>c</b> the speed of sound. The number <b>C</b> is then translated into an <b>Abar,b</b> attenuation that grows the more the relief blocks the path. This is the same approximation implemented in the calculation.</p>\n                    <p><b>Physical interpretation:</b> on flat terrain or when there is no intersection with the line of sight, <b>Abar</b> is usually negligible. On complex terrain, the DEM can introduce several dB of additional attenuation and change the critical receiver.</p>\n                    <p><b>Current implementation:</b> single dominant obstacle, adaptive profile with cost limits, real obstacle geometry, conservative activation and attenuation capped to reasonable values.</p>\n                    <p><b>DEM used in this run:</b> ",
+    "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En esta ejecución <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>\n                </div>\n                ": "\n                <div class='card'>\n                    <h3>🗺️ DEM physics and topographic screening</h3>\n                    <p>In this run <b>no DEM/DSM was used</b>, so the topographic screening term is set to:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>The assessment is performed without introducing topographic screens. The path geometry is resolved without a terrain profile and the calculation depends on Lw,b, Adiv, Aatm,b and Agr,b.</p>\n                </div>\n                ",
     "\n                <div class='note'>\n                    <b>Lectura correcta de Abar:</b> el valor <b>Abar trayectoria dominante</b> corresponde solo a la turbina que más contribuye al receptor y a su banda dominante. El nivel total del receptor se obtiene sumando energéticamente todas las turbinas y bandas.\n                    <br><b>Abar máximo entre turbinas contribuyentes:</b> ": "\n                <div class='note'>\n                    <b>Correct reading of Abar:</b> the <b>dominant-path Abar</b> value corresponds only to the turbine that contributes most to the receiver and to its dominant band. The total receiver level is obtained by energetically summing all turbines and bands.\n                    <br><b>Maximum Abar among contributing turbines:</b> ",
-    "\n                <h4>3. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor. Aquí <b>d</b> sale de las coordenadas de turbina y receptor junto con sus alturas de evaluación.</p>\n                <h4>4. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm,b = α(f, T, HR, P) · d</div>\n                <p>La absorción atmosférica se calcula por banda a partir de un coeficiente base de referencia y tres factores correctores. La dependencia física con temperatura, humedad relativa y presión <b>sí se representa</b>, pero mediante una <b>aproximación simplificada del plugin</b>, no mediante la formulación analítica completa de ISO 9613-1.</p>\n                <div class='formula'>α(f, T, HR, P) = α_ref(f) · corr_T · corr_HR · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_HR = 1 + 0.003·|HR - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretación de las correcciones:</b> <b>T</b> se introduce en °C respecto a una referencia de 15 °C; <b>HR</b> se compara con una humedad óptima de referencia del 50% y la corrección crece al alejarse de ese valor; y <b>P</b> se introduce en kPa respecto a una referencia de 101.325 kPa con una corrección inversa. Estos factores modifican únicamente el bloque atmosférico <b>Aatm,b</b>: no alteran ni la emisión de la turbina, ni el efecto del suelo, ni el término de MDT/apantallamiento.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ": "\n                <h4>3. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance. Here <b>d</b> comes from the turbine and receiver coordinates together with their evaluation heights.</p>\n                <h4>4. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm,b = α(f, T, RH, P) · d</div>\n                <p>Atmospheric absorption is computed per band from a reference base coefficient and three correction factors. The physical dependence on temperature, relative humidity and pressure <b>is represented</b>, but through a <b>simplified plugin approximation</b>, not through the full analytical formulation of ISO 9613-1.</p>\n                <div class='formula'>α(f, T, RH, P) = α_ref(f) · corr_T · corr_RH · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_RH = 1 + 0.003·|RH - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretation of the corrections:</b> <b>T</b> is entered in °C relative to a 15 °C reference; <b>RH</b> is compared with a reference optimum humidity of 50% and the correction grows as it moves away from that value; and <b>P</b> is entered in kPa relative to a 101.325 kPa reference with an inverse correction. These factors modify only the atmospheric block <b>Aatm,b</b>: they alter neither the turbine emission, nor the ground effect, nor the DTM/screening term.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ",
+    "\n                <h4>3. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor. Aquí <b>d</b> sale de las coordenadas de turbina y receptor junto con sus alturas de evaluación.</p>\n                <h4>4. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm,b = α(f, T, HR, P) · d</div>\n                <p>La absorción atmosférica se calcula por banda a partir de un coeficiente base de referencia y tres factores correctores. La dependencia física con temperatura, humedad relativa y presión <b>sí se representa</b>, pero mediante una <b>aproximación simplificada del plugin</b>, no mediante la formulación analítica completa de ISO 9613-1.</p>\n                <div class='formula'>α(f, T, HR, P) = α_ref(f) · corr_T · corr_HR · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_HR = 1 + 0.003·|HR - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretación de las correcciones:</b> <b>T</b> se introduce en °C respecto a una referencia de 15 °C; <b>HR</b> se compara con una humedad óptima de referencia del 50% y la corrección crece al alejarse de ese valor; y <b>P</b> se introduce en kPa respecto a una referencia de 101.325 kPa con una corrección inversa. Estos factores modifican únicamente el bloque atmosférico <b>Aatm,b</b>: no alteran ni la emisión de la turbina, ni el efecto del suelo, ni el término de MDT/apantallamiento.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ": "\n                <h4>3. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance. Here <b>d</b> comes from the turbine and receiver coordinates together with their evaluation heights.</p>\n                <h4>4. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm,b = α(f, T, RH, P) · d</div>\n                <p>Atmospheric absorption is computed per band from a reference base coefficient and three correction factors. The physical dependence on temperature, relative humidity and pressure <b>is represented</b>, but through a <b>simplified plugin approximation</b>, not through the full analytical formulation of ISO 9613-1.</p>\n                <div class='formula'>α(f, T, RH, P) = α_ref(f) · corr_T · corr_RH · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_RH = 1 + 0.003·|RH - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretation of the corrections:</b> <b>T</b> is entered in °C relative to a 15 °C reference; <b>RH</b> is compared with a reference optimum humidity of 50% and the correction grows as it moves away from that value; and <b>P</b> is entered in kPa relative to a 101.325 kPa reference with an inverse correction. These factors modify only the atmospheric block <b>Aatm,b</b>: they alter neither the turbine emission, nor the ground effect, nor the DEM/screening term.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ",
     "\n                <h4>3. Efecto suelo simplificado con uso del suelo</h4>\n                <p>En el motor rápido el término <b>Aground</b> sigue siendo empírico, pero el parámetro de suelo puede venir de la capa de uso del suelo como un <b>G_eff</b> por trayecto:</p>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>Ese <b>G_eff</b> se usa después dentro de la corrección simplificada de terreno del motor rápido. El valor global <b>G = ": "\n                <h4>3. Simplified ground effect with land use</h4>\n                <p>In the fast engine the <b>Aground</b> term is still empirical, but the ground parameter can come from the land-use layer as a per-path <b>G_eff</b>:</p>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>That <b>G_eff</b> is then used inside the fast engine's simplified terrain correction. The global value <b>G = ",
     "\n                <h4>3. Efecto suelo simplificado</h4>\n                <p>El término <b>Aground</b> es una corrección empírica del terreno controlada por un único parámetro manual:</p>\n                <div class='formula'>G = ": "\n                <h4>3. Simplified ground effect</h4>\n                <p>The <b>Aground</b> term is an empirical terrain correction controlled by a single manual parameter:</p>\n                <div class='formula'>G = ",
-    '\n                <h4>4. MDT / topografía</h4>\n                <p>En el motor rápido el MDT no introduce un término explícito de apantallamiento topográfico. Aunque exista una capa de relieve en el proyecto, este modo no calcula <b>Abar</b>, no extrae línea de visión ni aplica difracción; por tanto la física se basa únicamente en <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> y la corrección empírica de terreno <b>Aground</b>.</p>\n            ': '\n                <h4>4. DTM / topography</h4>\n                <p>In the fast engine the DTM does not introduce an explicit topographic screening term. Even if a relief layer exists in the project, this mode does not compute <b>Abar</b>, does not extract a line of sight and does not apply diffraction; therefore the physics relies only on <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> and the empirical terrain correction <b>Aground</b>.</p>\n            ',
-    '\n                <h4>5. Qué no hace este modo</h4>\n                <p>El motor rápido no trabaja por bandas, no calcula <b>Lw,b</b>, no introduce <b>Abar</b> y no extrae línea de visión ni difracción desde MDT. Por tanto, es apropiado para screening y comparativas rápidas, pero no para análisis espectral detallado.</p>\n            </div>\n            ': '\n                <h4>5. What this mode does not do</h4>\n                <p>The fast engine does not work by bands, does not compute <b>Lw,b</b>, does not introduce <b>Abar</b> and does not extract a line of sight or diffraction from a DTM. It is therefore appropriate for screening and quick comparisons, but not for detailed spectral analysis.</p>\n            </div>\n            ',
+    '\n                <h4>4. MDT / topografía</h4>\n                <p>En el motor rápido el MDT no introduce un término explícito de apantallamiento topográfico. Aunque exista una capa de relieve en el proyecto, este modo no calcula <b>Abar</b>, no extrae línea de visión ni aplica difracción; por tanto la física se basa únicamente en <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> y la corrección empírica de terreno <b>Aground</b>.</p>\n            ': "\n                <h4>4. DEM / topography</h4>\n                <p>In the fast engine the DEM does not introduce an explicit topographic screening term. Even if a relief layer exists in the project, this mode does not compute <b>Abar</b>, does not extract a line of sight and does not apply diffraction; therefore the physics relies only on <b>LwA</b>, <b>Adiv</b>, <b>Aatm = α·d</b> and the empirical terrain correction <b>Aground</b>.</p>\n            ",
+    '\n                <h4>5. Qué no hace este modo</h4>\n                <p>El motor rápido no trabaja por bandas, no calcula <b>Lw,b</b>, no introduce <b>Abar</b> y no extrae línea de visión ni difracción desde MDT. Por tanto, es apropiado para screening y comparativas rápidas, pero no para análisis espectral detallado.</p>\n            </div>\n            ': "\n                <h4>5. What this mode does not do</h4>\n                <p>The fast engine does not work by bands, does not compute <b>Lw,b</b>, does not introduce <b>Abar</b> and does not extract a line of sight or diffraction from a DEM. It is therefore appropriate for screening and quick comparisons, but not for detailed spectral analysis.</p>\n            </div>\n            ",
     "\n            <div class='card card-info'>\n                <h3>🧭 Cómo se ha ejecutado el cálculo ISO-aligned</h3>\n                <p>Esta sección explica el flujo real que sigue el plugin para que el resultado por receptor sea trazable. El nivel final de cada receptor <b>no sale de una única resta simple</b>, sino de calcular todas las contribuciones fuente–receptor dentro del radio de cálculo y sumarlas energéticamente.</p>\n                <ol>\n                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>": "\n            <div class='card card-info'>\n                <h3>🧭 How the ISO-aligned calculation was run</h3>\n                <p>This section explains the actual flow the plugin follows so that the per-receiver result is traceable. The final level of each receiver <b>does not come from a single simple subtraction</b>, but from computing all source–receiver contributions within the calculation radius and summing them energetically.</p>\n                <ol>\n                    <li><b>Reading GIS inputs:</b> the acoustic turbines/sources, the receivers, the receiver height, the maximum calculation radius (<b>",
     "\n            <div class='card card-info'>\n                <h3>🧭 Cómo se ha ejecutado el cálculo Screening</h3>\n                <p>Esta sección explica el flujo real que sigue el plugin en el modo rápido. El objetivo es obtener una estimación ágil para mapas, comparación de alternativas y detección inicial de receptores sensibles.</p>\n                <ol>\n                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>": "\n            <div class='card card-info'>\n                <h3>🧭 How the Screening calculation was run</h3>\n                <p>This section explains the actual flow the plugin follows in the fast mode. The goal is to obtain a quick estimate for maps, comparison of alternatives and initial detection of sensitive receivers.</p>\n                <ol>\n                    <li><b>Reading GIS inputs:</b> the acoustic turbines/sources, the receivers, the receiver height, the maximum calculation radius (<b>",
-    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>\n                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>\n                <p><b>Escenario operativo de esta corrida:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the ISO-aligned engine</h3>\n                <p>This engine works in <b>8 octave bands</b> (63–8000 Hz). The bands are not a calculation result, but the <b>frequency grid of the method</b>. To apply band-wise propagation, the calculation needs a per-band acoustic input <code>Lw,b</code> from the source. That input can come from a measured/imported spectrum or from a template/fallback adjusted to the global operating level.</p>\n                <p><b>Operating scenario of this run:</b> ",
-    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor rápido</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>\n                <p><b>Escenario operativo de esta corrida:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the fast engine</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>The fast engine works with a single global level <b>LwA</b> per source group. It is intended for screening, quick maps and fast comparisons, trading spectral detail for speed. In this mode there is <b>no band-wise propagation</b> and no explicit topographic screening term.</p>\n                <p><b>Operating scenario of this run:</b> ",
+    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>\n                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>\n                <p><b>Escenario operativo de esta ejecución:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the ISO-aligned engine</h3>\n                <p>This engine works in <b>8 octave bands</b> (63–8000 Hz). The bands are not a calculation result, but the <b>frequency grid of the method</b>. To apply band-wise propagation, the calculation needs a per-band acoustic input <code>Lw,b</code> from the source. That input can come from a measured/imported spectrum or from a template/fallback adjusted to the global operating level.</p>\n                <p><b>Operating scenario of this run:</b> ",
+    "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor rápido</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>\n                <p><b>Escenario operativo de esta ejecución:</b> ": "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the fast engine</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>The fast engine works with a single global level <b>LwA</b> per source group. It is intended for screening, quick maps and fast comparisons, trading spectral detail for speed. In this mode there is <b>no band-wise propagation</b> and no explicit topographic screening term.</p>\n                <p><b>Operating scenario of this run:</b> ",
     ' % del AEP neto del parque)': ' % of the wind farm net AEP)',
     ' %</b> uniforme como fallback. Este valor afecta directamente al AEP en wakes TI-driven (Niayifar, Zong, TurboGaussian, TurboNOJ). Para resultados representativos, carga un raster TI en la sección de recurso o revisa la sensibilidad de turbulencia.</p>': ' %</b> uniformly as fallback. This value directly affects AEP in TI-driven wakes (Niayifar, Zong, TurboGaussian, TurboNOJ). For representative results, load a TI raster in the resource section or review the turbulence sensitivity.</p>',
     ' Otros receptores sí presentan apantallamiento (Abar máx. ': ' Other receivers do show screening (max Abar ',
@@ -3182,8 +3367,8 @@ _CANON_TO_EN = {
     ' m AGL · altura acústica receptor=': ' m AGL · receiver acoustic height=',
     ' m AGL · altura acústica turbina=': ' m AGL · turbine acoustic height=',
     ' m · terreno receptor=': ' m · receiver terrain=',
-    ' m</b>) y la capa de uso del suelo si existe.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta corrida: <b>': ' m</b>) and the land-use layer if it exists.</li>\n                    <li><b>Acoustic state of each source group:</b> each turbine model or group works with a single <b>operating LwA</b>, defined by a fixed value or by an <code>LwA(ws)</code> curve. In this run: <b>',
-    ' m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta corrida: <b>': ' m</b>), the land-use layer if it exists and the DTM/DSM if it is active.</li>\n                    <li><b>Acoustic state of each source group:</b> for each turbine model or group an <b>operating LwA</b> is obtained from a fixed value or from an <code>LwA(ws)</code> curve. In this run: <b>',
+    ' m</b>) y la capa de uso del suelo si existe.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta ejecución: <b>': ' m</b>) and the land-use layer if it exists.</li>\n                    <li><b>Acoustic state of each source group:</b> each turbine model or group works with a single <b>operating LwA</b>, defined by a fixed value or by an <code>LwA(ws)</code> curve. In this run: <b>',
+    ' m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta ejecución: <b>': " m</b>), the land-use layer if it exists and the DEM/DSM if it is active.</li>\n                    <li><b>Acoustic state of each source group:</b> for each turbine model or group an <b>operating LwA</b> is obtained from a fixed value or from an <code>LwA(ws)</code> curve. In this run: <b>",
     ' receptor(es) con al menos una turbina dentro del radio máximo.': ' receiver(s) with at least one turbine inside the maximum radius.',
     ' receptores</strong> dentro del radio<br>\n                <strong>': ' receivers</strong> within the radius<br>\n                <strong>',
     ' receptores</strong> superan límites<br>\n                <strong>': ' receivers</strong> exceed limits<br>\n                <strong>',
@@ -3212,8 +3397,8 @@ _CANON_TO_EN = {
     '. Probando loader estándar…': '. Trying the standard loader…',
     '. Se usará fallback fijo.': '. A fixed fallback will be used.',
     '.</p>\n                    <p><b>Qué representa cada columna:</b> <code>S_b^ref</code> es la plantilla espectral de referencia (si existe), <code>A_weight,b</code> la ponderación A de cada banda y <code>Lw,b</code> el nivel final en dB realmente usado por el cálculo.</p>': '.</p>\n                    <p><b>What each column represents:</b> <code>S_b^ref</code> is the reference spectral template (if any), <code>A_weight,b</code> the A-weighting of each band and <code>Lw,b</code> the final level in dB actually used by the calculation.</p>',
-    ".</p>\n                <h4>0. Inputs realmente usados en esta corrida</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>\n                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                </table>\n                <h4>2. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>\n                <h4>3. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>En esta corrida se ha usado <b>α = ": ".</p>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> a single global level <b>LwA</b> per source group.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> for the selected wind speed or worst case.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> in this mode T/RH/P are not used; absorption is summarized in a single coefficient <b>α</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> the DTM does not enter as explicit screening in this mode.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Global source input. It comes from a fixed value per group or from an <code>LwA(ws)</code> acoustic curve for the selected wind speed/worst case.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Computed with a single constant coefficient <code>α</code> multiplied by the distance.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Empirical ground-effect correction. The ground parameter can be a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</td></tr>\n                </table>\n                <h4>2. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance.</p>\n                <h4>3. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>In this run <b>α = ",
-    ".</p>\n                <p><b>Ecuación general por banda:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Suma A-ponderada final:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs realmente usados en esta corrida</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>\n                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Input acústico de fuente y bandas</h4>\n                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>\n                <p>El plugin combina dos piezas:</p>\n                <ul>\n                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>\n                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>\n                </ul>\n                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>\n                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>\n                ": ".</p>\n                <p><b>General per-band equation:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Final A-weighted sum:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> <code>Lw,b</code> by octave bands. If a specific spectrum of the source group exists, that is the input used. If not, the plugin uses a library/template/fallback and adjusts it to the global operating level.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> according to the selected scenario. That global level does not replace the bands: it sets the operating state and the spectrum provides the frequency distribution.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> temperature <b>T</b>, relative humidity <b>RH</b> and pressure <b>P</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> optional DTM/DSM. It only affects the calculation of <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Per-band acoustic input. It comes from the source-group spectrum (CSV, library, template or fallback adjusted to the global level). The LwA(ws) acoustic curve or the fixed LwA define the turbine's global operating level, and the band spectrum distributes that level among the 8 bands.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Computed per band with a base absorption table <code>α_ref(f)</code> and simplified corrections for temperature, relative humidity and pressure. The current implementation uses the plugin's exact math: <code>α = α_ref(f)·corr_T·corr_RH·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Computed as ground effect by regions. The ground parameter used is a <b>single G per path</b>: manual/global or <b>G_eff</b> derived from the land-use layer.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>It only enters if there is a DTM/DSM and topographic screening is detected. If there is no DTM or no relevant obstacle, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Source acoustic input and bands</h4>\n                <p>In this engine, the term <code>Lw,b</code> is a <b>per-band input datum</b>. The <b>octave bands</b> (63–8000 Hz) are not a result of the ISO nor a table computed by the plugin: they are the <b>frequency grid</b> on which propagation is solved.</p>\n                <p>The plugin combines two pieces:</p>\n                <ul>\n                    <li><b>Global acoustic curve LwA(ws)</b>: it sets the <b>global operating level</b> of the turbine for the selected wind speed or worst case.</li>\n                    <li><b>Band spectrum Lw,b</b>: it distributes that global level among the 8 bands and is the real input used in the band-wise equation.</li>\n                </ul>\n                <p>That spectrum can come from a specific manufacturer/user file or from a reference template. If only a global curve <code>LwA(ws)</code> is available, the plugin first sets the global operating level <code>LwA_target</code> and then builds an absolute per-band spectrum from a reference spectral shape <code>S_b^ref</code>.</p>\n                <p><b>Mathematical reconstruction of the bands when only LwA(ws) exists:</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_target - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>That is: the acoustic curve provides the <b>global operating level</b> and the template/library provides the <b>spectral shape</b>. The shift <b>Δ</b> is computed so that, when A-weighting and energetically summing the 8 bands, the reconstructed spectrum reproduces exactly the <code>LwA_target</code> of the imported curve.</p>\n                ",
+    ".</p>\n                <h4>0. Inputs realmente usados en esta ejecución</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>\n                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                </table>\n                <h4>2. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>\n                <h4>3. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>En esta ejecución se ha usado <b>α = ": ".</p>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> a single global level <b>LwA</b> per source group.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> for the selected wind speed or worst case.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> in this mode T/RH/P are not used; absorption is summarized in a single coefficient <b>α</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> the DEM does not enter as explicit screening in this mode.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Global source input. It comes from a fixed value per group or from an <code>LwA(ws)</code> acoustic curve for the selected wind speed/worst case.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Computed with a single constant coefficient <code>α</code> multiplied by the distance.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Empirical ground-effect correction. The ground parameter can be a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</td></tr>\n                </table>\n                <h4>2. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance.</p>\n                <h4>3. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>In this run <b>α = ",
+    ".</p>\n                <p><b>Ecuación general por banda:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Suma A-ponderada final:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs realmente usados en esta ejecución</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>\n                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Input acústico de fuente y bandas</h4>\n                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>\n                <p>El plugin combina dos piezas:</p>\n                <ul>\n                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>\n                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>\n                </ul>\n                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>\n                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>\n                ": ".</p>\n                <p><b>General per-band equation:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Final A-weighted sum:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> <code>Lw,b</code> by octave bands. If a specific spectrum of the source group exists, that is the input used. If not, the plugin uses a library/template/fallback and adjusts it to the global operating level.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> according to the selected scenario. That global level does not replace the bands: it sets the operating state and the spectrum provides the frequency distribution.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> temperature <b>T</b>, relative humidity <b>RH</b> and pressure <b>P</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> optional DEM/DSM. It only affects the calculation of <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Per-band acoustic input. It comes from the source-group spectrum (CSV, library, template or fallback adjusted to the global level). The LwA(ws) acoustic curve or the fixed LwA define the turbine's global operating level, and the band spectrum distributes that level among the 8 bands.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Computed per band with a base absorption table <code>α_ref(f)</code> and simplified corrections for temperature, relative humidity and pressure. The current implementation uses the plugin's exact math: <code>α = α_ref(f)·corr_T·corr_RH·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Computed as ground effect by regions. The ground parameter used is a <b>single G per path</b>: manual/global or <b>G_eff</b> derived from the land-use layer.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>It only enters if there is a DEM/DSM and topographic screening is detected. If there is no DEM or no relevant obstacle, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Source acoustic input and bands</h4>\n                <p>In this engine, the term <code>Lw,b</code> is a <b>per-band input datum</b>. The <b>octave bands</b> (63–8000 Hz) are not a result of the ISO nor a table computed by the plugin: they are the <b>frequency grid</b> on which propagation is solved.</p>\n                <p>The plugin combines two pieces:</p>\n                <ul>\n                    <li><b>Global acoustic curve LwA(ws)</b>: it sets the <b>global operating level</b> of the turbine for the selected wind speed or worst case.</li>\n                    <li><b>Band spectrum Lw,b</b>: it distributes that global level among the 8 bands and is the real input used in the band-wise equation.</li>\n                </ul>\n                <p>That spectrum can come from a specific manufacturer/user file or from a reference template. If only a global curve <code>LwA(ws)</code> is available, the plugin first sets the global operating level <code>LwA_target</code> and then builds an absolute per-band spectrum from a reference spectral shape <code>S_b^ref</code>.</p>\n                <p><b>Mathematical reconstruction of the bands when only LwA(ws) exists:</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_target - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>That is: the acoustic curve provides the <b>global operating level</b> and the template/library provides the <b>spectral shape</b>. The shift <b>Δ</b> is computed so that, when A-weighting and energetically summing the 8 bands, the reconstructed spectrum reproduces exactly the <code>LwA_target</code> of the imported curve.</p>\n                ",
     ': LwA fijo no válido.': ': invalid fixed LwA.',
     ': altura de buje no válida.': ': invalid hub height.',
     ': capa de receptores no válida.': ': invalid receiver layer.',
@@ -3231,10 +3416,10 @@ _CANON_TO_EN = {
     ': usando WeightedSum (selección usuario, deficit=': ': using WeightedSum (user selection, deficit=',
     '</b> queda solo como respaldo si la capa no aporta información válida.</p>\n                <p><b>Capa usada:</b> ': '</b> is kept only as a fallback if the layer does not provide valid information.</p>\n                <p><b>Layer used:</b> ',
     '</b> y el del receptor crítico <b>': '</b> and that of the critical receiver <b>',
-    "</b>.</li>\n                    <li><b>Conversión a bandas:</b> el motor ISO-aligned necesita un espectro <code>Lw,b</code> en 8 bandas de octava. Si no hay espectro específico, el plugin reconstruye uno desde una plantilla/fallback y lo ajusta para reproducir el LwA operativo.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b> y no generan nivel acústico útil.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula distancia 3D, cotas acústicas, <b>G</b> o <b>G_eff</b> del suelo y, si hay MDT/DSM, el posible apantallamiento topográfico del trayecto.</li>\n                    <li><b>Propagación por banda:</b> en cada banda se aplica <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv depende de la distancia, Aatm,b de frecuencia/atmósfera, Agr,b del suelo y Abar,b del MDT si hay obstáculo relevante.</li>\n                    <li><b>Suma por fuente:</b> las 8 bandas se ponderan en A y se suman energéticamente para obtener el nivel A-ponderado de esa turbina en el receptor.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(LpA,fuente/10))</div>\n                <p><b>Lectura práctica:</b> el receptor crítico es el de mayor nivel total o el que queda con peor margen frente al límite. La columna “fuente dominante” identifica la turbina/grupo que más contribuye, pero el resultado final del receptor incluye todas las fuentes dentro del radio.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo Screening</h3>\n                <p>El modo ISO-aligned es más pesado pero más trazable: usa bandas de octava, ponderación A final, absorción atmosférica dependiente de frecuencia, suelo por regiones y apantallamiento topográfico <b>Abar</b> cuando hay MDT/DSM. Es el modo recomendado para informes técnicos preliminares y revisión de receptores sensibles.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Conversion to bands:</b> the ISO-aligned engine needs a spectrum <code>Lw,b</code> in 8 octave bands. If there is no specific spectrum, the plugin reconstructs one from a template/fallback and adjusts it to reproduce the operating LwA.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b> and do not generate a useful acoustic level.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine, the 3D distance, acoustic heights, ground <b>G</b> or <b>G_eff</b> and, if there is a DTM/DSM, the possible topographic screening of the path are computed.</li>\n                    <li><b>Per-band propagation:</b> in each band <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code> is applied. Adiv depends on distance, Aatm,b on frequency/atmosphere, Agr,b on ground and Abar,b on the DTM if there is a relevant obstacle.</li>\n                    <li><b>Per-source sum:</b> the 8 bands are A-weighted and summed energetically to obtain the A-weighted level of that turbine at the receiver.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(LpA,source/10))</div>\n                <p><b>Practical reading:</b> the critical receiver is the one with the highest total level or the worst margin against the limit. The “dominant source” column identifies the turbine/group that contributes the most, but the receiver's final result includes all sources within the radius.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the Screening mode</h3>\n                <p>The ISO-aligned mode is heavier but more traceable: it uses octave bands, a final A-weighting, frequency-dependent atmospheric absorption, ground by regions and topographic screening <b>Abar</b> when there is a DTM/DSM. It is the recommended mode for preliminary technical reports and review of sensitive receivers.</p>\n            </div>\n            ",
-    "</b>.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b>.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula la distancia 3D, la divergencia geométrica, una absorción atmosférica simplificada <code>α·d</code> y una corrección empírica de suelo.</li>\n                    <li><b>Uso del suelo:</b> si hay capa de land-use, el plugin puede calcular un <b>G_eff</b> por trayecto; si no, usa el <b>G global</b> definido por el usuario.</li>\n                    <li><b>Propagación simplificada:</b> se aplica <code>Lp = LwA - Adiv - Aatm - Aground</code>. No hay bandas de octava ni apantallamiento topográfico explícito <code>Abar</code>.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(Lp,fuente/10))</div>\n                <p><b>Lectura práctica:</b> este modo es útil para screening inicial. Si un receptor aparece cerca del límite o en excedencia, conviene recalcularlo con el modo ISO-aligned y revisar espectros, terreno, uso del suelo y límites aplicados.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo ISO-aligned</h3>\n                <p>El modo Screening sacrifica detalle para ganar velocidad. No propaga por bandas, no usa T/HR/P por frecuencia, no calcula <b>Abar</b> desde MDT y resume la atmósfera con un único coeficiente <b>α</b>. Por eso debe interpretarse como preevaluación rápida, no como informe acústico detallado.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b>.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine the 3D distance, the geometrical divergence, a simplified atmospheric absorption <code>α·d</code> and an empirical ground correction are computed.</li>\n                    <li><b>Land use:</b> if there is a land-use layer, the plugin can compute a per-path <b>G_eff</b>; otherwise it uses the <b>global G</b> defined by the user.</li>\n                    <li><b>Simplified propagation:</b> <code>Lp = LwA - Adiv - Aatm - Aground</code> is applied. There are no octave bands and no explicit topographic screening <code>Abar</code>.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(Lp,source/10))</div>\n                <p><b>Practical reading:</b> this mode is useful for initial screening. If a receiver appears close to the limit or in exceedance, it is advisable to recalculate it with the ISO-aligned mode and review spectra, terrain, land use and applied limits.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the ISO-aligned mode</h3>\n                <p>The Screening mode trades detail for speed. It does not propagate by bands, does not use T/RH/P per frequency, does not compute <b>Abar</b> from a DTM and summarizes the atmosphere with a single coefficient <b>α</b>. It should therefore be interpreted as a quick pre-assessment, not as a detailed acoustic report.</p>\n            </div>\n            ",
+    "</b>.</li>\n                    <li><b>Conversión a bandas:</b> el motor ISO-aligned necesita un espectro <code>Lw,b</code> en 8 bandas de octava. Si no hay espectro específico, el plugin reconstruye uno desde una plantilla/fallback y lo ajusta para reproducir el LwA operativo.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b> y no generan nivel acústico útil.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula distancia 3D, cotas acústicas, <b>G</b> o <b>G_eff</b> del suelo y, si hay MDT/DSM, el posible apantallamiento topográfico del trayecto.</li>\n                    <li><b>Propagación por banda:</b> en cada banda se aplica <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv depende de la distancia, Aatm,b de frecuencia/atmósfera, Agr,b del suelo y Abar,b del MDT si hay obstáculo relevante.</li>\n                    <li><b>Suma por fuente:</b> las 8 bandas se ponderan en A y se suman energéticamente para obtener el nivel A-ponderado de esa turbina en el receptor.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(LpA,fuente/10))</div>\n                <p><b>Lectura práctica:</b> el receptor crítico es el de mayor nivel total o el que queda con peor margen frente al límite. La columna “fuente dominante” identifica la turbina/grupo que más contribuye, pero el resultado final del receptor incluye todas las fuentes dentro del radio.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo Screening</h3>\n                <p>El modo ISO-aligned es más pesado pero más trazable: usa bandas de octava, ponderación A final, absorción atmosférica dependiente de frecuencia, suelo por regiones y apantallamiento topográfico <b>Abar</b> cuando hay MDT/DSM. Es el modo recomendado para informes técnicos preliminares y revisión de receptores sensibles.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Conversion to bands:</b> the ISO-aligned engine needs a spectrum <code>Lw,b</code> in 8 octave bands. If there is no specific spectrum, the plugin reconstructs one from a template/fallback and adjusts it to reproduce the operating LwA.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b> and do not generate a useful acoustic level.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine, the 3D distance, acoustic heights, ground <b>G</b> or <b>G_eff</b> and, if there is a DEM/DSM, the possible topographic screening of the path are computed.</li>\n                    <li><b>Per-band propagation:</b> in each band <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code> is applied. Adiv depends on distance, Aatm,b on frequency/atmosphere, Agr,b on ground and Abar,b on the DEM if there is a relevant obstacle.</li>\n                    <li><b>Per-source sum:</b> the 8 bands are A-weighted and summed energetically to obtain the A-weighted level of that turbine at the receiver.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(LpA,source/10))</div>\n                <p><b>Practical reading:</b> the critical receiver is the one with the highest total level or the worst margin against the limit. The “dominant source” column identifies the turbine/group that contributes the most, but the receiver's final result includes all sources within the radius.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the Screening mode</h3>\n                <p>The ISO-aligned mode is heavier but more traceable: it uses octave bands, a final A-weighting, frequency-dependent atmospheric absorption, ground by regions and topographic screening <b>Abar</b> when there is a DEM/DSM. It is the recommended mode for preliminary technical reports and review of sensitive receivers.</p>\n            </div>\n            ",
+    "</b>.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b>.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula la distancia 3D, la divergencia geométrica, una absorción atmosférica simplificada <code>α·d</code> y una corrección empírica de suelo.</li>\n                    <li><b>Uso del suelo:</b> si hay capa de land-use, el plugin puede calcular un <b>G_eff</b> por trayecto; si no, usa el <b>G global</b> definido por el usuario.</li>\n                    <li><b>Propagación simplificada:</b> se aplica <code>Lp = LwA - Adiv - Aatm - Aground</code>. No hay bandas de octava ni apantallamiento topográfico explícito <code>Abar</code>.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(Lp,fuente/10))</div>\n                <p><b>Lectura práctica:</b> este modo es útil para screening inicial. Si un receptor aparece cerca del límite o en excedencia, conviene recalcularlo con el modo ISO-aligned y revisar espectros, terreno, uso del suelo y límites aplicados.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo ISO-aligned</h3>\n                <p>El modo Screening sacrifica detalle para ganar velocidad. No propaga por bandas, no usa T/HR/P por frecuencia, no calcula <b>Abar</b> desde MDT y resume la atmósfera con un único coeficiente <b>α</b>. Por eso debe interpretarse como preevaluación rápida, no como informe acústico detallado.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b>.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine the 3D distance, the geometrical divergence, a simplified atmospheric absorption <code>α·d</code> and an empirical ground correction are computed.</li>\n                    <li><b>Land use:</b> if there is a land-use layer, the plugin can compute a per-path <b>G_eff</b>; otherwise it uses the <b>global G</b> defined by the user.</li>\n                    <li><b>Simplified propagation:</b> <code>Lp = LwA - Adiv - Aatm - Aground</code> is applied. There are no octave bands and no explicit topographic screening <code>Abar</code>.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(Lp,source/10))</div>\n                <p><b>Practical reading:</b> this mode is useful for initial screening. If a receiver appears close to the limit or in exceedance, it is advisable to recalculate it with the ISO-aligned mode and review spectra, terrain, land use and applied limits.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the ISO-aligned mode</h3>\n                <p>The Screening mode trades detail for speed. It does not propagate by bands, does not use T/RH/P per frequency, does not compute <b>Abar</b> from a DEM and summarizes the atmosphere with a single coefficient <b>α</b>. It should therefore be interpreted as a quick pre-assessment, not as a detailed acoustic report.</p>\n            </div>\n            ",
     '</div>\n                    <p>Ese valor se aplica en el término de suelo del modelo. No se ha derivado un G_eff desde capa de uso del suelo.</p>\n                </div>\n                ': '</div>\n                    <p>That value is applied in the ground term of the model. No G_eff was derived from a land-use layer.</p>\n                </div>\n                ',
-    "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>En esta corrida no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>\n                ": "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>In this run no G_eff was derived from a land-use layer. Here <b>d_xy</b> is the horizontal distance, <b>h_s</b> the source height and <b>h_r</b> the receiver height.</p>\n                ",
+    "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>En esta ejecución no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>\n                ": "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>In this run no G_eff was derived from a land-use layer. Here <b>d_xy</b> is the horizontal distance, <b>h_s</b> the source height and <b>h_r</b> the receiver height.</p>\n                ",
     '</p>\n        </div>\n\n        <h2>2. CÓMO SE HA GENERADO EL RESULTADO</h2>\n        ': '</p>\n        </div>\n\n        <h2>2. HOW THE RESULT WAS GENERATED</h2>\n        ',
     "</td>\n                    <td>Máximo Abar entre todas las turbinas que contribuyen al receptor</td>\n                </tr>\n                <tr>\n                    <td>Abar ponderado por energía</td>\n                    <td style='text-align: right;'>": "</td>\n                    <td>Maximum Abar among all turbines contributing to the receiver</td>\n                </tr>\n                <tr>\n                    <td>Energy-weighted Abar</td>\n                    <td style='text-align: right;'>",
     "</td>\n                    <td>Número de turbinas contribuyentes con Abar &gt; 0 dB</td>\n                </tr>\n                <tr style='background: #1e3a5f; color: white; font-weight: bold;'>\n                    <td>NIVEL RESULTANTE</td>\n                    <td style='text-align: right;'>": "</td>\n                    <td>Number of contributing turbines with Abar &gt; 0 dB</td>\n                </tr>\n                <tr style='background: #1e3a5f; color: white; font-weight: bold;'>\n                    <td>RESULTING LEVEL</td>\n                    <td style='text-align: right;'>",
@@ -3242,21 +3427,21 @@ _CANON_TO_EN = {
     "</td>\n                </tr>\n                <tr>\n                    <td><b>Abar</b> (máximo entre contribuyentes)</td>\n                    <td style='text-align: right;'>": "</td>\n                </tr>\n                <tr>\n                    <td><b>Abar</b> (maximum among contributors)</td>\n                    <td style='text-align: right;'>",
     "</td>\n                </tr>\n                <tr>\n                    <td>Abar máximo contribuyentes</td>\n                    <td style='text-align: right;'>": "</td>\n                </tr>\n                <tr>\n                    <td>Maximum contributors Abar</td>\n                    <td style='text-align: right;'>",
     "</ul>\n            </div>\n            <div class='card'>\n                <h3>✓ Cumplimiento por Categoría</h3>\n                <ul>": "</ul>\n            </div>\n            <div class='card'>\n                <h3>✓ Compliance by category</h3>\n                <ul>",
-    "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitaciones y recomendaciones</strong>\n            <p><b>Motor Rápido:</b> Apropiado para screening preliminar y mapas ágiles.</p>\n            <p><b>Motor ISO-aligned:</b> Apropiado para estudios técnicos preliminares, comparativas e iteración de diseño.</p>\n            <p><b>Simplificaciones conocidas:</b> Aatm simplificado (tablas + correcciones); Agr y Abar con aproximaciones básicas; directividad Dc asumida 0 dB; Cmet/corrección meteorológica de largo plazo no aplicada.</p>\n            <p><b>Modelos múltiples:</b> soportados mediante capas/grupos fuente independientes. Mezclar varios modelos dentro de una sola capa por atributos no está habilitado en esta versión experimental.</p>\n            <p><b>Raster ISO + MDT:</b> usa la misma lógica de apantallamiento topográfico que los receptores puntuales, pero puede ser costoso en mapas grandes.</p>\n            <p><b>Recomendación:</b> Para estudios regulatorios críticos, validar con mediciones o software comercial certificado.</p>\n        </div>\n        ": "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitations and recommendations</strong>\n            <p><b>Fast engine:</b> Appropriate for preliminary screening and quick maps.</p>\n            <p><b>ISO-aligned engine:</b> Appropriate for preliminary technical studies, comparisons and design iteration.</p>\n            <p><b>Known simplifications:</b> simplified Aatm (tables + corrections); Agr and Abar with basic approximations; directivity Dc assumed 0 dB; long-term Cmet/meteorological correction not applied.</p>\n            <p><b>Multiple models:</b> supported through independent source layers/groups. Mixing several models within a single layer by attributes is not enabled in this experimental release.</p>\n            <p><b>ISO raster + DTM:</b> it uses the same topographic-screening logic as point receivers, but it can be expensive on large maps.</p>\n            <p><b>Recommendation:</b> For critical regulatory studies, validate with measurements or certified commercial software.</p>\n        </div>\n        ",
+    "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitaciones y recomendaciones</strong>\n            <p><b>Motor Rápido:</b> Apropiado para screening preliminar y mapas ágiles.</p>\n            <p><b>Motor ISO-aligned:</b> Apropiado para estudios técnicos preliminares, comparativas e iteración de diseño.</p>\n            <p><b>Simplificaciones conocidas:</b> Aatm simplificado (tablas + correcciones); Agr y Abar con aproximaciones básicas; directividad Dc asumida 0 dB; Cmet/corrección meteorológica de largo plazo no aplicada.</p>\n            <p><b>Modelos múltiples:</b> soportados mediante capas/grupos fuente independientes. Mezclar varios modelos dentro de una sola capa por atributos no está habilitado en esta versión experimental.</p>\n            <p><b>Raster ISO + MDT:</b> usa la misma lógica de apantallamiento topográfico que los receptores puntuales, pero puede ser costoso en mapas grandes.</p>\n            <p><b>Recomendación:</b> Para estudios regulatorios críticos, validar con mediciones o software comercial certificado.</p>\n        </div>\n        ": "</ul>\n            </div>\n        </div>\n        \n        <div class='disclaimer'>\n            <strong>⚠️ Limitations and recommendations</strong>\n            <p><b>Fast engine:</b> Appropriate for preliminary screening and quick maps.</p>\n            <p><b>ISO-aligned engine:</b> Appropriate for preliminary technical studies, comparisons and design iteration.</p>\n            <p><b>Known simplifications:</b> simplified Aatm (tables + corrections); Agr and Abar with basic approximations; directivity Dc assumed 0 dB; long-term Cmet/meteorological correction not applied.</p>\n            <p><b>Multiple models:</b> supported through independent source layers/groups. Mixing several models within a single layer by attributes is not enabled in this experimental release.</p>\n            <p><b>ISO raster + DEM:</b> it uses the same topographic-screening logic as point receivers, but it can be expensive on large maps.</p>\n            <p><b>Recommendation:</b> For critical regulatory studies, validate with measurements or certified commercial software.</p>\n        </div>\n        ",
     '</ul>\n        </div>\n        \n        <h2>5. FÍSICA DETALLADA Y TRAZABILIDAD DEL CÁLCULO</h2>\n        ': '</ul>\n        </div>\n        \n        <h2>5. DETAILED PHYSICS AND CALCULATION TRACEABILITY</h2>\n        ',
     "</ul>\n        </div>\n        \n        <h2>7. DISTRIBUCIÓN POR TIPO DE RECEPTOR</h2>\n        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>\n            <div class='card'>\n                <h3>📍 Receptores por Categoría</h3>\n                <ul>": "</ul>\n        </div>\n        \n        <h2>7. DISTRIBUTION BY RECEIVER TYPE</h2>\n        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>\n            <div class='card'>\n                <h3>📍 Receivers by category</h3>\n                <ul>",
-    '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = a wake that widens and recovers sooner; decreasing it = a narrower, more persistent wake.<br><br><b>cεps</b> — Initial wake size next to the rotor (σ₀/D). PyWake default = 0.2. Rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
+    '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.': '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + ε, with ε = cεps·√β and β a function of Ct. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = a wake that widens and recovers sooner; decreasing it = a narrower, more persistent wake.<br><br><b>cεps</b> — Coefficient of the initial wake width ε next to the rotor. PyWake default = 0.2. Rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.',
     '<b>Bloqueo desactivado</b> porque el motor es <b>PropagateDownwind</b> (solo propaga estelas hacia abajo, no soporta bloqueo). Si quieres incluir bloqueo, cambia el motor a <b>All2AllIterative</b> o <b>PropagateUpDownIterative</b>.': '<b>Blockage disabled</b> because the engine is <b>PropagateDownwind</b> (it only propagates wakes downstream and does not support blockage). To include blockage, change the engine to <b>All2AllIterative</b> or <b>PropagateUpDownIterative</b>.',
     '<b>Modelo activo:</b>': '<b>Active model:</b>',
-    '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04 (default PyWake)<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.': '<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is a cylinder that widens linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u> it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. The larger k is, the faster the wake recovers and the smaller the far-field deficit.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04 (PyWake default)<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to compute k. If your site has high TI and you need that to show in AEP, use TurboNOJ or a TI-sensitive Gaussian model.',
-    '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Initial size σ₀/D. PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
+    '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano. Default PyWake = 0.1.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.': '<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is a cylinder that widens linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u> it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. The larger k is, the faster the wake recovers and the smaller the far-field deficit. PyWake default = 0.1.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to compute k. If your site has high TI and you need that to show in AEP, use TurboNOJ or a TI-sensitive Gaussian model.',
+    '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.': '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.',
     '<b>Qué es TI</b><br><br>TI significa <b>turbulence intensity</b>. En simple: mide cuánto fluctúa el viento alrededor de su velocidad media. Más TI suele significar más mezcla del flujo y una recuperación de estela distinta.<br><br><b>Dos turbulencias diferentes</b><br>• <b>TI ambiente</b>: viene del recurso eólico o de un raster TI. Es el viento que llega al parque antes de las turbinas.<br>• <b>TI añadida por estela</b>: la genera cada turbina detrás de sí. La calcula el modelo de turbulencia de PyWake, si lo activas.<br><br><b>Qué hace el plugin</b><br>• Si cargas raster TI, se usa como turbulencia ambiente espacial.<br>• Si no cargas raster TI, se usa el valor manual de la interfaz como hipótesis uniforme.<br>• Si tienes varios raster a distintas alturas, puedes indicar 90;120;... para interpolar por altura de buje.<br><br><b>Cuándo importa más</b><br>BG/NOJ son robustos pero poco sensibles a TI. Niayifar, Zong, TurboGaussian y TurboNOJ hacen que la TI afecte más a la recuperación de estela y al AEP.<br><br><b>Idea sencilla</b><br>Si no tienes datos de turbulencia, una TI manual uniforme permite correr el cálculo. Para más realismo en onshore, terreno complejo o varias alturas de buje, usa raster TI, idealmente por altura.': '<b>What TI is</b><br><br>TI stands for <b>turbulence intensity</b>. In simple terms: it measures how much the wind fluctuates around its mean speed. More TI usually means more flow mixing and a different wake recovery.<br><br><b>Two different turbulences</b><br>• <b>Ambient TI</b>: comes from the wind resource or from a TI raster. It is the wind reaching the wind farm before the turbines.<br>• <b>Wake-added TI</b>: generated by each turbine behind it. It is computed by the PyWake turbulence model, if you enable it.<br><br><b>What the plugin does</b><br>• If you load a TI raster, it is used as spatial ambient turbulence.<br>• If you do not load a TI raster, the manual value in the interface is used as a uniform assumption.<br>• If you have several rasters at different heights, you can enter 90;120;... to interpolate by hub height.<br><br><b>When it matters most</b><br>BG/NOJ are robust but not very TI-sensitive. Niayifar, Zong, TurboGaussian and TurboNOJ make TI affect wake recovery and AEP more.<br><br><b>Simple idea</b><br>If you have no turbulence data, a uniform manual TI lets you run the calculation. For more realism onshore, in complex terrain or with several hub heights, use a TI raster, ideally by height.',
     '<b>Qué es el bloqueo</b><br><br>Además de crear una estela detrás, una turbina también puede frenar ligeramente el viento antes de que el flujo llegue al rotor. Ese efecto aguas arriba se llama <b>bloqueo</b> o <i>blockage</i>.<br><br><b>Compatibilidad</b><br>• No depende del recurso WRG/GRD: depende del motor de PyWake y del modelo de bloqueo.<br>• Con <b>PropagateDownwind</b> se desactiva, porque ese motor solo calcula efectos aguas abajo.<br>• Con <b>All2AllIterative</b> o <b>PropagateUpDownIterative</b> el plugin puede intentar incluirlo con los wake models disponibles.<br><br><b>Parámetros</b><br>En esta versión experimental no se exponen parámetros internos de bloqueo. Son calibraciones propias del modelo de PyWake; para comparar sensibilidad, cambia de modelo en lugar de tocar constantes internas.<br><br><b>Qué opción usar</b><br>SelfSimilarityDeficit2020 es la opción principal. VortexCylinder/VortexDipole/HybridInduction se dejan como alternativas si tu instalación de PyWake las soporta.': '<b>What blockage is</b><br><br>Besides creating a wake behind it, a turbine can also slow the wind slightly before the flow reaches the rotor. That upstream effect is called <b>blockage</b>.<br><br><b>Compatibility</b><br>• It does not depend on the WRG/GRD resource: it depends on the PyWake engine and the blockage model.<br>• With <b>PropagateDownwind</b> it is disabled, because that engine only computes downstream effects.<br>• With <b>All2AllIterative</b> or <b>PropagateUpDownIterative</b> the plugin can try to include it with the available wake models.<br><br><b>Parameters</b><br>In this experimental release no internal blockage parameters are exposed. They are model-specific PyWake calibrations; to compare sensitivity, switch model instead of touching internal constants.<br><br><b>Which option to use</b><br>SelfSimilarityDeficit2020 is the main option. VortexCylinder/VortexDipole/HybridInduction are left as alternatives if your PyWake installation supports them.',
     '<b>Qué es el wake effect, en simple</b><br><br>Cuando una turbina extrae energía del viento, detrás de ella queda una zona con menos velocidad y más turbulencia. Esa zona es la <b>estela</b>. Si otra turbina cae dentro, producirá menos AEP.<br><br>El <b>wake deficit model</b> decide cuánta velocidad se pierde y cómo se recupera la estela aguas abajo.<br><br><b>Cómo elegir sin ser experto</b><br>• <b>BastankhahGaussianDeficit</b>: opción robusta para comparar layouts y parques offshore limpios.<br>• <b>NiayifarGaussianDeficit</b>: parecido a Bastankhah, pero la turbulencia TI pesa más en la expansión de la estela.<br>• <b>ZongGaussianDeficit</b>: más avanzado; útil si quieres una representación más rica del near wake y de la recuperación por TI.<br>• <b>TurboGaussianDeficit</b>: gaussiano sensible a turbulencia efectiva; interesante cuando quieres que la TI ambiente/añadida influya en el AEP.<br>• <b>NOJDeficit</b>: muy rápido y clásico; bueno para screening masivo, pero más simplificado.<br>• <b>TurboNOJDeficit</b>: mantiene la ligereza de NOJ, pero permite que la TI influya más.<br><br><b>Idea sencilla</b><br>Para más realismo cuando la turbulencia debe influir en la recuperación de estela, usa <b>Niayifar/Zong/TurboGaussian</b>. Para un cálculo rápido, usa <b>NOJ/TurboNOJ</b>. Para una base robusta de comparación, usa <b>Bastankhah</b>.<br><br>Importante: cargar un raster TI no garantiza por sí solo que cambie mucho el AEP. El efecto se ve de verdad si el modelo de estela elegido usa la TI de forma explícita.': "<b>What the wake effect is, in simple terms</b><br><br>When a turbine extracts energy from the wind, a zone with lower speed and more turbulence is left behind it. That zone is the <b>wake</b>. If another turbine falls inside it, it will produce less AEP.<br><br>The <b>wake deficit model</b> decides how much speed is lost and how the wake recovers downstream.<br><br><b>How to choose without being an expert</b><br>• <b>BastankhahGaussianDeficit</b>: robust option for comparing layouts and clean offshore wind farms.<br>• <b>NiayifarGaussianDeficit</b>: similar to Bastankhah, but TI turbulence weighs more in the wake expansion.<br>• <b>ZongGaussianDeficit</b>: more advanced; useful if you want a richer representation of the near wake and TI-driven recovery.<br>• <b>TurboGaussianDeficit</b>: Gaussian model sensitive to effective turbulence; interesting when you want ambient/added TI to influence AEP.<br>• <b>NOJDeficit</b>: very fast and classic; good for large-scale screening, but more simplified.<br>• <b>TurboNOJDeficit</b>: keeps NOJ's lightness, but lets TI have more influence.<br><br><b>Simple idea</b><br>For more realism when turbulence should influence wake recovery, use <b>Niayifar/Zong/TurboGaussian</b>. For a quick calculation, use <b>NOJ/TurboNOJ</b>. For a robust comparison baseline, use <b>Bastankhah</b>.<br><br>Important: loading a TI raster does not by itself guarantee a large change in AEP. The effect really shows if the chosen wake model uses TI explicitly.",
     '<b>Qué es</b><br><br>Una turbina no ve exactamente el mismo viento en todo el rotor. La parte alta, baja, izquierda o derecha del disco puede recibir velocidades distintas, sobre todo si una estela solo atraviesa una parte del rotor.<br><br><b>Qué hace esta opción</b><br>• <b>Sin promedio / RotorCenter</b>: usa solo el centro del rotor. Es rápido, pero más simplificado.<br>• <b>CGIRotorAvg(7)</b>: calcula varios puntos dentro del disco. Aporta más realismo con un coste moderado.<br>• <b>CGIRotorAvg(9/21)</b>: usa más puntos. Puede aportar más fidelidad, pero aumenta el tiempo de cálculo.<br><br><b>Idea sencilla</b><br>Si una estela corta solo media turbina, mirar únicamente el centro puede ser demasiado simplificado. Promediar el rotor ayuda a representar mejor ese efecto.': '<b>What it is</b><br><br>A turbine does not see exactly the same wind across the whole rotor. The top, bottom, left or right of the disk can receive different wind speeds, especially when a wake crosses only part of the rotor.<br><br><b>What this option does</b><br>• <b>No averaging / RotorCenter</b>: uses only the rotor centre. It is fast, but more simplified.<br>• <b>CGIRotorAvg(7)</b>: calculates several points inside the disk. It adds more realism at a moderate cost.<br>• <b>CGIRotorAvg(9/21)</b>: uses more points. It can add more fidelity, but increases computation time.<br><br><b>Simple idea</b><br>If a wake cuts only half the turbine, looking only at the centre can be too simplified. Averaging the rotor helps to represent that effect better.',
     '<b>Qué problema resuelve</b><br><br>Una turbina puede recibir la estela de varias turbinas al mismo tiempo. La superposición decide cómo se combinan esas pérdidas de velocidad antes de calcular la potencia.<br><br>• <b>Automático</b>: el plugin escoge una opción segura según la combinación de modelos.<br>• <b>LinearSum</b>: suma directa. Puede acumular muchas pérdidas en parques densos.<br>• <b>SquaredSum</b>: suma cuadrática. Suele ser una opción equilibrada cuando varias estelas se solapan.<br>• <b>MaxSum</b>: usa solo la estela más fuerte. Útil para diagnóstico, pero puede infravalorar pérdidas acumuladas.<br>• <b>WeightedSum</b>: opción avanzada para modelos gaussianos compatibles.<br><br><b>Idea sencilla</b><br>Si dos turbinas frenan el viento antes de llegar a una tercera, hay que decidir si esas pérdidas se suman mucho, poco o solo domina una de ellas.': '<b>What problem it solves</b><br><br>A turbine can receive the wake of several turbines at the same time. Superposition decides how those wind-speed losses are combined before calculating power.<br><br>• <b>Automatic</b>: the plugin chooses a safe option based on the model combination.<br>• <b>LinearSum</b>: direct sum. It can accumulate large losses in dense wind farms.<br>• <b>SquaredSum</b>: quadratic sum. It is usually a balanced option when several wakes overlap.<br>• <b>MaxSum</b>: uses only the strongest wake. Useful for diagnostics, but it can underestimate accumulated losses.<br>• <b>WeightedSum</b>: advanced option for compatible Gaussian models.<br><br><b>Simple idea</b><br>If two turbines slow the wind before it reaches a third one, you must decide whether those losses add up strongly, weakly, or whether only one of them dominates.',
     '<b>Qué significa la turbulencia en este plugin</b><br><br>• <b>TI raster / WRG</b>: describe la <b>turbulencia ambiente</b> del site. Es un dato de entrada del recurso.<br>• <b>Modelo de turbulencia</b>: calcula la <b>turbulencia añadida por estela</b> detrás de las turbinas.<br>• <b>Modelo de estela</b>: decide si esa TI ambiente/efectiva cambia realmente el déficit y, por tanto, el AEP.<br><br><b>Cómo leerlo físicamente</b><br>• Si solo aportas un raster TI, el plugin usa esa TI horizontal para todas las turbinas; si hay varias alturas de buje, eso es una <b>aproximación vertical</b>.<br>• Si aportas varios raster(s) TI a distintas alturas, el plugin intenta reconstruir <b>TI(x,y,h)</b> e interpolar por altura.<br>• Si no aportas raster TI en WRG, el plugin avisa y usa la <b>TI ambiente fallback definida por el usuario</b> como campo uniforme.<br><br><b>Cuándo importa mucho en el AEP</b><br>• <b>BastankhahGaussianDeficit (BG)</b> y <b>NOJDeficit</b>: la TI no cambia mucho el déficit base del wake; el impacto sobre el AEP suele ser limitado.<br>• <b>NiayifarGaussianDeficit</b>, <b>ZongGaussianDeficit</b>, <b>TurboGaussianDeficit</b> y <b>TurboNOJDeficit</b>: la TI ambiente/efectiva sí puede influir más en la apertura y recuperación de la estela.<br><br><b>Qué conviene según el parque</b><br>• <b>Offshore con viento relativamente homogéneo</b>: una sola capa TI puede ser suficiente si las alturas de buje son parecidas.<br>• <b>Onshore, terreno rugoso o alturas de buje distintas</b>: para más realismo, usa raster(s) TI y un wake model sensible a TI (Niayifar, Zong, TurboGaussian o TurboNOJ).<br>• <b>Varios modelos de aerogenerador</b>: si mezclas alturas de buje, una sola capa TI es una aproximación; varias alturas de TI representan mejor la variación vertical.<br><br><b>Qué elegir en el selector de modelo de turbulencia</b><br>• <b>STF2017</b>: buena opción general y la recomendación por defecto cuando necesitas un modelo de turbulencia añadida robusto.<br>• <b>STF2005</b>: alternativa clásica y sencilla si quieres comparar con configuraciones más antiguas o más conservadoras.<br>• <b>CrespoHernandez</b> y <b>GCLTurbulence</b>: útiles para comparativas o compatibilidad con ciertos modelos/estudios, pero el impacto final depende del wake model que elijas.<br><br><b>Regla práctica</b><br>Si tu objetivo es que la turbulencia influya físicamente en el AEP, no basta con seleccionar un modelo de turbulencia: también necesitas un <b>modelo de estela sensible a TI</b>.': "<b>What turbulence means in this plugin</b><br><br>• <b>TI raster / WRG</b>: describes the site's <b>ambient turbulence</b>. It is a resource input.<br>• <b>Turbulence model</b>: computes the <b>wake-added turbulence</b> behind the turbines.<br>• <b>Wake model</b>: decides whether that ambient/effective TI actually changes the deficit and therefore the AEP.<br><br><b>Physical interpretation</b><br>• If you provide only one TI raster, the plugin uses that horizontal TI for all turbines; if there are several hub heights, that is a <b>vertical approximation</b>.<br>• If you provide several TI raster(s) at different heights, the plugin tries to reconstruct <b>TI(x,y,h)</b> and interpolate by height.<br>• If you do not provide a TI raster in WRG, the plugin warns and uses the <b>user-defined ambient TI fallback</b> as a uniform field.<br><br><b>When it matters a lot for AEP</b><br>• <b>BastankhahGaussianDeficit (BG)</b> and <b>NOJDeficit</b>: TI does not change the base wake deficit much; the impact on AEP is usually limited.<br>• <b>NiayifarGaussianDeficit</b>, <b>ZongGaussianDeficit</b>, <b>TurboGaussianDeficit</b> and <b>TurboNOJDeficit</b>: ambient/effective TI can influence wake opening and recovery more.<br><br><b>What is advisable depending on the wind farm</b><br>• <b>Offshore with relatively homogeneous wind</b>: a single TI layer may be enough if hub heights are similar.<br>• <b>Onshore, rough terrain or different hub heights</b>: for more realism, use TI raster(s) and a TI-sensitive wake model (Niayifar, Zong, TurboGaussian or TurboNOJ).<br>• <b>Several turbine models</b>: if you mix hub heights, a single TI layer is an approximation; several TI heights better represent the vertical variation.<br><br><b>What to choose in the turbulence-model selector</b><br>• <b>STF2017</b>: good general option and the default recommendation when you need a robust added-turbulence model.<br>• <b>STF2005</b>: classic, simple alternative if you want to compare with older or more conservative configurations.<br>• <b>CrespoHernandez</b> and <b>GCLTurbulence</b>: useful for comparisons or compatibility with certain models/studies, but the final impact depends on the wake model you choose.<br><br><b>Rule of thumb</b><br>If your goal is for turbulence to physically influence AEP, selecting a turbulence model is not enough: you also need a <b>TI-sensitive wake model</b>.",
-    '<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por dirección del viento. La diferencia entre cada barra representa las pérdidas por estela en ese sector — útil para ver qué direcciones limitan más el rendimiento del parque.': '<b>Sector loss rose.</b> Distribution of free-flow and net AEP by wind direction. The difference between each pair of bars represents the wake losses in that sector — useful to see which directions limit the wind farm performance the most.',
+
     '<b>Sin bloqueo:</b> el cálculo no incluirá la reducción de velocidad upstream. En parques offshore grandes esto suele subestimar las pérdidas en ~1–3 % AEP.': '<b>No blockage:</b> the calculation will not include upstream wind-speed reduction. In large offshore wind farms this often underestimates losses by about ~1–3% AEP.',
     '<b>Sin turbulencia añadida:</b> el cálculo usa la TI ambiente del recurso (WRG/raster TI o valor manual), pero no suma la turbulencia creada por las estelas. Esto es válido para modelos poco sensibles a TI; si usas Niayifar, Zong, TurboGaussian o TurboNOJ, la turbulencia añadida puede afectar más al AEP.': '<b>No added turbulence:</b> the calculation uses ambient TI from the resource (WRG/TI raster or manual value), but it does not add turbulence created by wakes. This is valid for models with low TI sensitivity; if you use Niayifar, Zong, TurboGaussian or TurboNOJ, added turbulence can affect AEP more.',
     '<b>TurboGaussianDeficit</b><br><br>Versión TI-driven de la familia gaussiana. Tanto k como el ancho cerca del rotor se derivan de la TI efectiva.<br><br>Para mover el AEP, ajusta la <b>TI ambiente</b> o el <b>modelo de turbulencia añadida</b>. Los coeficientes A/cTI/cεps se exponen como ajuste avanzado para calibración controlada.': '<b>TurboGaussianDeficit</b><br><br>TI-driven version of the Gaussian family. Both k and the width near the rotor are derived from the effective TI.<br><br>To move AEP, adjust the <b>ambient TI</b> or the <b>added-turbulence model</b>. The A/cTI/cεps coefficients are exposed as an advanced adjustment for controlled calibration.',
@@ -3267,7 +3452,7 @@ _CANON_TO_EN = {
     '<br><small>Diagnóstico incremental: positivo = recupera AEP frente al wake-only; negativo = reduce AEP. No se debe interpretar siempre como pérdida contable.</small></li>\n          <li><b>Bloqueo:</b> ': '<br><small>Incremental diagnostics: positive = recovers AEP versus wake-only; negative = reduces AEP. It should not always be interpreted as an accountable loss.</small></li>\n          <li><b>Blockage:</b> ',
     "<br><span style='color:#a85a00;'>Aún no hay turbinas en esta capa: haz click izq en el mapa para añadirlas.</span>": "<br><span style='color:#a85a00;'>There are no turbines in this layer yet: left click on the map to add them.</span>",
     "<div class='card'>\n                    <h4>2.1 Espectro usado por el grupo fuente:": "<div class='card'>\n                    <h4>2.1 Spectrum used by the source group:",
-    '<h2>Resumen del cálculo de shadow flicker</h2>': '<h2>Shadow Flicker Calculation Summary</h2>',
+    '<h2>Resumen del cálculo de shadow flicker</h2>': "<h2>Shadow flicker calculation summary</h2>",
     '<h4>Notas físicas y de compatibilidad</h4><ul>': '<h4>Physical and compatibility notes</h4><ul>',
     '<i>(valor editado por usuario)</i>': '<i>(value edited by user)</i>',
     '<i>Este modelo no expone parámetros físicos manualmente. Pulsa el botón ℹ️ para ver por qué.</i>': '<i>This model does not expose physical parameters manually. Press the ℹ️ button to see why.</i>',
@@ -3277,8 +3462,8 @@ _CANON_TO_EN = {
     "<p style='background:#e6f4ea;border:1px solid #7fc89a;padding:8px;'><b>Sustitución de modelo de bloqueo:</b>": "<p style='background:#e6f4ea;border:1px solid #7fc89a;padding:8px;'><b>Blockage-model substitution:</b>",
     "<p style='background:#fff8e6;border:1px solid #e0c36d;border-radius:6px;padding:8px;'><b>Aviso de TI ambiente:</b> no se ha proporcionado un raster de TI. El cálculo ha usado <b>TI = ": "<p style='background:#fff8e6;border:1px solid #e0c36d;border-radius:6px;padding:8px;'><b>Ambient TI warning:</b> no TI raster has been provided. The calculation used <b>TI = ",
     "<p style='color:#888; font-style:italic;'><small>Métricas adicionales no disponibles: no se pudo determinar la potencia nominal de las turbinas. Vuelve a definir el modelo desde «Definir…» para que la curva de potencia se guarde con la metadata.</small></p>": "<p style='color:#888; font-style:italic;'><small>Additional metrics not available: the rated power of the turbines could not be determined. Define the model again from “Define…” so that the power curve is stored with the metadata.</small></p>",
-    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: Abar=0 en el receptor crítico no implica que el MDT esté desactivado; significa que ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DTM reading: Abar=0 at the critical receiver does not imply that the DTM is disabled; it means that ",
-    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: obstáculo dominante estimado ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DTM reading: estimated dominant obstacle ",
+    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: Abar=0 en el receptor crítico no implica que el MDT esté desactivado; significa que ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DEM reading: Abar=0 at the critical receiver does not imply that the DEM is disabled; it means that ",
+    "<p style='margin:8px 0 10px 0;color:#495057;'><i>Lectura MDT: obstáculo dominante estimado ": "<p style='margin:8px 0 10px 0;color:#495057;'><i>DEM reading: estimated dominant obstacle ",
     '<p><b>Interpretación:</b> el espectro final <code>Lw,b</code> es el que entra realmente en la ecuación por bandas. Si existe <code>S_b^ref</code>, corresponde a la plantilla de referencia antes del ajuste global <code>Δ</code>.</p>': '<p><b>Interpretation:</b> the final spectrum <code>Lw,b</code> is the one that actually enters the band-wise equation. If <code>S_b^ref</code> exists, it corresponds to the reference template before the global adjustment <code>Δ</code>.</p>',
     '<p><b>Interpretación:</b> en este grupo no se ha usado una plantilla interna visible; el espectro final <code>Lw,b</code> procede directamente del espectro cargado/importado o de una biblioteca externa.</p>': '<p><b>Interpretation:</b> in this group no visible internal template was used; the final spectrum <code>Lw,b</code> comes directly from the loaded/imported spectrum or from an external library.</p>',
     "<span style='color:#a85a00;'><b>Sin capa activa</b></span> de turbinas «<i>Modelo (CSV)</i>».<br>Selecciónala en el panel de capas, o usa «Generar capas de puntos» en el diálogo.": "<span style='color:#a85a00;'><b>No active layer</b></span> of turbines “<i>Model (CSV)</i>”.<br>Select it in the layers panel, or use “Generate point layers” in the dialog.",
@@ -3289,7 +3474,7 @@ _CANON_TO_EN = {
     'AEP bruto (free-stream):': 'Gross AEP (free-stream):',
     'AEP bruto [MWh]': 'Gross AEP [MWh]',
     'AEP con estelas:': 'AEP with wakes:',
-    'AEP libre': 'Free-flow AEP',
+    'AEP libre': "Free-stream AEP",
     'AEP neta': 'Net AEP',
     'AEP neto (operativo)': 'Net AEP (operational)',
     'AEP neto (operativo):': 'Net AEP (operational):',
@@ -3300,7 +3485,7 @@ _CANON_TO_EN = {
     'AVISO:': 'WARNING:',
     'Aatm (atmosférica)': 'Aatm (atmospheric)',
     'Abar (apantallamiento)': 'Abar (screening)',
-    'Abar máx. dB': 'max Abar dB',
+    'Abar máx. dB': "max. Abar dB",
     'Abre la documentación oficial de PyWake, base del cálculo AEP y de estelas del módulo de Energía.': 'Open the official PyWake documentation, the basis for AEP and wake calculations in the Energy module.',
     'Abril': 'April',
     'Abrir TXT/CSV': 'Open TXT/CSV',
@@ -3310,8 +3495,8 @@ _CANON_TO_EN = {
     'Acciones': 'Actions',
     'Accurate: CGIRotorAvg(9) aumenta algo la fidelidad y el coste computacional.': 'Accurate: CGIRotorAvg(9) slightly increases fidelity and computation time.',
     'Aceptar': 'OK',
-    'Acoustic curve vacía': 'Empty acoustic curve',
-    "Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.": "Enable 'Show resource boundary on the map' to draw it.",
+
+    "Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.": "Enable “Show resource boundary on the map” to draw it.",
     'Activa edición en el canvas: click izq añade turbina, click der borra. Las coordenadas editadas se usan directamente en el cálculo de AEP (la capa en memoria es la fuente de verdad). El CSV original NO se modifica.': 'Enables canvas editing: left click adds a turbine, right click deletes it. Edited coordinates are used directly in the AEP calculation (the memory layer is the source of truth). The original CSV is NOT modified.',
     'Activa primero una capa de turbinas': 'Activate a turbine layer first',
     'Activar cálculo paralelo': 'Enable parallel calculation',
@@ -3321,38 +3506,38 @@ _CANON_TO_EN = {
     'Además de patrocinar el proyecto, VelantisWind puede adaptarse a flujos de trabajo existentes: formatos internos de datos, plantillas de informe, procesos de validación, instalación en equipos, formación, automatización o funcionalidades específicas para proyectos eólicos.': 'Beyond sponsoring the project, VelantisWind can be adapted to existing workflows: internal data formats, reporting templates, validation processes, team deployment, training, automation or specific features for wind-energy projects.',
     'Adiv (divergencia)': 'Adiv (divergence)',
     'Adiv representa la divergencia geométrica, Aatm la atenuación atmosférica simplificada α·distancia y Aground una corrección simplificada del efecto suelo/terreno.': 'Adiv represents the geometrical divergence, Aatm the simplified atmospheric attenuation α·distance and Aground a simplified correction of the ground/terrain effect.',
-    'Adiv representa la divergencia geométrica. Aatm se calcula por banda y depende de T, HR y presión, con formulación simplificada. Agr se aplica como término de suelo/terreno y Abar como apantallamiento topográfico básico cuando hay MDT.': 'Adiv represents the geometrical divergence. Aatm is computed per band and depends on T, RH and pressure, with a simplified formulation. Agr is applied as a ground/terrain term and Abar as basic topographic screening when there is a DTM.',
+    'Adiv representa la divergencia geométrica. Aatm se calcula por banda y depende de T, HR y presión, con formulación simplificada. Agr se aplica como término de suelo/terreno y Abar como apantallamiento topográfico básico cuando hay MDT.': "Adiv represents the geometrical divergence. Aatm is computed per band and depends on T, RH and pressure, with a simplified formulation. Agr is applied as a ground/terrain term and Abar as basic topographic screening when there is a DEM.",
     'Aerogeneradores': 'Wind turbines',
     'Agosto': 'August',
     'Agr (suelo)': 'Agr (ground)',
     'Agradecimiento opcional en GitHub o en la página de supporters de GitHub.': 'Optional acknowledgement on GitHub or the GitHub supporters page.',
-    'Ahora mismo has dejado el modelo de turbulencia en Ninguno': 'You currently left the turbulence model as None',
+    'Ahora mismo has dejado el modelo de turbulencia en Ninguno': "You have currently left the turbulence model set to None",
     'Ahora puedes regenerar TIF filtrados por mes/hora': 'You can now regenerate TIFs filtered by month/hour',
     'Altura [m]': 'Height [m]',
     'Altura buje:': 'Hub height:',
-    'Altura de buje [m]': 'Hub Height [m]',
+    'Altura de buje [m]': "Hub height [m]",
     'Altura de receptor': 'Receiver height',
     'Altura de receptor [m]:': 'Receiver height [m]:',
     'Altura del observador [m]:': 'Observer height [m]:',
-    'Altura del punto de observación (ventana típica: 2 m)': 'Observation point height (typical window: 2 m)',
-    'Altura manual de cada raster TI, en el mismo orden que los archivos. Útil si el nombre del archivo no indica claramente 90 m, 120 m, etc.': 'Manual height for each TI raster, in the same order as the files. Useful when the file name does not clearly indicate 90 m, 120 m, etc.',
+    'Altura del punto de observación (ventana típica: 2 m)': "Observation-point height (typical window: 2 m)",
+
     'Alturas TI override [m]:': 'TI height override [m]:',
     'Alturas de TI por archivo [m]:': 'TI heights per file [m]:',
     'Apoya el mantenimiento, la documentación y el desarrollo open source futuro.': 'Support maintenance, documentation and future open-source development.',
-    'Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.': 'Support maintenance, documentation, testing and future open-source development.',
+
     'Apoyar VelantisWind': 'Support VelantisWind',
     'Archivo WRG/ZIP': 'WRG/ZIP file',
     'Archivo:': 'File:',
     'Atenuaciones': 'Attenuations',
     'Atenuación adicional por difracción topográfica': 'Additional topographic diffraction attenuation',
     'Atenuación lineal α [dB/m]:': 'Linear attenuation α [dB/m]:',
-    'Atenuación por MDT en la trayectoria dominante': 'DTM attenuation on the dominant path',
+    'Atenuación por MDT en la trayectoria dominante': "DEM attenuation on the dominant path",
     'Atenuación por efecto del terreno': 'Ground-effect attenuation',
-    'Auto recomendado': 'Recommended auto',
-    'Auto recomendado elige una opción segura según wake/rotor-average. LinearSum es conservador; SquaredSum es habitual en arrays densos; WeightedSum se reserva para modelos gaussianos compatibles.': 'Recommended auto chooses a safe option based on wake/rotor-average. LinearSum is conservative; SquaredSum is common for dense arrays; WeightedSum is reserved for compatible Gaussian models.',
-    'Auto recomendado: el plugin elige una superposición segura según el wake deficit y el rotor-average activo.': 'Recommended auto: the plugin chooses a safe superposition according to the active wake deficit and rotor-average model.',
+    'Auto recomendado': "Auto (recommended)",
+    'Auto recomendado elige una opción segura según wake/rotor-average. LinearSum es conservador; SquaredSum es habitual en arrays densos; WeightedSum se reserva para modelos gaussianos compatibles.': "Auto (recommended) chooses a safe option based on wake/rotor-average. LinearSum is conservative; SquaredSum is common for dense arrays; WeightedSum is reserved for compatible Gaussian models.",
+    'Auto recomendado: el plugin elige una superposición segura según el wake deficit y el rotor-average activo.': "Auto (recommended): the plugin chooses a safe superposition according to the active wake deficit and rotor-average model.",
     'Autodetección aproximada sin polígonos mundiales; verifica la zona horaria en el desplegable IANA.': 'Approximate auto-detection without world polygons; check the time zone in the IANA dropdown.',
-    'Automático': 'Auto recommended',
+    'Automático': "Automatic",
     'Automático: el plugin escoge una opción segura según la combinación de modelos disponible.': 'Automatic: the plugin chooses a safe option based on the available model combination.',
     'Aviso de TI ambiente:': 'Ambient TI warning:',
     'Aviso: el modelo es sensible a TI, pero has dejado la turbulencia añadida en Ninguno; se usará la TI ambiente, pero no se sumará TI generada por estelas.': 'Warning: the model is TI-sensitive, but added turbulence is set to None; ambient TI will be used, but wake-generated TI will not be added.',
@@ -3365,8 +3550,8 @@ _CANON_TO_EN = {
     'Ayuda · Bloqueo': 'Help · Blockage',
     'Ayuda · Modelo de estela': 'Help · Wake model',
     'Ayuda · Parámetros del modelo (': 'Help · Model parameters (',
-    'Ayuda · Promedio sobre el rotor': 'Help · Rotor-disk averaging',
-    'Ayuda · Rotor-average': 'Help · Rotor-average',
+    'Ayuda · Promedio sobre el rotor': "Help · Rotor averaging",
+    'Ayuda · Rotor-average': "Help · Rotor averaging",
     'Ayuda · Superposición de estelas': 'Help · Wake superposition',
     'Ayuda · Turbulencia': 'Help · Turbulence',
     'Ayuda · Turbulencia TI': 'Help · TI turbulence',
@@ -3384,7 +3569,7 @@ _CANON_TO_EN = {
     'Base temporal:': 'Time basis:',
     'Bastankhah: opción robusta para comparar layouts. Usa una formulación gaussiana con parámetros fijos; la TI ambiente no cambia mucho el déficit base.': 'Bastankhah: robust option for comparing layouts. It uses a Gaussian formulation with fixed parameters; ambient TI does not change the base deficit much.',
     'BastankhahGaussianDeficit usa una k fija: la TI ambiente y el modelo de turbulencia apenas cambian el déficit base del wake.': 'BastankhahGaussianDeficit uses a fixed k: ambient TI and the turbulence model barely change the base wake deficit.',
-    'Experimental - Adiv ✓, Aatm ✓ (simplificado), Agr ✓ (simplificado), Abar ✓ (MDT/DSM básico)': 'Experimental - Adiv ✓, Aatm ✓ (simplified), Agr ✓ (simplified), Abar ✓ (basic DTM/DSM)',
+    'Experimental - Adiv ✓, Aatm ✓ (simplificado), Agr ✓ (simplificado), Abar ✓ (MDT/DSM básico)': "Experimental - Adiv ✓, Aatm ✓ (simplified), Agr ✓ (simplified), Abar ✓ (basic DEM/DSM)",
     'Bloqueo desactivado': 'Blockage disabled',
     'BuildVRT devolvió None; revisa los paths': 'BuildVRT returned None; check the paths',
     'CGIRotorAvg(21): usa muchos puntos del rotor. Es más pesado y solo compensa si buscas una sensibilidad de mayor fidelidad.': 'CGIRotorAvg(21): uses many rotor points. It is heavier and mainly useful for higher-fidelity sensitivity checks.',
@@ -3402,22 +3587,22 @@ _CANON_TO_EN = {
     'CUMPLE': 'PASS',
     'Cabecera WRG inválida:': 'Invalid WRG header:',
     'Cada fila representa un grupo fuente acústico. Puedes renombrar grupo y parque para que el resumen y las exportaciones sean más legibles.': 'Each row represents an acoustic source group. You can rename the group and wind farm to make summaries and exports easier to read.',
-    'Calcula AEP con la capa de turbinas activa y los modelos seleccionados.': 'Calculate AEP with the active turbine layer and the selected models.',
+    'Calcula AEP con la capa de turbinas activa y los modelos seleccionados.': "Calculate AEP with the active turbine layer and selected models.",
     'Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona horaria IANA': 'Computes latitude/longitude from the layout centroid and tries to detect the IANA time zone',
     'Calculando AEP': 'Calculating AEP',
     'Calculando desglose por modelo / cluster…': 'Calculating per-model / cluster breakdown…',
     'Calculando receptores y resumen…': 'Calculating receivers and summary…',
     'Calculando ruido en segundo plano…': 'Calculating noise in the background…',
     'Calculando ruido en segundo plano… 0%': 'Calculating noise in the background… 0%',
-    'Calculando ruido y raster…': 'Calculating noise and raster…',
+
     'Calculando shadow flicker...': 'Calculating shadow flicker...',
     'Calcular AEP': 'Calculate AEP',
     'Calcular AEP · Modelos, coordenadas y recurso eólico': 'Calculate AEP · Models, coordinates and wind resource',
     'Calcular con capas seleccionadas': 'Calculate with selected layers',
     'Calcular ruido': 'Calculate noise',
-    'Calcular shadow flicker': 'Calculate Shadow Flicker',
+    'Calcular shadow flicker': "Calculate shadow flicker",
     'Calibrado contra LES': 'Calibrated against LES',
-    'Cambiarlos rompe la citabilidad del modelo': 'Changing them breaks the model traceability/citability',
+    'Cambiarlos rompe la citabilidad del modelo': "Changing them breaks the citability of the model",
     'Canadá tiene varias zonas; verifica manualmente.': 'Canada has several zones; check manually.',
     'Cancelado': 'Cancelled',
     'Cancelar': 'Cancel',
@@ -3439,20 +3624,20 @@ _CANON_TO_EN = {
     'Cerrar': 'Close',
     'Cerrar esta ventana y volver al diálogo principal sin crear la capa.': 'Close this window and return to the main dialog without creating the layer.',
     'China usa una zona oficial; verifica si el proyecto usa otra referencia.': 'China uses one official zone; check whether the project uses another reference.',
-    'Cierra el módulo de energía y vuelve al hub principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.': 'Close the energy module and return to the Velantis Wind main hub without deleting project layers or loaded results.',
+
     'Clave de superposición no reconocida:': 'Unrecognized superposition key:',
-    'Click izq: añadir turbina · Click der: borrar · ESC: salir': 'Left click: add turbine · Right click: delete · ESC: exit',
-    'Click izq: añadir · Click der: borrar · ESC: salir': 'Left click: add · Right click: delete · ESC: exit',
+
+
     'Cobertura de Análisis': 'Analysis coverage',
     'Coeficiente activo:': 'Active coefficient:',
-    'Coeficiente de expansión dependiente de TI en la formulación Zong.': 'TI-dependent expansion coefficient in the Zong formulation.',
-    'Coeficiente que convierte la TI local/efectiva en expansión de estela.': 'Coefficient that converts local/effective TI into wake expansion.',
+    'Coeficiente de expansión dependiente de TI en la formulación Zong. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.001.': 'TI-dependent expansion coefficient in the Zong formulation. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.001.',
+    'Coeficiente que convierte la TI local/efectiva en expansión de estela. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.001.': 'Coefficient that converts local/effective TI into wake expansion. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.001.',
     'Coeficientes empíricos fijos del paper.': 'Fixed empirical coefficients from the paper.',
     'Coeficientes empíricos fijos.': 'Fixed empirical coefficients.',
-    'Columna potencia kW (0-based):': 'power kW column (0-based):',
-    'Columna ws (0-based):': 'ws column (0-based):',
+
+
     'Coma': 'Comma',
-    'Combinación de varias estelas (superposición)': 'Wake superposition model (PyWake)',
+    'Combinación de varias estelas (superposición)': "Wake superposition (combination of several wakes)",
     'Compara los dos escenarios guardados y muestra delta global y por modelo.': 'Compare the two saved scenarios and show global and per-model deltas.',
     'Comparación con resumen:': 'Comparison with summary:',
     'Comparación global': 'Global comparison',
@@ -3475,12 +3660,12 @@ _CANON_TO_EN = {
     'Configuración de modelos de turbina': 'Turbine model configuration',
     'Configuración de sombras no válida': 'Invalid shadow configuration',
     'Configuración del emplazamiento': 'Site configuration',
-    'Configuración del emplazamiento:': 'Site Configuration:',
-    'Configuración finalmente ejecutada': 'Configuration finally executed',
-    'Configuración incompleta': 'Missing configuration',
+    'Configuración del emplazamiento:': "Site configuration:",
+    'Configuración finalmente ejecutada': "Executed configuration",
+    'Configuración incompleta': "Incomplete configuration",
     'Configuración incompleta. Revisa los elementos marcados.': 'Incomplete configuration. Check the flagged items.',
     'Configuración no válida': 'Invalid configuration',
-    'Configuración solicitada al solver': 'Configuration requested from solver',
+    'Configuración solicitada al solver': "Configuration requested from the solver",
     'Configuración válida. Puedes continuar con el cálculo.': 'Valid configuration. You can proceed with the calculation.',
     'Consejo': 'Tip',
     'Constante principal de expansión de TurboGaussian/TurbOPark.': 'Main expansion constant for TurboGaussian/TurbOPark.',
@@ -3517,14 +3702,14 @@ _CANON_TO_EN = {
     'Cuándo merece la pena aportar TI': 'When it is worth providing TI',
     'Cálculo AEP': 'AEP calculation',
     'Cálculo acústico completado.': 'Acoustic calculation completed.',
-    'Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el raster, si estaba activado, ya se han añadido al proyecto.': 'Acoustic calculation completed in the background.\n\nThe receiver/source layers, and the raster if it was enabled, have already been added to the project.',
-    'Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el raster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.': 'Acoustic calculation completed.\n\nThe receiver/source layers have already been added to the project. If the raster was enabled and does not use land use, it is being generated in the background when it is safe to do so.',
+
+
     'Cálculo acústico simplificado para screening': 'Simplified acoustic calculation for screening',
     'Cálculo cancelado por el usuario': 'Calculation cancelled by the user',
-    'Cálculo completado': 'Calculation Complete',
+    'Cálculo completado': "Calculation completed",
     'Cálculo completado.': 'Calculation completed.',
     'Cálculo con': 'Calculation with',
-    'Cálculo de AEP con PyWake: define los modelos de aerogenerador, selecciona el recurso eólico (WAsP/Surfer grids o WRG), elige los modelos físicos (estela, turbulencia, bloqueo, rotor-average) y lanza el cálculo. Los resultados se vuelcan automáticamente sobre las capas de coordenadas del proyecto.': 'AEP calculation with PyWake: define turbine models, select the wind resource (WAsP/Surfer grids or WRG), choose the physical models (wake, turbulence, blockage, rotor-average) and run the calculation. Results are automatically written to the project coordinate layers.',
+
     'Cálculo de ruido cancelado o fallido.': 'Noise calculation cancelled or failed.',
     'Cálculo de ruido completado en segundo plano.': 'Noise calculation completed in the background.',
     'Cálculo de ruido completado.': 'Noise calculation completed.',
@@ -3538,18 +3723,18 @@ _CANON_TO_EN = {
     'Define todos los modelos antes de continuar.': 'Define all models before continuing.',
     'Definir turbina': 'Define turbine',
     'Definir…': 'Define…',
-    'Deja la lista de raster(s) TI vacía.': 'Leaves the TI raster(s) list empty.',
+
     'Delimitador:': 'Delimiter:',
     'Descripción': 'Description',
     'Desde capa de uso del suelo': 'From land-use layer',
     'Desglose de Atenuaciones': 'Attenuation breakdown',
     'Desglose de pérdidas': 'Loss breakdown',
-    'Desglose mensual (media de todos los receptores)': 'Monthly Breakdown (Average across all receptors)',
+    'Desglose mensual (media de todos los receptores)': "Monthly breakdown (average across all receivers)",
     'Desmarcar todas': 'Clear all',
     'Detectar coordenadas y zona horaria automáticamente': 'Auto-detect coordinates and time zone',
     'Dibuja 4 mapas de estelas (N/E/S/O) usando los modelos y el recurso seleccionado (carpeta WAsP o WRG/ZIP).': 'Draws 4 wake maps (N/E/S/W) using the selected models and resource (WAsP folder or WRG/ZIP).',
     'Dibuja mapas de estelas (N/E/S/O) con los modelos seleccionados.': 'Draws wake maps (N/E/S/W) with the selected models.',
-    'Dibuja una capa temporal con los límites del WRG o de los grids WAsP/Surfer. Sirve para comprobar si el layout queda dentro del dominio del recurso.': 'Draws a temporary layer with the boundaries of the WRG or the WAsP/Surfer grids. It is used to check whether the layout lies inside the resource domain.',
+
     'Diciembre': 'December',
     'Difracción topográfica': 'Topographic diffraction',
     'Dirección': 'Direction',
@@ -3558,12 +3743,12 @@ _CANON_TO_EN = {
     'Dispersión geométrica': 'Geometrical spreading',
     'Disponibilidad de turbina:': 'Turbine availability:',
     'Distancia': 'Distance',
-    'Distancia máxima de sombra [m]:': 'Max shadow distance [m]:',
+    'Distancia máxima de sombra [m]:': "Maximum shadow distance [m]:",
     'Distancia máxima de sombra:': 'Max shadow distance:',
-    'Distancia máxima desde una turbina para considerar shadow flicker.\nPor defecto: 2000 m, coincidiendo con la distancia de screening conservadora tipo Continuum.\nEste valor se usa para filtrar receptores y para el extent/máscara del raster.': 'Maximum distance from a turbine to consider shadow flicker.\nDefault: 2000 m, matching the conservative Continuum-style screening distance.\nThis value is used for receiver filtering and for the raster extent/mask.',
-    'Distribución del AEP libre y neto por dirección del viento.': 'Distribution of free-flow and net AEP by wind direction.',
+
+    'Distribución del AEP libre y neto por dirección del viento.': "Distribution of free-stream and net AEP by wind direction.",
     'Diurno': 'Daytime',
-    'Diámetro de rotor [m]': 'Rotor Diameter [m]',
+    'Diámetro de rotor [m]': "Rotor diameter [m]",
     'Diámetro rotor:': 'Rotor diameter:',
     'Documentación PyWake': 'PyWake documentation',
     'Documentación, tutoriales, ejemplos y datasets de prueba.': 'Documentation, tutorials, examples and test datasets.',
@@ -3572,9 +3757,9 @@ _CANON_TO_EN = {
     'Ecuación utilizada': 'Equation used',
     'Efecto del terreno': 'Terrain effect',
     "El CSV debe tener cabeceras 'X' y 'Y' (o easting/northing).": "The CSV must have 'X' and 'Y' headers (or easting/northing).",
-    'El MDT/DSM no está en el mismo CRS que el proyecto.': 'The DTM/DSM is not in the same CRS as the project.',
+    'El MDT/DSM no está en el mismo CRS que el proyecto.': "The DEM/DSM is not in the same CRS as the project.",
     'El MDT/DSM no está en el mismo CRS que el proyecto. Reproyéctalo antes de calcular.': 'The DTM/DSM is not in the same CRS as the project. Reproject it before calculating.',
-    'El MDT/DSM seleccionado no es raster válido y se ignorará.': 'The selected DTM/DSM is not a valid raster and will be ignored.',
+
     'El ZIP no contiene ningún .wrg:': 'The ZIP does not contain any .wrg:',
     'El archivo WRG/ZIP no existe:': 'The WRG/ZIP file does not exist:',
     'El archivo no existe:': 'The file does not exist:',
@@ -3585,7 +3770,7 @@ _CANON_TO_EN = {
     'El dataset WRG no contiene coordenadas x/y válidas': 'The WRG dataset does not contain valid x/y coordinates',
     'El delta se calcula como B − A.': 'The delta is calculated as B − A.',
     'El factor de suelo G debe estar entre 0 y 1.': 'The ground factor G must be between 0 and 1.',
-    'El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.': 'The selected language will be applied to the hub, modules, warnings and generated summaries.',
+
     'El límite acústico no es válido.': 'The acoustic limit is not valid.',
     'El mapa raster se está generando en segundo plano.\n\nResolución:': 'The raster map is being generated in the background.\n\nResolution:',
     'El paso temporal de receptores debe ser mayor que 0 minutos.': 'The receiver time step must be greater than 0 minutes.',
@@ -3595,7 +3780,7 @@ _CANON_TO_EN = {
     'El radio máximo debe ser mayor que 0.': 'The maximum radius must be greater than 0.',
     'El raster DEM/DSM seleccionado no es válido.': 'The selected DEM/DSM raster is not valid.',
     'El raster se creó pero no se pudo cargar en QGIS.': 'The raster was created but could not be loaded in QGIS.',
-    'El recurso eólico describe el viento que llega al parque antes de aplicar estelas: frecuencia por dirección, velocidades y, según el formato, parámetros Weibull. Puedes usar WAsP/Surfer grids o WRG/ZIP. Si aportas varios WRG a distintas alturas, PyWake podrá interpolar por altura cuando sea necesario.': 'The wind resource describes the wind arriving at the wind farm before wake effects: directional frequency, wind speeds and, depending on the format, Weibull parameters. You can use WAsP/Surfer grids or WRG/ZIP. If you provide WRG files at several heights, PyWake can interpolate by height when needed.',
+
     'El rotor-average calcula el viento en varios puntos del disco del rotor, no solo en el centro. Más puntos dan más realismo cuando una estela corta parte del rotor, pero aumentan el tiempo de cálculo.': 'Rotor averaging calculates wind speed at several points of the rotor disk, not only at the centre. More points add realism when a wake cuts part of the rotor, but increase computation time.',
     'El rotor-average incrementa la fidelidad al muestrear el disco del rotor, a costa de más tiempo de cálculo.': 'Rotor averaging increases fidelity by sampling the rotor disk, at the cost of more computation time.',
     'El wake effect reduce el viento disponible detrás de cada turbina. Cada modelo aproxima esa pérdida de forma distinta.': 'The wake effect reduces the wind available behind each turbine. Each model approximates that loss differently.',
@@ -3604,17 +3789,17 @@ _CANON_TO_EN = {
     'Elegir WRG/ZIP…': 'Choose WRG/ZIP…',
     'Elegir carpeta...': 'Choose folder...',
     'Elegir raster(s) TI...': 'Choose TI raster(s)...',
-    'Elegir raster(s) TI…': 'Choose TI raster(s)…',
+
     'Elevación solar máxima [°]:': 'Max solar elevation [°]:',
     'Elevación solar máxima a incluir (90° = sin recorte de sol alto; valores menores son una hipótesis opcional de screening)': 'Maximum solar elevation to include (90° = no high-sun cut; lower values are an optional screening assumption)',
     'Elevación solar mínima [°]:': 'Min solar elevation [°]:',
     'Elevación solar:': 'Solar elevation:',
-    'Elige qué capa/modelo editas con el click izquierdo/derecho del mapa. Esto permite modificar cualquiera de las capas cargadas, no solo la última creada.': 'Choose which layer/model you edit with the left/right click on the map. This lets you modify any of the loaded layers, not only the last one created.',
+
     'Elimina del proyecto la capa temporal del perímetro del recurso.': 'Removes the temporary resource-boundary layer from the project.',
     'En modo curva, cada grupo fuente puede usar un CSV ws/LwA distinto.': 'In curve mode, each source group can use a different ws/LwA CSV.',
     'En parques offshore grandes esto suele subestimar las pérdidas': 'In large offshore wind farms this usually underestimates losses',
     'Energía': 'Energy',
-    'Energía\nAEP y wakes': 'Energy\nAEP and wakes',
+
     'Energía específica neta': 'Net specific yield',
     'Energía específica neta:': 'Net specific yield:',
     'Energía · AEP del parque': 'Energy · Wind farm AEP',
@@ -3641,8 +3826,8 @@ _CANON_TO_EN = {
     'Estado': 'Status',
     'Estado de capas/modelos refrescado.': 'Layers/models state refreshed.',
     'Estado módulos:': 'Module status:',
-    'Estadísticas de Shadow Flicker': 'Shadow Flicker Statistics',
-    'Estadísticas de sombra:': 'Shadow Statistics:',
+    'Estadísticas de Shadow Flicker': "Shadow flicker statistics",
+    'Estadísticas de sombra:': "Shadow statistics:",
     'Estadísticos de Atenuaciones': 'Attenuation statistics',
     'Estadísticos de Atenuaciones (receptores cubiertos)': 'Attenuation statistics (covered receivers)',
     'Este campo solo se usa con': 'This field is only used with',
@@ -3658,11 +3843,11 @@ _CANON_TO_EN = {
     'Explica por qué el rotor no debe tratarse siempre como un solo punto': 'Explains why the rotor should not always be treated as a single point',
     'Explica qué cambia cada parámetro sin asumir conocimiento previo': 'Explains what each parameter changes, without assuming prior knowledge',
     'Explica qué es el wake effect, cómo entra la TI y por qué algunos modelos son más sensibles a turbulencia': 'Explains what the wake effect is, how TI enters the calculation and why some models are more sensitive to turbulence',
-    'Explica qué es la TI, cuándo usar raster de turbulencia y cómo afecta al AEP': 'Explains what TI is, when to use a turbulence raster and how it affects AEP',
+
     'Explica qué es una estela y qué cambia entre modelos': 'Explains what a wake is and what changes between models',
     'Explica qué pasa cuando varias estelas llegan a la misma turbina': 'Explains what happens when several wakes reach the same turbine',
-    'Exporta los puntos editados de la capa activa a CSV. No sobrescribe el CSV original sin confirmar.': 'Exports the edited points of the active layer to CSV. It does not overwrite the original CSV without confirmation.',
-    'Exportación correcta': 'Export Successful',
+    'Exporta los puntos editados de la capa activa a CSV. No sobrescribe el CSV original sin confirmar.': "Export edited points from the active layer to CSV. The original CSV is not overwritten without confirmation.",
+    'Exportación correcta': "Export successful",
     'Exportación fallida': 'Export failed',
     'Exportados': 'Exported',
     'Exportar': 'Export',
@@ -3670,7 +3855,7 @@ _CANON_TO_EN = {
     'Exportar CSV por turbina…': 'Export per-turbine CSV…',
     'Exportar Shadow Flicker 12×24': 'Export Shadow Flicker 12×24',
     'Exportar Top receivers CSV…': 'Export Top receivers CSV…',
-    'Exportar diagnóstico MDT': 'Export DTM diagnostics',
+    'Exportar diagnóstico MDT': "Export DEM diagnostics",
     'Exportar excedencias': 'Export exceedances',
     'Exportar excedencias CSV…': 'Export exceedances CSV…',
     'Exportar grupos fuente': 'Export source groups',
@@ -3717,8 +3902,8 @@ _CANON_TO_EN = {
     'G=0 suelo duro · G=1 suelo poroso': 'G=0 hard ground · G=1 porous ground',
     'GCLTurbulence — derivado Frandsen, formulación clásica. Constantes fijas.': 'GCLTurbulence — Frandsen-derived classic formulation. Fixed constants.',
     'GDAL no pudo crear el GeoTIFF del raster de ruido.': 'GDAL could not create the GeoTIFF of the noise raster.',
-    'GDAL.Warp devolvió None al alinear el raster TI al grid WRG': 'GDAL.Warp returned None while aligning the TI raster to the WRG grid',
-    'GDAL/OSR no disponible para leer el raster de turbulencia': 'GDAL/OSR not available to read the turbulence raster',
+
+
     'G_eff critical receiver usado': 'Critical-receiver G_eff used',
     'G_eff medio': 'Mean G_eff',
     'G_eff medio usado': 'Mean G_eff used',
@@ -3735,7 +3920,7 @@ _CANON_TO_EN = {
     'Generar mapa GIS de ruido (malla de cálculo)': 'Generate GIS noise map (calculation grid)',
     'Graficar con capas seleccionadas': 'Plot with selected layers',
     'Graficar estelas': 'Plot wakes',
-    'Grids WAsP/Surfer:': 'WAsP/Surfer grids:',
+
     'Grupo': 'Group',
     'Grupo fuente': 'Source group',
     'Grupos fuente acústicos:': 'Acoustic source groups:',
@@ -3744,13 +3929,13 @@ _CANON_TO_EN = {
     'Guarda el resumen técnico en HTML o TXT.': 'Save the technical summary as HTML or TXT.',
     'Guarda el último cálculo AEP como escenario A para compararlo después.': 'Save the latest AEP calculation as scenario A for later comparison.',
     'Guarda el último cálculo AEP como escenario B para compararlo después.': 'Save the latest AEP calculation as scenario B for later comparison.',
-    'Guarda el último cálculo como escenario A.': 'Saves the latest calculation as scenario A.',
-    'Guarda el último cálculo como escenario B.': 'Saves the latest calculation as scenario B.',
+    'Guarda el último cálculo como escenario A.': "Save the latest calculation as scenario A.",
+    'Guarda el último cálculo como escenario B.': "Save the latest calculation as scenario B.",
     'Guarda primero un escenario A y un escenario B.': 'Save scenario A and scenario B first.',
     'Guarda primero un escenario A y un escenario B.\n\nFlujo recomendado: calcula el caso base → Guardar escenario A → cambia layout/modelo/física → calcula otra vez → Guardar escenario B → Comparar A/B.': 'Save scenario A and scenario B first.\n\nRecommended workflow: calculate the base case → Save scenario A → change layout/model/physics → calculate again → Save scenario B → Compare A/B.',
     'Guarda resumen, modelos, receptores y excedencias en un único libro Excel.': 'Save summary, models, receivers and exceedances in a single Excel workbook.',
     'Guarda solo los receptores que superan su límite acústico.': 'Save only the receivers exceeding their acoustic limit.',
-    'Guarda una tabla limpia con una fila por aerogenerador: coordenadas, modelo, AEP neto/bruto y pérdidas principales.': 'Save a clean table with one row per turbine: coordinates, model, net/free-flow AEP and main losses.',
+    'Guarda una tabla limpia con una fila por aerogenerador: coordenadas, modelo, AEP neto/bruto y pérdidas principales.': "Save a clean table with one row per turbine: coordinates, model, net/gross AEP and main losses.",
     'Guarda una tabla limpia con una fila por receptor y las columnas necesarias para consultoría.': 'Save a clean table with one row per receiver and the columns needed for consultancy.',
     'Guardar a CSV los puntos editados en el mapa interactivo.\nDefault: <original>_edited.csv (no sobrescribe el CSV original).': 'Save the points edited in the interactive map to CSV.\nDefault: <original>_edited.csv (does not overwrite the original CSV).',
     'Guardar escenario A': 'Save scenario A',
@@ -3762,7 +3947,7 @@ _CANON_TO_EN = {
     'Has seleccionado PropagateDownwind: PyWake no calcula bloqueo con este engine y el plugin lo ha desactivado automáticamente.': 'You selected PropagateDownwind: PyWake does not calculate blockage with this engine and the plugin has disabled it automatically.',
     'Hay WRG duplicados para la altura': 'There are duplicated WRG files for height',
     'Hay varias capas/modelos seleccionados, pero PyWake no ha podido activar type_i. Las estelas se dibujarán con el primer modelo como fallback.': 'Several layers/models are selected, but PyWake could not enable type_i. Wakes will be drawn with the first model as fallback.',
-    'Hay varios hub heights pero solo una TI ambiente verticalmente uniforme; el cálculo sigue siendo válido, aunque es una aproximación en altura.': 'There are several hub heights but only a vertically uniform ambient TI; the calculation is still valid, although it is an approximation in height.',
+
     'Header WRG inválido (nx,ny,dx): nx=': 'Invalid WRG header (nx,ny,dx): nx=',
     "Header WRG inválido: '": "Invalid WRG header: '",
     'Hoja': 'Sheet',
@@ -3770,7 +3955,7 @@ _CANON_TO_EN = {
     'Hora × Mes': 'Hour × Month',
     'Hora:': 'Hour:',
     'Horas de shadow flicker por hora del día': 'Hours of shadow flicker by hour of day',
-    'Horas de shadow flicker por mes y hora del día': 'Shadow Flicker Hours by Month and Hour of Day',
+    'Horas de shadow flicker por mes y hora del día': "Shadow flicker hours by month and hour of day",
     'Hub Height y Rotor Diameter deben ser números válidos.': 'Hub Height and Rotor Diameter must be valid numbers.',
     'Hub Height: altura de buje sobre el terreno [m]': 'Hub Height: hub height above ground level [m]',
     'Humedad relativa': 'Relative humidity',
@@ -3781,7 +3966,7 @@ _CANON_TO_EN = {
     'INFORME TÉCNICO DE IMPACTO ACÚSTICO': 'TECHNICAL NOISE IMPACT REPORT',
     'ISO-aligned por bandas': 'ISO-aligned by bands',
     'Idioma': 'Language',
-    'Idioma del plugin:': 'Plugin language:',
+
     'Impacto TI [MWh]': 'TI impact [MWh]',
     'Impacto TI/turbulencia': 'TI/turbulence impact',
     'Impacto TI/turbulencia:': 'TI/turbulence impact:',
@@ -3797,7 +3982,7 @@ _CANON_TO_EN = {
     "Limpiar espectro del grupo seleccionado": "Clear spectrum of the selected source group",
     "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Normalize the spectrum to the group LwA (use shape only)",
     "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV with columns freq_hz and Lw_dB (absolute) or Lw_dB_rel (relative shape). Comma, semicolon or tab separators are accepted.",
-    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Disabled: the absolute OEM spectrum is used as-is and the group operational LwA becomes the A-weighted sum of the spectrum (recommended to compare against other software). Enabled: the spectrum is used as a shape only and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+
     "Ruido · Espectro OEM por bandas de octava": "Noise · OEM octave-band spectrum",
     "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Enter the sound power level Lw per octave band (absolute manufacturer values in dB). If you enter a relative shape (all values below 20 dB), it will be treated as a shape and normalized to the group LwA.",
     "Banda [Hz]": "Band [Hz]",
@@ -3859,14 +4044,14 @@ _CANON_TO_EN = {
     'La disponibilidad de turbina debe estar entre 0 y 1.': 'Turbine availability must be between 0 and 1.',
     'La distancia máxima de sombra debe ser mayor que 0 m.': 'The maximum shadow distance must be greater than 0 m.',
     'La distancia mínima debe ser mayor que 0.': 'The minimum distance must be greater than 0.',
-    'La elevación solar mínima debe ser menor que la máxima.': 'Minimum sun elevation must be lower than maximum sun elevation.',
+    'La elevación solar mínima debe ser menor que la máxima.': "Minimum solar elevation must be lower than maximum solar elevation.",
     'La entrada DEM/DSM seleccionada no es una capa raster.': 'The selected DEM/DSM input is not a raster layer.',
     'La explicación detallada': 'The detailed explanation',
     'La generación del raster fue cancelada.': 'Raster generation was cancelled.',
     'La latitud debe estar entre -90° y 90°.': 'Latitude must be between -90° and 90°.',
     'La longitud debe estar entre -180° y 180°.': 'Longitude must be between -180° and 180°.',
     'La resolución del raster debe ser mayor que 0 m.': 'The raster resolution must be greater than 0 m.',
-    'La resolución del raster debe ser mayor que 0.': 'The raster resolution must be greater than 0.',
+
     'La simulación no pudo ejecutarse exactamente con la combinación pedida y PyWake requirió una degradación automática.': 'The simulation could not run exactly with the requested combination and PyWake required automatic degradation.',
     'La simulación principal no pudo ejecutarse con la combinación pedida y PyWake requirió la degradación automática:': 'The main simulation could not run with the requested combination and PyWake required automatic degradation:',
     'La simulación requirió degradación automática:': 'The simulation required automatic degradation:',
@@ -3878,9 +4063,9 @@ _CANON_TO_EN = {
     'Las extensiones de los grids no tienen intersección válida.': 'The grid extents have no valid intersection.',
     'Las plantillas son genéricas para pre-screening. Para entrega final usa la curva oficial del fabricante/cliente.': 'Templates are generic for pre-screening. For final delivery, use the official manufacturer/client curve.',
     'Latitud [°]:': 'Latitude [°]:',
-    'Latitud del emplazamiento (ej. 42.465 para Logroño)': 'Site latitude (e.g. 42.465 for Logroño)',
+
     'Latitud:': 'Latitude:',
-    'Layout activo:': 'Active layout:',
+
     'Lector WRG no disponible en esta instalación': 'WRG reader not available in this installation',
     'Lector WRG no disponible; no se puede dibujar el perímetro WRG.': 'WRG reader not available; the WRG boundary cannot be drawn.',
     'Lectura del receptor crítico': 'Critical-receiver reading',
@@ -3890,17 +4075,17 @@ _CANON_TO_EN = {
     'LinearSum suma los déficits linealmente; suele ser conservador en parques densos.': 'LinearSum adds deficits linearly; it is usually conservative in dense wind farms.',
     'LinearSum: suma directamente varias pérdidas de velocidad. Puede aumentar las pérdidas en parques densos.': 'LinearSum: directly adds several velocity deficits. It can increase losses in dense wind farms.',
     'Lista WRG vacía': 'Empty WRG list',
-    'Listas `ws` y `power_kw` deben tener la misma longitud y no estar vacías.': 'Lists `ws` and `power_kw` must have the same length and not be empty.',
+    'Listas `ws` y `power_kw` deben tener la misma longitud y no estar vacías.': "The `ws` and `power_kw` lists must have the same length and must not be empty.",
     'Listo': 'Ready',
     'Logo de empresa en el README y en la web de VelantisWind.': 'Company logo on README and VelantisWind website.',
     'Logo destacado y conversación sobre prioridades del roadmap.': 'Featured logo and a conversation about roadmap priorities.',
     'Longitud [°]:': 'Longitude [°]:',
-    'Longitud del emplazamiento (ej. -2.445 para Logroño)': 'Site longitude (e.g. -2.445 for Logroño)',
+
     'Longitud:': 'Longitude:',
     'Los raster(s) se reproyectarán al CRS del proyecto actual': 'The raster(s) will be reprojected to the current project CRS',
     'Los valores mostrados a continuación son las magnitudes de atenuación usadas por el modelo. En la ecuación principal estos términos se restan al nivel de fuente.': 'The values shown below are the attenuation magnitudes used by the model. In the main equation these terms are subtracted from the source level.',
     'LwA fijo por grupo fuente acústico': 'fixed LwA by acoustic source group',
-    'LwA fuente dom. dB(A)': 'dominant source LwA dB(A)',
+    'LwA fuente dom. dB(A)': "dominant source LwA dB(A)",
     'LwA fuente dominante': 'Dominant source LwA',
     'Límite': 'Limit',
     'Límite aplicable': 'Applicable limit',
@@ -3927,7 +4112,7 @@ _CANON_TO_EN = {
     'Marcar todas': 'Select all',
     'Margen': 'Margin',
     'Marzo': 'March',
-    'Matriz hora × mes': 'Hour × Month Matrix',
+    'Matriz hora × mes': "Hour × month matrix",
     'MaxSum considera solo el déficit más severo; útil como comprobación robusta, pero puede infraestimar pérdidas acumuladas.': 'MaxSum considers only the most severe deficit; useful as a robust check, but it may underestimate cumulative losses.',
     'MaxSum: usa solo la estela dominante. Sirve para diagnosticar, pero puede quedarse corto si varias estelas se acumulan.': 'MaxSum: uses only the dominant wake. Useful for diagnosis, but it can underestimate accumulated losses from several wakes.',
     'Mayo': 'May',
@@ -3938,7 +4123,7 @@ _CANON_TO_EN = {
     'Mes:': 'Month:',
     'Metodología de Cálculo': 'Calculation methodology',
     'Modelo': 'Model',
-    'Modelo WT': 'WT model',
+
     'Modelo activo:': 'Active model:',
     'Modelo basado en LUT/RANS': 'LUT/RANS-based model',
     'Modelo base': 'Base model',
@@ -3946,14 +4131,14 @@ _CANON_TO_EN = {
     'Modelo de bloqueo': 'Blockage model',
     'Modelo de bloqueo (PyWake)': 'Blockage model (PyWake)',
     'Modelo de estela: pérdida de velocidad': 'Wake model: wind-speed loss',
-    'Modelo de pérdida por estela (wake deficit)': 'Wake deficit model (PyWake)',
+    'Modelo de pérdida por estela (wake deficit)': "Wake deficit model",
     'Modelo de turbulencia': 'Turbulence model',
     'Modelo de turbulencia (PyWake)': 'Turbulence model (PyWake)',
     'Modelo de turbulencia añadida': 'Added turbulence model',
     'Modelo dominante': 'Dominant model',
     'Modelo que estima cuánto viento pierde una turbina cuando está dentro de la estela de otra. Algunos modelos usan la turbulencia TI y otros apenas la notan.': "Model that estimates how much wind a turbine loses when it is inside another turbine's wake. Some models use TI turbulence and others barely notice it.",
-    'Modelo rotor-average': 'Rotor-average model',
-    'Modelo rotor-average (PyWake)': 'Rotor-average model (PyWake)',
+    'Modelo rotor-average': "Rotor averaging model",
+    'Modelo rotor-average (PyWake)': "Rotor averaging model (PyWake)",
     'Modelo simplificado LwA global, absorción fija, efecto suelo empírico': 'Simplified global LwA model, fixed absorption, empirical ground effect',
     'Modelos': 'Models',
     'Modelos WT detectados:': 'Detected WT models:',
@@ -3964,14 +4149,14 @@ _CANON_TO_EN = {
     'Motor': 'Engine',
     'Motor Rápido (actual)': 'Fast engine (current)',
     'Motor rápido: cálculo simplificado para cribado acústico\nMotor ISO: cálculo por bandas según ISO 9613-2:2024': 'Fast engine: simplified screening calculation\nISO engine: band-based calculation following ISO 9613-2:2024',
-    'Motor de cálculo PyWake': 'PyWake propagation engine',
+    'Motor de cálculo PyWake': "PyWake calculation engine",
     'Motor de cálculo:': 'Calculation engine:',
     'Motor utilizado:': 'Engine used:',
     'Muy realista · CGIRotorAvg(21)': 'Very accurate · CGIRotorAvg(21)',
     'Más realista · CGIRotorAvg(7)': 'Balanced · CGIRotorAvg(7)',
     'Más realista · CGIRotorAvg(9)': 'Accurate · CGIRotorAvg(9)',
     'Máximo [dB]': 'Maximum [dB]',
-    'Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))': 'ISO-aligned method: ISO 9613-2 with octave bands (Adiv + Aatm(T,RH,P) + Agr(f))',
+
     'Método fuente-receptor eólico (Adiv + Aatm + Aground)': 'Wind source-receiver method (Adiv + Aatm + Aground)',
     'Método usado:': 'Method used:',
     'Método:': 'Method:',
@@ -4008,13 +4193,13 @@ _CANON_TO_EN = {
     'No hay diagnóstico por pares fuente-receptor disponible. Recalcula con motor ISO-aligned y fuentes dentro del radio. Este CSV es el que permite auditar cada turbina contra cada receptor.': 'No source-receiver pairwise diagnostics are available. Recalculate with the ISO-aligned engine and sources inside the radius. This CSV is the one that lets you audit each turbine against each receiver.',
     'No hay filas de Top receivers para exportar.': 'There are no Top receivers rows to export.',
     'No hay filas de receptores para exportar.': 'There are no receiver rows to export.',
-    'No hay filas de screening MDT para exportar.': 'There are no DTM screening rows to export.',
+    'No hay filas de screening MDT para exportar.': "There are no DEM screening rows to export.",
     'No hay fuentes acústicas válidas para crear el raster.': 'There are no valid acoustic sources to create the raster.',
     'No hay layouts editados pendientes de exportar.': 'There are no edited layouts pending export.',
     "No hay motor WFM disponible para engine='": "No WFM engine available for engine='",
     'No hay puntos válidos para calcular': 'No valid points to calculate',
     'No hay receptores que superen el límite en este cálculo.': 'No receivers exceed the limit in this calculation.',
-    'No hay turbina cerca del clic.': 'There is no turbine near the click.',
+    'No hay turbina cerca del clic.': "No turbine was found near the click.",
     'No hay una capa de turbinas válida activa para el mapa interactivo.': 'There is no valid active turbine layer for the interactive map.',
     'No hay wake deficit model disponible: ni BG ni NoWakeDeficit.': 'No wake deficit model available: neither BG nor NoWakeDeficit.',
     'No se detectaron modelos. Comprueba que existen capas de turbinas.': 'No models detected. Check that turbine layers exist.',
@@ -4039,10 +4224,10 @@ _CANON_TO_EN = {
     "No se ha podido encontrar una subcarpeta válida para PyWake en '": "Could not find a valid PyWake subfolder in '",
     'No se ha seleccionado DEM/MDT; se asume terreno plano': 'No DEM selected - flat terrain assumed',
     'No se ha seleccionado ningún WRG/ZIP.': 'No WRG/ZIP has been selected.',
-    'No se ha seleccionado raster TI para WRG; se usará TI fija/fallback si el modelo lo necesita.': 'No TI raster was selected for WRG; a fixed/fallback TI will be used if the model needs it.',
+
     'No se han detectado turbinas/layout válidos para el cálculo acústico.': 'No valid turbines/layout were detected for the acoustic calculation.',
     'No se han encontrado grids .grd/.asc/.tif en la carpeta seleccionada.': 'No .grd/.asc/.tif grids were found in the selected folder.',
-    'No se han indicado raster(s) TI válidos': 'No valid TI raster(s) were provided',
+
     'No se han leído datos válidos de': 'No valid data were read from',
     'No se proporcionó una capa de receptores válida.': 'No valid receiver layer was provided.',
     'No se pudieron leer datos válidos de': 'Could not read valid data from',
@@ -4077,7 +4262,7 @@ _CANON_TO_EN = {
     'No se pudo ejecutar la simulación con los modelos seleccionados. Último error:': 'The simulation could not run with the selected models. Last error:',
     'No se pudo exportar': 'Could not export',
     'No se pudo exportar el CSV': 'Could not export the CSV',
-    'No se pudo exportar el CSV de diagnóstico MDT:': 'Could not export the DTM diagnostics CSV:',
+    'No se pudo exportar el CSV de diagnóstico MDT:': "Could not export the DEM diagnostics CSV:",
     'No se pudo exportar el CSV por turbina:': 'Could not export the per-turbine CSV:',
     'No se pudo exportar el CSV:': 'Could not export the CSV:',
     'No se pudo exportar el XLSX': 'Could not export the XLSX',
@@ -4094,7 +4279,7 @@ _CANON_TO_EN = {
     'No se pudo importar load_wrg_site. Revisa que exista ag_core/wrg_site.py.': 'Could not import load_wrg_site. Check that ag_core/wrg_site.py exists.',
     'No se pudo importar ningún superposition model (LinearSum/SquaredSum/WeightedSum).': 'No superposition model could be imported (LinearSum/SquaredSum/WeightedSum).',
     'No se pudo instanciar el modelo de turbulencia seleccionado; el plugin ha intentado un fallback seguro (STF2017/STF2005/GCL).': 'The selected turbulence model could not be instantiated; the plugin attempted a safe fallback (STF2017/STF2005/GCL).',
-    'No se pudo invertir la geotransformación del MDT/DSM.': 'Could not invert the DTM/DSM geotransform.',
+    'No se pudo invertir la geotransformación del MDT/DSM.': "Could not invert the DEM/DSM geotransform.",
     'No se pudo lanzar el cálculo en segundo plano:': 'Could not start the background calculation:',
     'No se pudo leer la curva acústica': 'Could not read the acoustic curve',
     'No se pudo leer la extensión espacial de los grids seleccionados.': 'Could not read the spatial extent of the selected grids.',
@@ -4105,15 +4290,15 @@ _CANON_TO_EN = {
     'No se pudo mostrar el resumen visual de resultados:': 'Could not display the visual results summary:',
     'No se pudo mostrar el resumen visual de ruido': 'Could not display the visual noise summary',
     'No se pudo mostrar el resumen visual de ruido:': 'Could not display the visual noise summary:',
-    'No se pudo obtener el map canvas de QGIS.': 'Could not access the QGIS map canvas.',
+
     'No se pudo preparar el cálculo en segundo plano:': 'Could not prepare the background calculation:',
     'No se pudo preparar la selección de capas:': 'Could not prepare the layer selection:',
-    'No se pudo resolver el CRS destino del WRG/proyecto para el raster TI': 'Could not resolve the target WRG/project CRS for the TI raster',
+
     'No se pudo usar la selección de capas; se usará el flujo normal:': 'Could not use the layer selection; the normal workflow will be used:',
     'No se puede iniciar el cálculo de shadow flicker:': 'Cannot start the shadow-flicker calculation:',
     'No se puede lanzar el cálculo': 'Cannot start the calculation',
     'No se seleccionó carpeta de salida.': 'No output folder was selected.',
-    'No seleccionado (fallback previsto a TI=10% en flujo WRG)': 'Not selected (expected fallback to TI=10% in WRG flow)',
+
     'No todos los modelos de estela usan la TI del mismo modo': 'Not all wake models use TI in the same way',
     'Nocturno': 'Night-time',
     'Noise · Mapa': 'Noise · Map',
@@ -4127,7 +4312,7 @@ _CANON_TO_EN = {
     'Notas': 'Notes',
     'Notas:': 'Notes:',
     'Noviembre': 'November',
-    'Nº aerogeneradores': 'No. turbines',
+    'Nº aerogeneradores': "No. of turbines",
     'Nº de aerogeneradores:': 'No. of turbines:',
     'Número de modelos:': 'Number of models:',
     'Número de núcleos a usar (tu CPU tiene': 'Number of cores to use (your CPU has',
@@ -4137,10 +4322,10 @@ _CANON_TO_EN = {
     'Offset UTC fijo': 'Fixed UTC offset',
     'Offset UTC fijo:': 'Fixed UTC offset:',
     'Offset fijo para modo con offset fijo. No se aplica horario de verano.': 'Fixed offset for fixed-offset mode. Daylight saving time is not applied.',
-    'Offset mínimo de expansión cuando la TI tiende a cero.': 'Minimum expansion offset when TI tends to zero.',
-    'Offset mínimo de expansión de la estela.': 'Minimum wake-expansion offset.',
+    'Offset mínimo de expansión cuando la TI tiende a cero. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.0001.': 'Minimum expansion offset when TI tends to zero. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.0001.',
+    'Offset mínimo de expansión de la estela. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.0001.': 'Minimum wake-expansion offset. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.0001.',
     'Offshore con inflow relativamente limpio': 'Offshore with relatively clean inflow',
-    'Opcional: altura de cada raster TI, ej. 90;120': 'Optional: height of each TI raster, e.g. 90;120',
+
     'Opcional: alturas TI por archivo, ej. 90;120': 'Optional: TI heights by file, e.g. 90;120',
     'Opcionalmente puedes aportar uno o varios raster(s) de TI ambiente (por ejemplo .asc/.tif).': 'Optionally provide one or more ambient TI raster(s), for example .asc/.tif.',
     'Opcionalmente puedes aportar uno o varios raster(s) de TI ambiente (por ejemplo .asc/.tif). Se usan solo en el flujo WRG. Si no se selecciona ninguno, el plugin avisará y usará TI=10% como fallback. Consulta el botón de información para ver cuándo conviene una sola capa, cuándo convienen varias alturas y en qué modelos de estela influye más.': 'Optionally provide one or more ambient TI raster(s), for example .asc/.tif. They are used only in the WRG flow. If none are selected, the plugin will warn and use TI=10% as fallback. Use the information button to see when a single layer is enough, when several heights are useful, and which wake models are most affected.',
@@ -4148,10 +4333,10 @@ _CANON_TO_EN = {
     'Origen espectro': 'Spectrum source',
     'Otras pérdidas': 'Other losses',
     'Otras pérdidas:': 'Other losses:',
-    'Override de parámetros físicos del modelo. Si dejas «Default PyWake», se usa el valor canónico del modelo seleccionado.': "Override physical model parameters. If you leave 'Default PyWake', the canonical value for the selected model is used.",
+    'Override de parámetros físicos del modelo. Si dejas «Default PyWake», se usa el valor canónico del modelo seleccionado.': "Override physical model parameters. If you leave 'PyWake default value', the canonical value for the selected model is used.",
     'Override manual de altura para cada raster TI, en el mismo orden que los archivos. Útil cuando el nombre del archivo no contiene 90m, 120m, etc.': 'Manual height override for each TI raster, in the same order as the files. Useful when the file name does not contain 90 m, 120 m, etc.',
     'P_nom [MW]': 'Rated power [MW]',
-    'Para pruebas, usa Auto recomendado o SquaredSum como referencia de sensibilidad.': 'For testing, use Recommended auto or SquaredSum as the sensitivity reference.',
+    'Para pruebas, usa Auto recomendado o SquaredSum como referencia de sensibilidad.': "For testing, use Auto (recommended) or SquaredSum as the sensitivity reference.",
     'Para empresas y equipos técnicos': 'For companies and technical teams',
     'Para mover la sensibilidad del AEP a turbulencia': 'To adjust AEP sensitivity to turbulence',
     'Para resultados representativos, carga un raster TI en la sección de recurso o revisa la sensibilidad de turbulencia.': 'For representative results, load a TI raster in the resource section or review the turbulence sensitivity.',
@@ -4160,7 +4345,7 @@ _CANON_TO_EN = {
     'Parques onshore pequeños o muy espaciados': 'Small or widely spaced onshore wind farms',
     'Parámetro': 'Parameter',
     'Parámetro λ usado en la longitud near-wake de Vermeulen.': 'λ parameter used in the Vermeulen near-wake length.',
-    'Parámetros activos:': 'Parameters active:',
+    'Parámetros activos:': 'Active parameters:',
     'Parámetros avanzados del modelo (opcional · dejar por defecto salvo calibración)': 'Advanced model parameters (optional · leave unchanged for normal use)',
     'Parámetros avanzados del modelo (opcional)': 'Advanced model parameters (optional)',
     'Parámetros del cálculo': 'Calculation parameters',
@@ -4184,7 +4369,7 @@ _CANON_TO_EN = {
     'Por modelo': 'By model',
     'Por modelo de aerogenerador': 'By turbine model',
     'Por qué no se exponen las constantes internas del modelo': 'Why the model internal constants are not exposed',
-    'Por receptor': 'By Receptor',
+    'Por receptor': "By receiver",
     'Por sector': 'By sector',
     'Potencia (kW):': 'Power (kW):',
     'Potencia en kW, misma longitud que ws': 'Power in kW, same length as ws',
@@ -4199,14 +4384,14 @@ _CANON_TO_EN = {
     'Preparando fuentes, receptores y MDT…': 'Preparing sources, receivers and DTM…',
     'Presión': 'Pressure',
     'Presión atmosférica': 'Atmospheric pressure',
-    'Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible.': 'Local atmospheric pressure in kPa. Usual reference value at sea level: 101.325 kPa. Use a measured or altitude-adjusted value if available.',
+
     'Presión atmosférica:': 'Atmospheric pressure:',
     'Primer coeficiente de sensibilidad a TI. Solo se aplicará si la clase PyWake acepta cTI.': 'First TI-sensitivity coefficient. It is only applied if the PyWake class accepts cTI.',
     'Primer coeficiente que multiplica la TI en la formulación TurboGaussian.': 'First coefficient multiplying TI in the TurboGaussian formulation.',
     'Primero lanza un cálculo AEP. Después podrás guardarlo como escenario A o B.': 'Run an AEP calculation first. Then you can save it as scenario A or B.',
     'Primero pulsa «Crear turbina» en la pestaña correspondiente.': 'First press “Create turbine” in the corresponding tab.',
     'Producción específica': 'Specific yield',
-    'Promedio sobre el rotor (rotor-average)': 'Rotor-disk averaging (rotor-average)',
+    'Promedio sobre el rotor (rotor-average)': "Rotor averaging (rotor-average)",
     'Propagación por bandas de octava según metodología ISO-aligned': 'Octave-band propagation using an ISO-aligned methodology',
     'PropagateDownwind no aplica bloqueo; el cálculo lo desactivará automáticamente.': 'PropagateDownwind does not apply blockage; the calculation will disable it automatically.',
     'Proporciona una capa de puntos válida.': 'Provide a valid point layer.',
@@ -4250,29 +4435,29 @@ _CANON_TO_EN = {
     'Raster DEM/MDT (opcional):': 'DEM raster (optional):',
     'Raster TI no válido:': 'Invalid TI raster:',
     'Raster completado': 'Raster completed',
-    'Raster de modelo digital de elevaciones (MDT) opcional.': 'Optional digital elevation model (MDT) raster.',
-    'Raster de modelo digital de elevaciones (MDT) opcional.\nSi se proporciona, la elevación del terreno bajo cada turbina y receptor se\nmuestrea del raster. Así elev_diff = (buje + terreno_turb) -\n(observador + terreno_recep), usando corrección de elevación según terreno.\nSi se deja vacío, se asume terreno plano (z=0).': 'Optional digital elevation model (MDT) raster.\nIf provided, the ground elevation under each turbine and receiver is\nsampled from the raster. This makes elev_diff = (hub + ground_turb) -\n(observer + ground_recv), using terrain-aware elevation correction.\nIf left empty, flat terrain (z=0) is assumed.',
-    'Raster de ruido completado.': 'Noise raster completed.',
-    'Raster de ruido finalizado con aviso.': 'Noise raster finished with a warning.',
-    'Raster de ruido generado y añadido al proyecto.': 'Noise raster generated and added to the project.',
-    'Raster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.': 'Noise raster launched in the background. You can see it in the QGIS task manager.',
+    'Raster de modelo digital de elevaciones (MDT) opcional.': "Optional digital elevation model (DEM) raster.",
+    'Raster de modelo digital de elevaciones (MDT) opcional.\nSi se proporciona, la elevación del terreno bajo cada turbina y receptor se\nmuestrea del raster. Así elev_diff = (buje + terreno_turb) -\n(observador + terreno_recep), usando corrección de elevación según terreno.\nSi se deja vacío, se asume terreno plano (z=0).': "Optional digital elevation model (DEM) raster.\nIf provided, the ground elevation under each turbine and receiver is\nsampled from the raster. This makes elev_diff = (hub + ground_turb) -\n(observer + ground_recv), using terrain-aware elevation correction.\nIf left empty, flat terrain (z=0) is assumed.",
+
+
+
+
     'Raster en progreso': 'Raster in progress',
     'Raster filtrado generado': 'Filtered raster generated',
     'Raster guardado correctamente': 'Raster saved successfully',
     'Raster(s) TI no encontrado(s):': 'TI raster(s) not found:',
     'Raster(s) TI no seleccionado(s) → fallback automático a': 'TI raster(s) not selected → automatic fallback to',
     'Raster(s) TI no seleccionado(s) → fallback automático a 10% si usas WRG.': 'No TI raster(s) selected → automatic fallback to 10% if you use WRG.',
-    'Raster(s) de turbulencia TI (opcional):': 'TI turbulence raster(s) (optional):',
+
     'Rathmann — modelo de compatibilidad para configuraciones antiguas. Sin parámetros de usuario en esta versión experimental.': 'Rathmann — compatibility model for older settings. No user parameters in this experimental release.',
     'Receptor': 'Receiver',
     'Receptor crítico': 'Critical receiver',
     'Receptor crítico (mayor nivel sonoro)': 'Critical Receiver (Highest Sound Level)',
     'Receptores': 'Receivers',
     'Receptores Cubiertos': 'Covered receivers',
-    'Receptores Evaluados': 'Evaluated receptors',
+    'Receptores Evaluados': "Evaluated receivers",
     'Recomendado por defecto': 'Recommended by default',
     'Recurso eólico': 'Wind resource',
-    'Recurso eólico (WAsP grids / WRG)': 'Wind resource (WAsP grids / WRG)',
+
     'Recurso:': 'Resource:',
     'Refresca el estado de capas/modelos detectados en el proyecto.': 'Refresh the detected layers/models state in the project.',
     'Regenerando raster filtrado': 'Regenerating filtered raster',
@@ -4286,18 +4471,18 @@ _CANON_TO_EN = {
     'Resultado acústico:': 'Acoustic result:',
     'Resultados': 'Results',
     'Resultados AEP': 'AEP results',
-    'Resultados AEP – Cálculo AEP (PyWake)': 'AEP Results – AEP calculation (PyWake)',
+    'Resultados AEP – Cálculo AEP (PyWake)': "AEP results – AEP calculation (PyWake)",
     'Resultados por receptor calculados.': 'Per-receiver results calculated.',
     'Resumen': 'Summary',
     'Resumen AEP del parque': 'Wind farm AEP summary',
-    'Resumen del análisis': 'Analysis Summary',
-    'Resumen del cálculo de shadow flicker': 'Shadow Flicker Calculation Summary',
+    'Resumen del análisis': "Analysis summary",
+    'Resumen del cálculo de shadow flicker': "Shadow flicker calculation summary",
     'Resumen del proyecto': 'Project summary',
     'Resumen delta': 'Delta summary',
     'Resumen global': 'Global summary',
     'Revisa el CSV del Modelo': 'Check the CSV for Model',
     'Revisión recomendada': 'Recommended review',
-    'Rosa de pérdidas por sector.': 'Sector loss rose.',
+    'Rosa de pérdidas por sector.': "Loss rose by sector.",
     'Rotor Diameter: diámetro de rotor [m]': 'Rotor Diameter: rotor diameter [m]',
     'Rotor-average significa promediar el viento en varios puntos del rotor en vez de mirar un único punto central. Más puntos = más realismo y más coste.': 'Rotor averaging means averaging wind speed at several rotor points instead of looking at one central point. More points = more realism and more computation.',
     'RotorCenter es rápido; CGIRotorAvg(7) es el equilibrio recomendado; CGIRotorAvg(9/21) aumenta precisión y coste computacional.': 'RotorCenter is fast; CGIRotorAvg(7) is the recommended balanced option; CGIRotorAvg(9/21) increases accuracy and computation time.',
@@ -4309,9 +4494,9 @@ _CANON_TO_EN = {
     'STF2005 — Frandsen original. Coeficientes empíricos fijos. Útil para comparar con configuraciones antiguas o más conservadoras.': 'STF2005 — original Frandsen model. Fixed empirical coefficients. Useful for comparison with older or more conservative settings.',
     'STF2017 — Frandsen 2007 / IEC 61400-1 ed.3. Coeficientes empíricos fijos del paper. <b>Recomendado por defecto</b>.': 'STF2017 — Frandsen 2007 / IEC 61400-1 ed.3. Fixed empirical coefficients from the paper. <b>Recommended default</b>.',
     'Salir del modo interactivo (ESC también funciona).': 'Exit interactive mode (ESC also works).',
-    'Screening masivo': 'large-scale screening',
-    "Se generará UNA carpeta con GRD mosaico (Sector/Altura/Variable).\nSelecciona 2 o más carpetas de tiles exportadas desde WAsP.\n• 'Sector All': se tomarán TODAS las variables presentes (mosaico por altura).\n• Además, se crea subcarpeta 'pywake_compat' estricta (sin necesidad de parches).\n• Salida en Surfer ASCII (DSAA) con formato WAsP.": "ONE folder with a GRD mosaic (Sector/Height/Variable) will be generated.\nSelect 2 or more tile folders exported from WAsP.\n• 'Sector All': ALL present variables will be taken (mosaic by height).\n• In addition, a strict 'pywake_compat' subfolder is created (no patches needed).\n• Output in Surfer ASCII (DSAA) with WAsP format.",
-    'Se han seleccionado varios raster(s) TI, pero no he podido identificar al menos dos alturas distintas en sus nombres. El plugin no podrá reconstruir una TI vertical fiable; revisa nombres como TImean.90.asc o TI_120m.tif.': 'Several TI raster(s) were selected, but at least two different heights could not be identified in their names. The plugin will not be able to reconstruct a reliable vertical TI; check names such as TImean.90.asc or TI_120m.tif.',
+    'Screening masivo': "Large-scale screening",
+
+
     'Se muestran magnitudes brutas de atenuación': 'Raw attenuation magnitudes are shown',
     'Se muestran magnitudes brutas de atenuación (no el signo algebraico dentro de la ecuación).': 'Raw attenuation magnitudes are shown (not the algebraic sign inside the equation).',
     'Se pasa al Site de PyWake como fracción, por ejemplo 10% = 0.10.': 'It is passed to the PyWake Site as a fraction, for example 10% = 0.10.',
@@ -4320,7 +4505,7 @@ _CANON_TO_EN = {
     'Segundo coeficiente de sensibilidad a TI. Solo se aplicará si la clase PyWake acepta cTI.': 'Second TI-sensitivity coefficient. It is only applied if the PyWake class accepts cTI.',
     'Selecciona CSV con columnas X,Y para este modelo': 'Select a CSV with X,Y columns for this model',
     'Selecciona CSV con coordenadas X,Y del modelo': 'Select a CSV with the model X,Y coordinates',
-    'Selecciona TXT/CSV…': 'Select TXT/CSV…',
+    'Selecciona TXT/CSV…': "Select a TXT/CSV file…",
     'Selecciona al menos una capa para calcular.': 'Select at least one layer to calculate.',
     'Selecciona aquí uno o varios .wrg o .zip con archivos .wrg internos.': 'Select one or more .wrg files or .zip files containing .wrg files.',
     'Selecciona aquí uno o varios .wrg o .zip con archivos .wrg internos. Si aportas varias alturas (p.ej. 90m y 100m), PyWake interpolará en altura si hace falta.': 'Select one or more .wrg files or .zip files containing .wrg files. If you provide several heights (e.g. 90 m and 100 m), PyWake will interpolate by height if needed.',
@@ -4345,15 +4530,15 @@ _CANON_TO_EN = {
     'Selecciona una carpeta WAsP válida o un WRG/ZIP.': 'Select a valid WAsP folder or a WRG/ZIP file.',
     'Selecciona una carpeta WAsP/Surfer o un WRG/ZIP para dibujar el perímetro.': 'Select a WAsP/Surfer folder or a WRG/ZIP to draw the boundary.',
     'Selecciona una carpeta con grids WAsP/Surfer compatibles con PyWake.': 'Select a folder with WAsP/Surfer grids compatible with PyWake.',
-    'Selecciona una carpeta con grids WAsP/Surfer compatibles con PyWake. Si el recurso ya viene preparado en formato pywake_compat, el plugin lo priorizará automáticamente.': 'Select a folder with WAsP/Surfer grids compatible with PyWake. If the resource is already prepared in pywake_compat format, the plugin will prioritize it automatically.',
+
     'Selecciona una o varias capas fuente detectadas desde Energía. Si marcas varias, el cálculo de ruido usará todas ellas a la vez.': 'Select one or more source layers detected from Energy. If you select several, the noise calculation will use all of them at once.',
-    'Selecciona uno o varios raster(s) .asc/.tif de TI ambiente (p.ej. de Vortex). Si no hay ninguno, se usa TI=10% como fallback.': 'Select one or more ambient-TI .asc/.tif raster(s) (e.g. from Vortex). If none is provided, TI=10% is used as fallback.',
+
     'Selección del usuario': 'User selection',
     'SelfSimilarityDeficit — formulación self-similarity clásica. No requiere parámetros de usuario en esta versión experimental.': 'SelfSimilarityDeficit — classic self-similarity formulation. It does not require user parameters in this experimental release.',
     'SelfSimilarityDeficit2020 — opción principal para bloqueo. No requiere parámetros de usuario en esta versión experimental.': 'SelfSimilarityDeficit2020 — main blockage option. It does not require user parameters in this experimental release.',
     'Septiembre': 'September',
-    'Shadow Flicker - Resumen del cálculo': 'Shadow Flicker - Calculation Summary',
-    'Si aportas `ct`, su longitud debe coincidir con `ws`.': 'If you provide `ct`, its length must match `ws`.',
+    'Shadow Flicker - Resumen del cálculo': "Shadow flicker - Calculation summary",
+    'Si aportas `ct`, su longitud debe coincidir con `ws`.': "If you provide `ct`, its length must match that of `ws`.",
     'Si aportas varias alturas (p.ej. 90m y 100m), PyWake interpolará en altura si hace falta.': 'If you provide several heights (e.g. 90 m and 100 m), PyWake will interpolate by height if needed.',
     'Si aportas varios raster(s) TI': 'If you provide several TI raster(s)',
     'Si el recurso ya viene preparado en formato pywake_compat, el plugin lo priorizará automáticamente.': 'If the resource is already prepared in pywake_compat format, the plugin will prioritize it automatically.',
@@ -4378,13 +4563,13 @@ _CANON_TO_EN = {
     'Sin promedio de rotor: PyWake usa el viento en el centro del rotor. Es lo más simple y rápido, pero pierde detalle si una estela afecta solo a una parte del disco.': 'No rotor averaging: PyWake uses the wind speed at the rotor centre. This is the simplest and fastest option, but it loses detail if a wake affects only part of the rotor disk.',
     'Sin receptores': 'No receivers',
     'Sin recurso seleccionado todavía': 'No resource selected yet',
-    'Sin rotor-average: PyWake evaluará la velocidad efectiva en el centro del rotor.': 'No rotor-average: PyWake will evaluate the effective wind speed at the rotor centre.',
+    'Sin rotor-average: PyWake evaluará la velocidad efectiva en el centro del rotor.': "No rotor averaging: PyWake will evaluate the effective wind speed at the rotor centre.",
     'Sin ruta de curva acústica': 'No acoustic-curve path',
     'Sin turbina': 'No turbine',
     'Sin turbinas': 'No turbines',
     'Sin turbulencia añadida:': 'No added turbulence:',
     'Solo': 'Only',
-    'Solo a las': 'Only a las',
+    'Solo a las': "Only at",
     'Sombras y\nparpadeo': 'Shadow\nflicker',
     'SquaredSum usa raíz de suma de cuadrados; es una opción habitual para arrays densos y evita sumar déficits de forma tan agresiva como LinearSum.': 'SquaredSum uses the square root of the sum of squares; it is a common option for dense arrays and avoids adding deficits as aggressively as LinearSum.',
     'SquaredSum: combina varias estelas de forma cuadrática. Suele dar un comportamiento más equilibrado cuando varias estelas se solapan.': 'SquaredSum: combines several wakes quadratically. It usually gives a more balanced behaviour when several wakes overlap.',
@@ -4394,9 +4579,9 @@ _CANON_TO_EN = {
     'Sustitución del modelo de bloqueo: la combinación seleccionada con': 'Blockage-model substitution: the selected combination with',
     'Sí': 'Yes',
     'TI WRG:': 'WRG TI:',
-    'TI ambiente': 'ambient TI',
+    'TI ambiente': "Ambient TI",
     'TI ambiente constante usada cuando no hay raster TI disponible.': 'Constant ambient TI used when no TI raster is available.',
-    'TI ambiente manual si no hay raster:': 'Ambient TI fallback:',
+
     'TI raster(s) (opcional):': 'TI raster(s) (optional):',
     'TI sí influya': 'TI really affects',
     'TIF filtrado guardado': 'Filtered TIF saved',
@@ -4404,8 +4589,8 @@ _CANON_TO_EN = {
     'Tabla resumida para consultoría: resultados acústicos por receptor, cumplimiento, fuente dominante y atenuaciones principales. Los diagnósticos internos MDT por pares se conservan en memoria, pero no se muestran por defecto.': 'Summary table for consultancy: acoustic results per receiver, compliance, dominant source and main attenuations. The internal pairwise DTM diagnostics are kept in memory, but are not shown by default.',
     'Tabulación': 'Tab',
     'Tamaño de celda raster\n100 m = rápido, menos detalle\n50 m = medio\n25 m = lento, máximo detalle': 'Raster cell size\n100 m = fast, less detail\n50 m = medium\n25 m = slow, maximum detail',
-    'Tamaño inicial de la estela en la base (σ₀/D). Default PyWake = 0.2.': 'Initial wake size at the base (σ₀/D). PyWake default = 0.2.',
-    'Tamaño inicial de la estela. Default PyWake = 0.25.': 'Initial wake size. PyWake default = 0.25.',
+    'Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.': 'Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.',
+    'Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.25.': 'Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.25.',
     'Temperatura': 'Temperature',
     'Tiempo dedicado a validar casos reales y mejorar la estabilidad del plugin.': 'Dedicated time for real-case validation and plugin stability improvements.',
     'Tiempo transcurrido:': 'Elapsed time:',
@@ -4414,8 +4599,8 @@ _CANON_TO_EN = {
     'Todas las turbinas están fuera del dominio del site (': 'All turbines are outside the site domain (',
     'Todos': 'All',
     'Todos los archivos': 'All files',
-    'Todos los receptores (suma)': 'All Receptors (sum)',
-    'Top receptores': 'Top receivers',
+    'Todos los receptores (suma)': "All receivers (sum)",
+
     'Total sectores:': 'Sector totals:',
     'Trayectos con G distinto del global': 'Paths with G different from global',
     'Trayectos con G distinto del global:': 'Paths with G different from the global value:',
@@ -4431,8 +4616,8 @@ _CANON_TO_EN = {
     'Términos activos': 'Active terms',
     'Un solo raster TI': 'Single TI raster',
     'Una capa o varias capas': 'One layer or several layers',
-    'Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.': 'Once the raster has been generated, you can regenerate filtered TIFs by month and/or hour\nwithout recalculating the full annual geometry.',
-    'Unión Recurso': 'Merge resource',
+
+
     'Usa varios núcleos para acelerar el cálculo\nExperimental: puede causar errores en algunos sistemas\nRecomendado: desactivado (más estable)': 'Use multiple cores to speed up the calculation\nExperimental - may cause errors on some systems\nRecommended: disabled (more stable)',
     'Usar': 'Use',
     'Usar layout activo del proyecto': 'Use active project layout',
@@ -4443,20 +4628,20 @@ _CANON_TO_EN = {
     'Validación AEP': 'AEP validation',
     'Validación avanzada no disponible; se usa flujo de compatibilidad:': 'Advanced validation not available; the compatibility workflow is used:',
     'Valor': 'Value',
-    'Valor PyWake por defecto': 'Default PyWake',
+    'Valor PyWake por defecto': "PyWake default value",
     'Valor [dB]': 'Value [dB]',
-    'Valor de turbulencia ambiente que se usa si no cargas un raster TI. Ejemplo: 10 % significa TI = 0.10 dentro del Site de PyWake.': 'Ambient turbulence value used if no TI raster is loaded. Example: 10% means TI = 0.10 inside the PyWake Site.',
+
     'Valor inválido en banda': 'Invalid value in band',
-    'Valores detallados por receptor.': 'Detailed values for each receptor.',
-    'Variantes: solo estela / estela+TI / estela+bloqueo…': 'Variantes: wake-only / wake+TI / wake+bloqueo…',
+    'Valores detallados por receptor.': "Detailed values for each receiver.",
+    'Variantes: solo estela / estela+TI / estela+bloqueo…': "Variants: wake only / wake+TI / wake+blockage…",
     'Varios raster(s) TI a distintas alturas': 'Several TI raster(s) at different heights',
     'Velantis Wind · Cálculo de ruido': 'Velantis Wind · Noise calculation',
-    'Velantis Wind · Hub principal': 'Velantis Wind · Main hub',
+
     'Velantis Wind · Informe técnico AEP': 'Velantis Wind · AEP technical report',
     'Velantis Wind · preparando ruido': 'Velantis Wind · preparing noise',
     'VelantisWind es un plugin open source para QGIS orientado a la evaluación preliminar de parques eólicos. Si la herramienta te ahorra tiempo o aporta valor a tu flujo de trabajo, puedes apoyar su mantenimiento o solicitar soporte profesional.': 'VelantisWind is an open-source QGIS plugin for early-stage wind farm assessment. If the tool saves you time or adds value to your workflow, you can support its maintenance or request professional support.',
     'Velocidad': 'Speed',
-    'Velocidad viento (m/s):': 'Wind speed (m/s):',
+
     'Ver curva': 'View curve',
     'Ver la curva de potencia (y Ct si está disponible) de la turbina definida.\nÚtil para detectar errores de carga (kW vs W, columnas invertidas, etc.).': 'View the power curve (and Ct if available) of the defined turbine.\nUseful to detect loading errors (kW vs W, swapped columns, etc.).',
     'Very accurate: CGIRotorAvg(21) puede ser bastante más caro; úsalo para validaciones finales.': 'Very accurate: CGIRotorAvg(21) can be much more expensive; use it for final validation.',
@@ -4466,23 +4651,23 @@ _CANON_TO_EN = {
     'VortexCylinder — modelo de inducción/bloqueo basado en cilindro de vorticidad. Sin parámetros de usuario en esta versión experimental.': 'VortexCylinder — induction/blockage model based on a vortex cylinder. No user parameters in this experimental release.',
     'VortexDipole — alternativa de inducción. Sin parámetros de usuario en esta versión experimental.': 'VortexDipole — induction alternative. No user parameters in this experimental release.',
     'Vuelve a dibujar el perímetro del recurso eólico seleccionado.': 'Redraws the boundary of the selected wind resource.',
-    'Vuelve al diálogo principal de Velantis Wind sin perder la edición.': 'Return to the main Velantis Wind dialog without losing your edits.',
+    'Vuelve al diálogo principal de Velantis Wind sin perder la edición.': "Return to the Velantis Wind main dialog without losing edits.",
     'Vuelve al diálogo principal sin salir del modo interactivo.': 'Return to the main dialog without leaving interactive mode.',
-    'WRG con distinta resolución/extent: no se pueden combinar por altura': 'WRG files with different resolution/extent: they cannot be combined by height',
+
     'WRG con distinto dx: no se pueden combinar por altura': 'WRG files with different dx: they cannot be combined by height',
     'WRG con distinto origen x0/y0: no se pueden combinar por altura': 'WRG files with different origin x0/y0: they cannot be combined by height',
     'WRG inválido o no legible:': 'Invalid or unreadable WRG:',
     'WRG sin puntos (sólo cabecera)': 'WRG with no points (header only)',
     'WRG vacío': 'Empty WRG',
-    'WRG: no se ha proporcionado raster TI, así que la TI ambiente se ha fijado al valor fallback definido por el usuario como campo uniforme.': 'WRG: no TI raster was provided, so the ambient TI was set to the user-defined fallback value as a uniform field.',
-    'WRG: se ha usado un único raster de TI ambiente; si mezclas varios hub heights, esa TI se replica/interpela como aproximación vertical.': 'WRG: a single ambient TI raster was used; if you mix several hub heights, that TI is replicated/interpolated as a vertical approximation.',
+
+
     'Wake deficit principal. No todos los modelos usan la turbulencia del mismo modo.': 'Main wake deficit model. Not all models use turbulence in the same way.',
     'WeightedSum (avanzado · Gaussian)': 'WeightedSum (advanced · Gaussian)',
     'WeightedSum (solo gaussianos)': 'WeightedSum (Gaussian only)',
     'WeightedSum es avanzado y se reserva para déficits gaussianos compatibles; si PyWake no acepta la combinación, el solver degradará automáticamente.': 'WeightedSum is advanced and reserved for compatible Gaussian deficits; if PyWake rejects the combination, the solver will automatically degrade it.',
     'WeightedSum: opción avanzada para gaussianos compatibles. Si PyWake rechaza la combinación, el plugin volverá a una opción segura.': 'WeightedSum: advanced option for compatible Gaussian models. If PyWake rejects the combination, the plugin will fall back to a safe option.',
     'Workers (núcleos):': 'Workers (cores):',
-    'Ya existe una turbina en ese punto.': 'There is already a turbine at that point.',
+    'Ya existe una turbina en ese punto.': "A turbine already exists at that point.",
     'Ya has alcanzado el máximo de': 'You have already reached the maximum of',
     'Ya hay un cálculo de shadow flicker en ejecución.': 'A shadow-flicker calculation is already running.',
     'Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA amplio y base TZif local para aplicar DST sin timezonefinder.': 'IANA time zone, for example Europe/Madrid, America/Santiago or Asia/Tokyo.\nThe plugin includes a broad IANA catalogue and local TZif database to apply DST without timezonefinder.',
@@ -4587,7 +4772,7 @@ _CANON_TO_EN = {
     'k y σ se derivan de la TI': 'k and σ are derived from TI',
     'la TI no cambia el AEP de forma importante en la configuración estándar.': 'TI does not significantly change AEP in the standard configuration.',
     'la TI no cambia mucho el déficit base del wake': 'TI does not change the base wake deficit much',
-    'la línea de visión entre la turbina dominante y este receptor queda despejada según el MDT': 'the line of sight between the dominant turbine and this receiver is clear according to the DTM',
+    'la línea de visión entre la turbina dominante y este receptor queda despejada según el MDT': "the line of sight between the dominant turbine and this receiver is clear according to the DEM",
     'la presión atmosférica introducida': 'the entered atmospheric pressure',
     'la tabla del apartado 2 muestra magnitudes de atenuación para trazabilidad. El nivel resultante no debe interpretarse como una resta directa de una sola turbina: se obtiene mediante suma energética por bandas y suma de las fuentes contribuyentes dentro del radio de cálculo.': 'the table in section 2 shows attenuation magnitudes for traceability. The resulting level should not be interpreted as a direct subtraction from a single turbine: it is obtained through energetic summation across bands and contributing sources within the calculation radius.',
     'lista para editar en el mapa': 'ready to edit on the map',
@@ -4618,11 +4803,11 @@ _CANON_TO_EN = {
     'no convergió en PyWake (la iteración entre wake TI-driven y bloqueo SS2020 no siempre alcanza un punto fijo estable). Se ha mantenido el bloqueo usando': 'did not converge in PyWake (the coverage pass between a TI-driven wake and SS2020 blockage does not always reach a stable fixed point). Blockage was kept using',
     'no creada': 'not created',
     'no generado': 'not generated',
-    'no había MDT disponible en este trayecto': 'no DTM was available on this path',
+    'no había MDT disponible en este trayecto': "no DEM was available on this path",
     'no perillas de sitio': 'not site-specific knobs',
     'no se detectó obstáculo topográfico relevante en el trayecto dominante': 'no relevant topographic obstacle was detected on the dominant path',
     'no se ha proporcionado un raster de TI.': 'no TI raster has been provided.',
-    'no se pudo extraer un perfil MDT válido para el trayecto dominante': 'a valid DTM profile could not be extracted for the dominant path',
+    'no se pudo extraer un perfil MDT válido para el trayecto dominante': "a valid DEM profile could not be extracted for the dominant path",
     'no tiene coordenadas. Añade turbinas en el mapa interactivo o selecciona un CSV X,Y válido.': 'has no coordinates. Add turbines in the interactive map or select a valid X,Y CSV.',
     'noche': 'night',
     'nombre(s) duplicados. Conviene renombrarlos para exportación y trazabilidad.': 'duplicated name(s). It is advisable to rename them for export and traceability.',
@@ -4661,7 +4846,7 @@ _CANON_TO_EN = {
     'receptor crítico': 'critical receiver',
     'receptor(es)': 'receiver(s)',
     'receptor(es) con G distinto del global y': 'receiver(s) with G different from the global value and',
-    'receptores a:': 'receptors to:',
+    'receptores a:': "receivers to:",
     'receptores cubiertos': 'covered receivers',
     'receptores dentro del radio': 'receivers within the radius',
     'receptores fuera de radio': 'receivers outside the radius',
@@ -4682,16 +4867,16 @@ _CANON_TO_EN = {
     'segundos': 'seconds',
     'si el motor lo soporta': 'if the engine supports it',
     'si hace falta.': 'if needed.',
-    'sin bloqueo + sin turbulencia': 'no blockage + no turbulence',
+    'sin bloqueo + sin turbulencia': "without blockage or turbulence",
     'sin definir': 'not defined',
     'sin extensión': 'no extension',
     'sin fuentes dentro del radio': 'no sources within the radius',
     'sin nombre': 'unnamed',
     'sin pendiente k explícita.': 'no explicit k slope.',
     'sin puntos válidos': 'no valid points',
-    'sin rotor-average + sin bloqueo': 'no rotor-average + no blockage',
-    'sin rotor-average + sin bloqueo + sin turbulencia': 'no rotor-average + no blockage + no turbulence',
-    'sin rotor-average + sin turbulencia': 'no rotor-average + no turbulence',
+    'sin rotor-average + sin bloqueo': "without rotor averaging or blockage",
+    'sin rotor-average + sin bloqueo + sin turbulencia': "without rotor averaging, blockage or turbulence",
+    'sin rotor-average + sin turbulencia': "without rotor averaging or turbulence",
     'sin valor': 'no value',
     'solo propaga estelas hacia abajo, no soporta bloqueo': 'only propagates wakes downstream, it does not support blockage',
     'solución potencial tipo dipolo': 'dipole-type potential-flow solution',
@@ -4733,14 +4918,14 @@ _CANON_TO_EN = {
     '¿Cómo se calcula la pérdida de velocidad detrás de cada turbina?': 'How should the wind-speed loss behind each turbine be calculated?',
     '¿Cómo se calculan las interacciones entre turbinas?': 'How should turbine interactions be calculated?',
     '¿Cómo se combinan las estelas de varias turbinas?': 'How are wakes from several turbines combined?',
-    '¿Qué ayuda a financiar el apoyo?': 'What does the support help fund?',
+    '¿Qué ayuda a financiar el apoyo?': "What does your support help fund?",
     '¿Qué modelo de bloqueo quieres usar?': 'Which blockage model do you want to use?',
-    '¿Qué modelo de rotor-average quieres usar?': 'Which rotor-average model do you want to use?',
+    '¿Qué modelo de rotor-average quieres usar?': "Which rotor averaging model do you want to use?",
     '¿Qué modelo de turbulencia quieres usar?': 'Which turbulence model do you want to use?',
     'Último cálculo': 'Last calculation',
     'Útil para comparar con configuraciones antiguas o más conservadoras.': 'Useful for comparison with older or more conservative configurations.',
     'útil si quieres mantener un modelo ligero tipo NOJ': 'useful if you want to keep a light NOJ-style model',
-    'α se calcula automáticamente por banda en Motor ISO': 'α is calculated automatically per band in the ISO engine',
+
     'α usado:': 'α used:',
     'δw/D (longitud fuente near-wake)': 'δw/D (near-wake source length)',
     '— Selecciona capa de receptores —': '— Select receiver layer —',
@@ -4753,8 +4938,8 @@ _CANON_TO_EN = {
     '• Aground representa la pérdida simplificada asociada al efecto suelo/terreno en el método acústico.': '• Aground represents the simplified loss associated with the ground/terrain effect in the acoustic method.',
     '• Altura de receptor: se toma de cada capa configurada en la tabla multi-capa.': '• Receiver height: taken from each layer configured in the multi-layer table.',
     '• Atenuación lineal α:': '• Linear attenuation α:',
-    '• Auto recomendado: selección segura del plugin.': '• Recommended auto: safe plugin selection.',
-    '• Capa GIS de receptores fuera de radio creada: Noise · Receivers fuera de radio (': '• GIS receivers-outside-radius layer created: Noise · Receivers fuera de radio (',
+    '• Auto recomendado: selección segura del plugin.': "• Auto (recommended): safe plugin selection.",
+
     '• Criterio de límite por capa:': '• Per-layer limit criterion:',
     '• Cálculo pesado lanzado como QgsTask. Puedes seguir usando QGIS mientras avanza.': '• Heavy calculation launched as a QgsTask. You can keep using QGIS while it runs.',
     '• Falta configurar al menos una capa de receptores en la tabla multi-capa.': '• At least one receiver layer must be configured in the multi-layer table.',
@@ -4773,20 +4958,20 @@ _CANON_TO_EN = {
     '• Receptores con al menos una turbina dentro del radio:': '• Receivers with at least one turbine inside the radius:',
     '• Se usó DEM/DSM para muestrear la elevación del terreno en fuentes y receptores.': '• DEM/DSM was used to sample terrain elevation at sources and receivers.',
     '• Sin DEM/DSM: el cálculo usa coordenadas planas con alturas relativas de fuente/receptor.': '• No DEM/DSM: calculation uses flat coordinates with relative source/receiver heights.',
-    '• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.': '• No DTM/DSM selected. The acoustic calculation will start in flat coordinates with relative source/receiver heights.',
+    '• Sin MDT/DSM seleccionado. El cálculo acústico arrancará en coordenadas planas con alturas relativas de fuente/receptor.': "• No DEM/DSM selected. The acoustic calculation will start in flat coordinates with relative source/receiver heights.",
     '• SquaredSum: raíz de suma de cuadrados; buena opción práctica para arrays densos.': '• SquaredSum: square root of the sum of squares; a good practical option for dense arrays.',
     "• Suelo/terreno: desde capa de uso del suelo '": "• Ground/terrain: from land-use layer '",
     '• Suelo/terreno: modo capa activado pero sin capa válida; will use G global =': '• Ground/terrain: layer mode enabled but no valid layer; the global G will be used =',
     '• WeightedSum: avanzado, pensado para modelos gaussianos compatibles y más sensible al coste/compatibilidad.': '• WeightedSum: advanced, intended for compatible Gaussian models and more sensitive to cost/compatibility.',
     '← Inicio': '← Home',
     '● editado en mapa, sin guardar': '● edited on map, unsaved',
-    '♡ Apoyar VelantisWind': '♡ Support VelantisWind',
+
     '⚠️ La capa de turbinas está vacía.': '⚠️ The turbine layer is empty.',
     '⚠️ Ningún modelo tiene configuración válida (Hub Height y Rotor Diameter).': '⚠️ No model has valid configuration (Hub Height and Rotor Diameter).',
     '⚠️ No hay capa de receptores seleccionada.': '⚠️ No receiver layer selected.',
     '⚠️ No se detectaron modelos. Comprueba que existen capas de turbinas.': '⚠️ No models detected. Check that turbine layers exist.',
     '⚡ Rápido - LwA global simplificado': '⚡ Fast - simplified global LwA',
-    '⛅ Condiciones Atmosféricas (Motor ISO)': '⛅ Atmospheric conditions (ISO engine)',
+
     '✅ Configuración válida. Puedes continuar con el cálculo.': '✅ Valid configuration. You can proceed with the calculation.',
     '✓ Capa de turbinas:': '✓ Turbine layer:',
     '✓ Coordenadas del emplazamiento: (': '✓ Site coordinates: (',
@@ -4796,9 +4981,9 @@ _CANON_TO_EN = {
     '💡 Ahora puedes regenerar TIF filtrados por mes/hora\n   sin recalcular (usando los desplegables de filtro).': '💡 You can now regenerate TIFs filtered by month/hour\n   without recalculating (using the filter combos).',
     '💡 Configura la altura de buje y el diámetro de rotor de cada modelo detectado. Estos parámetros son necesarios para el cálculo de shadow flicker.': '💡 Configure hub height and rotor diameter for each detected model. These parameters are required for the shadow flicker calculation.',
     '💡 Usa condiciones típicas del emplazamiento': '💡 Use typical site conditions',
-    '💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.': '💡 Use typical site conditions. If you do not have measured pressure, 101.325 kPa is a standard sea-level reference; at altitude it is usually lower.',
+
     '📊 Exportar CSV 12×24': '📊 Export 12×24 CSV',
-    '📊 ISO-aligned - ISO 9613-2 por bandas': '📊 ISO-aligned - ISO 9613-2 by bands',
+
 }
 _CANON_TO_ES = {
     '\n\n💡 You can now regenerate TIFs filtered by month/hour\n   without recalculating (using the filter combos).': '\n\n💡 Ahora puedes regenerar TIF filtrados por mes/hora\n   sin recalcular (usando los desplegables de filtro).',
@@ -4806,10 +4991,10 @@ _CANON_TO_ES = {
     "\n                </table>\n                <h4>5. Ground effect by regions</h4>\n                <div class='formula'>Agr,b = As + Am + Ar</div>\n                <p>The ground term is split into <b>As</b> (source region), <b>Am</b> (middle region) and <b>Ar</b> (receiver region). This implementation does not use three independent ground parameters <code>Gs/Gm/Gr</code>, but a <b>single G per path</b>. Mathematically, the plugin applies:</p>\n                <div class='formula'>As = G_eff·A_ground(h_s)</div>\n                <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_mid)</div>\n                <div class='formula'>Ar = G_eff·A_ground(h_r)</div>\n                <p>where <b>h_s</b> is the characteristic source height, <b>h_r</b> the receiver height, <b>h_mid</b> the mean path height and <b>G_m≈0</b> in the current approximation for favourable propagation conditions. That single ground value can be:</p>\n                <ul>\n                    <li><b>Manual/global G</b>, if the user sets a single value.</li>\n                    <li><b>G_eff</b>, if a land-use layer exists and a length-weighted mean along the path is computed.</li>\n                </ul>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <p><b>Physical meaning of G:</b> it represents the acoustic character of the terrain and controls how the ground influences propagation. <b>G≈0</b> indicates hard ground (urban, asphalt, rock), <b>G≈1</b> soft/porous ground (agricultural, grassland, forest) and intermediate values represent mixed terrain.</p>\n                <p><b>What “from layer” means:</b> the plugin clips the source–receiver path against the land-use layer, assigns a <b>G_i</b> value to each intercepted polygon and computes a single <b>G_eff</b> for that path. That is the value actually entering <b>Agr,b</b>; the <b>global G</b> shown in the report is kept only as a fallback.</p>\n                <p><b>Report convention:</b> <b>Agr,b</b> is shown here as a <b>positive attenuation magnitude</b>. In the main equation it is subtracted from the source level just like Adiv, Aatm and Abar.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>Base term A_ground(h)</th></tr>\n                    ": "\n                </table>\n                <h4>5. Efecto suelo por regiones</h4>\n                <div class='formula'>Agr,b = As + Am + Ar</div>\n                <p>El término de suelo se descompone en <b>As</b> (región de fuente), <b>Am</b> (región media) y <b>Ar</b> (región de receptor). En esta implementación no se usan tres parámetros de suelo independientes <code>Gs/Gm/Gr</code>, sino un <b>único G por trayecto</b>. Matemáticamente, el plugin aplica:</p>\n                <div class='formula'>As = G_eff·A_ground(h_s)</div>\n                <div class='formula'>Am = G_eff·(1 - G_m)·A_ground(h_medio)</div>\n                <div class='formula'>Ar = G_eff·A_ground(h_r)</div>\n                <p>donde <b>h_s</b> es la altura característica de la fuente, <b>h_r</b> la del receptor, <b>h_medio</b> la altura media del trayecto y <b>G_m≈0</b> en la aproximación actual para condiciones favorables de propagación. Ese valor único de suelo puede ser:</p>\n                <ul>\n                    <li><b>G manual/global</b>, si el usuario fija un único valor.</li>\n                    <li><b>G_eff</b>, si existe capa de uso del suelo y se calcula una media ponderada por longitud del trayecto.</li>\n                </ul>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <p><b>Significado físico de G:</b> representa el carácter acústico del terreno y controla cómo influye el suelo en la propagación. <b>G≈0</b> indica suelo duro (urbano, asfalto, roca), <b>G≈1</b> suelo blando/poroso (agrícola, pradera, forestal) y valores intermedios representan terreno mixto.</p>\n                <p><b>Qué significa “desde capa”:</b> el plugin corta el trayecto fuente–receptor contra la capa de uso del suelo, asigna un valor <b>G_i</b> a cada polígono interceptado y calcula un único <b>G_eff</b> para ese trayecto. Ese es el valor que entra realmente en <b>Agr,b</b>; el <b>G global</b> mostrado en el informe queda solo como respaldo.</p>\n                <p><b>Convención del informe:</b> <b>Agr,b</b> se muestra aquí como una <b>magnitud positiva de atenuación</b>. En la ecuación principal se resta al nivel de fuente igual que Adiv, Aatm y Abar.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>Término base A_ground(h)</th></tr>\n                    ",
     "\n                </table>\n                <h4>6. Topographic screening with DTM</h4>\n                <p>The DTM <b>does not change the emission</b> of the turbine nor the atmospheric absorption. Its role is to describe the <b>real path geometry</b> and feed the <b>Abar,b</b> term.</p>\n                <ol>\n                    <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with adaptive sampling.</li>\n                    <li><b>Line of sight:</b> the straight line between the effective source height and the receiver height is built. If the terrain always stays below, then <b>Abar,b = 0</b>.</li>\n                    <li><b>Dominant obstacle:</b> if a hill or ridge sticks out, its height above the line of sight is computed:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                <p>When <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                <ol start='4'>\n                    <li><b>Real obstacle geometry:</b> the plugin uses the real position of the dominant obstacle and computes <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver).</li>\n                    <li><b>Conservative activation:</b> <b>Abar</b> is not triggered by small DTM irregularities; a minimum threshold linked to the raster resolution is required.</li>\n                    <li><b>Fresnel-type diffraction:</b> from that geometry a path difference and a Fresnel number are estimated:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>That number is then turned into a frequency-dependent <b>Abar,b</b> attenuation through the plugin's current approximation:</p>\n                <div class='formula'>if C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>In the current implementation, <b>Abar</b> is additionally capped to reasonable values (upper cap) to avoid spurious over-attenuation. If there is no DTM or no relevant obstacle, then <b>Abar,b = 0</b>.</p>\n                <h4>7. A-weighting used at the end</h4>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ": "\n                </table>\n                <h4>6. Apantallamiento topográfico con MDT</h4>\n                <p>El MDT <b>no cambia la emisión</b> de la turbina ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto</b> y alimentar el término <b>Abar,b</b>.</p>\n                <ol>\n                    <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con muestreo adaptativo.</li>\n                    <li><b>Línea de visión:</b> se construye la recta entre la altura efectiva de fuente y la altura del receptor. Si el terreno queda siempre por debajo, entonces <b>Abar,b = 0</b>.</li>\n                    <li><b>Obstáculo dominante:</b> si una loma o cresta sobresale, se calcula la altura sobre la línea de visión:</li>\n                </ol>\n                <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                <p>Cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                <ol start='4'>\n                    <li><b>Geometría real del obstáculo:</b> el plugin usa la posición real del obstáculo dominante y calcula <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor).</li>\n                    <li><b>Activación conservadora:</b> no se activa <b>Abar</b> por pequeñas irregularidades del MDT; se exige un umbral mínimo ligado a la resolución del raster.</li>\n                    <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos y un número de Fresnel:</li>\n                </ol>\n                <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                <p>Ese número se transforma después en una atenuación <b>Abar,b</b> dependiente de la frecuencia mediante la aproximación actual del plugin:</p>\n                <div class='formula'>si C ≤ -2 → Abar = 0 &nbsp;&nbsp; ; &nbsp;&nbsp; -2 &lt; C ≤ 0 → Abar = 10·log10(3 + 20·C)</div>\n                <div class='formula'>0 &lt; C ≤ 3.5 → Abar = 10·log10(3 + 80·C) &nbsp;&nbsp; ; &nbsp;&nbsp; C &gt; 3.5 → Abar = 10·log10(3 + 280·C)</div>\n                <p>En la implementación actual, <b>Abar</b> se limita además a valores razonables (capado superior) para evitar sobreatenuaciones espurias. Si no hay MDT o no hay obstáculo relevante, entonces <b>Abar,b = 0</b>.</p>\n                <h4>7. Ponderación A usada al final</h4>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>A_weight [dB]</th></tr>\n                    ",
     '\n                </table>\n                <p><b>Critical-receiver reading:</b> the table in the critical-receiver section shows attenuation magnitudes for traceability. The <b>resulting level</b> must not be interpreted as a direct subtraction from a single turbine: it is obtained through energetic summation across bands and over the contributing sources within the calculation radius.</p>\n            </div>\n            ': '\n                </table>\n                <p><b>Lectura del receptor crítico:</b> la tabla del apartado de receptor crítico muestra magnitudes de atenuación para trazabilidad. El <b>nivel resultante</b> no debe interpretarse como una resta directa de una sola turbina: se obtiene mediante suma energética por bandas y suma de las fuentes contribuyentes dentro del radio de cálculo.</p>\n            </div>\n            ',
-    "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G calculation</h3>\n                    <p>In this run the ground effect was computed with a <b>single manual G</b> for the whole path:</p>\n                    <div class='formula'>G = ": "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>\n                    <p>En esta corrida el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>\n                    <div class='formula'>G = ",
-    "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G_eff calculation</h3>\n                    <p>When the ground mode is <b>from layer</b>, the calculation does not use a single manual value for the whole wind farm. For each source–receiver path a <b>G_eff</b> is computed from the land-use layer:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>where <b>G_i</b> is the value assigned to each polygon intercepted by the path and <b>L_i</b> is the path length inside that polygon.</p>\n                    <ul>\n                        <li><b>G = 0</b>: hard ground (urban/asphalt/rock).</li>\n                        <li><b>G = 0.5</b>: mixed terrain.</li>\n                        <li><b>G = 1</b>: soft/porous ground (agricultural, grassland, forest, vegetated).</li>\n                    </ul>\n                    <p><b>Important:</b> the <b>global G</b> shown in the report is only a fallback value. When a land-use layer exists, the calculation actually uses <b>G_eff</b> per path. In this run, the effective mean value was <b>": "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>\n                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>\n                    <ul>\n                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>\n                        <li><b>G = 0.5</b>: terreno mixto.</li>\n                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>\n                    </ul>\n                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta corrida, el valor medio efectivo fue <b>",
-    "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In the ISO-aligned engine, the DTM <b>does not change the turbine emission</b> nor the atmospheric absorption. Its role is to describe the <b>real source–receiver path geometry</b> and feed the topographic screening term <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>How the DTM enters the calculation</h4>\n                    <ol>\n                        <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with <b>adaptive sampling</b>, adjusted to distance and raster resolution. The profile is computed <b>only once</b> per source–receiver pair and reused across the 8 bands to reduce computation time.</li>\n                        <li><b>Direct line of sight:</b> the profile is compared with the straight line joining the acoustic source at its effective height and the receiver at its evaluation height. If the terrain always stays below that line, there is no relevant topographic obstacle and <b>Abar,b = 0</b>.</li>\n                        <li><b>Dominant-obstacle detection:</b> if a hill or ridge in the DTM rises above the line of sight, the model interprets that a topographic screen exists. The key magnitude is the obstacle height above the line of sight:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                    <p>when <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                    <ol start='4'>\n                        <li><b>Conservative activation:</b> Abar is not triggered by small relief irregularities; a minimum threshold linked to the DTM resolution is applied.</li>\n                        <li><b>Real obstacle geometry:</b> the calculation uses the <b>real position</b> of the dominant obstacle and obtains real <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver), instead of always assuming an obstacle at the midpoint.</li>\n                        <li><b>Fresnel-type diffraction:</b> from that geometry an approximate path difference is estimated and turned into a frequency-dependent attenuation:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>where <b>δ</b> is the approximate path difference, <b>f</b> the frequency and <b>c</b> the speed of sound. The number <b>C</b> is then translated into an <b>Abar,b</b> attenuation that grows the more the relief blocks the path. This is the same approximation implemented in the calculation.</p>\n                    <p><b>Physical interpretation:</b> on flat terrain or when there is no intersection with the line of sight, <b>Abar</b> is usually negligible. On complex terrain, the DTM can introduce several dB of additional attenuation and change the critical receiver.</p>\n                    <p><b>Current implementation:</b> single dominant obstacle, adaptive profile with cost limits, real obstacle geometry, conservative activation and attenuation capped to reasonable values.</p>\n                    <p><b>DTM used in this run:</b> ": "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>Cómo entra el MDT en el cálculo</h4>\n                    <ol>\n                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>\n                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>\n                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                    <ol start='4'>\n                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>\n                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>\n                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>\n                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>\n                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>\n                    <p><b>MDT usado en esta corrida:</b> ",
-    "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In this run <b>no DTM/DSM was used</b>, so the topographic screening term is set to:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>The assessment is performed without introducing topographic screens. The path geometry is resolved without a terrain profile and the calculation depends on Lw,b, Adiv, Aatm,b and Agr,b.</p>\n                </div>\n                ": "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En esta corrida <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>\n                </div>\n                ",
+    "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G calculation</h3>\n                    <p>In this run the ground effect was computed with a <b>single manual G</b> for the whole path:</p>\n                    <div class='formula'>G = ": "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G</h3>\n                    <p>En esta ejecución el efecto suelo se ha calculado con un <b>G único manual</b> para todo el trayecto:</p>\n                    <div class='formula'>G = ",
+    "\n                <div class='card'>\n                    <h3>🌱 Land-use physics and G_eff calculation</h3>\n                    <p>When the ground mode is <b>from layer</b>, the calculation does not use a single manual value for the whole wind farm. For each source–receiver path a <b>G_eff</b> is computed from the land-use layer:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>where <b>G_i</b> is the value assigned to each polygon intercepted by the path and <b>L_i</b> is the path length inside that polygon.</p>\n                    <ul>\n                        <li><b>G = 0</b>: hard ground (urban/asphalt/rock).</li>\n                        <li><b>G = 0.5</b>: mixed terrain.</li>\n                        <li><b>G = 1</b>: soft/porous ground (agricultural, grassland, forest, vegetated).</li>\n                    </ul>\n                    <p><b>Important:</b> the <b>global G</b> shown in the report is only a fallback value. When a land-use layer exists, the calculation actually uses <b>G_eff</b> per path. In this run, the effective mean value was <b>": "\n                <div class='card'>\n                    <h3>🌱 Física del uso del suelo y cálculo de G_eff</h3>\n                    <p>Cuando el modo suelo es <b>desde capa</b>, el cálculo no usa un único valor manual para todo el parque. Para cada trayecto fuente–receptor se obtiene un <b>G_eff</b> calculado desde la capa de uso del suelo:</p>\n                    <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                    <p>donde <b>G_i</b> es el valor asignado a cada polígono interceptado por el trayecto y <b>L_i</b> es la longitud del trayecto dentro de ese polígono.</p>\n                    <ul>\n                        <li><b>G = 0</b>: suelo duro (urbano/asfalto/roca).</li>\n                        <li><b>G = 0.5</b>: terreno mixto.</li>\n                        <li><b>G = 1</b>: suelo blando/poroso (agrícola, pradera, forestal, vegetado).</li>\n                    </ul>\n                    <p><b>Importante:</b> el <b>G global</b> mostrado en el informe es solo un valor de respaldo. Cuando hay capa de uso del suelo, el cálculo usa realmente <b>G_eff</b> por trayecto. En esta ejecución, el valor medio efectivo fue <b>",
+    "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In the ISO-aligned engine, the DTM <b>does not change the turbine emission</b> nor the atmospheric absorption. Its role is to describe the <b>real source–receiver path geometry</b> and feed the topographic screening term <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>How the DTM enters the calculation</h4>\n                    <ol>\n                        <li><b>Terrain profile:</b> the source–receiver profile is extracted from the DTM with <b>adaptive sampling</b>, adjusted to distance and raster resolution. The profile is computed <b>only once</b> per source–receiver pair and reused across the 8 bands to reduce computation time.</li>\n                        <li><b>Direct line of sight:</b> the profile is compared with the straight line joining the acoustic source at its effective height and the receiver at its evaluation height. If the terrain always stays below that line, there is no relevant topographic obstacle and <b>Abar,b = 0</b>.</li>\n                        <li><b>Dominant-obstacle detection:</b> if a hill or ridge in the DTM rises above the line of sight, the model interprets that a topographic screen exists. The key magnitude is the obstacle height above the line of sight:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terrain - z_LOS</div>\n                    <p>when <b>h_obs &gt; 0</b>, the relief cuts the direct line of sight and additional diffraction attenuation may appear.</p>\n                    <ol start='4'>\n                        <li><b>Conservative activation:</b> Abar is not triggered by small relief irregularities; a minimum threshold linked to the DTM resolution is applied.</li>\n                        <li><b>Real obstacle geometry:</b> the calculation uses the <b>real position</b> of the dominant obstacle and obtains real <b>d1</b> (source → obstacle) and <b>d2</b> (obstacle → receiver), instead of always assuming an obstacle at the midpoint.</li>\n                        <li><b>Fresnel-type diffraction:</b> from that geometry an approximate path difference is estimated and turned into a frequency-dependent attenuation:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>where <b>δ</b> is the approximate path difference, <b>f</b> the frequency and <b>c</b> the speed of sound. The number <b>C</b> is then translated into an <b>Abar,b</b> attenuation that grows the more the relief blocks the path. This is the same approximation implemented in the calculation.</p>\n                    <p><b>Physical interpretation:</b> on flat terrain or when there is no intersection with the line of sight, <b>Abar</b> is usually negligible. On complex terrain, the DTM can introduce several dB of additional attenuation and change the critical receiver.</p>\n                    <p><b>Current implementation:</b> single dominant obstacle, adaptive profile with cost limits, real obstacle geometry, conservative activation and attenuation capped to reasonable values.</p>\n                    <p><b>DTM used in this run:</b> ": "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En el motor ISO-aligned, el MDT <b>no cambia la emisión de la turbina</b> ni la absorción atmosférica. Su función es describir la <b>geometría real del trayecto fuente–receptor</b> y alimentar el término de apantallamiento topográfico <b>Abar,b</b>.</p>\n                    <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                    <h4>Cómo entra el MDT en el cálculo</h4>\n                    <ol>\n                        <li><b>Perfil del terreno:</b> se extrae el perfil fuente–receptor desde el MDT con un <b>muestreo adaptativo</b>, ajustado a la distancia y a la resolución del raster. El perfil se calcula <b>una sola vez</b> por par fuente–receptor y se reutiliza en las 8 bandas para reducir tiempo de cálculo.</li>\n                        <li><b>Línea de visión directa:</b> se compara el perfil con la recta que une la fuente acústica a su altura efectiva y el receptor a su altura de evaluación. Si el terreno queda siempre por debajo de esa recta, no hay obstáculo topográfico relevante y <b>Abar,b = 0</b>.</li>\n                        <li><b>Detección de obstáculo dominante:</b> si una loma o cresta del MDT sobresale por encima de la línea de visión, el modelo interpreta que existe pantalla topográfica. La magnitud clave es la altura del obstáculo sobre la línea de visión:</li>\n                    </ol>\n                    <div class='formula'>h_obs = z_terreno - z_LOS</div>\n                    <p>cuando <b>h_obs &gt; 0</b>, el relieve corta la visión directa y puede aparecer atenuación adicional por difracción.</p>\n                    <ol start='4'>\n                        <li><b>Activación conservadora:</b> no se activa Abar por pequeñas irregularidades del relieve; se aplica un umbral mínimo ligado a la resolución del MDT.</li>\n                        <li><b>Geometría real del obstáculo:</b> el cálculo usa la <b>posición real</b> del obstáculo dominante y obtiene <b>d1</b> (fuente → obstáculo) y <b>d2</b> (obstáculo → receptor) reales, en lugar de asumir siempre un obstáculo en el punto medio.</li>\n                        <li><b>Difracción tipo Fresnel:</b> con esa geometría se estima una diferencia de caminos aproximada y se transforma en una atenuación dependiente de la frecuencia:</li>\n                    </ol>\n                    <div class='formula'>δ ≈ 0.5·h_obs²·(1/d1 + 1/d2) &nbsp;&nbsp; ; &nbsp;&nbsp; C = (2·f·δ)/c</div>\n                    <p>donde <b>δ</b> es la diferencia de caminos aproximada, <b>f</b> la frecuencia y <b>c</b> la velocidad del sonido. El número <b>C</b> se traduce después a una atenuación <b>Abar,b</b> mayor cuanto más bloquea el relieve el trayecto. Esta es la misma aproximación implementada en el cálculo.</p>\n                    <p><b>Interpretación física:</b> en terreno plano o cuando no hay intersección con la línea de visión, <b>Abar</b> suele ser despreciable. En terreno complejo, el MDT puede introducir varios dB de atenuación adicional y cambiar el receptor crítico.</p>\n                    <p><b>Implementación actual:</b> obstáculo dominante único, perfil adaptativo con límites de coste, geometría real del obstáculo, activación conservadora y atenuación capada a valores razonables.</p>\n                    <p><b>MDT usado en esta ejecución:</b> ",
+    "\n                <div class='card'>\n                    <h3>🗺️ DTM physics and topographic screening</h3>\n                    <p>In this run <b>no DTM/DSM was used</b>, so the topographic screening term is set to:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>The assessment is performed without introducing topographic screens. The path geometry is resolved without a terrain profile and the calculation depends on Lw,b, Adiv, Aatm,b and Agr,b.</p>\n                </div>\n                ": "\n                <div class='card'>\n                    <h3>🗺️ Física del MDT y del apantallamiento topográfico</h3>\n                    <p>En esta ejecución <b>no se ha usado MDT/DSM</b>, por lo que el término de apantallamiento topográfico se fija en:</p>\n                    <div class='formula'>Abar,b = 0</div>\n                    <p>La evaluación se realiza sin introducir pantallas topográficas. La geometría del trayecto se resuelve sin perfil del terreno y el cálculo depende de Lw,b, Adiv, Aatm,b y Agr,b.</p>\n                </div>\n                ",
     "\n                <div class='note'>\n                    <b>Correct reading of Abar:</b> the <b>dominant-path Abar</b> value corresponds only to the turbine that contributes most to the receiver and to its dominant band. The total receiver level is obtained by energetically summing all turbines and bands.\n                    <br><b>Maximum Abar among contributing turbines:</b> ": "\n                <div class='note'>\n                    <b>Lectura correcta de Abar:</b> el valor <b>Abar trayectoria dominante</b> corresponde solo a la turbina que más contribuye al receptor y a su banda dominante. El nivel total del receptor se obtiene sumando energéticamente todas las turbinas y bandas.\n                    <br><b>Abar máximo entre turbinas contribuyentes:</b> ",
     "\n                <h4>3. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance. Here <b>d</b> comes from the turbine and receiver coordinates together with their evaluation heights.</p>\n                <h4>4. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm,b = α(f, T, RH, P) · d</div>\n                <p>Atmospheric absorption is computed per band from a reference base coefficient and three correction factors. The physical dependence on temperature, relative humidity and pressure <b>is represented</b>, but through a <b>simplified plugin approximation</b>, not through the full analytical formulation of ISO 9613-1.</p>\n                <div class='formula'>α(f, T, RH, P) = α_ref(f) · corr_T · corr_RH · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_RH = 1 + 0.003·|RH - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretation of the corrections:</b> <b>T</b> is entered in °C relative to a 15 °C reference; <b>RH</b> is compared with a reference optimum humidity of 50% and the correction grows as it moves away from that value; and <b>P</b> is entered in kPa relative to a 101.325 kPa reference with an inverse correction. These factors modify only the atmospheric block <b>Aatm,b</b>: they alter neither the turbine emission, nor the ground effect, nor the DTM/screening term.</p>\n                <table>\n                    <tr><th>Band [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ": "\n                <h4>3. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor. Aquí <b>d</b> sale de las coordenadas de turbina y receptor junto con sus alturas de evaluación.</p>\n                <h4>4. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm,b = α(f, T, HR, P) · d</div>\n                <p>La absorción atmosférica se calcula por banda a partir de un coeficiente base de referencia y tres factores correctores. La dependencia física con temperatura, humedad relativa y presión <b>sí se representa</b>, pero mediante una <b>aproximación simplificada del plugin</b>, no mediante la formulación analítica completa de ISO 9613-1.</p>\n                <div class='formula'>α(f, T, HR, P) = α_ref(f) · corr_T · corr_HR · corr_P</div>\n                <div class='formula'>corr_T = 1 + 0.01·(T - 15) &nbsp;&nbsp; ; &nbsp;&nbsp; corr_HR = 1 + 0.003·|HR - 50| &nbsp;&nbsp; ; &nbsp;&nbsp; corr_P = 101.325 / P</div>\n                <p><b>Interpretación de las correcciones:</b> <b>T</b> se introduce en °C respecto a una referencia de 15 °C; <b>HR</b> se compara con una humedad óptima de referencia del 50% y la corrección crece al alejarse de ese valor; y <b>P</b> se introduce en kPa respecto a una referencia de 101.325 kPa con una corrección inversa. Estos factores modifican únicamente el bloque atmosférico <b>Aatm,b</b>: no alteran ni la emisión de la turbina, ni el efecto del suelo, ni el término de MDT/apantallamiento.</p>\n                <table>\n                    <tr><th>Banda [Hz]</th><th style='text-align:right;'>α_ref [dB/m]</th></tr>\n                    ",
     "\n                <h4>3. Simplified ground effect with land use</h4>\n                <p>In the fast engine the <b>Aground</b> term is still empirical, but the ground parameter can come from the land-use layer as a per-path <b>G_eff</b>:</p>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>That <b>G_eff</b> is then used inside the fast engine's simplified terrain correction. The global value <b>G = ": "\n                <h4>3. Efecto suelo simplificado con uso del suelo</h4>\n                <p>En el motor rápido el término <b>Aground</b> sigue siendo empírico, pero el parámetro de suelo puede venir de la capa de uso del suelo como un <b>G_eff</b> por trayecto:</p>\n                <div class='formula'>G_eff = (Σ G_i · L_i) / (Σ L_i)</div>\n                <div class='formula'>Aground = min(6, max(0, G_eff · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>Ese <b>G_eff</b> se usa después dentro de la corrección simplificada de terreno del motor rápido. El valor global <b>G = ",
@@ -4818,8 +5003,8 @@ _CANON_TO_ES = {
     '\n                <h4>5. What this mode does not do</h4>\n                <p>The fast engine does not work by bands, does not compute <b>Lw,b</b>, does not introduce <b>Abar</b> and does not extract a line of sight or diffraction from a DTM. It is therefore appropriate for screening and quick comparisons, but not for detailed spectral analysis.</p>\n            </div>\n            ': '\n                <h4>5. Qué no hace este modo</h4>\n                <p>El motor rápido no trabaja por bandas, no calcula <b>Lw,b</b>, no introduce <b>Abar</b> y no extrae línea de visión ni difracción desde MDT. Por tanto, es apropiado para screening y comparativas rápidas, pero no para análisis espectral detallado.</p>\n            </div>\n            ',
     "\n            <div class='card card-info'>\n                <h3>🧭 How the ISO-aligned calculation was run</h3>\n                <p>This section explains the actual flow the plugin follows so that the per-receiver result is traceable. The final level of each receiver <b>does not come from a single simple subtraction</b>, but from computing all source–receiver contributions within the calculation radius and summing them energetically.</p>\n                <ol>\n                    <li><b>Reading GIS inputs:</b> the acoustic turbines/sources, the receivers, the receiver height, the maximum calculation radius (<b>": "\n            <div class='card card-info'>\n                <h3>🧭 Cómo se ha ejecutado el cálculo ISO-aligned</h3>\n                <p>Esta sección explica el flujo real que sigue el plugin para que el resultado por receptor sea trazable. El nivel final de cada receptor <b>no sale de una única resta simple</b>, sino de calcular todas las contribuciones fuente–receptor dentro del radio de cálculo y sumarlas energéticamente.</p>\n                <ol>\n                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>",
     "\n            <div class='card card-info'>\n                <h3>🧭 How the Screening calculation was run</h3>\n                <p>This section explains the actual flow the plugin follows in the fast mode. The goal is to obtain a quick estimate for maps, comparison of alternatives and initial detection of sensitive receivers.</p>\n                <ol>\n                    <li><b>Reading GIS inputs:</b> the acoustic turbines/sources, the receivers, the receiver height, the maximum calculation radius (<b>": "\n            <div class='card card-info'>\n                <h3>🧭 Cómo se ha ejecutado el cálculo Screening</h3>\n                <p>Esta sección explica el flujo real que sigue el plugin en el modo rápido. El objetivo es obtener una estimación ágil para mapas, comparación de alternativas y detección inicial de receptores sensibles.</p>\n                <ol>\n                    <li><b>Lectura de entradas GIS:</b> se toman las turbinas/fuentes acústicas, los receptores, la altura de receptor, el radio máximo de cálculo (<b>",
-    "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the ISO-aligned engine</h3>\n                <p>This engine works in <b>8 octave bands</b> (63–8000 Hz). The bands are not a calculation result, but the <b>frequency grid of the method</b>. To apply band-wise propagation, the calculation needs a per-band acoustic input <code>Lw,b</code> from the source. That input can come from a measured/imported spectrum or from a template/fallback adjusted to the global operating level.</p>\n                <p><b>Operating scenario of this run:</b> ": "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>\n                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>\n                <p><b>Escenario operativo de esta corrida:</b> ",
-    "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the fast engine</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>The fast engine works with a single global level <b>LwA</b> per source group. It is intended for screening, quick maps and fast comparisons, trading spectral detail for speed. In this mode there is <b>no band-wise propagation</b> and no explicit topographic screening term.</p>\n                <p><b>Operating scenario of this run:</b> ": "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor rápido</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>\n                <p><b>Escenario operativo de esta corrida:</b> ",
+    "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the ISO-aligned engine</h3>\n                <p>This engine works in <b>8 octave bands</b> (63–8000 Hz). The bands are not a calculation result, but the <b>frequency grid of the method</b>. To apply band-wise propagation, the calculation needs a per-band acoustic input <code>Lw,b</code> from the source. That input can come from a measured/imported spectrum or from a template/fallback adjusted to the global operating level.</p>\n                <p><b>Operating scenario of this run:</b> ": "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor ISO-aligned</h3>\n                <p>Este motor trabaja en <b>8 bandas de octava</b> (63–8000 Hz). Las bandas no son un resultado del cálculo, sino la <b>malla frecuencial del método</b>. Para aplicar la propagación por bandas, el cálculo necesita un <b>input acústico por banda</b> de la fuente <code>Lw,b</code>. Ese input puede venir de un espectro medido/importado o de una plantilla/fallback ajustada al nivel global operativo.</p>\n                <p><b>Escenario operativo de esta ejecución:</b> ",
+    "\n            <div class='card'>\n                <h3>📘 Detailed physical development of the fast engine</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>The fast engine works with a single global level <b>LwA</b> per source group. It is intended for screening, quick maps and fast comparisons, trading spectral detail for speed. In this mode there is <b>no band-wise propagation</b> and no explicit topographic screening term.</p>\n                <p><b>Operating scenario of this run:</b> ": "\n            <div class='card'>\n                <h3>📘 Desarrollo físico detallado del motor rápido</h3>\n                <div class='formula'>Lp = LwA - Adiv - Aatm - Aground</div>\n                <p>El motor rápido trabaja con un único nivel global <b>LwA</b> por grupo fuente. Está pensado para screening, mapas ágiles y comparativas rápidas, sacrificando detalle espectral frente a velocidad. En este modo <b>no hay propagación por bandas</b> ni término explícito de apantallamiento topográfico.</p>\n                <p><b>Escenario operativo de esta ejecución:</b> ",
     ' % of the wind farm net AEP)': ' % del AEP neto del parque)',
     ' %</b> uniformly as fallback. This value directly affects AEP in TI-driven wakes (Niayifar, Zong, TurboGaussian, TurboNOJ). For representative results, load a TI raster in the resource section or review the turbulence sensitivity.</p>': ' %</b> uniforme como fallback. Este valor afecta directamente al AEP en wakes TI-driven (Niayifar, Zong, TurboGaussian, TurboNOJ). Para resultados representativos, carga un raster TI en la sección de recurso o revisa la sensibilidad de turbulencia.</p>',
     ' Activation threshold: ': ' Umbral de activación: ',
@@ -4830,8 +5015,8 @@ _CANON_TO_ES = {
     ' m AGL · receiver acoustic height=': ' m AGL · altura acústica receptor=',
     ' m AGL · turbine acoustic height=': ' m AGL · altura acústica turbina=',
     ' m · receiver terrain=': ' m · terreno receptor=',
-    ' m</b>) and the land-use layer if it exists.</li>\n                    <li><b>Acoustic state of each source group:</b> each turbine model or group works with a single <b>operating LwA</b>, defined by a fixed value or by an <code>LwA(ws)</code> curve. In this run: <b>': ' m</b>) y la capa de uso del suelo si existe.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta corrida: <b>',
-    ' m</b>), the land-use layer if it exists and the DTM/DSM if it is active.</li>\n                    <li><b>Acoustic state of each source group:</b> for each turbine model or group an <b>operating LwA</b> is obtained from a fixed value or from an <code>LwA(ws)</code> curve. In this run: <b>': ' m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta corrida: <b>',
+    ' m</b>) and the land-use layer if it exists.</li>\n                    <li><b>Acoustic state of each source group:</b> each turbine model or group works with a single <b>operating LwA</b>, defined by a fixed value or by an <code>LwA(ws)</code> curve. In this run: <b>': ' m</b>) y la capa de uso del suelo si existe.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> cada modelo o grupo de turbinas trabaja con un único <b>LwA operativo</b>, definido por un valor fijo o por una curva <code>LwA(ws)</code>. En esta ejecución: <b>',
+    ' m</b>), the land-use layer if it exists and the DTM/DSM if it is active.</li>\n                    <li><b>Acoustic state of each source group:</b> for each turbine model or group an <b>operating LwA</b> is obtained from a fixed value or from an <code>LwA(ws)</code> curve. In this run: <b>': ' m</b>), la capa de uso del suelo si existe y el MDT/DSM si está activo.</li>\n                    <li><b>Estado acústico de cada grupo fuente:</b> para cada modelo o grupo de turbinas se obtiene un <b>LwA operativo</b> desde un valor fijo o desde una curva <code>LwA(ws)</code>. En esta ejecución: <b>',
     ' receiver(s) with at least one turbine inside the maximum radius.': ' receptor(es) con al menos una turbina dentro del radio máximo.',
     ' receivers</strong> exceed limits<br>\n                <strong>': ' receptores</strong> superan límites<br>\n                <strong>',
     ' receivers</strong> within the radius<br>\n                <strong>': ' receptores</strong> dentro del radio<br>\n                <strong>',
@@ -4860,8 +5045,8 @@ _CANON_TO_ES = {
     '. The plugin will apply that TI to all heights as an approximation.': '. El plugin aplicará esa TI a todas las alturas como aproximación.',
     '. Trying the standard loader…': '. Probando loader estándar…',
     '.</p>\n                    <p><b>What each column represents:</b> <code>S_b^ref</code> is the reference spectral template (if any), <code>A_weight,b</code> the A-weighting of each band and <code>Lw,b</code> the final level in dB actually used by the calculation.</p>': '.</p>\n                    <p><b>Qué representa cada columna:</b> <code>S_b^ref</code> es la plantilla espectral de referencia (si existe), <code>A_weight,b</code> la ponderación A de cada banda y <code>Lw,b</code> el nivel final en dB realmente usado por el cálculo.</p>',
-    ".</p>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> a single global level <b>LwA</b> per source group.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> for the selected wind speed or worst case.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> in this mode T/RH/P are not used; absorption is summarized in a single coefficient <b>α</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> the DTM does not enter as explicit screening in this mode.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Global source input. It comes from a fixed value per group or from an <code>LwA(ws)</code> acoustic curve for the selected wind speed/worst case.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Computed with a single constant coefficient <code>α</code> multiplied by the distance.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Empirical ground-effect correction. The ground parameter can be a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</td></tr>\n                </table>\n                <h4>2. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance.</p>\n                <h4>3. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>In this run <b>α = ": ".</p>\n                <h4>0. Inputs realmente usados en esta corrida</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>\n                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                </table>\n                <h4>2. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>\n                <h4>3. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>En esta corrida se ha usado <b>α = ",
-    ".</p>\n                <p><b>General per-band equation:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Final A-weighted sum:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> <code>Lw,b</code> by octave bands. If a specific spectrum of the source group exists, that is the input used. If not, the plugin uses a library/template/fallback and adjusts it to the global operating level.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> according to the selected scenario. That global level does not replace the bands: it sets the operating state and the spectrum provides the frequency distribution.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> temperature <b>T</b>, relative humidity <b>RH</b> and pressure <b>P</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> optional DTM/DSM. It only affects the calculation of <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Per-band acoustic input. It comes from the source-group spectrum (CSV, library, template or fallback adjusted to the global level). The LwA(ws) acoustic curve or the fixed LwA define the turbine's global operating level, and the band spectrum distributes that level among the 8 bands.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Computed per band with a base absorption table <code>α_ref(f)</code> and simplified corrections for temperature, relative humidity and pressure. The current implementation uses the plugin's exact math: <code>α = α_ref(f)·corr_T·corr_RH·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Computed as ground effect by regions. The ground parameter used is a <b>single G per path</b>: manual/global or <b>G_eff</b> derived from the land-use layer.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>It only enters if there is a DTM/DSM and topographic screening is detected. If there is no DTM or no relevant obstacle, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Source acoustic input and bands</h4>\n                <p>In this engine, the term <code>Lw,b</code> is a <b>per-band input datum</b>. The <b>octave bands</b> (63–8000 Hz) are not a result of the ISO nor a table computed by the plugin: they are the <b>frequency grid</b> on which propagation is solved.</p>\n                <p>The plugin combines two pieces:</p>\n                <ul>\n                    <li><b>Global acoustic curve LwA(ws)</b>: it sets the <b>global operating level</b> of the turbine for the selected wind speed or worst case.</li>\n                    <li><b>Band spectrum Lw,b</b>: it distributes that global level among the 8 bands and is the real input used in the band-wise equation.</li>\n                </ul>\n                <p>That spectrum can come from a specific manufacturer/user file or from a reference template. If only a global curve <code>LwA(ws)</code> is available, the plugin first sets the global operating level <code>LwA_target</code> and then builds an absolute per-band spectrum from a reference spectral shape <code>S_b^ref</code>.</p>\n                <p><b>Mathematical reconstruction of the bands when only LwA(ws) exists:</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_target - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>That is: the acoustic curve provides the <b>global operating level</b> and the template/library provides the <b>spectral shape</b>. The shift <b>Δ</b> is computed so that, when A-weighting and energetically summing the 8 bands, the reconstructed spectrum reproduces exactly the <code>LwA_target</code> of the imported curve.</p>\n                ": ".</p>\n                <p><b>Ecuación general por banda:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Suma A-ponderada final:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs realmente usados en esta corrida</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>\n                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Input acústico de fuente y bandas</h4>\n                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>\n                <p>El plugin combina dos piezas:</p>\n                <ul>\n                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>\n                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>\n                </ul>\n                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>\n                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>\n                ",
+    ".</p>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> a single global level <b>LwA</b> per source group.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> for the selected wind speed or worst case.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> in this mode T/RH/P are not used; absorption is summarized in a single coefficient <b>α</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> the DTM does not enter as explicit screening in this mode.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Global source input. It comes from a fixed value per group or from an <code>LwA(ws)</code> acoustic curve for the selected wind speed/worst case.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Computed with a single constant coefficient <code>α</code> multiplied by the distance.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Empirical ground-effect correction. The ground parameter can be a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</td></tr>\n                </table>\n                <h4>2. Geometrical divergence</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>It represents the geometrical spreading of the sound wave with the 3D source–receiver distance.</p>\n                <h4>3. Simplified atmospheric absorption</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>In this run <b>α = ": ".</p>\n                <h4>0. Inputs realmente usados en esta ejecución</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> un único nivel global <b>LwA</b> por grupo fuente.</li>\n                    <li><b>Nivel operativo global:</b> sale de un <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> para la velocidad o peor caso seleccionados.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> en este modo no se usan T/HR/P; la absorción se resume en un único coeficiente <b>α</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> el MDT no entra como apantallamiento explícito en este modo.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>LwA</b></td><td>Input global de la fuente. Sale de un valor fijo por grupo o de una curva acústica <code>LwA(ws)</code> para la velocidad/peor caso seleccionados.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm</b></td><td>Se calcula con un único coeficiente constante <code>α</code> multiplicado por la distancia.</td></tr>\n                    <tr><td><b>Aground</b></td><td>Corrección empírica del efecto suelo. El parámetro de suelo puede ser un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                </table>\n                <h4>2. Divergencia geométrica</h4>\n                <div class='formula'>Adiv = 20·log10(d) + 11</div>\n                <p>Representa la dispersión geométrica de la onda sonora con la distancia 3D fuente–receptor.</p>\n                <h4>3. Absorción atmosférica simplificada</h4>\n                <div class='formula'>Aatm = α · d</div>\n                <p>En esta ejecución se ha usado <b>α = ",
+    ".</p>\n                <p><b>General per-band equation:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Final A-weighted sum:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs actually used in this run</h4>\n                <ul>\n                    <li><b>Acoustic source:</b> <code>Lw,b</code> by octave bands. If a specific spectrum of the source group exists, that is the input used. If not, the plugin uses a library/template/fallback and adjusts it to the global operating level.</li>\n                    <li><b>Global operating level:</b> it comes from a <b>fixed LwA</b> or from an <b>LwA(ws) acoustic curve</b> according to the selected scenario. That global level does not replace the bands: it sets the operating state and the spectrum provides the frequency distribution.</li>\n                    <li><b>Geometry:</b> source and receiver coordinates, receiver height, effective source height and 3D distance.</li>\n                    <li><b>Atmosphere:</b> temperature <b>T</b>, relative humidity <b>RH</b> and pressure <b>P</b>.</li>\n                    <li><b>Ground:</b> a <b>manual global G</b> or a <b>G_eff</b> derived from the land-use layer.</li>\n                    <li><b>Topography:</b> optional DTM/DSM. It only affects the calculation of <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. Where each term of the equation comes from</h4>\n                <table>\n                    <tr><th>Term</th><th>How it is obtained in this plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Per-band acoustic input. It comes from the source-group spectrum (CSV, library, template or fallback adjusted to the global level). The LwA(ws) acoustic curve or the fixed LwA define the turbine's global operating level, and the band spectrum distributes that level among the 8 bands.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Computed from the 3D source–receiver distance.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Computed per band with a base absorption table <code>α_ref(f)</code> and simplified corrections for temperature, relative humidity and pressure. The current implementation uses the plugin's exact math: <code>α = α_ref(f)·corr_T·corr_RH·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Computed as ground effect by regions. The ground parameter used is a <b>single G per path</b>: manual/global or <b>G_eff</b> derived from the land-use layer.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>It only enters if there is a DTM/DSM and topographic screening is detected. If there is no DTM or no relevant obstacle, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Source acoustic input and bands</h4>\n                <p>In this engine, the term <code>Lw,b</code> is a <b>per-band input datum</b>. The <b>octave bands</b> (63–8000 Hz) are not a result of the ISO nor a table computed by the plugin: they are the <b>frequency grid</b> on which propagation is solved.</p>\n                <p>The plugin combines two pieces:</p>\n                <ul>\n                    <li><b>Global acoustic curve LwA(ws)</b>: it sets the <b>global operating level</b> of the turbine for the selected wind speed or worst case.</li>\n                    <li><b>Band spectrum Lw,b</b>: it distributes that global level among the 8 bands and is the real input used in the band-wise equation.</li>\n                </ul>\n                <p>That spectrum can come from a specific manufacturer/user file or from a reference template. If only a global curve <code>LwA(ws)</code> is available, the plugin first sets the global operating level <code>LwA_target</code> and then builds an absolute per-band spectrum from a reference spectral shape <code>S_b^ref</code>.</p>\n                <p><b>Mathematical reconstruction of the bands when only LwA(ws) exists:</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_target - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>That is: the acoustic curve provides the <b>global operating level</b> and the template/library provides the <b>spectral shape</b>. The shift <b>Δ</b> is computed so that, when A-weighting and energetically summing the 8 bands, the reconstructed spectrum reproduces exactly the <code>LwA_target</code> of the imported curve.</p>\n                ": ".</p>\n                <p><b>Ecuación general por banda:</b></p>\n                <div class='formula'>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</div>\n                <p><b>Suma A-ponderada final:</b></p>\n                <div class='formula'>LpA,total = 10·log10(Σ 10^((Lp,b + A_weight)/10))</div>\n                <h4>0. Inputs realmente usados en esta ejecución</h4>\n                <ul>\n                    <li><b>Fuente acústica:</b> <code>Lw,b</code> por bandas de octava. Si existe espectro específico del grupo fuente, ese es el input usado. Si no, el plugin usa una biblioteca/plantilla/fallback y la ajusta al nivel global operativo.</li>\n                    <li><b>Nivel operativo global:</b> viene de <b>LwA fijo</b> o de una <b>curva acústica LwA(ws)</b> según el escenario seleccionado. Ese nivel global no sustituye a las bandas: fija el estado operativo y el espectro aporta el reparto frecuencial.</li>\n                    <li><b>Geometría:</b> coordenadas de fuente y receptor, altura de receptor, altura efectiva de fuente y distancia 3D.</li>\n                    <li><b>Atmósfera:</b> temperatura <b>T</b>, humedad relativa <b>HR</b> y presión <b>P</b>.</li>\n                    <li><b>Suelo:</b> un <b>G global manual</b> o un <b>G_eff</b> derivado desde la capa de uso del suelo.</li>\n                    <li><b>Topografía:</b> MDT/DSM opcional. Solo afecta al cálculo de <b>Abar,b</b>.</li>\n                </ul>\n                <h4>1. De dónde sale cada término de la ecuación</h4>\n                <table>\n                    <tr><th>Término</th><th>Cómo se obtiene en este plugin</th></tr>\n                    <tr><td><b>Lw,b</b></td><td>Input acústico por bandas. Sale del espectro del grupo fuente (CSV, biblioteca, plantilla o fallback ajustado al nivel global). La curva acústica LwA(ws) o el LwA fijo definen el nivel global operativo de la turbina, y el espectro por bandas reparte ese nivel entre las 8 bandas.</td></tr>\n                    <tr><td><b>Adiv</b></td><td>Se calcula a partir de la distancia 3D fuente–receptor.</td></tr>\n                    <tr><td><b>Aatm,b</b></td><td>Se calcula por banda con una tabla base de absorción <code>α_ref(f)</code> y correcciones simplificadas por temperatura, humedad relativa y presión. La implementación actual usa la matemática exacta del plugin: <code>α = α_ref(f)·corr_T·corr_HR·corr_P</code>.</td></tr>\n                    <tr><td><b>Agr,b</b></td><td>Se calcula como efecto suelo por regiones. El parámetro de suelo usado es un <b>G único por trayecto</b>: manual/global o <b>G_eff</b> derivado desde la capa de uso del suelo.</td></tr>\n                    <tr><td><b>Abar,b</b></td><td>Solo entra si hay MDT/DSM y se detecta apantallamiento topográfico. Si no hay MDT o no hay obstáculo relevante, <b>Abar,b = 0</b>.</td></tr>\n                </table>\n                <h4>2. Input acústico de fuente y bandas</h4>\n                <p>En este motor, el término <code>Lw,b</code> es un <b>dato de entrada por banda</b>. Las <b>bandas de octava</b> (63–8000 Hz) no son un resultado de la ISO ni una tabla calculada por el plugin: son la <b>malla frecuencial</b> sobre la que se resuelve la propagación.</p>\n                <p>El plugin combina dos piezas:</p>\n                <ul>\n                    <li><b>Curva acústica global LwA(ws)</b>: fija el <b>nivel operativo global</b> de la turbina para la velocidad de viento o el peor caso seleccionado.</li>\n                    <li><b>Espectro por bandas Lw,b</b>: reparte ese nivel global entre las 8 bandas y es el input real usado en la ecuación por bandas.</li>\n                </ul>\n                <p>Ese espectro puede proceder de un archivo específico del fabricante/usuario o de una plantilla de referencia. Si solo se dispone de una curva global <code>LwA(ws)</code>, el plugin fija primero el nivel global operativo <code>LwA_objetivo</code> y después construye un espectro absoluto por bandas a partir de una forma espectral de referencia <code>S_b^ref</code>.</p>\n                <p><b>Reconstrucción matemática de las bandas cuando solo existe LwA(ws):</b></p>\n                <div class='formula'>Lw,b = S_b^ref + Δ</div>\n                <div class='formula'>Δ = LwA_objetivo - 10·log10(Σ 10^((S_b^ref + A_weight,b)/10))</div>\n                <p>Es decir: la curva acústica aporta el <b>nivel global operativo</b> y la plantilla/biblioteca aporta la <b>forma espectral</b>. El desplazamiento <b>Δ</b> se calcula para que, al ponderar en A y sumar energéticamente las 8 bandas, el espectro reconstruido reproduzca exactamente el <code>LwA_objetivo</code> de la curva importada.</p>\n                ",
     ': coordinates are missing. Select a CSV or add points on the map.': ': faltan coordenadas. Selecciona CSV o añade puntos en el mapa.',
     ': curve mode active but no acoustic-curve CSV.': ': modo curva activo pero sin CSV de curva acústica.',
     ': invalid fixed LwA.': ': LwA fijo no válido.',
@@ -4882,7 +5067,7 @@ _CANON_TO_ES = {
     "</b>.</li>\n                    <li><b>Conversion to bands:</b> the ISO-aligned engine needs a spectrum <code>Lw,b</code> in 8 octave bands. If there is no specific spectrum, the plugin reconstructs one from a template/fallback and adjusts it to reproduce the operating LwA.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b> and do not generate a useful acoustic level.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine, the 3D distance, acoustic heights, ground <b>G</b> or <b>G_eff</b> and, if there is a DTM/DSM, the possible topographic screening of the path are computed.</li>\n                    <li><b>Per-band propagation:</b> in each band <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code> is applied. Adiv depends on distance, Aatm,b on frequency/atmosphere, Agr,b on ground and Abar,b on the DTM if there is a relevant obstacle.</li>\n                    <li><b>Per-source sum:</b> the 8 bands are A-weighted and summed energetically to obtain the A-weighted level of that turbine at the receiver.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(LpA,source/10))</div>\n                <p><b>Practical reading:</b> the critical receiver is the one with the highest total level or the worst margin against the limit. The “dominant source” column identifies the turbine/group that contributes the most, but the receiver's final result includes all sources within the radius.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the Screening mode</h3>\n                <p>The ISO-aligned mode is heavier but more traceable: it uses octave bands, a final A-weighting, frequency-dependent atmospheric absorption, ground by regions and topographic screening <b>Abar</b> when there is a DTM/DSM. It is the recommended mode for preliminary technical reports and review of sensitive receivers.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Conversión a bandas:</b> el motor ISO-aligned necesita un espectro <code>Lw,b</code> en 8 bandas de octava. Si no hay espectro específico, el plugin reconstruye uno desde una plantilla/fallback y lo ajusta para reproducir el LwA operativo.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b> y no generan nivel acústico útil.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula distancia 3D, cotas acústicas, <b>G</b> o <b>G_eff</b> del suelo y, si hay MDT/DSM, el posible apantallamiento topográfico del trayecto.</li>\n                    <li><b>Propagación por banda:</b> en cada banda se aplica <code>Lp,b = Lw,b - Adiv - Aatm,b - Agr,b - Abar,b</code>. Adiv depende de la distancia, Aatm,b de frecuencia/atmósfera, Agr,b del suelo y Abar,b del MDT si hay obstáculo relevante.</li>\n                    <li><b>Suma por fuente:</b> las 8 bandas se ponderan en A y se suman energéticamente para obtener el nivel A-ponderado de esa turbina en el receptor.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(LpA,fuente/10))</div>\n                <p><b>Lectura práctica:</b> el receptor crítico es el de mayor nivel total o el que queda con peor margen frente al límite. La columna “fuente dominante” identifica la turbina/grupo que más contribuye, pero el resultado final del receptor incluye todas las fuentes dentro del radio.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo Screening</h3>\n                <p>El modo ISO-aligned es más pesado pero más trazable: usa bandas de octava, ponderación A final, absorción atmosférica dependiente de frecuencia, suelo por regiones y apantallamiento topográfico <b>Abar</b> cuando hay MDT/DSM. Es el modo recomendado para informes técnicos preliminares y revisión de receptores sensibles.</p>\n            </div>\n            ",
     "</b>.</li>\n                    <li><b>Selection of contributors per receiver:</b> for each receiver the turbines within the maximum radius are searched. Receivers with no sources inside that radius are flagged as <b>outside the radius</b>.</li>\n                    <li><b>Per source–receiver path calculation:</b> for each contributing turbine the 3D distance, the geometrical divergence, a simplified atmospheric absorption <code>α·d</code> and an empirical ground correction are computed.</li>\n                    <li><b>Land use:</b> if there is a land-use layer, the plugin can compute a per-path <b>G_eff</b>; otherwise it uses the <b>global G</b> defined by the user.</li>\n                    <li><b>Simplified propagation:</b> <code>Lp = LwA - Adiv - Aatm - Aground</code> is applied. There are no octave bands and no explicit topographic screening <code>Abar</code>.</li>\n                    <li><b>Receiver sum:</b> all contributing turbines are summed energetically to obtain the <b>total level dB(A)</b> of the receiver.</li>\n                    <li><b>Comparison with limits:</b> the total level is compared with the limit assigned to the receiver or with the reference limit. From there come the margin, the compliance status and the exceedance table.</li>\n                </ol>\n                <div class='formula'>LpA,receiver = 10·log10(Σ_sources 10^(Lp,source/10))</div>\n                <p><b>Practical reading:</b> this mode is useful for initial screening. If a receiver appears close to the limit or in exceedance, it is advisable to recalculate it with the ISO-aligned mode and review spectra, terrain, land use and applied limits.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 What sets this mode apart from the ISO-aligned mode</h3>\n                <p>The Screening mode trades detail for speed. It does not propagate by bands, does not use T/RH/P per frequency, does not compute <b>Abar</b> from a DTM and summarizes the atmosphere with a single coefficient <b>α</b>. It should therefore be interpreted as a quick pre-assessment, not as a detailed acoustic report.</p>\n            </div>\n            ": "</b>.</li>\n                    <li><b>Selección de contribuyentes por receptor:</b> para cada receptor se buscan las turbinas dentro del radio máximo. Los receptores sin fuentes dentro de ese radio se marcan como <b>fuera de radio</b>.</li>\n                    <li><b>Cálculo por trayecto fuente–receptor:</b> para cada turbina contribuyente se calcula la distancia 3D, la divergencia geométrica, una absorción atmosférica simplificada <code>α·d</code> y una corrección empírica de suelo.</li>\n                    <li><b>Uso del suelo:</b> si hay capa de land-use, el plugin puede calcular un <b>G_eff</b> por trayecto; si no, usa el <b>G global</b> definido por el usuario.</li>\n                    <li><b>Propagación simplificada:</b> se aplica <code>Lp = LwA - Adiv - Aatm - Aground</code>. No hay bandas de octava ni apantallamiento topográfico explícito <code>Abar</code>.</li>\n                    <li><b>Suma del receptor:</b> todas las turbinas contribuyentes se suman energéticamente para obtener el <b>nivel total dB(A)</b> del receptor.</li>\n                    <li><b>Comparación con límites:</b> el nivel total se compara con el límite asignado al receptor o con el límite de referencia. De ahí salen el margen, el estado de cumplimiento y la tabla de excedencias.</li>\n                </ol>\n                <div class='formula'>LpA,receptor = 10·log10(Σ_fuentes 10^(Lp,fuente/10))</div>\n                <p><b>Lectura práctica:</b> este modo es útil para screening inicial. Si un receptor aparece cerca del límite o en excedencia, conviene recalcularlo con el modo ISO-aligned y revisar espectros, terreno, uso del suelo y límites aplicados.</p>\n            </div>\n            <div class='card'>\n                <h3>🔎 Qué diferencia este modo del modo ISO-aligned</h3>\n                <p>El modo Screening sacrifica detalle para ganar velocidad. No propaga por bandas, no usa T/HR/P por frecuencia, no calcula <b>Abar</b> desde MDT y resume la atmósfera con un único coeficiente <b>α</b>. Por eso debe interpretarse como preevaluación rápida, no como informe acústico detallado.</p>\n            </div>\n            ",
     '</div>\n                    <p>That value is applied in the ground term of the model. No G_eff was derived from a land-use layer.</p>\n                </div>\n                ': '</div>\n                    <p>Ese valor se aplica en el término de suelo del modelo. No se ha derivado un G_eff desde capa de uso del suelo.</p>\n                </div>\n                ',
-    "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>In this run no G_eff was derived from a land-use layer. Here <b>d_xy</b> is the horizontal distance, <b>h_s</b> the source height and <b>h_r</b> the receiver height.</p>\n                ": "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>En esta corrida no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>\n                ",
+    "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>In this run no G_eff was derived from a land-use layer. Here <b>d_xy</b> is the horizontal distance, <b>h_s</b> the source height and <b>h_r</b> the receiver height.</p>\n                ": "</div>\n                <div class='formula'>Aground = min(6, max(0, G · 3·log10(1 + d_xy/100) · 1/(1 + (h_s + h_r)/80)))</div>\n                <p>En esta ejecución no se ha derivado un G_eff desde una capa de uso del suelo. Aquí <b>d_xy</b> es la distancia horizontal, <b>h_s</b> la altura de fuente y <b>h_r</b> la altura del receptor.</p>\n                ",
     '</p>\n        </div>\n\n        <h2>2. HOW THE RESULT WAS GENERATED</h2>\n        ': '</p>\n        </div>\n\n        <h2>2. CÓMO SE HA GENERADO EL RESULTADO</h2>\n        ',
     "</td>\n                    <td>Average weighted by the acoustic contribution of each turbine</td>\n                </tr>\n                <tr>\n                    <td>Screened paths</td>\n                    <td style='text-align: right;'>": "</td>\n                    <td>Promedio ponderado por la contribución acústica de cada turbina</td>\n                </tr>\n                <tr>\n                    <td>Trayectorias apantalladas</td>\n                    <td style='text-align: right;'>",
     "</td>\n                    <td>Maximum Abar among all turbines contributing to the receiver</td>\n                </tr>\n                <tr>\n                    <td>Energy-weighted Abar</td>\n                    <td style='text-align: right;'>": "</td>\n                    <td>Máximo Abar entre todas las turbinas que contribuyen al receptor</td>\n                </tr>\n                <tr>\n                    <td>Abar ponderado por energía</td>\n                    <td style='text-align: right;'>",
@@ -4894,11 +5079,11 @@ _CANON_TO_ES = {
     '</ul>\n        </div>\n        \n        <h2>5. DETAILED PHYSICS AND CALCULATION TRACEABILITY</h2>\n        ': '</ul>\n        </div>\n        \n        <h2>5. FÍSICA DETALLADA Y TRAZABILIDAD DEL CÁLCULO</h2>\n        ',
     "</ul>\n        </div>\n        \n        <h2>7. DISTRIBUTION BY RECEIVER TYPE</h2>\n        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>\n            <div class='card'>\n                <h3>📍 Receivers by category</h3>\n                <ul>": "</ul>\n        </div>\n        \n        <h2>7. DISTRIBUCIÓN POR TIPO DE RECEPTOR</h2>\n        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px;'>\n            <div class='card'>\n                <h3>📍 Receptores por Categoría</h3>\n                <ul>",
     '<b>Active model:</b>': '<b>Modelo activo:</b>',
-    '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = a wake that widens and recovers sooner; decreasing it = a narrower, more persistent wake.<br><br><b>cεps</b> — Initial wake size next to the rotor (σ₀/D). PyWake default = 0.2. Rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.': '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.',
-    '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Slope of σ growth. σ(x)/D = k·(x/D) + cεps. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = wake that widens and recovers earlier; decreasing it = narrower, more persistent wake.<br><br><b>cεps</b> — Initial wake size near the rotor (σ₀/D). PyWake default = 0.2. It is rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.': '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + cεps. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Tamaño inicial de la estela junto al rotor (σ₀/D). Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.',
+    '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Growth slope of σ. σ(x)/D = k·(x/D) + ε, with ε = cεps·√β and β a function of Ct. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = a wake that widens and recovers sooner; decreasing it = a narrower, more persistent wake.<br><br><b>cεps</b> — Coefficient of the initial wake width ε next to the rotor. PyWake default = 0.2. Rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.': '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.',
+    '<b>BastankhahGaussianDeficit</b><br><br>Gaussian model by Bastankhah & Porté-Agel (2014). The radial deficit profile is a Gaussian bell whose width σ(x) grows linearly.<br><br><b>k</b> — Slope of σ growth. σ(x)/D = k·(x/D) + ε, with ε = cεps·√β and β a function of Ct. PyWake default = 0.0324, a value calibrated against LES in the original paper. Increasing it = wake that widens and recovers earlier; decreasing it = narrower, more persistent wake.<br><br><b>cεps</b> — Coefficient of the initial wake width ε next to the rotor. PyWake default = 0.2. It is rarely changed; it mainly affects the near wake.<br><br><i>Note:</i> in standard BG the ambient TI does NOT enter k. It is robust for benchmarking (e.g. IEA Task 37) but not very sensitive to the TI resource.': '<b>BastankhahGaussianDeficit</b><br><br>Modelo gaussiano de Bastankhah & Porté-Agel (2014). El perfil radial del déficit es una campana de Gauss cuyo ancho σ(x) crece linealmente.<br><br><b>k</b> — Pendiente del crecimiento de σ. σ(x)/D = k·(x/D) + ε, con ε = cεps·√β y β función del Ct. Default PyWake = 0.0324, valor calibrado contra LES en el paper original. Subirlo = estela que se ensancha y recupera antes; bajarlo = estela más estrecha y persistente.<br><br><b>cεps</b> — Coeficiente del ancho inicial ε de la estela junto al rotor. Default PyWake = 0.2. Casi nunca se cambia; afecta sobre todo al near-wake.<br><br><i>Nota:</i> en BG estándar la TI ambiente NO entra en k. Es robusto para benchmarking (ej. IEA Task 37) pero poco sensible al recurso TI.',
     '<b>Blockage disabled</b> because the engine is <b>PropagateDownwind</b> (it only propagates wakes downstream and does not support blockage). To include blockage, change the engine to <b>All2AllIterative</b> or <b>PropagateUpDownIterative</b>.': '<b>Bloqueo desactivado</b> porque el motor es <b>PropagateDownwind</b> (solo propaga estelas hacia abajo, no soporta bloqueo). Si quieres incluir bloqueo, cambia el motor a <b>All2AllIterative</b> o <b>PropagateUpDownIterative</b>.',
-    '<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is a cylinder that widens linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u> it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. The larger k is, the faster the wake recovers and the smaller the far-field deficit.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04 (PyWake default)<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to compute k. If your site has high TI and you need that to show in AEP, use TurboNOJ or a TI-sensitive Gaussian model.': '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04 (default PyWake)<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.',
-    '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Initial size σ₀/D. PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.': '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Tamaño inicial σ₀/D. Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.',
+    '<b>NOJDeficit (Jensen)</b><br><br>Classic top-hat model: the wake is a cylinder that widens linearly with a single slope <b>k</b>.<br><br><b>k</b> — Expansion slope. <u>Physically</u> it represents how much the wake radius grows per metre downstream: r(x) = R + k·x. The larger k is, the faster the wake recovers and the smaller the far-field deficit. PyWake default = 0.1.<br><br><b>Reference values</b><br>• Clean offshore: k ≈ 0.04<br>• Typical onshore: k ≈ 0.075<br>• Complex onshore / high TI: k ≈ 0.10<br><br><i>Note:</i> NOJ does not use ambient TI to compute k. If your site has high TI and you need that to show in AEP, use TurboNOJ or a TI-sensitive Gaussian model.': '<b>NOJDeficit (Jensen)</b><br><br>Modelo top-hat clásico: la estela es un cilindro que se ensancha linealmente con una sola pendiente <b>k</b>.<br><br><b>k</b> — Pendiente de expansión. <u>Físicamente</u> representa cuánto crece el radio de la estela por metro avanzado aguas abajo: r(x) = R + k·x. Cuanto mayor k, más rápido se recupera la estela y más pequeño el déficit lejano. Default PyWake = 0.1.<br><br><b>Valores de referencia</b><br>• Offshore limpio: k ≈ 0.04<br>• Onshore típico: k ≈ 0.075<br>• Onshore complejo / alta TI: k ≈ 0.10<br><br><i>Nota:</i> NOJ no usa la TI ambiente para calcular k. Si tu sitio tiene TI alta y necesitas que esto se note en el AEP, usa TurboNOJ o un modelo gaussiano TI-sensible.',
+    '<b>NiayifarGaussianDeficit</b><br><br>Gaussian variant where the slope k is an explicit function of the <b>effective local TI</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coefficients of k = a₁·TI + a₂. PyWake default = [0.38, 0.004].<br><b>cεps</b> — Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.<br><br>Changing the WRG ambient TI or the added-turbulence model is still the main AEP lever. The coefficients are exposed only as an advanced adjustment.': '<b>NiayifarGaussianDeficit</b><br><br>Variante gaussiana donde la pendiente k es función explícita de la <b>TI local efectiva</b> (Niayifar &amp; Porté-Agel 2016): k ≈ a₁·TI + a₂.<br><br><b>a₁/a₂</b> — Coeficientes de k = a₁·TI + a₂. Default PyWake = [0.38, 0.004].<br><b>cεps</b> — Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.<br><br>Cambiar la TI ambiente del WRG o el modelo de turbulencia añadida sigue siendo la palanca principal del AEP. Los coeficientes se exponen solo como ajuste avanzado.',
     '<b>No added turbulence:</b> the calculation uses ambient TI from the resource (WRG/TI raster or manual value), but it does not add turbulence created by wakes. This is valid for models with low TI sensitivity; if you use Niayifar, Zong, TurboGaussian or TurboNOJ, added turbulence can affect AEP more.': '<b>Sin turbulencia añadida:</b> el cálculo usa la TI ambiente del recurso (WRG/raster TI o valor manual), pero no suma la turbulencia creada por las estelas. Esto es válido para modelos poco sensibles a TI; si usas Niayifar, Zong, TurboGaussian o TurboNOJ, la turbulencia añadida puede afectar más al AEP.',
     '<b>No blockage:</b> the calculation will not include upstream wind-speed reduction. In large offshore wind farms this often underestimates losses by about ~1–3% AEP.': '<b>Sin bloqueo:</b> el cálculo no incluirá la reducción de velocidad upstream. En parques offshore grandes esto suele subestimar las pérdidas en ~1–3 % AEP.',
     '<b>Sector loss rose.</b> Distribution of free-flow and net AEP by wind direction. The difference between each pair of bars represents the wake losses in that sector — useful to see which directions limit the wind farm performance the most.': '<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por dirección del viento. La diferencia entre cada barra representa las pérdidas por estela en ese sector — útil para ver qué direcciones limitan más el rendimiento del parque.',
@@ -5107,7 +5292,7 @@ _CANON_TO_ES = {
     'Close': 'Cerrar',
     'Close the energy module and return to the Velantis Wind main hub without deleting project layers or loaded results.': 'Cierra el módulo de energía y vuelve al hub principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.',
     'Close this window and return to the main dialog without creating the layer.': 'Cerrar esta ventana y volver al diálogo principal sin crear la capa.',
-    'Coefficient that converts local/effective TI into wake expansion.': 'Coeficiente que convierte la TI local/efectiva en expansión de estela.',
+    'Coefficient that converts local/effective TI into wake expansion. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.001.': 'Coeficiente que convierte la TI local/efectiva en expansión de estela. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.001.',
     'Combination of multiple wakes (superposition)': 'Combinación de varias estelas (superposición)',
     'Comma': 'Coma',
     'Company logo on README and VelantisWind website.': 'Logo de empresa en el README y en la web de VelantisWind.',
@@ -5432,8 +5617,8 @@ _CANON_TO_ES = {
     'Include CT column': 'Incluir columna CT',
     'Incomplete WRG line: expected >=': 'Línea WRG incompleta: esperados >=',
     'Incomplete configuration. Check the flagged items.': 'Configuración incompleta. Revisa los elementos marcados.',
-    'Initial wake size at the base (σ₀/D). PyWake default = 0.2.': 'Tamaño inicial de la estela en la base (σ₀/D). Default PyWake = 0.2.',
-    'Initial wake size. PyWake default = 0.25.': 'Tamaño inicial de la estela. Default PyWake = 0.25.',
+    'Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.2.': 'Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.2.',
+    'Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). PyWake default = 0.25.': 'Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default PyWake = 0.25.',
     'Initializing calculation…': 'Inicializando cálculo…',
     'Install them in the QGIS Python environment and try again.': 'Instálalas en el entorno de Python de QGIS y vuelve a intentarlo.',
     'Installed power': 'Potencia instalada',
@@ -5522,7 +5707,6 @@ _CANON_TO_ES = {
     'MaxSum considers only the most severe deficit; useful as a robust check, but it may underestimate cumulative losses.': 'MaxSum considera solo el déficit más severo; útil como comprobación robusta, pero puede infraestimar pérdidas acumuladas.',
     'MaxSum: uses only the dominant wake. Useful for diagnosis, but it can underestimate accumulated losses from several wakes.': 'MaxSum: usa solo la estela dominante. Sirve para diagnosticar, pero puede quedarse corto si varias estelas se acumulan.',
     'Maximum [dB]': 'Máximo [dB]',
-    'Maximum distance from a turbine to consider shadow flicker.\nDefault: 2000 m, matching the conservative Continuum-style screening distance.\nThis value is used for receiver filtering and for the raster extent/mask.': 'Distancia máxima desde una turbina para considerar shadow flicker.\nPor defecto: 2000 m, coincidiendo con la distancia de screening conservadora tipo Continuum.\nEste valor se usa para filtrar receptores y para el extent/máscara del raster.',
     'Maximum level (dB(A))': 'Nivel Máximo (dB(A))',
     'Maximum radius': 'Radio máximo',
     'Maximum radius [m]:': 'Radio máximo [m]:',
@@ -5539,9 +5723,9 @@ _CANON_TO_ES = {
     'Metric': 'Métrica',
     'Mexico has several zones; check manually.': 'México tiene varias zonas; verifica manualmente.',
     'Min solar elevation [°]:': 'Elevación solar mínima [°]:',
-    'Minimum expansion offset when TI tends to zero.': 'Offset mínimo de expansión cuando la TI tiende a cero.',
+    'Minimum expansion offset when TI tends to zero. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.0001.': 'Offset mínimo de expansión cuando la TI tiende a cero. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.0001.',
     'Minimum sun elevation must be lower than maximum sun elevation.': 'La elevación solar mínima debe ser menor que la máxima.',
-    'Minimum wake-expansion offset.': 'Offset mínimo de expansión de la estela.',
+    'Minimum wake-expansion offset. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.0001.': 'Offset mínimo de expansión de la estela. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.0001.',
     'Missing configuration': 'Configuración incompleta',
     'Missing models': 'Faltan modelos',
     'Model': 'Modelo',
@@ -5681,11 +5865,11 @@ _CANON_TO_ES = {
     "Override physical model parameters. If you leave 'Default PyWake', the canonical value for the selected model is used.": 'Override de parámetros físicos del modelo. Si dejas «Default PyWake», se usa el valor canónico del modelo seleccionado.',
     "Override physical model parameters. If you leave 'PyWake default', the canonical value for the selected model is used.": 'Estos parámetros calibran la forma de la estela. Para un usuario normal, déjalos en Valor PyWake por defecto.',
     'Override physical model parameters. If you leave ‘PyWake default’, the canonical value for the selected model is used.': 'Estos parámetros calibran la forma de la estela. Para un usuario normal, déjalos en Valor PyWake por defecto.',
-    'PASS': 'CUMPLE',
+    'PASS': 'CUMPLE',  # nosec B105
     'Parallelization:': 'Paralelización:',
     'Parameter': 'Parámetro',
     'Parameters active:': 'Parámetros activos:',
-    'Pass': 'Cumple',
+    'Pass': 'Cumple',  # nosec B105
     'Paths with G different from global': 'Trayectos con G distinto del global',
     'Paths with G different from the global value:': 'Trayectos con G distinto del global:',
     'Per-receiver results calculated.': 'Resultados por receptor calculados.',
@@ -5907,7 +6091,7 @@ _CANON_TO_ES = {
     'TI raster(s) not selected → automatic fallback to': 'Raster(s) TI no seleccionado(s) → fallback automático a',
     'TI really affects': 'TI sí influya',
     'TI turbulence raster(s) (optional):': 'Raster(s) de turbulencia TI (opcional):',
-    'TI-dependent expansion coefficient in the Zong formulation.': 'Coeficiente de expansión dependiente de TI en la formulación Zong.',
+    'TI-dependent expansion coefficient in the Zong formulation. 0 is reserved for the PyWake default, so the smallest value that can be set is 0.001.': 'Coeficiente de expansión dependiente de TI en la formulación Zong. El 0 está reservado al valor por defecto de PyWake: el menor valor que se puede fijar es 0.001.',
     'TI-sensitive Gaussian option': 'opción gaussiana sensible a TI',
     'TI/turbulence impact': 'Impacto TI/turbulencia',
     'TI/turbulence impact:': 'Impacto TI/turbulencia:',
@@ -6468,7 +6652,7 @@ _I18N_COVERAGE11_TO_ES = {
     "Latitude": "Latitud",
     "Longitude": "Longitud",
     "Year": "Año",
-    "Timezone": "Zona horaria",
+    "Time zone": "Zona horaria",
     "Availability": "Disponibilidad",
     "Max shadow distance": "Distancia máxima de sombra",
     "Solar elevation limits": "Límites de elevación solar",
@@ -6533,7 +6717,7 @@ _I18N_COVERAGE13_ENERGY_GREY_TO_EN = {
     "Mostrar perímetro del recurso en el mapa": "Show resource boundary on the map",
     "Actualizar perímetro": "Refresh boundary",
     "Limpiar perímetro": "Clear boundary",
-    "Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.": "Enable 'Show resource boundary on the map' to draw it.",
+    "Activa 'Mostrar perímetro del recurso en el mapa' para dibujarlo.": "Enable “Show resource boundary on the map” to draw it.",
     "Perímetro del recurso eliminado del mapa.": "Resource boundary removed from the map.",
     "No había perímetro del recurso que limpiar.": "There was no resource boundary to clear.",
     "Perímetro del recurso no disponible en esta instalación.": "Resource boundary not available in this installation.",
@@ -6606,18 +6790,18 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     # Engine/atmosphere/acoustic scenario
     "Motor de cálculo:": "Calculation engine:",
     "⚡ Rápido - LwA global simplificado": "⚡ Fast - simplified global LwA",
-    "📊 ISO-aligned - ISO 9613-2 por bandas": "📊 ISO-aligned - octave-band ISO 9613-2",
+
     "Motor rápido: cálculo simplificado para cribado acústico\nMotor ISO: cálculo por bandas según ISO 9613-2:2024": "Fast engine: simplified screening calculation\nISO engine: octave-band calculation according to ISO 9613-2:2024",
-    "⛅ Condiciones Atmosféricas (Motor ISO)": "⛅ Atmospheric conditions (ISO engine)",
+
     "Temperatura:": "Temperature:",
     "Humedad relativa:": "Relative humidity:",
     "Presión atmosférica:": "Atmospheric pressure:",
-    "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible.": "Local atmospheric pressure in kPa. Usual reference value at sea level: 101.325 kPa. Use a measured or altitude-adjusted value if available.",
-    "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.": "💡 Use typical site conditions. If you do not have measured pressure, 101.325 kPa is a standard sea-level reference; at altitude it is usually lower.",
+
+
     "Escenario acústico:": "Acoustic scenario:",
     "LwA fijo por grupo fuente": "Fixed LwA by source group",
     "LwA fijo por grupo fuente acústico": "Fixed LwA by acoustic source group",
-    "Velocidad eval. [m/s]:": "Evaluation speed [m/s]:",
+    "Velocidad eval. [m/s]:": "Evaluation wind speed [m/s]:",
     "Usar peor caso de la curva": "Use curve worst case",
     "En modo curva, cada grupo fuente puede usar un CSV ws/LwA distinto.": "In curve mode, each source group can use a different ws/LwA CSV.",
     "Configuración de grupos fuente acústicos": "Acoustic source-group configuration",
@@ -6641,7 +6825,7 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "Limpiar espectro del grupo seleccionado": "Clear spectrum of the selected source group",
     "Normalizar el espectro al LwA del grupo (usar solo la forma)": "Normalize the spectrum to the group LwA (use shape only)",
     "CSV con columnas freq_hz y Lw_dB (absoluto) o Lw_dB_rel (forma relativa). Acepta separadores coma, punto y coma o tabulador.": "CSV with columns freq_hz and Lw_dB (absolute) or Lw_dB_rel (relative shape). Comma, semicolon or tab separators are accepted.",
-    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Disabled: the absolute OEM spectrum is used as-is and the group operational LwA becomes the A-weighted sum of the spectrum (recommended to compare against other software). Enabled: the spectrum is used as a shape only and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+
     "Ruido · Espectro OEM por bandas de octava": "Noise · OEM octave-band spectrum",
     "Introduce el nivel de potencia sonora Lw por banda de octava (valores absolutos en dB del fabricante). Si introduces una forma relativa (todos los valores por debajo de 20 dB), se tratará como forma y se normalizará al LwA del grupo.": "Enter the sound power level Lw per octave band (absolute manufacturer values in dB). If you enter a relative shape (all values below 20 dB), it will be treated as a shape and normalized to the group LwA.",
     "Banda [Hz]": "Band [Hz]",
@@ -6665,8 +6849,8 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "Listo.": "Ready.",
     "Comprobar configuración": "Check configuration",
     "Calcular ruido": "Calculate noise",
-    "α se calcula automáticamente por banda en Motor ISO": "α is calculated automatically by band in the ISO engine",
-    "Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))": "ISO-aligned method: ISO 9613-2 with octave bands (Adiv + Aatm(T,RH,P) + Agr(f))",
+
+
     "peor caso": "worst case",
     "inválida": "invalid",
     "sin curva -> fallback LwA fijo": "no curve -> fixed LwA fallback",
@@ -6723,7 +6907,7 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "No hay capas activas de receptores por categoría.": "There are no active receiver layers by category.",
     "LwA fijo inválido": "invalid fixed LwA",
     "El radio máximo debe ser mayor que 0.": "The maximum radius must be greater than 0.",
-    "La resolución del raster debe ser mayor que 0.": "Raster resolution must be greater than 0.",
+
     "Modo suelo desde capa activo sin capa válida: will use G global como respaldo.": "Ground-from-layer mode is active without a valid layer: global G will be used as fallback.",
 
     # Dialog controller/progress/messages
@@ -6750,7 +6934,7 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "No se pudo preparar el cálculo en segundo plano": "Could not prepare the background calculation",
     "Añadiendo capas de resultados a QGIS…": "Adding result layers to QGIS…",
     "Cálculo de ruido completado en segundo plano.": "Noise calculation completed in the background.",
-    "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el raster, si estaba activado, ya se han añadido al proyecto.": "Acoustic calculation completed in the background.\n\nReceiver/source layers and the raster, if enabled, have already been added to the project.",
+
     "No se pudo completar el cálculo": "Could not complete the calculation",
     "No se pudo calcular el ruido en segundo plano": "Could not calculate noise in the background",
     "Calculando ruido en segundo plano": "Calculating noise in the background",
@@ -6761,21 +6945,21 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "Raster de ruido terminado en segundo plano": "Noise raster finished in the background",
     "celdas, resolución efectiva": "cells, effective resolution",
     "Isófonas terminadas en segundo plano": "Isophones finished in the background",
-    "Raster de ruido completado.": "Noise raster completed.",
-    "Raster de ruido generado y añadido al proyecto.": "Noise raster generated and added to the project.",
-    "Raster de ruido finalizado con aviso.": "Noise raster finished with warning.",
+
+
+
     "Generando raster de ruido": "Generating noise raster",
-    "Raster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.": "Noise raster launched in the background. You can monitor it in the QGIS task manager.",
+
     "No se puede lanzar el cálculo": "Cannot start the calculation",
     "AVISO: esta configuración usa ruta síncrona porque": "WARNING: this configuration uses the synchronous path because",
     "Ruta síncrona": "Synchronous path",
     "Calculando receptores y resumen…": "Calculating receivers and summary…",
-    "Calculando ruido y raster…": "Calculating noise and raster…",
+
     "No se pudo calcular el ruido": "Could not calculate noise",
     "Resultados por receptor calculados.": "Receiver results calculated.",
     "Cálculo de ruido completado.": "Noise calculation completed.",
     "No se pudo mostrar el resumen visual de ruido": "Could not display the visual noise summary",
-    "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el raster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.": "Acoustic calculation completed.\n\nReceiver/source layers have already been added to the project. If the raster was enabled and does not use land use, it is being generated in the background when safe.",
+
 
     # Validation / compute errors
     "El MDT/DSM no está en el mismo CRS que el proyecto. Reproyéctalo antes de calcular.": "The DEM/DSM is not in the same CRS as the project. Reproject it before calculating.",
@@ -6783,7 +6967,7 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "La capa de uso del suelo no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.": "The land-use layer is not in the same CRS as the project. Reproject it before calculating.",
     "Sin ruta de curva acústica": "No acoustic curve path",
     "No se pudieron leer pares ws/LwA válidos de": "Could not read valid ws/LwA pairs from",
-    "Acoustic curve vacía": "Empty acoustic curve",
+
     "Espectro vacío": "Empty spectrum",
     "Falta banda": "Missing band",
     "Valor inválido en banda": "Invalid value in band",
@@ -6791,9 +6975,9 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     # Results dialog tables/buttons/tooltips
     "Resumen": "Summary",
     "Modelos": "Models",
-    "Top receptores": "Top receivers",
+
     "Capas creadas": "Created layers",
-    "Modelo WT": "WT model",
+
     "Turbinas": "Turbines",
     "Notas": "Notes",
     "Tabla resumida para consultoría: resultados acústicos por receptor, cumplimiento, fuente dominante y atenuaciones principales. Los diagnósticos internos MDT por pares se conservan en memoria, pero no se muestran por defecto.": "Consultancy summary table: acoustic results by receiver, compliance, dominant source and main attenuations. Internal pairwise DEM diagnostics are kept in memory but are not shown by default.",
@@ -6810,11 +6994,11 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "grupo fuente dom.": "dominant source group",
     "parque dom.": "dominant wind farm",
     "LwA fuente dom. dB(A)": "dominant source LwA dB(A)",
-    "Abar máx. dB": "max Abar dB",
+    "Abar máx. dB": "max. Abar dB",
     "G suelo": "ground G",
     "modo suelo": "ground mode",
-    "h receptor m": "receiver h m",
-    "z terreno receptor m": "receiver ground z m",
+    "h receptor m": "receiver height m",
+    "z terreno receptor m": "receiver terrain z m",
     "z acústica receptor m": "receiver acoustic z m",
     "capa fuente dominante": "dominant source layer",
     "Capa": "Layer",
@@ -6834,7 +7018,7 @@ _I18N_NOISE_PRERELEASE_TO_EN = {
     "Evaluación de ruido generado por aerogeneradores": "Assessment of wind turbine noise",
     "RESUMEN EJECUTIVO": "EXECUTIVE SUMMARY",
     "Aerogeneradores": "Wind turbines",
-    "Receptores Evaluados": "Evaluated receptors",
+    "Receptores Evaluados": "Evaluated receivers",
     "Nivel Máximo (dB(A))": "Maximum level (dB(A))",
     "Cobertura de Análisis": "Analysis coverage",
     "receptores dentro del radio": "receivers within the radius",
@@ -6930,19 +7114,19 @@ _FRAGMENT_TO_ES.update(_I18N_NOISE_PRERELEASE_TO_ES)
 # Coverage pass 14: Noise module clickable help icons and helper labels.
 # ---------------------------------------------------------------------------
 _I18N_COVERAGE14_NOISE_HELP_TO_EN = {
-    "Fuentes / layout acústico:": "Sources / acoustic layout:",
-    "Temperature, humidity and pressure used by the ISO-aligned engine.": "Temperature, humidity and pressure used by the ISO-aligned engine.",
-    "Review the acoustic emission assigned to each source group before running the calculation.": "Review the acoustic emission assigned to each source group before running the calculation.",
-    "Explain which turbine layers are used as acoustic sources": "Explain which turbine layers are used as acoustic sources",
-    "Explain receiver layers, categories and day/night limits": "Explain receiver layers, categories and day/night limits",
-    "Explain manual, day and night receiver limits": "Explain manual, day and night receiver limits",
-    "Explain the GIS noise map, raster resolution and isophones": "Explain the GIS noise map, raster resolution and isophones",
-    "Explain receiver height, maximum radius and DEM/DSM use": "Explain receiver height, maximum radius and DEM/DSM use",
-    "Explain simplified atmospheric attenuation, ground factor G and land-use layers": "Explain simplified atmospheric attenuation, ground factor G and land-use layers",
-    "Explain the fast and ISO-aligned noise engines": "Explain the fast and ISO-aligned noise engines",
-    "Explain how atmospheric conditions affect ISO-band absorption": "Explain how atmospheric conditions affect ISO-band absorption",
-    "Explain fixed LwA, acoustic curves and worst-case mode": "Explain fixed LwA, acoustic curves and worst-case mode",
-    "Explain the acoustic source-group table": "Explain the acoustic source-group table",
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 _I18N_COVERAGE14_NOISE_HELP_TO_ES = {
     "Sources / acoustic layout:": "Fuentes / layout acústico:",
@@ -6969,10 +7153,10 @@ _FRAGMENT_TO_ES.update(_I18N_COVERAGE14_NOISE_HELP_TO_ES)
 # Coverage pass 15: Noise source-group fixed LwA editable directly in table.
 # ---------------------------------------------------------------------------
 _I18N_COVERAGE15_NOISE_LWA_TABLE_TO_EN = {
-    "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso.": "You can edit the fixed LwA directly in the acoustic source-group table or import a ws/LwA acoustic curve per group. If you enable curve mode, the plugin will evaluate the emission at a specific wind speed or in the worst case.",
-    "Edit the fixed LwA for this acoustic source group.": "Edit the fixed LwA for this acoustic source group.",
-    "Fixed acoustic emission level for this source group. Edit it here before running the calculation.": "Fixed acoustic emission level for this source group. Edit it here before running the calculation.",
-    "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table.": "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table.",
+
+
+
+
 }
 _I18N_COVERAGE15_NOISE_LWA_TABLE_TO_ES = {
     "You can edit the fixed LwA directly in the acoustic source-group table or import a ws/LwA acoustic curve per group. If you enable curve mode, the plugin will evaluate the emission at a specific wind speed or in the worst case.": "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el plugin evaluará la emisión a una velocidad concreta o en peor caso.",
@@ -7058,7 +7242,7 @@ try:
         getattr(_i18n_fr, "FRAGMENT_TO_FR", None),
         label=getattr(_i18n_fr, "LABEL", "Français"),
     )
-except Exception:
+except Exception:  # nosec B110
     # French pack missing or malformed: the plugin still works, French simply
     # falls back to Spanish until the pack is available.
     pass
@@ -7080,7 +7264,7 @@ try:
         getattr(_i18n_de, "FRAGMENT_TO_DE", None),
         label=getattr(_i18n_de, "LABEL", "Deutsch"),
     )
-except Exception:
+except Exception:  # nosec B110
     # German pack missing or malformed: the plugin still works and falls back to Spanish.
     pass
 
@@ -7092,14 +7276,14 @@ _LAYOUT_OPTIMIZATION_HUB_TO_EN = {
     "Optimización de layout": "Layout optimization",
     "Muestra información de contacto y el white paper de optimización.": "Shows contact information and the optimization white paper.",
     "Optimización de layout bajo demanda": "On-demand layout optimization",
-    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need a previous layout: we can work from the wind resource, constraints and project objectives to look for higher production and lower wake losses.",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need an existing layout: we can work from the wind resource, constraints and project objectives to seek higher production and lower wake losses.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact: info@velantiswind.com · White paper available at velantiswind.com",
     "Copiar contacto": "Copy contact",
-    "Copia el email de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+
     "Ver white paper": "Read white paper",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Opens the VelantisWind website, where the white paper is available.",
+
     "Ocultar información": "Hide information",
-    "Email copiado al portapapeles:": "Email copied to clipboard:",
+    "Email copiado al portapapeles:": "Email copied to the clipboard:",
     "Puedes contactar en:": "You can contact us at:",
 }
 _TO_EN.update(_LAYOUT_OPTIMIZATION_HUB_TO_EN)
@@ -7108,7 +7292,7 @@ _TO_ES.update({v: k for k, v in _LAYOUT_OPTIMIZATION_HUB_TO_EN.items() if v != k
 _FRAGMENT_TO_ES.update({v: k for k, v in _LAYOUT_OPTIMIZATION_HUB_TO_EN.items() if v != k})
 try:
     register_language(LANG_EN, _TO_EN, _FRAGMENT_TO_EN, label="English")
-except Exception:
+except Exception:  # nosec B110
     pass
 I18N_BUILD = "2026-06-22-0.1.14"
 
@@ -7153,7 +7337,7 @@ try:
     register_language(LANG_EN, _I18N_POWER_CURVE_DIALOG_TO_EN, _I18N_POWER_CURVE_DIALOG_TO_EN, label="English")
     register_language(LANG_FR, _I18N_POWER_CURVE_DIALOG_TO_FR, _I18N_POWER_CURVE_DIALOG_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_POWER_CURVE_DIALOG_TO_DE, _I18N_POWER_CURVE_DIALOG_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # ---------------------------------------------------------------------------
@@ -7162,10 +7346,10 @@ except Exception:
 # into Spanish or English when the page is opened from the hub.
 # ---------------------------------------------------------------------------
 _I18N_HUB_SHADOW_CLEAN_TO_EN = {
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow Flicker.",
+
     "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energy: ready · Noise: ready · Shadow flicker: ready",
     "Sombras y parpadeo": "Shadow flicker",
-    "Módulo de sombras y parpadeo para aerogeneradores. Conectado al layout del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Shadow flicker module for wind turbines. Connected to the project layout, it calculates point receivers and generates detailed QGIS output layers per receiver.",
+
     "Configuración del emplazamiento": "Site configuration",
     "Latitud [°]": "Latitude [°]",
     "Latitud [°]": "Latitude [°]",
@@ -7173,8 +7357,8 @@ _I18N_HUB_SHADOW_CLEAN_TO_EN = {
     "Latitud [°]:": "Latitude [°]:",
     "Longitud [°]:": "Longitude [°]:",
     "Latitud/longitud y año de análisis": "Latitude/longitude and analysis year",
-    "Latitud del emplazamiento (ej. 42.465 para Logroño)": "Site latitude (e.g. 42.465 for Logroño)",
-    "Longitud del emplazamiento (ej. -2.445 para Logroño)": "Site longitude (e.g. -2.445 for Logroño)",
+
+
     "Año de análisis:": "Analysis year:",
     "Base temporal:": "Time basis:",
     "Modo de zona horaria y gestión de la hora civil": "Time-zone mode and civil-time handling",
@@ -7182,21 +7366,21 @@ _I18N_HUB_SHADOW_CLEAN_TO_EN = {
     "Desfase UTC fijo": "Fixed UTC offset",
     "IANA/DST: la tabla usa la hora civil local real del emplazamiento.\nDesfase UTC fijo: usa el mismo desfase UTC durante todo el año.": "IANA/DST: the table uses the site's real local civil time.\nFixed UTC offset: uses the same UTC offset throughout the year.",
     "Zona horaria IANA:": "IANA time zone:",
-    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "IANA time zone, for example Europe/Madrid, America/Santiago or Asia/Tokyo.\nThe plugin includes an extended IANA catalogue and a local TZif database to apply daylight saving time without timezonefinder.",
+
     "Desfase UTC fijo:": "Fixed UTC offset:",
     "Desfase fijo para el modo UTC fijo. No se aplica horario de verano.": "Fixed offset for the fixed-UTC mode. Daylight saving time is not applied.",
     "Detectar automáticamente coordenadas y zona horaria": "Auto-detect coordinates and time zone",
-    "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA": "Calculates latitude/longitude from the layout centroid and tries to detect the IANA zone",
+
     "Capa de aerogeneradores:": "Wind-turbine layer:",
     "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Select or import the wind-turbine coordinate layer",
     "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Select a VelantisWind wind-turbine coordinate layer, or import one directly from this module",
-    "Importar layout de aerogeneradores desde CSV…": "Import wind-turbine layout from CSV…",
+
     "Capa de receptores:": "Receiver layer:",
     "Seleccionar la capa de puntos que contiene los receptores": "Select the point layer containing the receivers",
     "Selecciona la capa de puntos que contiene los receptores": "Select the point layer containing the receivers",
-    "Raster MDT/DEM (opcional):": "DEM/DTM raster (optional):",
-    "Raster de elevación opcional para geometría con terreno": "Optional elevation raster for terrain-aware geometry",
-    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Optional digital elevation model (DTM/DEM).\nIf provided, ground elevation is sampled below each wind turbine and each receiver.\nIt allows elev_diff = (hub + turbine terrain) - (observer + receiver terrain) to be calculated.\nIf left empty, flat terrain is assumed (z=0).",
+
+
+    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Optional digital elevation model (DEM).\nIf provided, ground elevation is sampled below each wind turbine and each receiver.\nIt allows elev_diff = (hub + turbine terrain) - (observer + receiver terrain) to be calculated.\nIf left empty, flat terrain is assumed (z=0).",
     "Altura del observador [m]:": "Observer height [m]:",
     "Altura del observador, paso temporal, elevación solar, disponibilidad y distancia": "Observer height, time step, solar elevation, availability and distance",
     "Altura del punto de observación (ventana típica: 2 m)": "Observation-point height (typical window: 2 m)",
@@ -7208,9 +7392,9 @@ _I18N_HUB_SHADOW_CLEAN_TO_EN = {
     "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Maximum solar elevation to include (90° = no high-sun filtering; lower values are an optional screening assumption)",
     "Disponibilidad de los aerogeneradores:": "Wind-turbine availability:",
     "Disponibilidad y distancia máxima de influencia": "Availability and maximum influence distance",
-    "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)": "Fraction of time the wind turbine is operating (0.97 = 97%)",
+
     "Distancia máxima de sombra [m]:": "Maximum shadow distance [m]:",
-    "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\nSe usa para filtrar receptores y para la extensión/máscara del raster.": "Maximum distance from a wind turbine for considering shadow flicker.\nDefault value: 2000 m, consistent with a conservative Continuum-type screening distance.\nUsed to filter receivers and define the raster extent/mask.",
+
     "Configuración de los modelos de aerogenerador": "Wind-turbine model configuration",
     "Comprueba la altura de buje y el diámetro del rotor para cada modelo de aerogenerador detectado.": "Check hub height and rotor diameter for each detected wind-turbine model.",
     "Altura de buje, diámetro del rotor y notas del modelo": "Hub height, rotor diameter and model notes",
@@ -7221,102 +7405,102 @@ _I18N_HUB_SHADOW_CLEAN_TO_EN = {
     "Configura los parámetros geométricos de cada modelo de aerogenerador.\nAltura de buje: altura sobre el terreno [m]\nDiámetro del rotor: diámetro del rotor [m]": "Configure the geometric parameters of each wind-turbine model.\nHub height: height above ground [m]\nRotor diameter: rotor diameter [m]",
     "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Configure hub height and rotor diameter for each detected model. These parameters are required for the shadow flicker calculation.",
     "Preparación del cálculo": "Calculation preparation",
-    "Crear mapa raster de sombras y parpadeo": "Create shadow flicker raster map",
-    "Genera un mapa raster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Generates a continuous raster map of shadow flicker hours\nDisplays a colour gradient over the whole analysis area\nWARNING: this can take several minutes depending on the area",
-    "Mapa raster, resolución y paso temporal del raster": "Raster map, resolution and raster time step",
+
+
+
     "Resolución [m]:": "Resolution [m]:",
-    "Tamaño de celda del raster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Raster cell size\n100 m = fast, less detail\n50 m = intermediate\n25 m = slow, maximum detail",
-    "Paso temporal SOLO para el raster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Time step ONLY for the raster (independent from receivers).\n1 min = maximum accuracy, VERY slow\n5 min = recommended (accuracy >98%, 5× faster)\n10 min = very fast, ~95% accuracy\n20 min = ultra-fast for previewing",
-    "Filtrar raster por mes/hora (después de generarlo)": "Filter raster by month/hour (after generation)",
-    "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Once the raster has been generated, you can regenerate TIFs filtered by month and/or hour\nwithout recalculating the full annual geometry.",
-    "Filtrar el raster generado por mes y/u hora": "Filter the generated raster by month and/or hour",
+
+
+
+
+
     "Mes:": "Month:", "Hora:": "Hour:", "Todos": "All", "Todas": "All",
     "Enero": "January", "Febrero": "February", "Marzo": "March", "Abril": "April", "Mayo": "May", "Junio": "June", "Julio": "July", "Agosto": "August", "Septiembre": "September", "Octubre": "October", "Noviembre": "November", "Diciembre": "December",
     "📊 Regenerar TIF filtrado": "📊 Regenerate filtered TIF",
     "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Creates a new TIF with the selected month/hour filter",
     "Comprobar configuración": "Check configuration",
     "Calcular sombras y parpadeo": "Calculate shadow flicker",
-    "No se ha detectado ningún layout": "No layout detected",
+    "No se ha detectado ninguna disposición": "No layout detected",
     "— Seleccionar capa de aerogeneradores —": "— Select wind-turbine layer —",
     "— Seleccionar capa de receptores —": "— Select receiver layer —",
-    "— Sin DEM/MDT (terreno plano) —": "— No DEM/DTM (flat terrain) —",
+    "— Sin DEM/MDT (terreno plano) —": "— No DEM (flat terrain) —",
 }
 
 _I18N_HUB_SHADOW_CLEAN_TO_FR = {
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Sélectionnez le module de travail. Les modules disponibles sont : Énergie (AEP et sillages), Bruit, Ombres et scintillement.",
-    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres : opérationnel",
-    "Sombras y parpadeo": "Ombres et scintillement",
-    "Módulo de sombras y parpadeo para aerogeneradores. Conectado al layout del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Module de calcul des ombres et du scintillement pour les éoliennes. Connecté à l’implantation du projet, il calcule les récepteurs ponctuels et génère des couches QGIS de sortie détaillées par récepteur.",
+
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres portées : opérationnelles",
+    "Sombras y parpadeo": "Ombres portées",
+
     "Configuración del emplazamiento": "Configuration du site",
     "Latitud [°]:": "Latitude [°] :", "Longitud [°]:": "Longitude [°] :",
     "Latitud/longitud y año de análisis": "Latitude/longitude et année d’analyse",
-    "Latitud del emplazamiento (ej. 42.465 para Logroño)": "Latitude du site (ex. 42.465 pour Logroño)",
-    "Longitud del emplazamiento (ej. -2.445 para Logroño)": "Longitude du site (ex. -2.445 pour Logroño)",
+
+
     "Año de análisis:": "Année d’analyse :", "Base temporal:": "Base temporelle :",
     "Modo de zona horaria y gestión de la hora civil": "Mode de fuseau horaire et gestion de l’heure civile",
     "Hora civil local (IANA/DST)": "Heure civile locale (IANA/DST)", "Desfase UTC fijo": "Décalage UTC fixe",
     "IANA/DST: la tabla usa la hora civil local real del emplazamiento.\nDesfase UTC fijo: usa el mismo desfase UTC durante todo el año.": "IANA/DST : le tableau utilise l’heure civile locale réelle du site.\nDécalage UTC fixe : utilise le même décalage UTC pendant toute l’année.",
     "Zona horaria IANA:": "Fuseau horaire IANA :",
-    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "Fuseau horaire IANA, par exemple Europe/Madrid, America/Santiago ou Asia/Tokyo.\nLe plugin inclut un catalogue IANA étendu et une base TZif locale pour appliquer l’heure d’été sans timezonefinder.",
+
     "Desfase UTC fijo:": "Décalage UTC fixe :", "Desfase fijo para el modo UTC fijo. No se aplica horario de verano.": "Décalage fixe pour le mode à décalage UTC fixe. L’heure d’été n’est pas appliquée.",
     "Detectar automáticamente coordenadas y zona horaria": "Détecter automatiquement les coordonnées et le fuseau horaire",
-    "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA": "Calcule la latitude/longitude depuis le centroïde de l’implantation et tente de détecter le fuseau IANA",
+
     "Capa de aerogeneradores:": "Couche d’éoliennes :", "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Sélectionner ou importer la couche de coordonnées d’éoliennes",
     "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Sélectionnez une couche de coordonnées d’éoliennes VelantisWind, ou importez-en une directement depuis ce module",
-    "Importar layout de aerogeneradores desde CSV…": "Importer un layout d’éoliennes depuis CSV…",
+
     "Capa de receptores:": "Couche de récepteurs :", "Seleccionar la capa de puntos que contiene los receptores": "Sélectionner la couche de points contenant les récepteurs", "Selecciona la capa de puntos que contiene los receptores": "Sélectionnez la couche de points contenant les récepteurs",
-    "Raster MDT/DEM (opcional):": "Raster MDT/DEM (optionnel) :", "Raster de elevación opcional para geometría con terreno": "Raster d’élévation optionnel pour une géométrie tenant compte du terrain",
-    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Modèle numérique d’élévation (MDT/DEM) optionnel.\nS’il est fourni, l’altitude du terrain sous chaque éolienne et chaque récepteur est échantillonnée.\nIl permet de calculer elev_diff = (moyeu + terrain éolienne) - (observateur + terrain récepteur).\nSi ce champ reste vide, un terrain plat (z=0) est supposé.",
+
+    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Modèle numérique de terrain (MNT) optionnel.\nS’il est fourni, l’altitude du terrain sous chaque éolienne et chaque récepteur est échantillonnée.\nIl permet de calculer elev_diff = (moyeu + terrain éolienne) - (observateur + terrain récepteur).\nSi ce champ reste vide, un terrain plat (z=0) est supposé.",
     "Altura del observador [m]:": "Hauteur de l’observateur [m] :", "Altura del observador, paso temporal, elevación solar, disponibilidad y distancia": "Hauteur de l’observateur, pas temporel, élévation solaire, disponibilité et distance", "Altura del punto de observación (ventana típica: 2 m)": "Hauteur du point d’observation (fenêtre typique : 2 m)",
     "Paso temporal [min]:": "Pas temporel [min] :", "Resolución temporal del cálculo\n5 min = buen equilibrio velocidad/precisión\n1 min = precisión máxima (muy lento)": "Résolution temporelle du calcul\n5 min = bon équilibre vitesse/précision\n1 min = précision maximale (très lent)",
-    "Elevación solar mín. [°]:": "Élévation solaire min. [°] :", "Sol demasiado bajo → ignorado (típico: 3°)": "Soleil trop bas → ignoré (typique : 3°)", "Elevación solar máx. [°]:": "Élévation solaire max. [°] :", "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Élévation solaire maximale à inclure (90° = aucun filtrage du soleil haut ; des valeurs plus basses sont une hypothèse optionnelle de criblage)",
-    "Disponibilidad de los aerogeneradores:": "Disponibilité des éoliennes :", "Disponibilidad y distancia máxima de influencia": "Disponibilité et distance maximale d’influence", "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)": "Fraction du temps pendant laquelle l’éolienne est en fonctionnement (0.97 = 97 %)",
-    "Distancia máxima de sombra [m]:": "Distance maximale d’ombre [m] :", "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\nSe usa para filtrar receptores y para la extensión/máscara del raster.": "Distance maximale depuis une éolienne pour considérer les ombres et le scintillement.\nValeur par défaut : 2000 m, cohérente avec une distance de criblage conservatrice de type Continuum.\nCette valeur est utilisée pour filtrer les récepteurs et pour l’emprise/le masque du raster.",
+    "Elevación solar mín. [°]:": "Élévation solaire min. [°] :", "Sol demasiado bajo → ignorado (típico: 3°)": "Soleil trop bas → ignoré (typique : 3°)", "Elevación solar máx. [°]:": "Élévation solaire max. [°] :", "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Élévation solaire maximale à inclure (90° = aucun filtrage du soleil haut ; des valeurs plus basses sont une hypothèse optionnelle de présélection)",
+    "Disponibilidad de los aerogeneradores:": "Disponibilité des éoliennes :", "Disponibilidad y distancia máxima de influencia": "Disponibilité et distance maximale d’influence",
+    "Distancia máxima de sombra [m]:": "Distance maximale d’ombre [m] :",
     "Configuración de los modelos de aerogenerador": "Configuration des modèles d’éolienne", "Comprueba la altura de buje y el diámetro del rotor para cada modelo de aerogenerador detectado.": "Vérifiez la hauteur de moyeu et le diamètre du rotor pour chaque modèle d’éolienne détecté.", "Altura de buje, diámetro del rotor y notas del modelo": "Hauteur de moyeu, diamètre du rotor et notes du modèle",
     "Aerogeneradores": "Éoliennes", "Altura de buje [m]": "Hauteur de moyeu [m]", "Diámetro del rotor [m]": "Diamètre du rotor [m]", "Notas": "Notes",
     "Configura los parámetros geométricos de cada modelo de aerogenerador.\nAltura de buje: altura sobre el terreno [m]\nDiámetro del rotor: diámetro del rotor [m]": "Configurez les paramètres géométriques de chaque modèle d’éolienne.\nHauteur de moyeu : hauteur au-dessus du sol [m]\nDiamètre du rotor : diamètre du rotor [m]",
-    "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Configurez la hauteur de moyeu et le diamètre du rotor pour chaque modèle détecté. Ces paramètres sont nécessaires au calcul des ombres et du scintillement.",
-    "Preparación del cálculo": "Préparation du calcul", "Crear mapa raster de sombras y parpadeo": "Créer une carte raster d’ombres et scintillement",
-    "Genera un mapa raster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Génère une carte raster continue des heures d’ombres et de scintillement\nAffiche un dégradé de couleurs sur toute la zone d’analyse\nATTENTION : cela peut prendre plusieurs minutes selon la zone",
-    "Mapa raster, resolución y paso temporal del raster": "Carte raster, résolution et pas temporel du raster", "Resolución [m]:": "Résolution [m] :", "Tamaño de celda del raster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Taille de cellule du raster\n100 m = rapide, moins de détail\n50 m = intermédiaire\n25 m = lent, détail maximal",
-    "Paso temporal SOLO para el raster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Pas temporel UNIQUEMENT pour le raster (indépendant des récepteurs).\n1 min = précision maximale, TRÈS lent\n5 min = recommandé (précision >98 %, 5× plus rapide)\n10 min = très rapide, précision ~95 %\n20 min = ultra-rapide pour prévisualiser",
-    "Filtrar raster por mes/hora (después de generarlo)": "Filtrer le raster par mois/heure (après génération)", "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Une fois le raster généré, vous pouvez régénérer des TIF filtrés par mois et/ou par heure\nsans recalculer toute la géométrie annuelle.",
-    "Filtrar el raster generado por mes y/u hora": "Filtrer le raster généré par mois et/ou par heure", "Mes:": "Mois :", "Hora:": "Heure :", "Todos": "Tous", "Todas": "Toutes",
+    "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Configurez la hauteur de moyeu et le diamètre du rotor pour chaque modèle détecté. Ces paramètres sont nécessaires au calcul des ombres portées.",
+    "Preparación del cálculo": "Préparation du calcul",
+
+     "Resolución [m]:": "Résolution [m] :",
+
+
+     "Mes:": "Mois :", "Hora:": "Heure :", "Todos": "Tous", "Todas": "Toutes",
     "Enero": "Janvier", "Febrero": "Février", "Marzo": "Mars", "Abril": "Avril", "Mayo": "Mai", "Junio": "Juin", "Julio": "Juillet", "Agosto": "Août", "Septiembre": "Septembre", "Octubre": "Octobre", "Noviembre": "Novembre", "Diciembre": "Décembre",
-    "📊 Regenerar TIF filtrado": "📊 Régénérer le TIF filtré", "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Crée un nouveau TIF avec le filtre mois/heure sélectionné", "Comprobar configuración": "Vérifier la configuration", "Calcular sombras y parpadeo": "Calculer les ombres et scintillement",
-    "No se ha detectado ningún layout": "Aucun layout détecté", "— Seleccionar capa de aerogeneradores —": "— Sélectionner une couche d’éoliennes —", "— Seleccionar capa de receptores —": "— Sélectionner une couche de récepteurs —", "— Sin DEM/MDT (terreno plano) —": "— Aucun DEM/MDT (terrain plat) —",
+    "📊 Regenerar TIF filtrado": "📊 Régénérer le TIF filtré", "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Crée un nouveau TIF avec le filtre mois/heure sélectionné", "Comprobar configuración": "Vérifier la configuration", "Calcular sombras y parpadeo": "Calculer les ombres portées",
+    "No se ha detectado ninguna disposición": "Aucune implantation détectée", "— Seleccionar capa de aerogeneradores —": "— Sélectionner une couche d’éoliennes —", "— Seleccionar capa de receptores —": "— Sélectionner une couche de récepteurs —", "— Sin DEM/MDT (terreno plano) —": "— Aucun MNT (terrain plat) —",
 }
 
 _I18N_HUB_SHADOW_CLEAN_TO_DE = {
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+
     "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energie: einsatzbereit · Schall: einsatzbereit · Schattenwurf: einsatzbereit",
     "Sombras y parpadeo": "Schattenwurf",
-    "Módulo de sombras y parpadeo para aerogeneradores. Conectado al layout del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Schattenwurfmodul für Windturbinen. Es ist mit dem Projektlayout verbunden, berechnet punktuelle Rezeptoren und erzeugt detaillierte QGIS-Ausgabelayer pro Rezeptor.",
-    "Configuración del emplazamiento": "Standortkonfiguration", "Latitud [°]:": "Breitengrad [°]:", "Longitud [°]:": "Längengrad [°]:", "Latitud/longitud y año de análisis": "Breiten-/Längengrad und Analysejahr", "Latitud del emplazamiento (ej. 42.465 para Logroño)": "Breitengrad des Standorts (z. B. 42.465 für Logroño)", "Longitud del emplazamiento (ej. -2.445 para Logroño)": "Längengrad des Standorts (z. B. -2.445 für Logroño)", "Año de análisis:": "Analysejahr:", "Base temporal:": "Zeitbasis:", "Modo de zona horaria y gestión de la hora civil": "Zeitzonenmodus und lokale Uhrzeit", "Hora civil local (IANA/DST)": "Lokale Uhrzeit (IANA/DST)", "Desfase UTC fijo": "Fester UTC-Offset", "Zona horaria IANA:": "IANA-Zeitzone:", "Desfase UTC fijo:": "Fester UTC-Offset:",
+
+    "Configuración del emplazamiento": "Standortkonfiguration", "Latitud [°]:": "Breitengrad [°]:", "Longitud [°]:": "Längengrad [°]:", "Latitud/longitud y año de análisis": "Breiten-/Längengrad und Analysejahr",   "Año de análisis:": "Analysejahr:", "Base temporal:": "Zeitbasis:", "Modo de zona horaria y gestión de la hora civil": "Zeitzonenmodus und lokale Uhrzeit", "Hora civil local (IANA/DST)": "Lokale Uhrzeit (IANA/DST)", "Desfase UTC fijo": "Fester UTC-Offset", "Zona horaria IANA:": "IANA-Zeitzone:", "Desfase UTC fijo:": "Fester UTC-Offset:",
     "IANA/DST: la tabla usa la hora civil local real del emplazamiento.\nDesfase UTC fijo: usa el mismo desfase UTC durante todo el año.": "IANA/DST: Die Tabelle verwendet die reale lokale Uhrzeit des Standorts.\nFester UTC-Offset: verwendet das ganze Jahr denselben UTC-Offset.",
-    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl plugin incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "IANA-Zeitzone, zum Beispiel Europe/Madrid, America/Santiago oder Asia/Tokyo.\nDas Plugin enthält einen erweiterten IANA-Katalog und eine lokale TZif-Datenbank zur Anwendung der Sommerzeit ohne timezonefinder.",
+
     "Desfase fijo para el modo UTC fijo. No se aplica horario de verano.": "Fester Offset für den UTC-Offset-Modus. Sommerzeit wird nicht angewendet.",
-    "Detectar automáticamente coordenadas y zona horaria": "Koordinaten und Zeitzone automatisch erkennen", "Calcula latitud/longitud desde el centroide del layout e intenta detectar la zona IANA": "Berechnet Breiten-/Längengrad aus dem Schwerpunkt des Layouts und versucht, die IANA-Zeitzone zu erkennen",
-    "Capa de aerogeneradores:": "Windturbinen-Layer:", "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Koordinaten-Layer der Windturbinen auswählen oder importieren", "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Wählen Sie einen VelantisWind-Koordinaten-Layer der Windturbinen aus oder importieren Sie direkt in diesem Modul einen Layer", "Importar layout de aerogeneradores desde CSV…": "Windturbinen-Layout aus CSV importieren…",
+    "Detectar automáticamente coordenadas y zona horaria": "Koordinaten und Zeitzone automatisch erkennen",
+    "Capa de aerogeneradores:": "Windturbinen-Layer:", "Seleccionar o importar la capa de coordenadas de aerogeneradores": "Koordinaten-Layer der Windturbinen auswählen oder importieren", "Selecciona una capa de coordenadas de aerogeneradores de VelantisWind o importa una directamente desde este módulo": "Wählen Sie einen VelantisWind-Koordinaten-Layer der Windturbinen aus oder importieren Sie direkt in diesem Modul einen Layer",
     "Capa de receptores:": "Rezeptor-Layer:", "Seleccionar la capa de puntos que contiene los receptores": "Punkt-Layer mit Rezeptoren auswählen", "Selecciona la capa de puntos que contiene los receptores": "Wählen Sie den Punkt-Layer mit den Rezeptoren aus",
-    "Raster MDT/DEM (opcional):": "DGM/DEM-Raster (optional):", "Raster de elevación opcional para geometría con terreno": "Optionales Höhenraster für geländeberücksichtigende Geometrie",
-    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Optionales digitales Höhenmodell (DGM/DEM).\nFalls angegeben, wird die Geländehöhe unter jeder Windturbine und jedem Rezeptor abgetastet.\nDamit wird elev_diff = (Nabe + Turbinengelände) - (Beobachter + Rezeptorgelände) berechnet.\nWenn leer, wird ebenes Gelände angenommen (z=0).",
+
+    "Modelo digital de elevación (MDT/DEM) opcional.\nSi se proporciona, se muestrea la altitud del terreno bajo cada aerogenerador y cada receptor.\nPermite calcular elev_diff = (buje + terreno_aerogenerador) - (observador + terreno_receptor).\nSi queda vacío, se asume terreno plano (z=0).": "Optionales digitales Höhenmodell (DGM).\nFalls angegeben, wird die Geländehöhe unter jeder Windturbine und jedem Rezeptor abgetastet.\nDamit wird elev_diff = (Nabe + Turbinengelände) - (Beobachter + Rezeptorgelände) berechnet.\nWenn leer, wird ebenes Gelände angenommen (z=0).",
     "Altura del observador [m]:": "Beobachterhöhe [m]:", "Altura del observador, paso temporal, elevación solar, disponibilidad y distancia": "Beobachterhöhe, Zeitschritt, Sonnenhöhe, Verfügbarkeit und Entfernung", "Altura del punto de observación (ventana típica: 2 m)": "Höhe des Beobachtungspunkts (typisches Fenster: 2 m)",
     "Paso temporal [min]:": "Zeitschritt [min]:", "Resolución temporal del cálculo\n5 min = buen equilibrio velocidad/precisión\n1 min = precisión máxima (muy lento)": "Zeitliche Auflösung der Berechnung\n5 min = guter Kompromiss zwischen Geschwindigkeit und Genauigkeit\n1 min = maximale Genauigkeit (sehr langsam)", "Elevación solar mín. [°]:": "Min. Sonnenhöhe [°]:", "Sol demasiado bajo → ignorado (típico: 3°)": "Sonne zu niedrig → ignoriert (typisch: 3°)", "Elevación solar máx. [°]:": "Max. Sonnenhöhe [°]:", "Elevación solar máxima a incluir (90° = sin filtrar el sol alto; valores menores son una hipótesis opcional de cribado)": "Maximale einzubeziehende Sonnenhöhe (90° = keine Filterung hoher Sonnenstände; niedrigere Werte sind eine optionale Screening-Annahme)",
-    "Disponibilidad de los aerogeneradores:": "Verfügbarkeit der Windturbinen:", "Disponibilidad y distancia máxima de influencia": "Verfügbarkeit und maximale Einflussentfernung", "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0.97 = 97 %)": "Anteil der Zeit, in der die Windturbine in Betrieb ist (0,97 = 97 %)",
-    "Distancia máxima de sombra [m]:": "Maximale Schattenentfernung [m]:", "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, coherente con una distancia de cribado conservadora tipo Continuum.\nSe usa para filtrar receptores y para la extensión/máscara del raster.": "Maximale Entfernung von einer Windturbine zur Berücksichtigung von Schattenwurf.\nStandardwert: 2000 m, konsistent mit einer konservativen Continuum-Screening-Distanz.\nWird zum Filtern der Rezeptoren und für Ausdehnung/Maske des Rasters verwendet.",
+    "Disponibilidad de los aerogeneradores:": "Verfügbarkeit der Windturbinen:", "Disponibilidad y distancia máxima de influencia": "Verfügbarkeit und maximale Einflussentfernung",
+    "Distancia máxima de sombra [m]:": "Maximale Schattenentfernung [m]:",
     "Configuración de los modelos de aerogenerador": "Konfiguration der Windturbinenmodelle", "Comprueba la altura de buje y el diámetro del rotor para cada modelo de aerogenerador detectado.": "Prüfen Sie Nabenhöhe und Rotordurchmesser für jedes erkannte Windturbinenmodell.", "Altura de buje, diámetro del rotor y notas del modelo": "Nabenhöhe, Rotordurchmesser und Modellnotizen", "Aerogeneradores": "Windturbinen", "Altura de buje [m]": "Nabenhöhe [m]", "Diámetro del rotor [m]": "Rotordurchmesser [m]", "Notas": "Notizen",
     "Configura los parámetros geométricos de cada modelo de aerogenerador.\nAltura de buje: altura sobre el terreno [m]\nDiámetro del rotor: diámetro del rotor [m]": "Konfigurieren Sie die geometrischen Parameter jedes Windturbinenmodells.\nNabenhöhe: Höhe über Gelände [m]\nRotordurchmesser: Rotordurchmesser [m]",
     "💡 Configura la altura de buje y el diámetro del rotor para cada modelo detectado. Estos parámetros son necesarios para el cálculo de sombras y parpadeo.": "💡 Konfigurieren Sie Nabenhöhe und Rotordurchmesser für jedes erkannte Modell. Diese Parameter sind für die Schattenwurfberechnung erforderlich.",
-    "Preparación del cálculo": "Berechnungsvorbereitung", "Crear mapa raster de sombras y parpadeo": "Schattenwurf-Rasterkarte erstellen", "Genera un mapa raster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Erzeugt eine kontinuierliche Rasterkarte der Schattenwurfdauer\nZeigt einen Farbverlauf über das gesamte Analysegebiet\nACHTUNG: je nach Gebiet kann dies mehrere Minuten dauern", "Mapa raster, resolución y paso temporal del raster": "Rasterkarte, Auflösung und Raster-Zeitschritt", "Resolución [m]:": "Auflösung [m]:", "Tamaño de celda del raster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Rasterzellgröße\n100 m = schnell, weniger Detail\n50 m = mittel\n25 m = langsam, maximale Detailtiefe",
-    "Paso temporal SOLO para el raster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Zeitschritt NUR für das Raster (unabhängig von den Rezeptoren).\n1 min = maximale Genauigkeit, SEHR langsam\n5 min = empfohlen (Genauigkeit >98 %, 5× schneller)\n10 min = sehr schnell, Genauigkeit ~95 %\n20 min = ultraschnell für Vorschau", "Filtrar raster por mes/hora (después de generarlo)": "Raster nach Monat/Stunde filtern (nach der Erzeugung)", "Una vez generado el raster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Nach der Rastererzeugung können Sie nach Monat und/oder Stunde gefilterte TIFs neu erzeugen,\nohne die gesamte Jahresgeometrie neu zu berechnen.", "Filtrar el raster generado por mes y/u hora": "Erzeugtes Raster nach Monat und/oder Stunde filtern", "Mes:": "Monat:", "Hora:": "Stunde:", "Todos": "Alle", "Todas": "Alle",
-    "Enero": "Januar", "Febrero": "Februar", "Marzo": "März", "Abril": "April", "Mayo": "Mai", "Junio": "Juni", "Julio": "Juli", "Agosto": "August", "Septiembre": "September", "Octubre": "Oktober", "Noviembre": "November", "Diciembre": "Dezember", "📊 Regenerar TIF filtrado": "📊 Gefiltertes TIF neu erzeugen", "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Erstellt ein neues TIF mit dem ausgewählten Monat-/Stunde-Filter", "Comprobar configuración": "Konfiguration prüfen", "Calcular sombras y parpadeo": "Schattenwurf berechnen", "No se ha detectado ningún layout": "Kein Layout erkannt", "— Seleccionar capa de aerogeneradores —": "— Windturbinen-Layer auswählen —", "— Seleccionar capa de receptores —": "— Rezeptor-Layer auswählen —", "— Sin DEM/MDT (terreno plano) —": "— Kein DGM/DEM (ebenes Gelände) —",
+    "Preparación del cálculo": "Berechnungsvorbereitung",    "Resolución [m]:": "Auflösung [m]:",
+        "Mes:": "Monat:", "Hora:": "Stunde:", "Todos": "Alle", "Todas": "Alle",
+    "Enero": "Januar", "Febrero": "Februar", "Marzo": "März", "Abril": "April", "Mayo": "Mai", "Junio": "Juni", "Julio": "Juli", "Agosto": "August", "Septiembre": "September", "Octubre": "Oktober", "Noviembre": "November", "Diciembre": "Dezember", "📊 Regenerar TIF filtrado": "📊 Gefiltertes TIF neu erzeugen", "Crea un nuevo TIF con el filtro de mes/hora seleccionado": "Erstellt ein neues TIF mit dem ausgewählten Monat-/Stunde-Filter", "Comprobar configuración": "Konfiguration prüfen", "Calcular sombras y parpadeo": "Schattenwurf berechnen", "No se ha detectado ninguna disposición": "Kein Layout erkannt", "— Seleccionar capa de aerogeneradores —": "— Windturbinen-Layer auswählen —", "— Seleccionar capa de receptores —": "— Rezeptor-Layer auswählen —", "— Sin DEM/MDT (terreno plano) —": "— Kein DGM (ebenes Gelände) —",
 }
 try:
     register_language(LANG_EN, _I18N_HUB_SHADOW_CLEAN_TO_EN, _I18N_HUB_SHADOW_CLEAN_TO_EN, label="English")
     register_language(LANG_FR, _I18N_HUB_SHADOW_CLEAN_TO_FR, _I18N_HUB_SHADOW_CLEAN_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_HUB_SHADOW_CLEAN_TO_DE, _I18N_HUB_SHADOW_CLEAN_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # ---------------------------------------------------------------------------
@@ -7329,14 +7513,14 @@ _I18N_HUB_LAYOUT_STRONG_TO_EN = {
     "Optimización de layout": "Layout optimization",
     "Muestra información de contacto y el white paper de optimización.": "Shows contact information and the optimization white paper.",
     "Optimización de layout bajo demanda": "On-demand layout optimization",
-    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need a previous layout: we can work from the wind resource, constraints and project objectives to look for higher production and lower wake losses.",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need an existing layout: we can work from the wind resource, constraints and project objectives to seek higher production and lower wake losses.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact: info@velantiswind.com · White paper available at velantiswind.com",
     "Copiar contacto": "Copy contact",
-    "Copia el email de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+
     "Ver white paper": "Read white paper",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Opens the VelantisWind website, where the white paper is available.",
+
     "Ocultar información": "Hide information",
-    "Email copiado al portapapeles:": "Email copied to clipboard:",
+    "Email copiado al portapapeles:": "Email copied to the clipboard:",
     "Puedes contactar en:": "You can contact us at:",
     "No se pudo abrir el módulo de energía.": "Could not open the energy module.",
 }
@@ -7347,16 +7531,16 @@ _I18N_HUB_LAYOUT_STRONG_TO_FR = {
     "Optimización de layout": "Optimisation de l’implantation",
     "Muestra información de contacto y el white paper de optimización.": "Affiche les informations de contact et le livre blanc sur l’optimisation.",
     "Optimización de layout bajo demanda": "Optimisation d’implantation à la demande",
-    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Nous pouvons vous aider à générer ou améliorer des variantes d’implantation avec le moteur avancé de VelantisWind. Aucun layout préalable n’est nécessaire : nous pouvons partir de la ressource éolienne, des contraintes et des objectifs du projet pour rechercher plus de production et moins de pertes de sillage.",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Nous pouvons vous aider à générer ou améliorer des variantes d’implantation avec le moteur avancé de VelantisWind. Vous n’avez pas besoin d’une implantation préalable : nous pouvons travailler à partir de la ressource éolienne, des contraintes et des objectifs du projet pour rechercher davantage de production et moins de pertes de sillage.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact : info@velantiswind.com · Livre blanc disponible sur velantiswind.com",
     "Copiar contacto": "Copier le contact",
-    "Copia el email de contacto al portapapeles.": "Copie l’adresse e-mail de contact dans le presse-papiers.",
+
     "Ver white paper": "Voir le livre blanc",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Ouvre le site web de VelantisWind, où le livre blanc est disponible.",
+
     "Ocultar información": "Masquer les informations",
     "Email copiado al portapapeles:": "E-mail copié dans le presse-papiers :",
     "Puedes contactar en:": "Vous pouvez nous contacter à :",
-    "No se pudo abrir el módulo de energía.": "Impossible d’ouvrir le module d’énergie.",
+    "No se pudo abrir el módulo de energía.": "Impossible d’ouvrir le module Énergie.",
 }
 _I18N_HUB_LAYOUT_STRONG_TO_DE = {
     "CRS:": "KBS:",
@@ -7365,12 +7549,12 @@ _I18N_HUB_LAYOUT_STRONG_TO_DE = {
     "Optimización de layout": "Layout-Optimierung",
     "Muestra información de contacto y el white paper de optimización.": "Zeigt Kontaktinformationen und das Whitepaper zur Optimierung.",
     "Optimización de layout bajo demanda": "Layout-Optimierung auf Anfrage",
-    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Wir können helfen, Layout-Alternativen mit dem erweiterten VelantisWind-Motor zu erzeugen oder zu verbessern. Ein vorhandenes Layout ist nicht erforderlich: Wir können aus Windressource, Einschränkungen und Projektzielen arbeiten, um höhere Produktion und geringere Nachlaufverluste zu suchen.",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Wir können helfen, Layout-Alternativen mit dem erweiterten VelantisWind-Motor zu erzeugen oder zu verbessern. Ein vorhandenes Layout ist nicht erforderlich: Wir können mit Windressource, Einschränkungen und Projektzielen arbeiten, um höhere Produktion und geringere Nachlaufverluste zu erzielen.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Kontakt: info@velantiswind.com · Whitepaper verfügbar auf velantiswind.com",
     "Copiar contacto": "Kontakt kopieren",
-    "Copia el email de contacto al portapapeles.": "Kopiert die Kontakt-E-Mail in die Zwischenablage.",
+
     "Ver white paper": "Whitepaper öffnen",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Öffnet die VelantisWind-Website, auf der das Whitepaper verfügbar ist.",
+
     "Ocultar información": "Informationen ausblenden",
     "Email copiado al portapapeles:": "E-Mail in die Zwischenablage kopiert:",
     "Puedes contactar en:": "Kontakt über:",
@@ -7380,7 +7564,7 @@ try:
     register_language(LANG_EN, _I18N_HUB_LAYOUT_STRONG_TO_EN, _I18N_HUB_LAYOUT_STRONG_TO_EN, label="English")
     register_language(LANG_FR, _I18N_HUB_LAYOUT_STRONG_TO_FR, _I18N_HUB_LAYOUT_STRONG_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_HUB_LAYOUT_STRONG_TO_DE, _I18N_HUB_LAYOUT_STRONG_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 
@@ -7405,7 +7589,7 @@ try:
     register_language(LANG_EN, _I18N_HUB_SHADOW_COVERAGE2_TO_EN, _I18N_HUB_SHADOW_COVERAGE2_TO_EN, label="English")
     register_language(LANG_FR, _I18N_HUB_SHADOW_COVERAGE2_TO_FR, _I18N_HUB_SHADOW_COVERAGE2_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_HUB_SHADOW_COVERAGE2_TO_DE, _I18N_HUB_SHADOW_COVERAGE2_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # ---------------------------------------------------------------------------
@@ -7413,20 +7597,20 @@ except Exception:
 # These exact entries intentionally sit last so they override older draft maps.
 # ---------------------------------------------------------------------------
 _RELEASE_HUB_TO_EN = {
-    "Velantis Wind · Hub principal": "Velantis Wind · Main hub",
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow Flicker.",
+
+
     "Idioma": "Language",
-    "Idioma del plugin:": "Plugin language:",
-    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "The selected language will be applied to the hub, modules, warnings and generated summaries.",
-    "Energía\nAEP y wakes": "Energy\nAEP and wakes",
+
+
+
     "Ruido": "Noise",
     "Sombras y\nparpadeo": "Shadow\nflicker",
     "Inicio": "Home",
-    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Click the logo to return home from the modules.",
+    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Click the logo to return home from the prepared modules.",
     "Resumen del proyecto": "Project summary",
     "Proyecto:": "Project:",
     "CRS:": "CRS:",
-    "Layout activo:": "Active layout:",
+
     "Recurso:": "Resource:",
     "TI WRG:": "WRG TI:",
     "Estado módulos:": "Module status:",
@@ -7435,10 +7619,10 @@ _RELEASE_HUB_TO_EN = {
     "CRS no disponible": "CRS unavailable",
     "Sin capas de coordenadas generadas todavía": "No coordinate layers generated yet",
     "Sin recurso seleccionado todavía": "No resource selected yet",
-    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Not selected (fallback to TI=10% in WRG workflow)",
-    "♡ Apoyar VelantisWind": "♡ Support VelantisWind",
+
+
     "Apoyar VelantisWind": "Support VelantisWind",
-    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Support maintenance, documentation, testing and future open-source development.",
+
     "Optimización de layout desde recurso y restricciones": "Layout optimization from resource and constraints",
     "Optimización de layout": "Layout optimization",
     "Muestra información de contacto y el white paper de optimización.": "Shows contact information and the optimization white paper.",
@@ -7446,9 +7630,9 @@ _RELEASE_HUB_TO_EN = {
     "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "We can help you generate or improve layout alternatives with VelantisWind's advanced engine. You do not need an existing layout: we can work from the wind resource, constraints and project objectives to seek higher production and lower wake losses.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact: info@velantiswind.com · White paper available at velantiswind.com",
     "Copiar contacto": "Copy contact",
-    "Copia el email de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+
     "Ver white paper": "Read white paper",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Opens the VelantisWind website, where the white paper is available.",
+
     "Ocultar información": "Hide information",
     "Email copiado al portapapeles:": "Email copied to the clipboard:",
     "Puedes contactar en:": "You can contact us at:",
@@ -7460,42 +7644,42 @@ _RELEASE_HUB_TO_EN = {
     "WRG:": "WRG:",
 }
 _RELEASE_HUB_TO_FR = {
-    "Velantis Wind · Hub principal": "Velantis Wind · Centre principal",
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Sélectionnez le module de travail. Les modules disponibles sont : Énergie (AEP et sillages), Bruit, Ombres et scintillement.",
+
+
     "Idioma": "Langue",
-    "Idioma del plugin:": "Langue de l’extension :",
-    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "La langue sélectionnée s’appliquera au hub, aux modules, aux avertissements et aux résumés générés.",
-    "Energía\nAEP y wakes": "Énergie\nAEP et sillages",
+
+
+
     "Ruido": "Bruit",
-    "Sombras y\nparpadeo": "Ombres et\nscintillement",
+    "Sombras y\nparpadeo": "Ombres\nportées",
     "Inicio": "Accueil",
-    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Cliquez sur le logo pour revenir à l’accueil depuis les modules.",
+    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Cliquez sur le logo pour revenir à l’accueil depuis les modules prêts.",
     "Resumen del proyecto": "Résumé du projet",
     "Proyecto:": "Projet :",
     "CRS:": "SCR :",
-    "Layout activo:": "Implantation active :",
+
     "Recurso:": "Ressource :",
     "TI WRG:": "TI WRG :",
     "Estado módulos:": "État des modules :",
-    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres : opérationnel",
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres portées : opérationnelles",
     "Proyecto sin nombre": "Projet sans nom",
-    "CRS no disponible": "SCR indisponible",
+    "CRS no disponible": "SCR non disponible",
     "Sin capas de coordenadas generadas todavía": "Aucune couche de coordonnées générée pour l’instant",
     "Sin recurso seleccionado todavía": "Aucune ressource sélectionnée pour l’instant",
-    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Non sélectionné (repli prévu à TI=10 % dans le flux WRG)",
-    "♡ Apoyar VelantisWind": "♡ Soutenir VelantisWind",
+
+
     "Apoyar VelantisWind": "Soutenir VelantisWind",
-    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Soutenez la maintenance, la documentation, les tests et le futur développement open source.",
+
     "Optimización de layout desde recurso y restricciones": "Optimisation de l’implantation à partir de la ressource et des contraintes",
     "Optimización de layout": "Optimisation de l’implantation",
     "Muestra información de contacto y el white paper de optimización.": "Affiche les informations de contact et le livre blanc sur l’optimisation.",
     "Optimización de layout bajo demanda": "Optimisation d’implantation à la demande",
-    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Nous pouvons vous aider à générer ou améliorer des variantes d’implantation avec le moteur avancé de VelantisWind. Aucun layout préalable n’est nécessaire : nous pouvons partir de la ressource éolienne, des contraintes et des objectifs du projet pour rechercher plus de production et moins de pertes de sillage.",
+    "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Nous pouvons vous aider à générer ou améliorer des variantes d’implantation avec le moteur avancé de VelantisWind. Vous n’avez pas besoin d’une implantation préalable : nous pouvons travailler à partir de la ressource éolienne, des contraintes et des objectifs du projet pour rechercher davantage de production et moins de pertes de sillage.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Contact : info@velantiswind.com · Livre blanc disponible sur velantiswind.com",
     "Copiar contacto": "Copier le contact",
-    "Copia el email de contacto al portapapeles.": "Copie l’adresse e-mail de contact dans le presse-papiers.",
+
     "Ver white paper": "Voir le livre blanc",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Ouvre le site web de VelantisWind, où le livre blanc est disponible.",
+
     "Ocultar información": "Masquer les informations",
     "Email copiado al portapapeles:": "E-mail copié dans le presse-papiers :",
     "Puedes contactar en:": "Vous pouvez nous contacter à :",
@@ -7507,20 +7691,20 @@ _RELEASE_HUB_TO_FR = {
     "WRG:": "WRG :",
 }
 _RELEASE_HUB_TO_DE = {
-    "Velantis Wind · Hub principal": "Velantis Wind · Haupthub",
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+
+
     "Idioma": "Sprache",
-    "Idioma del plugin:": "Plugin-Sprache:",
-    "El idioma seleccionado se aplicará al hub, módulos, avisos y resúmenes generados.": "Die ausgewählte Sprache wird auf Hub, Module, Warnungen und erzeugte Zusammenfassungen angewendet.",
-    "Energía\nAEP y wakes": "Energie\nAEP und Nachlauf",
+
+
+
     "Ruido": "Schall",
     "Sombras y\nparpadeo": "Schattenwurf",
     "Inicio": "Startseite",
-    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Klicken Sie auf das Logo, um aus den Modulen zur Startseite zurückzukehren.",
+    "Pulsa el logo para volver al inicio desde los módulos preparados.": "Klicken Sie auf das Logo, um aus den vorbereiteten Modulen zur Startseite zurückzukehren.",
     "Resumen del proyecto": "Projektübersicht",
     "Proyecto:": "Projekt:",
     "CRS:": "KBS:",
-    "Layout activo:": "Aktives Layout:",
+
     "Recurso:": "Ressource:",
     "TI WRG:": "WRG-TI:",
     "Estado módulos:": "Modulstatus:",
@@ -7529,10 +7713,10 @@ _RELEASE_HUB_TO_DE = {
     "CRS no disponible": "KBS nicht verfügbar",
     "Sin capas de coordenadas generadas todavía": "Noch keine Koordinaten-Layer erzeugt",
     "Sin recurso seleccionado todavía": "Noch keine Ressource ausgewählt",
-    "No seleccionado (fallback previsto a TI=10% en flujo WRG)": "Nicht ausgewählt (Fallback auf TI=10 % im WRG-Ablauf vorgesehen)",
-    "♡ Apoyar VelantisWind": "♡ VelantisWind unterstützen",
+
+
     "Apoyar VelantisWind": "VelantisWind unterstützen",
-    "Apoya el mantenimiento, la documentación, las pruebas y el desarrollo open source futuro.": "Unterstützt Wartung, Dokumentation, Tests und die zukünftige Open-Source-Entwicklung.",
+
     "Optimización de layout desde recurso y restricciones": "Layout-Optimierung aus Ressource und Einschränkungen",
     "Optimización de layout": "Layout-Optimierung",
     "Muestra información de contacto y el white paper de optimización.": "Zeigt Kontaktinformationen und das Whitepaper zur Optimierung.",
@@ -7540,9 +7724,9 @@ _RELEASE_HUB_TO_DE = {
     "Podemos ayudarte a generar o mejorar alternativas de layout con el motor avanzado de VelantisWind. No necesitas un layout previo: podemos trabajar desde el recurso eólico, las restricciones y los objetivos del proyecto para buscar más producción y menores pérdidas por estela.": "Wir können helfen, Layout-Alternativen mit dem erweiterten VelantisWind-Motor zu erzeugen oder zu verbessern. Ein vorhandenes Layout ist nicht erforderlich: Wir können mit Windressource, Einschränkungen und Projektzielen arbeiten, um höhere Produktion und geringere Nachlaufverluste zu erzielen.",
     "Contacto: info@velantiswind.com · White paper disponible en velantiswind.com": "Kontakt: info@velantiswind.com · Whitepaper verfügbar auf velantiswind.com",
     "Copiar contacto": "Kontakt kopieren",
-    "Copia el email de contacto al portapapeles.": "Kopiert die Kontakt-E-Mail in die Zwischenablage.",
+
     "Ver white paper": "Whitepaper öffnen",
-    "Abre la web de VelantisWind, donde está disponible el white paper.": "Öffnet die VelantisWind-Website, auf der das Whitepaper verfügbar ist.",
+
     "Ocultar información": "Informationen ausblenden",
     "Email copiado al portapapeles:": "E-Mail in die Zwischenablage kopiert:",
     "Puedes contactar en:": "Kontakt über:",
@@ -7557,14 +7741,14 @@ try:
     register_language(LANG_EN, _RELEASE_HUB_TO_EN, _RELEASE_HUB_TO_EN, label="English")
     register_language(LANG_FR, _RELEASE_HUB_TO_FR, _RELEASE_HUB_TO_FR, label="Français")
     register_language(LANG_DE, _RELEASE_HUB_TO_DE, _RELEASE_HUB_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # Release cleanup for German mixed-language leftovers.
-_RELEASE_DE_CLEANUP = {'Aún no hay turbinas en esta capa:': 'In diesem Layer sind noch keine Turbinen vorhanden:', 'Cerrar esta ventana y volver al diálogo principal sin crear la capa.': 'Dieses Fenster schließen und zum Hauptdialog zurückkehren, ohne den Layer zu erstellen.', 'Cierra el módulo de energía y vuelve al hub principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.': 'Schließt das Energiemodul und kehrt zum Velantis-Wind-Hub zurück, ohne Layer oder geladene Projektergebnisse zu löschen.', 'Capa de resultados creada correctamente.': 'Ergebnis-Layer wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.': 'Rasterkarte wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.\n\nPuntos calculados:': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte:', 'Mapa raster creado correctamente.\n\nPuntos calculados: ': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte: ', 'CSV por turbina exportado correctamente:': 'CSV je Turbine erfolgreich exportiert:', 'Informe AEP exportado correctamente:': 'AEP-Bericht erfolgreich exportiert:', 'La capa de puntos se creó correctamente.': 'Der Punkt-Layer wurde erfolgreich erstellt.', 'Error creando turbina': 'Fehler beim Erstellen der Turbine', 'Definir turbina': 'Turbine definieren', 'Directividad de fuente Dc asumida 0 dB.': 'Quellenrichtwirkung Dc wird mit 0 dB angenommen.', 'Disponibilidad de turbina:': 'Turbinenverfügbarkeit:', 'Exportar layout editado': 'Bearbeitetes Layout exportieren', 'Exportar layout editado...': 'Bearbeitetes Layout exportieren...', 'Exportar grupos fuente': 'Quellgruppen exportieren', 'Grupo fuente': 'Quellgruppe', 'Grupo fuente:': 'Quellgruppe:', 'Grupos fuente acústicos': 'Akustische Quellgruppen', 'Grupos fuente acústicos:': 'Akustische Quellgruppen:', 'Grupos fuente acústicos: faltan': 'Akustische Quellgruppen: es fehlen', 'Grupos fuente acústicos: hay': 'Akustische Quellgruppen: vorhanden', 'Estado acústico de cada grupo fuente': 'Akustischer Zustand je Quellgruppe', 'Física del MDT y del apantallamiento topográfico': 'Physik des DGM und der topografischen Abschirmung', 'AVISO: todos los receptores han quedado fuera del radio máximo. Revisa radio, layout o ubicación de receptores.': 'HINWEIS: Alle Rezeptoren liegen außerhalb des maximalen Radius. Prüfen Sie Radius, Layout oder Rezeptorstandorte.', 'todos los receptores han quedado fuera del radio máximo': 'Alle Rezeptoren liegen außerhalb des maximalen Radius', 'Acoustic source group': 'Akustische Quellgruppe', 'Edit the fixed LwA for this acoustic source group.': 'Bearbeiten Sie den festen LwA dieser akustischen Quellgruppe.', 'Explain the acoustic source-group table': 'Erklärung der akustischen Quellgruppentabelle', 'Directorio WAsP inválido o no existente': 'Ungültiger oder nicht vorhandener WAsP-Ordner', 'Lector WRG no disponible; no se puede dibujar el perímetro WRG.': 'WRG-Leser nicht verfügbar; die WRG-Umgrenzung kann nicht gezeichnet werden.', 'Validación avanzada no disponible; se usa flujo de compatibilidad:': 'Erweiterte Validierung nicht verfügbar; Kompatibilitätsablauf wird verwendet:', 'El límite acústico no es válido.': 'Der akustische Grenzwert ist ungültig.', 'No hay configuración acústica de modelos.': 'Es ist keine akustische Modellkonfiguration vorhanden.', 'Cálculo acústico completado.': 'Schallberechnung abgeschlossen.', 'Resultado acústico:': 'Schallergebnis:'}
+_RELEASE_DE_CLEANUP = {'Aún no hay turbinas en esta capa:': "In diesem Layer sind noch keine Windturbinen vorhanden:", 'Cerrar esta ventana y volver al diálogo principal sin crear la capa.': 'Dieses Fenster schließen und zum Hauptdialog zurückkehren, ohne den Layer zu erstellen.',  'Capa de resultados creada correctamente.': 'Ergebnis-Layer wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.': 'Rasterkarte wurde erfolgreich erstellt.', 'Mapa raster creado correctamente.\n\nPuntos calculados:': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte:', 'Mapa raster creado correctamente.\n\nPuntos calculados: ': 'Rasterkarte wurde erfolgreich erstellt.\n\nBerechnete Punkte: ', 'CSV por turbina exportado correctamente:': "CSV je Windturbine erfolgreich exportiert:", 'Informe AEP exportado correctamente:': 'AEP-Bericht erfolgreich exportiert:', 'La capa de puntos se creó correctamente.': 'Der Punkt-Layer wurde erfolgreich erstellt.', 'Error creando turbina': "Fehler beim Erstellen der Windturbine", 'Definir turbina': "Windturbine definieren", 'Directividad de fuente Dc asumida 0 dB.': 'Quellenrichtwirkung Dc wird mit 0 dB angenommen.', 'Disponibilidad de turbina:': "Windturbinenverfügbarkeit:", 'Exportar layout editado': 'Bearbeitetes Layout exportieren', 'Exportar layout editado...': 'Bearbeitetes Layout exportieren...', 'Exportar grupos fuente': 'Quellgruppen exportieren', 'Grupo fuente': 'Quellgruppe', 'Grupo fuente:': 'Quellgruppe:', 'Grupos fuente acústicos': 'Akustische Quellgruppen', 'Grupos fuente acústicos:': 'Akustische Quellgruppen:', 'Grupos fuente acústicos: faltan': 'Akustische Quellgruppen: es fehlen', 'Grupos fuente acústicos: hay': 'Akustische Quellgruppen: vorhanden', 'Estado acústico de cada grupo fuente': 'Akustischer Zustand je Quellgruppe', 'Física del MDT y del apantallamiento topográfico': 'Physik des DGM und der topografischen Abschirmung', 'AVISO: todos los receptores han quedado fuera del radio máximo. Revisa radio, layout o ubicación de receptores.': 'HINWEIS: Alle Rezeptoren liegen außerhalb des maximalen Radius. Prüfen Sie Radius, Layout oder Rezeptorstandorte.', 'todos los receptores han quedado fuera del radio máximo': 'Alle Rezeptoren liegen außerhalb des maximalen Radius', 'Acoustic source group': 'Akustische Quellgruppe',   'Directorio WAsP inválido o no existente': 'Ungültiger oder nicht vorhandener WAsP-Ordner', 'Lector WRG no disponible; no se puede dibujar el perímetro WRG.': "WRG-Leser nicht verfügbar; die WRG-Grenze kann nicht gezeichnet werden.", 'Validación avanzada no disponible; se usa flujo de compatibilidad:': 'Erweiterte Validierung nicht verfügbar; Kompatibilitätsablauf wird verwendet:', 'El límite acústico no es válido.': 'Der akustische Grenzwert ist ungültig.', 'No hay configuración acústica de modelos.': 'Es ist keine akustische Modellkonfiguration vorhanden.', 'Cálculo acústico completado.': 'Schallberechnung abgeschlossen.', 'Resultado acústico:': 'Schallergebnis:'}
 try:
     register_language(LANG_DE, _RELEASE_DE_CLEANUP, _RELEASE_DE_CLEANUP, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 
@@ -7599,18 +7783,18 @@ def _release_polish_de_maps() -> None:
         entry["full"] = {k: clean(v) for k, v in (entry.get("full") or {}).items()}
         entry["frag"] = {k: clean(v) for k, v in (entry.get("frag") or {}).items()}
         _invalidate()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 _RELEASE_DE_CLEANUP_MORE = {
     "La capa de receptores seleccionada no tiene elementos.": "Der ausgewählte Rezeptor-Layer enthält keine Elemente.",
-    "La capa de turbinas seleccionada no tiene elementos.": "Der ausgewählte Turbinen-Layer enthält keine Elemente.",
+    "La capa de turbinas seleccionada no tiene elementos.": "Der ausgewählte Windturbinen-Layer enthält keine Elemente.",
     "No hay coordenadas válidas en las capas/CSV proporcionados.": "In den angegebenen Layern/CSV-Dateien wurden keine gültigen Koordinaten gefunden.",
-    "No hay turbina cerca del clic.": "In der Nähe des Klicks gibt es keine Turbine.",
-    "No se encontraron turbinas en el layout.": "Im Layout wurden keine Turbinen gefunden.",
+    "No hay turbina cerca del clic.": "Keine Windturbine in der Nähe des Klicks.",
+    "No se encontraron turbinas en el layout.": "Im Layout wurden keine Windturbinen gefunden.",
     "No se han detectado capas de coordenadas por modelo. Genera primero el layout desde Energía.": "Es wurden keine Koordinaten-Layer je Modell erkannt. Erzeugen Sie zuerst das Layout aus dem Energiemodul.",
     "No se han detectado capas de coordenadas por modelo. Importa un layout CSV aquí o reutiliza un layout generado desde Energía.": "Es wurden keine Koordinaten-Layer je Modell erkannt. Importieren Sie hier ein CSV-Layout oder verwenden Sie ein aus dem Energiemodul erzeugtes Layout.",
-    "Vuelve al diálogo principal de Velantis Wind sin perder la edición.": "Zum Hauptdialog von Velantis Wind zurückkehren, ohne die Bearbeitung zu verlieren.",
+    "Vuelve al diálogo principal de Velantis Wind sin perder la edición.": "Zum Velantis-Wind-Hauptdialog zurückkehren, ohne Änderungen zu verlieren.",
     "Vuelve al diálogo principal sin salir del modo interactivo.": "Zum Hauptdialog zurückkehren, ohne den interaktiven Modus zu verlassen.",
     "WRG sin puntos (sólo cabecera)": "WRG ohne Punkte (nur Kopfzeile)",
     "sin valor": "ohne Wert", "sin nombre": "ohne Namen", "sin puntos válidos": "ohne gültige Punkte",
@@ -7622,14 +7806,14 @@ _RELEASE_DE_CLEANUP_MORE = {
 try:
     register_language(LANG_DE, _RELEASE_DE_CLEANUP_MORE, _RELEASE_DE_CLEANUP_MORE, label="Deutsch")
     _release_polish_de_maps()
-except Exception:
+except Exception:  # nosec B110
     pass
 
-_RELEASE_DE_CLEANUP_DYNAMIC = {': modo curva activo pero sin CSV de curva acústica.': ': Kurvenmodus aktiv, aber ohne CSV für die Schallkurve.', 'Calculando desglose por modelo / cluster…': 'Aufschlüsselung nach Modell / Cluster wird berechnet…', 'Calculando receptores y resumen…': 'Rezeptoren und Zusammenfassung werden berechnet…', 'Calculando ruido en segundo plano': 'Schallberechnung im Hintergrund', 'Calculando ruido en segundo plano…': 'Schallberechnung im Hintergrund…', 'Calculando ruido en segundo plano… 0%': 'Schallberechnung im Hintergrund… 0%', 'Calculando ruido y raster…': 'Schall und Raster werden berechnet…', 'Calculated receivers:': 'Berechnete Rezeptoren:', 'NO calcula bloqueo': 'Berechnet kein Blockage', 'No hay configuración de modelos disponible.\n\nRellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar.\n\nTragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay configuración de modelos disponible.  Rellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar. Tragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay wake deficit model disponible: ni BG ni NoWakeDeficit.': 'Kein Wake-Deficit-Modell verfügbar: weder BG noch NoWakeDeficit.'}
+_RELEASE_DE_CLEANUP_DYNAMIC = {': modo curva activo pero sin CSV de curva acústica.': ': Kurvenmodus aktiv, aber ohne CSV für die Schallkurve.', 'Calculando desglose por modelo / cluster…': 'Aufschlüsselung nach Modell / Cluster wird berechnet…', 'Calculando receptores y resumen…': 'Rezeptoren und Zusammenfassung werden berechnet…', 'Calculando ruido en segundo plano': 'Schallberechnung im Hintergrund', 'Calculando ruido en segundo plano…': 'Schallberechnung im Hintergrund…', 'Calculando ruido en segundo plano… 0%': 'Schallberechnung im Hintergrund… 0%',  'Calculated receivers:': 'Berechnete Rezeptoren:', 'NO calcula bloqueo': "Berechnet keine Blockade", 'No hay configuración de modelos disponible.\n\nRellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar.\n\nTragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay configuración de modelos disponible.  Rellena Hub Height y Rotor Diameter en la tabla.': 'Es ist keine Modellkonfiguration verfügbar. Tragen Sie Nabenhöhe und Rotordurchmesser in der Tabelle ein.', 'No hay wake deficit model disponible: ni BG ni NoWakeDeficit.': 'Kein Wake-Deficit-Modell verfügbar: weder BG noch NoWakeDeficit.'}
 try:
     register_language(LANG_DE, _RELEASE_DE_CLEANUP_DYNAMIC, _RELEASE_DE_CLEANUP_DYNAMIC, label="Deutsch")
     _release_polish_de_maps()
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # ---------------------------------------------------------------------------
@@ -7637,22 +7821,22 @@ except Exception:
 # The Hub has a stable geometry in ES/EN/FR/DE and only exposes public modules.
 # ---------------------------------------------------------------------------
 _I18N_HUB_3MODULES_TO_EN = {
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow Flicker.",
+
     "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energy: ready · Noise: ready · Shadow flicker: ready",
 }
 _I18N_HUB_3MODULES_TO_FR = {
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Sélectionnez le module de travail. Les modules disponibles sont : Énergie (AEP et sillages), Bruit, Ombres et scintillement.",
-    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres : opérationnel",
+
+    "Energía: operativa · Ruido: operativo · Sombras: operativo": "Énergie : opérationnelle · Bruit : opérationnel · Ombres portées : opérationnelles",
 }
 _I18N_HUB_3MODULES_TO_DE = {
-    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y wakes), Ruido y Sombras y parpadeo.": "Wählen Sie das Arbeitsmodul. Verfügbar sind: Energie (AEP und Nachlauf), Schall und Schattenwurf.",
+
     "Energía: operativa · Ruido: operativo · Sombras: operativo": "Energie: einsatzbereit · Schall: einsatzbereit · Schattenwurf: einsatzbereit",
 }
 try:
     register_language(LANG_EN, _I18N_HUB_3MODULES_TO_EN, _I18N_HUB_3MODULES_TO_EN, label="English")
     register_language(LANG_FR, _I18N_HUB_3MODULES_TO_FR, _I18N_HUB_3MODULES_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_HUB_3MODULES_TO_DE, _I18N_HUB_3MODULES_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 
@@ -7660,34 +7844,34 @@ except Exception:
 # Release polish 0.1.15f: stronger commercial CTA for layout + wake steering.
 # ---------------------------------------------------------------------------
 _RELEASE_LAYOUT_CTA_TO_EN = {
-    "Optimización avanzada de layout y wake steering para capturar más energía": "Advanced layout and wake-steering optimization to capture more energy",
-    "⚡ Optimizar layout": "⚡ Optimize layout",
-    "Ver propuesta comercial, contacto y white paper de optimización.": "View the commercial proposal, contact details and optimization white paper.",
-    "Motor avanzado de layout + wake steering": "Advanced layout + wake steering engine",
-    "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind can explore layouts from wind resource, constraints and project targets, and co-optimize wake steering together with the layout to reduce wake losses, lift net production and improve asset returns. Built to compare defensible alternatives and speed up design decisions.",
-    "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com": "Request a case review: info@velantiswind.com · White paper at velantiswind.com",
+
+
+
+
+
+
 }
 _RELEASE_LAYOUT_CTA_TO_FR = {
-    "Optimización avanzada de layout y wake steering para capturar más energía": "Optimisation avancée de l’implantation et du pilotage des sillages pour capter plus d’énergie",
-    "⚡ Optimizar layout": "⚡ Optimiser l’implantation",
-    "Ver propuesta comercial, contacto y white paper de optimización.": "Voir la proposition commerciale, le contact et le livre blanc d’optimisation.",
-    "Motor avanzado de layout + wake steering": "Moteur avancé implantation + pilotage des sillages",
-    "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind permet d’explorer des implantations à partir de la ressource éolienne, des contraintes et des objectifs du projet, et de cooptimiser le pilotage des sillages avec l’implantation afin de réduire les pertes de sillage, augmenter la production nette et améliorer le rendement de l’actif. Conçu pour comparer des variantes défendables et accélérer les décisions de conception.",
-    "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com": "Demander une revue du cas : info@velantiswind.com · Livre blanc sur velantiswind.com",
+
+
+
+
+
+
 }
 _RELEASE_LAYOUT_CTA_TO_DE = {
-    "Optimización avanzada de layout y wake steering para capturar más energía": "Erweiterte Layout- und Wake-Steering-Optimierung für mehr Energieertrag",
-    "⚡ Optimizar layout": "⚡ Layout optimieren",
-    "Ver propuesta comercial, contacto y white paper de optimización.": "Kommerzielle Kurzinfo, Kontakt und Optimierungs-Whitepaper anzeigen.",
-    "Motor avanzado de layout + wake steering": "Erweiterter Motor für Layout + Wake Steering",
-    "VelantisWind permite explorar layouts desde recurso, restricciones y objetivos del proyecto, y cooptimizar el wake steering junto al layout para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind kann Layouts aus Windressource, Einschränkungen und Projektzielen entwickeln und Wake Steering gemeinsam mit dem Layout co-optimieren, um Nachlaufverluste zu reduzieren, die Nettoproduktion zu erhöhen und die Rendite des Assets zu verbessern. Entwickelt, um belastbare Alternativen zu vergleichen und Designentscheidungen zu beschleunigen.",
-    "Solicita una revisión del caso: info@velantiswind.com · White paper en velantiswind.com": "Fallprüfung anfragen: info@velantiswind.com · Whitepaper auf velantiswind.com",
+
+
+
+
+
+
 }
 try:
     register_language(LANG_EN, _RELEASE_LAYOUT_CTA_TO_EN, _RELEASE_LAYOUT_CTA_TO_EN, label="English")
     register_language(LANG_FR, _RELEASE_LAYOUT_CTA_TO_FR, _RELEASE_LAYOUT_CTA_TO_FR, label="Français")
     register_language(LANG_DE, _RELEASE_LAYOUT_CTA_TO_DE, _RELEASE_LAYOUT_CTA_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # ---------------------------------------------------------------------------
@@ -7702,7 +7886,7 @@ _NOISE_XLSX_TO_EN = {
     "Agr/Aground dB": "Agr/Aground dB",
     "Abar máx. dB": "max. Abar dB",
     "cumple": "compliant",
-    "cerca del límite": "near limit",
+    "cerca del límite": "near the limit",
     "supera": "exceeds",
     "desde capa": "from layer",
     "Sin datos": "No data",
@@ -7720,7 +7904,7 @@ _NOISE_XLSX_TO_FR = {
     "nº aerogeneradores": "nb éoliennes",
     "dist. aerogenerador cercano (m)": "dist. éolienne proche (m)",
     "modelo dominante": "modèle dominant",
-    "grupo fuente dom.": "groupe source dom.",
+    "grupo fuente dom.": "groupe de sources dom.",
     "parque dom.": "parc dom.",
     "LwA fuente dom. dB(A)": "LwA source dom. dB(A)",
     "Adiv dB": "Adiv dB",
@@ -7736,7 +7920,7 @@ _NOISE_XLSX_TO_FR = {
     "cumple": "conforme",
     "cerca del límite": "proche de la limite",
     "supera": "dépasse",
-    "desde capa": "depuis couche",
+    "desde capa": "depuis la couche",
     "Sin datos": "Aucune donnée",
     "XLSX exportado": "XLSX exporté",
     "Paquete XLSX exportado correctamente:": "Paquet XLSX exporté avec succès :",
@@ -7754,7 +7938,7 @@ _NOISE_XLSX_TO_DE = {
     "modelo dominante": "dominantes Modell",
     "grupo fuente dom.": "dominante Quellgruppe",
     "parque dom.": "dominanter Windpark",
-    "LwA fuente dom. dB(A)": "LwA dominante Quelle dB(A)",
+    "LwA fuente dom. dB(A)": "LwA der dominanten Quelle dB(A)",
     "Adiv dB": "Adiv dB",
     "Aatm dB": "Aatm dB",
     "Agr/Aground dB": "Agr/Aground dB",
@@ -7777,7 +7961,7 @@ try:
     register_language(LANG_EN, _NOISE_XLSX_TO_EN, _NOISE_XLSX_TO_EN, label="English")
     register_language(LANG_FR, _NOISE_XLSX_TO_FR, _NOISE_XLSX_TO_FR, label="Français")
     register_language(LANG_DE, _NOISE_XLSX_TO_DE, _NOISE_XLSX_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # --- Turbine screening catalogue ---
@@ -7792,19 +7976,19 @@ _I18N_TURBINE_CATALOG_TO_EN = {
     "No se pudo aplicar el candidato seleccionado:": "The selected candidate could not be applied:",
 }
 _I18N_TURBINE_CATALOG_TO_FR = {
-    "(curva genérica de screening)": "(courbe générique de screening)",
+    "(curva genérica de screening)": "(courbe générique de présélection)",
     "Catálogo de turbinas:": "Catalogue d’éoliennes :",
     "Catálogo de turbinas": "Catalogue d’éoliennes",
     "Sin plantilla": "Aucun gabarit",
     "Buscar fabricante o modelo…": "Rechercher un fabricant ou un modèle…",
-    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Catalogue de screening : 74 candidats avec géométrie et courbes génériques modifiables. Il ne remplace pas les courbes officielles de puissance et de CT du fabricant.",
-    "Las curvas del catálogo son genéricas y editables para screening. Para una entrega técnica usa siempre la curva oficial del fabricante o del cliente.": "Les courbes du catalogue sont génériques et modifiables pour le screening. Pour un livrable technique, utilisez toujours la courbe officielle du fabricant ou du client.",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Catalogue de présélection : 74 candidats avec géométrie et courbes génériques modifiables. Il ne remplace pas les courbes officielles de puissance et de CT du fabricant.",
+    "Las curvas del catálogo son genéricas y editables para screening. Para una entrega técnica usa siempre la curva oficial del fabricante o del cliente.": "Les courbes du catalogue sont génériques et modifiables pour la présélection. Pour un livrable technique, utilisez toujours la courbe officielle du fabricant ou du client.",
     "No se pudo aplicar el candidato seleccionado:": "Le candidat sélectionné n’a pas pu être appliqué :",
 }
 _I18N_TURBINE_CATALOG_TO_DE = {
     "(curva genérica de screening)": "(generische Screening-Kurve)",
-    "Catálogo de turbinas:": "Turbinenkatalog:",
-    "Catálogo de turbinas": "Turbinenkatalog",
+    "Catálogo de turbinas:": "Windturbinenkatalog:",
+    "Catálogo de turbinas": "Windturbinenkatalog",
     "Sin plantilla": "Keine Vorlage",
     "Buscar fabricante o modelo…": "Hersteller oder Modell suchen…",
     "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Screening-Katalog: 74 Kandidaten mit bearbeitbarer generischer Geometrie und Kurven. Er ersetzt nicht die offiziellen Leistungs- und CT-Kurven des Herstellers.",
@@ -7815,7 +7999,7 @@ try:
     register_language(LANG_EN, _I18N_TURBINE_CATALOG_TO_EN, _I18N_TURBINE_CATALOG_TO_EN, label="English")
     register_language(LANG_FR, _I18N_TURBINE_CATALOG_TO_FR, _I18N_TURBINE_CATALOG_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_TURBINE_CATALOG_TO_DE, _I18N_TURBINE_CATALOG_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 
@@ -7840,8 +8024,8 @@ _I18N_TURBINE_SPACING_TO_FR = {
     "Separación transversal inicial de este modelo, expresada en diámetros de rotor.": "Espacement transversal initial de ce modèle, exprimé en diamètres de rotor.",
     "Separación longitudinal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje mayor de sus envolventes.": "Espacement longitudinal initial de ce modèle, exprimé en diamètres de rotor. Il est enregistré avec le modèle et contrôle le grand axe de ses enveloppes.",
     "Separación transversal inicial de este modelo, expresada en diámetros de rotor. Se guarda con el modelo y controla el eje menor de sus envolventes.": "Espacement transversal initial de ce modèle, exprimé en diamètres de rotor. Il est enregistré avec le modèle et contrôle le petit axe de ses enveloppes.",
-    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Catalogue de screening : 74 candidats avec géométrie et courbes génériques modifiables. Il ne remplace pas les courbes officielles de puissance et de CT du fabricant.",
-    "Las curvas del catálogo son sintéticas y sirven únicamente para screening preliminar. Para cálculos de ingeniería utiliza siempre curvas oficiales de potencia y CT del fabricante o del cliente.": "Les courbes du catalogue sont synthétiques et destinées uniquement au screening préliminaire. Pour les calculs d’ingénierie, utilisez toujours les courbes officielles de puissance et de CT du fabricant ou du client.",
+    "Catálogo de screening: 74 candidatos con geometría y curvas genéricas editables. No sustituye las curvas oficiales de potencia y CT del fabricante.": "Catalogue de présélection : 74 candidats avec géométrie et courbes génériques modifiables. Il ne remplace pas les courbes officielles de puissance et de CT du fabricant.",
+    "Las curvas del catálogo son sintéticas y sirven únicamente para screening preliminar. Para cálculos de ingeniería utiliza siempre curvas oficiales de potencia y CT del fabricante o del cliente.": "Les courbes du catalogue sont synthétiques et destinées uniquement à la présélection préliminaire. Pour les calculs d’ingénierie, utilisez toujours les courbes officielles de puissance et de CT du fabricant ou du client.",
 }
 _I18N_TURBINE_SPACING_TO_DE = {
     "Separación": "Abstand",
@@ -7858,7 +8042,7 @@ try:
     register_language(LANG_EN, _I18N_TURBINE_SPACING_TO_EN, _I18N_TURBINE_SPACING_TO_EN, label="English")
     register_language(LANG_FR, _I18N_TURBINE_SPACING_TO_FR, _I18N_TURBINE_SPACING_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_TURBINE_SPACING_TO_DE, _I18N_TURBINE_SPACING_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 
@@ -7889,8 +8073,8 @@ _I18N_CURVE_PROVENANCE_TO_FR = {
     "Curva aproximada": "Courbe approximative",
     "(referencia pública)": "(référence publique)",
     "(curva aproximada)": "(courbe approximative)",
-    "Genérica terrestre": "Générique terrestre",
-    "Genérica marina": "Générique offshore",
+    "Genérica terrestre": "Éolienne terrestre générique",
+    "Genérica marina": "Éolienne en mer générique",
     "Buscar referencia o clase de turbina…": "Rechercher une référence ou une classe d’éolienne…",
     "Calidad y procedencia:": "Qualité et provenance :",
     "Selecciona una turbina para ver la calidad y la fuente de la curva.": "Sélectionnez une éolienne pour voir la qualité et la source de la courbe.",
@@ -7908,11 +8092,11 @@ _I18N_CURVE_PROVENANCE_TO_DE = {
     "Curva aproximada": "Näherungskurve",
     "(referencia pública)": "(öffentliche Referenz)",
     "(curva aproximada)": "(Näherungskurve)",
-    "Genérica terrestre": "Generisch Onshore",
-    "Genérica marina": "Generisch Offshore",
-    "Buscar referencia o clase de turbina…": "Referenz oder Turbinenklasse suchen…",
+    "Genérica terrestre": "Generische Onshore-Windturbine",
+    "Genérica marina": "Generische Offshore-Windturbine",
+    "Buscar referencia o clase de turbina…": "Referenz oder Windturbinenklasse suchen…",
     "Calidad y procedencia:": "Qualität und Herkunft:",
-    "Selecciona una turbina para ver la calidad y la fuente de la curva.": "Wählen Sie eine Turbine, um Qualität und Quelle der Kurve zu sehen.",
+    "Selecciona una turbina para ver la calidad y la fuente de la curva.": "Wählen Sie eine Windturbine, um Qualität und Quelle der Kurve zu sehen.",
     "Fuente:": "Quelle:",
     "Sin fuente externa": "Keine externe Quelle",
     "Referencia pública/abierta. Revisa la fuente y sus condiciones antes de una entrega técnica.": "Öffentliche/offene Referenz. Prüfen Sie Quelle und Bedingungen vor einer technischen Abgabe.",
@@ -7924,7 +8108,7 @@ try:
     register_language(LANG_EN, _I18N_CURVE_PROVENANCE_TO_EN, _I18N_CURVE_PROVENANCE_TO_EN, label="English")
     register_language(LANG_FR, _I18N_CURVE_PROVENANCE_TO_FR, _I18N_CURVE_PROVENANCE_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_CURVE_PROVENANCE_TO_DE, _I18N_CURVE_PROVENANCE_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
 
 # --- Spec-anchored approximate turbine curves ---
@@ -7965,5 +8149,1407 @@ try:
     register_language(LANG_EN, _I18N_SPEC_CURVES_TO_EN, _I18N_SPEC_CURVES_TO_EN, label="English")
     register_language(LANG_FR, _I18N_SPEC_CURVES_TO_FR, _I18N_SPEC_CURVES_TO_FR, label="Français")
     register_language(LANG_DE, _I18N_SPEC_CURVES_TO_DE, _I18N_SPEC_CURVES_TO_DE, label="Deutsch")
-except Exception:
+except Exception:  # nosec B110
     pass
+
+
+# Wake raster workflow
+_WAKE_RASTER_TO_EN = {
+    "No se pudo iniciar la tarea de estelas:": "The wake task could not be started:",
+    "Crear ráster de estelas": "Create wake raster",
+    "Crea una capa ráster QGIS de velocidad efectiva para el sector más energético o una dirección elegida, usando el recurso seleccionado.": "Create a QGIS effective-wind-speed raster layer for the most energetic sector or a selected direction, using the selected resource.",
+    "Capas para crear el ráster de estelas": "Layers for wake raster",
+    "Selecciona las capas de aerogeneradores que quieres incluir en el ráster de estelas.\nMarca varias capas si el parque combina distintos modelos de turbina.": "Select the wind-turbine layers to include in the wake raster.\nSelect multiple layers when the wind farm combines different turbine models.",
+    "Crear ráster con capas seleccionadas": "Create raster with selected layers",
+    "Resolución del ráster [m] (menor = más detalle, más lento):": "Raster resolution [m] (smaller = more detail, slower):",
+    "Sector más energético (recomendado)": "Most energetic sector (recommended)",
+    "Norte (0°)": "North (0°)",
+    "Este (90°)": "East (90°)",
+    "Sur (180°)": "South (180°)",
+    "Oeste (270°)": "West (270°)",
+    "Dirección manual…": "Manual direction…",
+    "Dirección de viento del ráster:": "Raster wind direction:",
+
+    "Ráster de estelas creado": "Wake raster created",
+    "La capa se ha añadido al grupo ‘VelantisWind · Estelas’.": "The layer has been added to the ‘VelantisWind · Wakes’ group.",
+    "Dirección usada:": "Direction used:",
+    "Velocidad de referencia:": "Reference wind speed:",
+    "Rango de velocidad efectiva:": "Effective wind-speed range:",
+    "Crea una capa ráster QGIS de velocidad efectiva con las turbinas y el recurso seleccionados.": "Create a QGIS effective-wind-speed raster layer using the selected turbines and resource.",
+}
+_WAKE_RASTER_TO_FR = {
+    "No se pudo iniciar la tarea de estelas:": "La tâche de sillages n’a pas pu être démarrée :",
+    "Crear ráster de estelas": "Créer le raster de sillages",
+    "Crea una capa ráster QGIS de velocidad efectiva para el sector más energético o una dirección elegida, usando el recurso seleccionado.": "Créer une couche raster QGIS de vitesse effective pour le secteur le plus énergétique ou une direction choisie, à partir de la ressource sélectionnée.",
+    "Capas para crear el ráster de estelas": "Couches du raster de sillages",
+    "Selecciona las capas de aerogeneradores que quieres incluir en el ráster de estelas.\nMarca varias capas si el parque combina distintos modelos de turbina.": "Sélectionnez les couches d’éoliennes à inclure dans le raster de sillages.\nSélectionnez plusieurs couches si le parc combine différents modèles d’éolienne.",
+    "Crear ráster con capas seleccionadas": "Créer le raster avec les couches sélectionnées",
+    "Resolución del ráster [m] (menor = más detalle, más lento):": "Résolution du raster [m] (plus petite = plus détaillée, plus lente) :",
+    "Sector más energético (recomendado)": "Secteur le plus énergétique (recommandé)",
+    "Norte (0°)": "Nord (0°)",
+    "Este (90°)": "Est (90°)",
+    "Sur (180°)": "Sud (180°)",
+    "Oeste (270°)": "Ouest (270°)",
+    "Dirección manual…": "Direction manuelle…",
+    "Dirección de viento del ráster:": "Direction du vent du raster :",
+
+    "Ráster de estelas creado": "Raster de sillages créé",
+    "La capa se ha añadido al grupo ‘VelantisWind · Estelas’.": "La couche a été ajoutée au groupe « VelantisWind · Sillages ».",
+    "Dirección usada:": "Direction utilisée :",
+    "Velocidad de referencia:": "Vitesse de référence :",
+    "Rango de velocidad efectiva:": "Plage de vitesse effective :",
+    "Crea una capa ráster QGIS de velocidad efectiva con las turbinas y el recurso seleccionados.": "Créer une couche raster QGIS de vitesse effective avec les éoliennes et la ressource sélectionnées.",
+}
+_WAKE_RASTER_TO_DE = {
+    "No se pudo iniciar la tarea de estelas:": "Die Nachlauf-Aufgabe konnte nicht gestartet werden:",
+    "Crear ráster de estelas": "Nachlauf-Raster erstellen",
+    "Crea una capa ráster QGIS de velocidad efectiva para el sector más energético o una dirección elegida, usando el recurso seleccionado.": "Erstellt einen QGIS-Rasterlayer der effektiven Windgeschwindigkeit für den energiereichsten Sektor oder eine gewählte Richtung mit der ausgewählten Ressource.",
+    "Capas para crear el ráster de estelas": "Layer für das Nachlauf-Raster",
+    "Selecciona las capas de aerogeneradores que quieres incluir en el ráster de estelas.\nMarca varias capas si el parque combina distintos modelos de turbina.": "Wählen Sie die Windturbinen-Layer für das Nachlauf-Raster aus.\nWählen Sie mehrere Layer, wenn der Windpark verschiedene Windturbinenmodelle kombiniert.",
+    "Crear ráster con capas seleccionadas": "Raster mit ausgewählten Layern erstellen",
+    "Resolución del ráster [m] (menor = más detalle, más lento):": "Rasterauflösung [m] (kleiner = detaillierter, langsamer):",
+    "Sector más energético (recomendado)": "Energiereichster Sektor (empfohlen)",
+    "Norte (0°)": "Nord (0°)",
+    "Este (90°)": "Ost (90°)",
+    "Sur (180°)": "Süd (180°)",
+    "Oeste (270°)": "West (270°)",
+    "Dirección manual…": "Manuelle Richtung…",
+    "Dirección de viento del ráster:": "Windrichtung des Rasters:",
+
+    "Ráster de estelas creado": "Nachlauf-Raster erstellt",
+    "La capa se ha añadido al grupo ‘VelantisWind · Estelas’.": "Der Layer wurde der Gruppe „VelantisWind · Nachläufe“ hinzugefügt.",
+    "Dirección usada:": "Verwendete Richtung:",
+    "Velocidad de referencia:": "Referenzwindgeschwindigkeit:",
+    "Rango de velocidad efectiva:": "Bereich der effektiven Windgeschwindigkeit:",
+    "Crea una capa ráster QGIS de velocidad efectiva con las turbinas y el recurso seleccionados.": "Erstellt einen QGIS-Rasterlayer der effektiven Windgeschwindigkeit mit den ausgewählten Windturbinen und der Ressource.",
+}
+try:
+    register_language(LANG_EN, _WAKE_RASTER_TO_EN, _WAKE_RASTER_TO_EN, label="English")
+    register_language(LANG_FR, _WAKE_RASTER_TO_FR, _WAKE_RASTER_TO_FR, label="Français")
+    register_language(LANG_DE, _WAKE_RASTER_TO_DE, _WAKE_RASTER_TO_DE, label="Deutsch")
+except Exception:  # nosec B110
+    pass
+
+
+# TurbOPark and wake ground treatment
+_ENERGY_PROFILES_TO_EN = {
+    "Solapamiento gaussiano · GaussianOverlapAvgModel (solo TurbOPark)": "Gaussian overlap · GaussianOverlapAvgModel (TurbOPark only)",
+    "Ninguno: NOJ y TurboNOJ conservan el promedio de rotor que traen de fábrica en PyWake, AreaOverlapAvgModel (fracción del disco del rotor cubierta por la estela).": "None: NOJ and TurboNOJ keep their built-in PyWake rotor average, AreaOverlapAvgModel (fraction of the rotor disc covered by the wake).",
+    "GaussianOverlapAvgModel: promedio de rotor del preset Nygaard_2022 de PyWake. Integra el perfil gaussiano de la estela sobre el disco con una tabla precalculada (NetCDF), que necesita h5py y h5netcdf.": "GaussianOverlapAvgModel: rotor average of the PyWake Nygaard_2022 preset. It integrates the Gaussian wake profile over the disc with a precomputed table (NetCDF), which requires h5py and h5netcdf.",
+    "PyWake recomienda no aplicar Mirror indiscriminadamente a wakes: puede duplicar el efecto de suelo ya incluido en la calibración. Velantis usa el tratamiento de referencia del modelo elegido.": "PyWake recommends not applying Mirror indiscriminately to wakes: it can double count the ground effect already included in the calibration. Velantis uses the reference treatment of the selected model.",
+    "Efecto suelo (wake): Mirror · automático según PyWake Nygaard_2022. Forma parte del preset TurbOPark y se combina internamente con SquaredSum.": "Ground effect (wake): Mirror · automatic according to PyWake Nygaard_2022. It is part of the TurbOPark preset and is combined internally with SquaredSum.",
+    "Efecto suelo (wake): Mirror · automático según el default actual de PyWake TurboGaussianDeficit.": "Ground effect (wake): Mirror · automatic according to the current PyWake TurboGaussianDeficit default.",
+    "Efecto suelo (wake): None · preset Jensen/NOJ de referencia de PyWake.": "Ground effect (wake): None · PyWake reference Jensen/NOJ preset.",
+    "Efecto suelo (wake): None · automático según la referencia/default de PyWake para este modelo. No se fuerza Mirror para evitar doble contabilización del suelo en wakes calibrados.": "Ground effect (wake): None · automatic according to the PyWake reference/default for this model. Mirror is not forced, to avoid double counting the ground in calibrated wakes.",
+    "ctlim (tope de Ct)": "ctlim (Ct cap)",
+    "cεps (ancho inicial)": "cεps (initial width)",
+    "Tope del Ct al calcular el tamaño inicial de la estela; evita la singularidad en Ct = 1. Default PyWake = 0.899.": "Ct cap used when computing the initial wake size; avoids the singularity at Ct = 1. PyWake default = 0.899.",
+    "Tope del Ct al calcular el tamaño inicial de la estela; evita la singularidad en Ct = 1. Default PyWake del TurboGaussianDeficit genérico = 0.999 (el preset Nygaard_2022 usa 0.96).": "Ct cap used when computing the initial wake size; avoids the singularity at Ct = 1. PyWake default of the generic TurboGaussianDeficit = 0.999 (the Nygaard_2022 preset uses 0.96).",
+    "Tope del Ct al calcular el tamaño inicial de la estela; evita la singularidad en Ct = 1. Valor del preset Nygaard_2022 = 0.96 (el TurboGaussianDeficit genérico usa 0.999).": "Ct cap used when computing the initial wake size; avoids the singularity at Ct = 1. Nygaard_2022 preset value = 0.96 (the generic TurboGaussianDeficit uses 0.999).",
+    "Constante de expansión calibrada de TurbOPark. Valor del preset Nygaard_2022 = 0.04.": "Calibrated TurbOPark expansion constant. Nygaard_2022 preset value = 0.04.",
+    "Primer coeficiente que multiplica la TI en la expansión de TurbOPark. Default de TurboGaussianDeficit = 1.5.": "First coefficient multiplying TI in the TurbOPark expansion. TurboGaussianDeficit default = 1.5.",
+    "Segundo coeficiente TI/CT en la expansión de TurbOPark. Default de TurboGaussianDeficit = 0.8.": "Second TI/CT coefficient in the TurbOPark expansion. TurboGaussianDeficit default = 0.8.",
+    "Coeficiente del ancho inicial de la estela (ε = cεps·√β, con β función del Ct). Default de TurboGaussianDeficit = 0.25.": "Coefficient of the initial wake width (ε = cεps·√β, with β a function of Ct). TurboGaussianDeficit default = 0.25.",
+
+}
+_ENERGY_NOTES_TO_EN = {
+
+    "AVISO: falta ": "WARNING: missing ",
+    " en el Python de QGIS; el cálculo se detendrá con un error hasta instalarlo o elegir otro promedio de rotor.": " in the QGIS Python; the calculation will stop with an error until it is installed or another rotor average is selected.",
+
+    "WRG: solo hay una altura climática (": "WRG: there is only one climate height (",
+    "); se usa como referencia vertical sin modificar la altura de buje ni inferir shear.": "); it is used as the vertical reference without changing the hub height or inferring shear.",
+    "WRG: alturas climáticas disponibles ": "WRG: available climate heights ",
+    "; PyWake interpola linealmente en altura cuando la HH está dentro del rango.": "; PyWake interpolates linearly in height when the HH is within the range.",
+    "WRG: se conservan A, k y frecuencia sectorial locales del WRG en cada posición, sin convertirlos a una Weibull global + Speedup.": "WRG: the local WRG A, k and sector frequency are kept at each position, without converting them to a global Weibull + Speedup.",
+    " direcciones (": " directions (",
+    " h/año.": " h/year.",
+    "TurbOPark verificado sin fallback: TurboGaussianDeficit + Mirror + SquaredSum + ": "TurbOPark verified without fallback: TurboGaussianDeficit + Mirror + SquaredSum + ",
+    "Efecto suelo (wake): Mirror + SquaredSum; rotor-average TurbOPark: ": "Ground effect (wake): Mirror + SquaredSum; TurbOPark rotor average: ",
+    "Efecto suelo (wake): Mirror, porque TurboGaussianDeficit usa Mirror() como groundModel por defecto en PyWake.": "Ground effect (wake): Mirror, because TurboGaussianDeficit uses Mirror() as its default groundModel in PyWake.",
+    "Efecto suelo (wake): None según la configuración de referencia/default de PyWake para este modelo; no se fuerza Mirror para evitar doble contabilización del efecto del suelo en modelos de estela calibrados.": "Ground effect (wake): None according to the PyWake reference/default configuration for this model; Mirror is not forced, to avoid double counting the ground effect in calibrated wake models.",
+    "TurbOPark / Nygaard_2022 requiere PropagateDownwind en la implementación de referencia de PyWake; se ha ignorado el engine seleccionado y se ha usado PDW.": "TurbOPark / Nygaard_2022 requires PropagateDownwind in the PyWake reference implementation; the selected engine was ignored and PDW was used.",
+    "TurbOPark / Nygaard_2022 no incluye bloqueo en Nygaard_2022; se ha desactivado para reproducir la cadena de referencia.": "TurbOPark / Nygaard_2022 does not include blockage in Nygaard_2022; it has been disabled to reproduce the reference chain.",
+    "TurbOPark usa la TI ambiente del Site dentro de TurboGaussian; se desactiva turbulenceModel externo.": "TurbOPark uses the Site ambient TI inside TurboGaussian; the external turbulenceModel is disabled.",
+    "TurbOPark / Nygaard_2022 usa SquaredSum en la implementación de referencia; se ha ignorado la superposición seleccionada.": "TurbOPark / Nygaard_2022 uses SquaredSum in the reference implementation; the selected superposition was ignored.",
+    "Parámetros del recurso (WRG): {count} direcciones ({sectors} sectores × {sub}), interpolación {interp}, Speedup {speedup}, velocidades {low}–{high} m/s cada {step} m/s (banda de las turbinas {band_low}–{band_high} m/s); {hours} h/año.": "Resource parameters (WRG): {count} directions ({sectors} sectors × {sub}), interpolation {interp}, Speedup {speedup}, wind speeds {low}–{high} m/s every {step} m/s (turbine band {band_low}–{band_high} m/s); {hours} h/year.",
+    "Recurso GRD, direcciones y velocidades del Site de PyWake: {count} direcciones ({wd_low}–{wd_high}°), {low}–{high} m/s, interpolación {interp}; {hours} h/año.": "GRD resource, directions and wind speeds of the PyWake Site: {count} directions ({wd_low}–{wd_high}°), {low}–{high} m/s, interpolation {interp}; {hours} h/year.",
+    "Parámetros del recurso (WRG): ": "Resource parameters (WRG): ",
+    " sectores × ": " sectors × ",
+    "), interpolación ": "), interpolation ",
+    ", velocidades ": ", wind speeds ",
+    " m/s cada ": " m/s every ",
+    " m/s (banda de las turbinas ": " m/s (turbine band ",
+    "Recurso GRD, direcciones y velocidades del Site de PyWake: ": "GRD resource, directions and wind speeds of the PyWake Site: ",
+    " m/s, interpolación ": " m/s, interpolation ",
+}
+try:
+    register_language(LANG_EN, _ENERGY_PROFILES_TO_EN, {}, label="English")
+    register_language(LANG_EN, _ENERGY_NOTES_TO_EN, _ENERGY_NOTES_TO_EN, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Energy messages, progress labels and wake-raster dialogs
+_ENERGY_MESSAGES_TO_EN = {
+    "Modelo {n}": "Model {n}",
+    "{label}: falta definir la turbina/curva de potencia.": "{label}: the turbine/power curve is not defined.",
+    "{label}: faltan coordenadas. Selecciona CSV o añade puntos en el mapa.": "{label}: coordinates are missing. Select a CSV or add points on the map.",
+    "{label}: el CSV de coordenadas no existe: {path}": "{label}: the coordinates CSV does not exist: {path}",
+    "Hay varios modelos llamados «{name}». Usa un nombre distinto para cada modelo.": "Several models are named “{name}”. Use a different name for each model.",
+    "WRG/ZIP no existe: {path}": "WRG/ZIP does not exist: {path}",
+    "Extensión WRG no soportada. Usa .wrg o .zip: {path}": "Unsupported WRG extension. Use .wrg or .zip: {path}",
+
+    "ERROR": "ERROR",
+    "AVISO": "WARNING",
+    "Configuración no válida.": "Invalid configuration.",
+    "No se pudo usar la selección de capas; se usará el flujo normal: {error}": "The layer selection could not be used; the normal workflow will be used: {error}",
+    "Nombres de modelo": "Model names",
+    "Hay varios modelos llamados «{name}». Usa un nombre distinto para cada modelo: sus capas de aerogeneradores y sus resultados se asocian por nombre.": "Several models are named “{name}”. Use a different name for each model: their turbine layers and results are matched by name.",
+    "La capa seleccionada {n} no tiene modelo de turbina asociado.": "Selected layer {n} has no associated turbine model.",
+    "La capa seleccionada {n} no tiene aerogeneradores.": "Selected layer {n} has no wind turbines.",
+    "El Modelo {n} no tiene coordenadas. Añade turbinas en el mapa interactivo o selecciona un CSV X,Y válido.": "Model {n} has no coordinates. Add turbines on the interactive map or select a valid X,Y CSV.",
+    "El archivo no existe:\n{path}": "The file does not exist:\n{path}",
+    "Extensión no soportada (use .wrg o .zip):\n{path}": "Unsupported extension (use .wrg or .zip):\n{path}",
+
+    "Cálculo con {n} capa(s) seleccionada(s) desde el mapa interactivo.": "Calculation with {n} layer(s) selected from the interactive map.",
+    "Configurando modelos PyWake (wake / TI / bloqueo / rotor-avg)…": "Configuring PyWake models (wake / TI / blockage / rotor-avg)…",
+    "Variantes: wake-only / wake+TI / wake+bloqueo…": "Variants: wake-only / wake+TI / wake+blockage…",
+    "Finalizando caso de sensibilidad…": "Finishing sensitivity case…",
+
+    "La simulación requirió degradación automática: {label}": "The simulation required automatic degradation: {label}",
+    "No se pudo mostrar el resumen visual de resultados: {error}": "The visual results summary could not be displayed: {error}",
+    "Ocurrió un error:\n{error}\n\nDetalles:\n{details}": "An error occurred:\n{error}\n\nDetails:\n{details}",
+    "No se pudo leer la configuración de energía:\n{error}\n\nDetalles:\n{details}": "The energy configuration could not be read:\n{error}\n\nDetails:\n{details}",
+    "No se pudo crear la capa resumen: {error}": "The summary layer could not be created: {error}",
+    "No se pudo exportar el CSV: {error}": "The CSV could not be exported: {error}",
+    "Valor PyWake por defecto ({default})": "PyWake default value ({default})",
+    "No se pudo preparar la selección de capas:\n{error}": "The layer selection could not be prepared:\n{error}",
+    "Añade turbinas en la capa del Modelo {n} o selecciona un CSV X,Y válido.": "Add turbines to the Model {n} layer or select a valid X,Y CSV.",
+    "Selecciona una carpeta WAsP válida o un WRG/ZIP antes de crear el ráster.": "Select a valid WAsP folder or a WRG/ZIP file before creating the raster.",
+    "Capas de aerogeneradores": "Wind turbine layers",
+    "Capas para calcular AEP": "Layers for the AEP calculation",
+    " · activa": " · active",
+    "Modelo {n}: {model}  |  {layer}  |  {count} turbinas": "Model {n}: {model}  |  {layer}  |  {count} turbines",
+    "Desmarcar": "Deselect all",
+    "n/d": "n/a",
+    "Bloqueo": "Blockage",
+    "Speedup no válido: {value}. Con un WRG solo se admite none: se conservan en cada punto las Weibull y frecuencias locales del WRG.": "Invalid Speedup: {value}. With a WRG only none is accepted: each point keeps the local Weibull distributions and frequencies of the WRG.",
+    "Interpolación direccional no válida: {value}. Se admiten nearest y linear.": "Invalid directional interpolation: {value}. nearest and linear are accepted.",
+    "Paso de las velocidades de cálculo no válido: {value}. Se admiten 1, 0,5 y 0,25 m/s.": "Invalid step of the calculation wind speeds: {value}. 1, 0.5 and 0.25 m/s are accepted.",
+    "Los WRG no tienen los mismos sectores ({sectors}): no se pueden combinar.": "The WRGs do not have the same sectors ({sectors}): they cannot be combined.",
+    "Número de direcciones de cálculo no válido: {value}. El WRG «{path}» tiene {n} sectores: se admiten {options}.": "Invalid number of calculation directions: {value}. The WRG “{path}” has {n} sectors: {options} are accepted.",
+}
+# Error raised by ag_core with the list of missing packages in the middle.
+_ENERGY_MESSAGE_FRAGMENTS_TO_EN = {
+    "GaussianOverlapAvgModel lee una tabla NetCDF de PyWake y necesita los paquetes de Python h5py y h5netcdf; falta: ": "GaussianOverlapAvgModel reads a PyWake NetCDF table and needs the Python packages h5py and h5netcdf; missing: ",
+    ". Instálalos en el Python de QGIS o elige otro promedio de rotor.": ". Install them in the QGIS Python or choose another rotor average.",
+}
+try:
+    register_language(LANG_EN, _ENERGY_MESSAGES_TO_EN, _ENERGY_MESSAGE_FRAGMENTS_TO_EN, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Remaining energy dialogs, resource boundary, scenario comparison and resource merge
+_ENERGY_DIALOGS_TO_EN = {
+
+    "Capa «{layer}» creada/actualizada ({n} puntos).": "Layer “{layer}” created/updated ({n} points).",
+    "Capa «{layer}» lista para editar en el mapa ({n} puntos).": "Layer “{layer}” ready to edit on the map ({n} points).",
+    "Capas para AEP": "Layers for AEP",
+    "Envolvente de separación": "Spacing envelope",
+    "Escenario {slot}": "Scenario {slot}",
+    "Escenario {slot} guardado: {label}": "Scenario {slot} saved: {label}",
+    "Exportar layout editado · {name}": "Export edited layout · {name}",
+    "Guardar escenario {slot}": "Save scenario {slot}",
+
+
+
+
+    "No encuentro una capa de turbinas «{Modelo} (CSV)» para editar.\n\nPulsa primero «Generar capas de puntos» o carga una capa del modelo en el proyecto.": "No turbine layer “{Modelo} (CSV)” was found to edit.\n\nPress “Generate point layers” first, or load a model layer into the project.",
+    "No se pudo abrir el diálogo de turbina:\n{error}": "The turbine dialog could not be opened:\n{error}",
+    "No se pudo abrir el navegador. URL: https://topfarm.pages.windenergy.dtu.dk/PyWake/": "The browser could not be opened. URL: https://topfarm.pages.windenergy.dtu.dk/PyWake/",
+    "No se pudo abrir la comparación:\n{error}": "The comparison could not be opened:\n{error}",
+    "No se pudo abrir la configuración:\n{error}": "The settings could not be opened:\n{error}",
+    "No se pudo activar el modo interactivo:\n{error}": "The interactive mode could not be activated:\n{error}",
+    "No se pudo crear la capa del modelo {n}: {error}": "The layer of model {n} could not be created: {error}",
+    "No se pudo dibujar el perímetro del recurso: {error}": "The resource boundary could not be drawn: {error}",
+    "No se pudo escribir el CSV de «{name}»:\n{error}": "The CSV of “{name}” could not be written:\n{error}",
+    "{n} entidad(es) de la capa no tienen un único punto: no se ha exportado nada.": "{n} feature(s) of the layer do not have a single point: nothing has been exported.",
+    "Fila(s) del fichero sin coordenadas X e Y válidas: {rows}. Corrígelas antes de importar.": "Row(s) of the file without valid X and Y coordinates: {rows}. Correct them before importing.",
+    "La capa de turbinas «{layer}» no está en el sistema de coordenadas del proyecto: reproyéctala.": "The turbine layer “{layer}” is not in the project's coordinate reference system: reproject it.",
+    "No se pudo generar la capa de puntos:\n{error}": "The point layer could not be generated:\n{error}",
+    "No se pudo inicializar el módulo de envolventes (spacing_core).": "Could not initialize the spacing envelope module (spacing_core).",
+    "No se pudo iniciar la utilidad:\n{error}": "The utility could not be started:\n{error}",
+    "No se pudo limpiar el perímetro del recurso: {error}": "The resource boundary could not be cleared: {error}",
+    "Nombre del escenario:": "Scenario name:",
+
+
+
+
+    "Recalcular AEP": "Recalculate AEP",
+    "Salir": "Exit",
+    "Selecciona WRG/ZIP": "Select WRG/ZIP",
+
+    "Sobrescribir CSV original": "Overwrite original CSV",
+    "Todos (*.*)": "All (*.*)",
+    "Turbulencia TI": "TI turbulence",
+    "Vas a sobrescribir el CSV original:\n{path}\n\n¿Continuar?": "You are about to overwrite the original CSV:\n{path}\n\nContinue?",
+    "WRG inválido o no legible: {error}": "Invalid or unreadable WRG: {error}",
+    "Ya has alcanzado el máximo de {n} modelos. Aumenta el límite en el código si necesitas más familias de aerogeneradores.": "You have reached the maximum of {n} models. Increase the limit in the code if you need more wind turbine families.",
+    "{file} ({ext}, sin altura)": "{file} ({ext}, no height)",
+    "{file} ({height} m, nombre)": "{file} ({height} m, filename)",
+
+    "«{name}» → {file} ({n} puntos)": "“{name}” → {file} ({n} points)",
+    "<b>{a}</b> frente a <b>{b}</b>. El delta se calcula como B − A.": "<b>{a}</b> versus <b>{b}</b>. The delta is calculated as B − A.",
+    "AEP neto A [MWh]": "Net AEP A [MWh]",
+    "AEP neto B [MWh]": "Net AEP B [MWh]",
+    "CSV por turbina exportado correctamente:\n{path}": "Per-turbine CSV exported successfully:\n{path}",
+    "Informe AEP exportado correctamente:\n{path}": "AEP report exported successfully:\n{path}",
+    "No se pudo exportar el CSV por turbina:\n{error}": "The per-turbine CSV could not be exported:\n{error}",
+    "No se pudo exportar el informe AEP:\n{error}": "The AEP report could not be exported:\n{error}",
+    "Nº turb. A/B": "No. turb. A/B",
+    "Todos los archivos (*)": "All files (*)",
+    "HTML (*.html);;Todos los archivos (*)": "HTML (*.html);;All files (*)",
+    "(no creado)": "(not created)",
+    "CRS de trabajo (EPSG)": "Working CRS (EPSG)",
+    "EPSG no válido. Se seguirá usando EPSG:{epsg}.": "Invalid EPSG. EPSG:{epsg} will still be used.",
+
+
+    "No se seleccionaron carpetas.": "No folders were selected.",
+    "Ocurrió un error:\n{error}": "An error occurred:\n{error}",
+
+    "El archivo WRG/ZIP no existe: {path}": "The WRG/ZIP file does not exist: {path}",
+    "Perímetro WAsP/Surfer dibujado: dominio común de {n} grid(s).": "WAsP/Surfer boundary drawn: common domain of {n} grid(s).",
+    "Perímetro WAsP/Surfer dibujado: envolvente de {n} grid(s) sin intersección común.": "WAsP/Surfer boundary drawn: envelope of {n} grid(s) without a common intersection.",
+    "Perímetro WRG dibujado: {n} archivo(s).": "WRG boundary drawn: {n} file(s).",
+    "Interpolación direccional": "Directional interpolation",
+    "Direcciones de cálculo": "Calculation directions",
+
+    "Velocidades de cálculo:": "Calculation wind speeds:",
+    "{low}–{high} m/s, cada": "{low}–{high} m/s, every",
+    ", {low}–{high} m/s cada {step}": ", {low}–{high} m/s every {step}",
+    "Parámetros del recurso ({interp}, {count} direcciones{speeds})": "Resource parameters ({interp}, {count} directions{speeds})",
+    "Número de direcciones de viento con las que se calcula el AEP; son múltiplos del número de sectores del WRG. Cada sector se divide en partes iguales y se calcula en el centro de cada una, así que todos los sectores reciben el mismo número de direcciones. Más direcciones siguen mejor cómo cambian las estelas con la dirección, a cambio de más tiempo de cálculo. La selección inicial (7 por sector, o 1 si 7 por sector pasa de 360) es una elección práctica, no una garantía de precisión.": "Number of wind directions the AEP is computed with; they are multiples of the number of sectors of the WRG. Each sector is divided into equal parts and computed at the centre of each one, so every sector gets the same number of directions. More directions follow better how the wakes change with the direction, at the cost of more calculation time. The initial choice (7 per sector, or 1 if 7 per sector exceeds 360) is a practical choice, not a guarantee of accuracy.",
+    "Cómo se toman la frecuencia y la Weibull del WRG en cada dirección de cálculo. nearest: cada dirección toma los valores del sector en el que cae. linear: interpola entre los centros de los dos sectores contiguos. Solo afecta a la dirección.": "How the frequency and the Weibull of the WRG are taken at each calculation direction. nearest: each direction takes the values of the sector it falls in. linear: interpolates between the centres of the two neighbouring sectors. It only affects the direction.",
+    "Fijo en none: conserva en cada punto sus parámetros Weibull (A, k) y frecuencias locales del WRG. No los transforma en una Weibull de referencia común con factores de aceleración espacial.": "Fixed to none: each point keeps its local Weibull parameters (A, k) and frequencies of the WRG. They are not transformed into a common reference Weibull with spatial speed-up factors.",
+
+    "Velocidades de cálculo": "Calculation wind speeds",
+    "No se pueden deducir las velocidades de cálculo de la curva de algún modelo: no tiene velocidades tabuladas válidas, su potencia es cero en todos sus nodos, su banda de operación no es válida o su tipo de curva no se admite. Revisa los modelos.": "The calculation wind speeds cannot be deduced from the curve of a model: it has no valid tabulated wind speeds, its power is zero at every node, its operating band is not valid or its kind of curve is not supported. Check the models.",
+}
+try:
+    register_language(LANG_EN, _ENERGY_DIALOGS_TO_EN, {}, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Wake-raster warnings
+_WAKE_RASTER_WARNINGS_TO_EN = {
+    "Se omitieron {n_out} de {n_total} turbinas fuera del dominio del recurso (índices de ejemplo: {example}).": "{n_out} of {n_total} turbines outside the resource domain were skipped (example indices: {example}).",
+    "No se pudo reconstruir la turbina seleccionada; se utilizó el objeto original como fallback ({error}).": "The selected turbine could not be rebuilt; the original object was used as a fallback ({error}).",
+    "No se pudo construir el modelo de estela seleccionado; se utilizó Bastankhah ({error}).": "The selected wake model could not be built; Bastankhah was used ({error}).",
+    "No se pudo aplicar la superposición seleccionada; se utilizó LinearSum ({error}).": "The selected superposition could not be applied; LinearSum was used ({error}).",
+    "El modelo de estela necesita la TI efectiva: se usa el modelo de turbulencia {model}, como en el cálculo AEP.": "The wake model needs the effective TI: the turbulence model {model} is used, as in the AEP calculation.",
+    "VELANTISWIND_WAKE_MAX_CELLS no es válido: {value}.": "VELANTISWIND_WAKE_MAX_CELLS is not valid: {value}.",
+    "La malla fue ajustada al presupuesto rápido ({cells} celdas): {nx}×{ny}, resolución efectiva {res_x}×{res_y} m.": "The grid was adjusted to the fast budget ({cells} cells): {nx}×{ny}, effective resolution {res_x}×{res_y} m.",
+    "El parque mixto se calculó en precisión float64 para garantizar la selección correcta de curvas CT por tipo.": "The mixed farm was calculated in float64 precision to guarantee the correct selection of CT curves per type.",
+    "No se pudo identificar el sector dominante desde el recurso; se utilizó 0°.": "The dominant sector could not be identified from the resource; 0° was used.",
+    "PyWake detectó presión de memoria y repitió automáticamente el mapa con {cells} celdas ({nx}×{ny}, {res_x}×{res_y} m).": "PyWake detected memory pressure and automatically repeated the map with {cells} cells ({nx}×{ny}, {res_x}×{res_y} m).",
+    "No se pudo actualizar el perfil temporal del JSON: {error}": "The timing profile of the JSON could not be updated: {error}",
+}
+try:
+    register_language(LANG_EN, _WAKE_RASTER_WARNINGS_TO_EN, {}, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Wake-raster errors
+_WAKE_RASTER_ERRORS_TO_EN = {
+    "No se pudo leer '{name}' del dataset.": "'{name}' could not be read from the dataset.",
+    "'{name}' es bytes (lectura errónea).": "'{name}' is bytes (wrong read).",
+    "'{name}' es str (lectura errónea).": "'{name}' is str (wrong read).",
+    "No se pudo convertir '{name}' a float: {error}": "'{name}' could not be converted to float: {error}",
+    "'{name}' no tiene suficientes valores para definir bounds.": "'{name}' does not have enough values to define bounds.",
+    "'{name}' contiene NaNs/no finitos.": "'{name}' contains NaNs/non-finite values.",
+    "El site no expone 'ds'/'dataset'.": "The site does not expose 'ds'/'dataset'.",
+    "No se pudo importar ag_core.qgis_io.wake_raster.": "ag_core.qgis_io.wake_raster could not be imported.",
+    "No se pudo importar HorizontalGrid desde py_wake.": "HorizontalGrid could not be imported from py_wake.",
+    "Todas las turbinas están fuera del dominio del recurso ({kind}). Dominio X[{x_min},{x_max}] Y[{y_min},{y_max}].": "All turbines are outside the resource domain ({kind}). Domain X[{x_min},{x_max}] Y[{y_min},{y_max}].",
+    "La fábrica de turbinas mixtas no está disponible.": "The mixed-turbine factory is not available.",
+    "No se pudo construir un WindTurbines mixto válido. El cálculo se detiene para evitar representar todas las máquinas como el primer modelo.": "A valid mixed WindTurbines object could not be built. The calculation stops to avoid representing all turbines as the first model.",
+    "Se detectaron varios modelos de turbina, pero PyWake no activó la selección por tipo.": "Several turbine models were detected, but PyWake did not enable selection by type.",
+    "Vector de tipos inconsistente: {n_types} índices para {n_turbines} turbinas.": "Inconsistent type vector: {n_types} indices for {n_turbines} turbines.",
+    "Los índices de tipo no son densos o pertenecen a capas/entidades, no a modelos: min={type_min}, max={type_max}, modelos={n_models}.": "The type indices are not dense or belong to layers/features, not to models: min={type_min}, max={type_max}, models={n_models}.",
+    "PyWake no pudo seleccionar diámetro y altura para el vector de tipos.": "PyWake could not select diameter and height for the type vector.",
+    "PyWake devolvió una geometría de turbina incompatible con el layout mixto.": "PyWake returned a turbine geometry incompatible with the mixed layout.",
+    "La selección de curvas CT falló en la comprobación previa del parque mixto: {error}": "The CT curve selection failed in the pre-check of the mixed farm: {error}",
+    "La comprobación previa CT no devolvió un valor finito por turbina.": "The CT pre-check did not return a finite value per turbine.",
+    "PyWake falló durante la simulación inicial del parque mixto.\nDetalle original: {detail}\nDiagnóstico: turbinas={n_turbines}, modelos={n_models}, type_min={t_min}, type_max={t_max}, selector={selector}, dirección={wd}°, Elevation_dims={dims}, Elevation_shape={shape}.": "PyWake failed during the initial simulation of the mixed farm.\nOriginal detail: {detail}\nDiagnostics: turbines={n_turbines}, models={n_models}, type_min={t_min}, type_max={t_max}, selector={selector}, direction={wd}°, Elevation_dims={dims}, Elevation_shape={shape}.",
+    "PyWake no devolvió la coordenada 'type' necesaria para auditar el parque mixto.": "PyWake did not return the 'type' coordinate needed to audit the mixed farm.",
+    "PyWake no aplicó correctamente el vector de modelos de turbina.": "PyWake did not apply the turbine-model vector correctly.",
+    "No se pudo crear el ráster ni siquiera después de reducir automáticamente la malla a {cells} celdas. Reduce la extensión del parque o aumenta la resolución del mapa. Detalle: {error}": "The raster could not be created even after automatically reducing the grid to {cells} cells. Reduce the farm extent or increase the map resolution. Detail: {error}",
+    "El cálculo terminó sin generar un GeoTIFF de estelas.": "The calculation finished without producing a wake GeoTIFF.",
+}
+try:
+    register_language(LANG_EN, _WAKE_RASTER_ERRORS_TO_EN, {}, label="English")
+except Exception:  # nosec B110
+    pass
+
+# AEP warnings shown in the message bar
+_AEP_BAR_WARNINGS_TO_EN = {
+    "[{tag}] No se pudo obtener firma/repr: {error}": "[{tag}] The signature/repr could not be obtained: {error}",
+    "[ENV] No se pudo leer la versión de py_wake": "[ENV] The py_wake version could not be read",
+    "[ENV] blockage_models(moderno) no disponible": "[ENV] blockage_models (modern) not available",
+    "[ENV] selfsimilarity(clásico) no disponible": "[ENV] selfsimilarity (classic) not available",
+    "[ENV] py_wake.turbulence_models no disponible": "[ENV] py_wake.turbulence_models not available",
+    "[AEP] [Compat] {context}: se fuerza WS_key='WS_eff_ilk' (modelo no expone use_effective_ws).": "[AEP] [Compat] {context}: WS_key='WS_eff_ilk' is forced (the model does not expose use_effective_ws).",
+    "[AEP] No se pudo fijar TI={ti}: {error}": "[AEP] TI={ti} could not be set: {error}",
+    "[AEP] PropagateDownwind no calcula bloqueo: se desactiva el bloqueo automáticamente.": "[AEP] PropagateDownwind does not calculate blockage: blockage is disabled automatically.",
+    "[AEP] [Compat] ZongGaussianDeficit requiere turbulencia: forzando STF2017.": "[AEP] [Compat] ZongGaussianDeficit requires turbulence: forcing STF2017.",
+    "[AEP] [Compat] No se pudo crear el turbulence model seleccionado; probando fallback STF2017.": "[AEP] [Compat] The selected turbulence model could not be created; trying the STF2017 fallback.",
+    "[AEP] GaussianOverlapAvgModel no se expone en esta versión experimental. Forzando rotor-average=CGIRotorAvg(7).": "[AEP] GaussianOverlapAvgModel is not exposed in this experimental version. Forcing rotor-average=CGIRotorAvg(7).",
+    "[AEP] Error creando rotor-average (seleccionado): {error}": "[AEP] Error creating the rotor average (selected): {error}",
+
+    "[TI] Dataset sin 'TI/ti15ms/ti' -> inyecto TI fija={ti}.": "[TI] Dataset without 'TI/ti15ms/ti' -> injecting fixed TI={ti}.",
+    "[TI] No se pudo inyectar TI fija en dataset: {error}": "[TI] The fixed TI could not be injected into the dataset: {error}",
+
+
+    "[WRG][TI] Las alturas del WRG {heights} exceden el rango TI disponible {ti_heights}; se usan valores de borde fuera del rango.": "[WRG][TI] The WRG heights {heights} exceed the available TI range {ti_heights}; edge values are used outside the range.",
+
+
+
+
+    "[WRG][TI] No se pudo inferir la altura de '{file}'; se ignora para construir TI(x,y,h).": "[WRG][TI] The height of '{file}' could not be inferred; it is ignored to build TI(x,y,h).",
+
+
+
+    "[WAsP] Archivos que NO casaban con el patrón py_wake: {n}": "[WAsP] Files that did NOT match the py_wake pattern: {n}",
+    "[WAsP] Movidos a '_bad_for_pywake': {n} (evita crash).": "[WAsP] Moved to '_bad_for_pywake': {n} (avoids a crash).",
+    "[WAsP] Loader robusto falló: {error}. Probando loader estándar…": "[WAsP] The robust loader failed: {error}. Trying the standard loader…",
+    "[AEP] [REPORT] No se pudo calcular la variante TI ambiente only para el modelo TI-driven; se mantiene el AEP principal. Error: {error}": "[AEP] [REPORT] The ambient-TI-only variant could not be calculated for the TI-driven model; the main AEP is kept. Error: {error}",
+    "[sim] Reintento con {key}=0 (fallback automático).": "[sim] Retry with {key}=0 (automatic fallback).",
+    "[SIM] La simulación requirió degradación: {label}": "[SIM] The simulation required degradation: {label}",
+    "[SIM] Falló intento '{label}': {error}": "[SIM] Attempt '{label}' failed: {error}",
+    "[WT] Error leyendo CSV de curva '{path}': {error}": "[WT] Error reading the curve CSV '{path}': {error}",
+    "[WT] {name} | Hub={hh} m | D={d} m | Curva: no se pudo evaluar ni leer del CSV.": "[WT] {name} | Hub={hh} m | D={d} m | Curve: could not be evaluated or read from the CSV.",
+    "[WT] El índice de origen {index} no pertenece a 0..{last}; se usa el índice físico denso {dense}.": "[WT] The source index {index} is not in 0..{last}; the dense physical index {dense} is used.",
+    "[WT] La fábrica nativa from_WindTurbine_lst falló; se prueba el constructor WindTurbines: {error}": "[WT] The native from_WindTurbine_lst factory failed; trying the WindTurbines constructor: {error}",
+    "[WT] Varias powerCtFunctions internas; se usa la primera.": "[WT] Several internal powerCtFunctions; the first one is used.",
+    "[WT][WRG] WRG disponible solo a {height} m; HH turbina={hub_heights}. Se conserva la HH física y se usa el clima WRG de esa altura como referencia vertical (sin inferir shear).": "[WT][WRG] WRG available only at {height} m; turbine HH={hub_heights}. The physical HH is kept and the WRG climate at that height is used as the vertical reference (no shear inferred).",
+    "[Layer] No se encontró la capa '{layer}'. ¿Está cargada?": "[Layer] Layer '{layer}' was not found. Is it loaded?",
+    "seleccionado": "selected",
+    "sin bloqueo": "without blockage",
+    "sin turbulencia": "without turbulence",
+    "sin rotor-average": "without rotor averaging",
+    "bloqueo alternativo: {model}": "alternative blockage: {model}",
+    "fallback deficit -> BastankhahGaussianDeficit": "fallback deficit -> BastankhahGaussianDeficit",
+    "fallback deficit -> Bastankhah (sin extras)": "fallback deficit -> Bastankhah (without extras)",
+}
+try:
+    register_language(LANG_EN, _AEP_BAR_WARNINGS_TO_EN, {}, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Texts previously translated by hand for each language
+_HAND_TRANSLATED_TO_EN = {
+    "Revisa el CSV del Modelo {n}.": "Check the CSV for model {n}.",
+    "Estelas": "Wakes",
+    "El ráster se está calculando en segundo plano. Puedes seguir trabajando en QGIS y cancelarlo desde el gestor de tareas.": "The raster is being calculated in the background. You can keep working in QGIS and cancel it from the task manager.",
+    "Ya hay un ráster de estelas calculándose. Puedes cancelarlo desde el gestor de tareas de QGIS.": "A wake raster is already running. You can cancel it from the QGIS task manager.",
+    "CRS del proyecto": "Project CRS",
+    "Define un CRS proyectado válido en el proyecto antes de crear el ráster. Sin CRS no se puede garantizar la georreferenciación del resultado.": "Set a valid projected CRS in the project before creating the raster. Without a CRS, result georeferencing cannot be guaranteed.",
+    "CRS no proyectado": "Non-projected CRS",
+    "El proyecto usa un CRS geográfico. La resolución y las distancias del cálculo están expresadas en metros; reproyecta el proyecto y las capas a un CRS métrico adecuado.": "The project uses a geographic CRS. Calculation resolution and distances are in metres; reproject the project and layers to a suitable metric CRS.",
+    "El proyecto usa un CRS geocéntrico o solo vertical. El ráster necesita un sistema proyectado y en metros: cambia el del proyecto.": "The project uses a geocentric or vertical-only CRS. The raster needs a projected system in metres: change the project's.",
+    "Unidades del CRS": "CRS units",
+    "El CRS proyectado no utiliza metros. Selecciona un CRS métrico antes de crear el ráster para que la resolución y las distancias sean correctas.": "The projected CRS does not use metres. Select a metric CRS before creating the raster so resolution and distances are correct.",
+    "CRS de las capas": "Layer CRS",
+    "Ráster de estelas creado": "Wake raster created",
+    "Velantis Wind · Ráster de estelas": "Velantis Wind · Wake raster",
+    "Crear ráster de estelas": "Create wake raster",
+    "Las siguientes capas de turbinas no usan el CRS del proyecto. Reproyéctalas antes de calcular, porque el motor utiliza sus coordenadas originales:\n• ": "The following turbine layers do not use the project CRS. Reproject them before calculation because the engine uses their original coordinates:\n• ",
+    "Se canceló la creación del ráster de estelas.": "Wake-raster creation was cancelled.",
+    "Error de ráster de estelas": "Wake-raster error",
+    "Carga del ráster": "Raster loading",
+    "Avisos:": "Warnings:",
+    "Metadatos de trazabilidad:": "Traceability metadata:",
+    "Turbinas usadas:": "Turbines used:",
+    "Media / P50:": "Mean / P50:",
+    "Rango WS efectiva:": "Effective-WS range:",
+    "Rango WS libre:": "Free-stream WS range:",
+    "Dirección usada:": "Direction used:",
+
+    "Ráster de estelas en curso… {pct}%": "Wake raster running… {pct}%",
+    "No se pudo crear el ráster de estelas:\n{error}": "The wake raster could not be created:\n{error}",
+    "Error desconocido.": "Unknown error.",
+    "El GeoTIFF se creó, pero QGIS no pudo cargarlo:\n{error}\n\nArchivo: {path}": "The GeoTIFF was created, but QGIS could not load it:\n{error}\n\nFile: {path}",
+    "Ráster de estelas no cargado": "Wake raster not loaded",
+    "El proyecto cambió durante el cálculo del ráster de estelas. No se han añadido capas al proyecto actual. Los archivos generados se conservan en:\n{path}": "The project changed while the wake raster was being calculated. No layers have been added to the current project. The generated files are kept in:\n{path}",
+}
+try:
+    register_language(LANG_EN, _HAND_TRANSLATED_TO_EN, {}, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Turbine plan: air density, .wtg and .owtg readers, CSV reader and turbine dialog
+_TURBINE_PLAN_TO_EN = {
+    "Ajustar las curvas a la densidad del aire": "Adjust the curves to the air density",
+    "Solo actúa sobre turbinas con curvas tabuladas por densidad (.wtg, .owtg). Cada aerogenerador usa la curva interpolada a la densidad del aire en la cota de su buje.": "Only affects turbines with curves tabulated by density (.wtg, .owtg). Each wind turbine uses the curve interpolated to the air density at its hub altitude.",
+    "Por turbina (según la cota de su buje)": "Per turbine (from its hub altitude)",
+    "Uniforme en todo el parque": "Uniform across the wind farm",
+    "«Por turbina» lleva la densidad de referencia a la cota de cada buje con el perfil ISA. «Uniforme» aplica la densidad de referencia a todo el parque.": "“Per turbine” carries the reference density to each hub altitude with the ISA profile. “Uniform” applies the reference density to the whole wind farm.",
+    "Densidad del aire de referencia del proyecto.": "Reference air density of the project.",
+    "Cota sobre el nivel del mar a la que está dada la densidad de referencia.": "Altitude above sea level at which the reference density is given.",
+    "Densidad de referencia:": "Reference density:",
+    "a la cota:": "at altitude:",
+    "La potencia y el empuje dependen de la densidad del aire, y cada aerogenerador está a una cota distinta. Con una turbina de curvas tabuladas por densidad (.wtg, .owtg), se calcula la densidad en la cota de cada buje a partir de la referencia del proyecto y se interpola la curva que le corresponde. La cota del terreno la aporta el recurso (WRG). Las curvas de una sola densidad no se corrigen.": "Power and thrust depend on the air density, and each wind turbine stands at a different altitude. With a turbine whose curves are tabulated by density (.wtg, .owtg), the density at each hub altitude is calculated from the project reference and the matching curve is interpolated. The terrain elevation comes from the resource (WRG). Single-density curves are not corrected.",
+    "No se pudieron leer los controles de densidad del aire: {error}": "The air-density controls could not be read: {error}",
+
+    "Fichero .wtg:": ".wtg file:",
+    "Fichero .owtg:": ".owtg file:",
+    "Fichero .wtg": ".wtg file",
+    "Fichero .owtg": ".owtg file",
+    "Selecciona un fichero .wtg…": "Select a .wtg file…",
+    "Selecciona un fichero .owtg…": "Select a .owtg file…",
+    "Selecciona un fichero .wtg válido.": "Select a valid .wtg file.",
+    "Selecciona un fichero .owtg válido.": "Select a valid .owtg file.",
+    "Abrir fichero .wtg": "Open .wtg file",
+    "Abrir fichero .owtg": "Open .owtg file",
+    "Turbina .wtg (*.wtg);;Todos (*.*)": ".wtg turbine (*.wtg);;All (*.*)",
+    "Turbina .owtg (*.owtg);;Todos (*.*)": ".owtg turbine (*.owtg);;All (*.*)",
+    "Crear turbina (.wtg)": "Create turbine (.wtg)",
+    "Crear turbina (.owtg)": "Create turbine (.owtg)",
+    "No se pudo leer el fichero .wtg.": "The .wtg file could not be read.",
+    "No se pudo leer el fichero .owtg.": "The .owtg file could not be read.",
+    "Turbina creada desde el fichero .wtg.": "Turbine created from the .wtg file.",
+    "Turbina creada desde el fichero .owtg.": "Turbine created from the .owtg file.",
+    "Pulsa Aceptar para usarla.": "Press OK to use it.",
+    "El diámetro, la altura de buje y las curvas se leen del propio fichero.": "The diameter, the hub height and the curves are read from the file itself.",
+    "Se rellena con la altura del fichero. Cámbiala solo si el proyecto usa otra torre: la curva no cambia, pero sí la cota a la que se evalúan el viento y la densidad del aire.": "Filled in with the height from the file. Change it only if the project uses another tower: the curve does not change, but the altitude at which the wind and the air density are evaluated does.",
+    "Altura de buje": "Hub height",
+    "El fichero sugiere varias alturas de buje. Elige la del proyecto:": "The file suggests several hub heights. Choose the one used by the project:",
+    "La geometría del fichero (D={diam} m, HH={hub} m) no cabe en los controles del diálogo (D hasta {diam_max} m, HH hasta {hub_max} m).": "The file geometry (D={diam} m, HH={hub} m) does not fit the dialog controls (D up to {diam_max} m, HH up to {hub_max} m).",
+    "Atención: has cambiado la geometría respecto al fichero (D={diam} m, HH={hub} m).": "Warning: you have changed the geometry from the file’s values (D={diam} m, HH={hub} m).",
+    "Trae {n} curvas entre {low} y {high} kg/m³; la vista previa se muestra a {preview} kg/m³.": "It contains {n} curves between {low} and {high} kg/m³; the preview is shown at {preview} kg/m³.",
+    "Cada aerogenerador podrá usar la curva de su densidad entre {low} y {high} kg/m³, activando el ajuste por densidad en la pantalla de energía.": "Each wind turbine can use the curve for its density between {low} and {high} kg/m³ if you enable the density adjustment in the energy screen.",
+    "El fichero solo trae una densidad: la curva será la misma para todo el parque.": "The file has only one density: the curve will be the same for the whole wind farm.",
+    "Datos cambiados": "Data changed",
+    "Has cambiado {datos} desde que creaste la turbina.": "You have changed {datos} since you created the turbine.",
+    "En la pestaña {pestana} has cambiado {datos}, pero la turbina creada es la de la pestaña {creada}.": "In the {pestana} tab you have changed {datos}, but the turbine created is the one from the {creada} tab.",
+    "Si continúas, se usará la última turbina que creaste, sin esos cambios. Para aplicarlos, vuelve y pulsa «Crear turbina».": "If you continue, the last turbine you created will be used, without those changes. To apply them, go back and press “Create turbine”.",
+    "Continuar": "Continue",
+    "Volver": "Go back",
+    "Ct no válido a {ws} m/s: {value}. Cada Ct debe ser un número finito entre 0 y {ct_max}; {ct_max} no es un techo físico, sino el umbral de admisión a partir del cual hay que revisar el dato.": "Invalid Ct at {ws} m/s: {value}. Each Ct must be a finite number between 0 and {ct_max}; {ct_max} is not a physical ceiling but the admission threshold above which the data must be reviewed.",
+    "Ct no válido en {file}, línea {line}, columna {column}: {value!r}. Cada Ct debe ser un número finito entre 0 y {ct_max}; {ct_max} no es un techo físico, sino el umbral de admisión a partir del cual hay que revisar el dato.": "Invalid Ct in {file}, line {line}, column {column}: {value!r}. Each Ct must be a finite number between 0 and {ct_max}; {ct_max} is not a physical ceiling but the admission threshold above which the data must be reviewed.",
+    "Ct vacío en {file}, línea {line}, columna {column}: {value!r}, entre filas que sí lo traen. Un hueco no se rellena ni se estima: complétalo en el archivo.": "Empty Ct in {file}, line {line}, column {column}: {value!r}, among rows that do have one. A gap is neither filled in nor estimated: complete it in the file.",
+    "Fila incompleta en {file}, línea {line}: tiene {n} columna(s) y no llega a la columna {column}, la del Ct, así que le falta el valor. Si el archivo trae Ct, cada fila de datos debe traerlo.": "Incomplete row in {file}, line {line}: it has {n} column(s) and does not reach column {column}, the Ct column, so its value is missing. If the file has Ct, every data row must have it.",
+    "Fila incompleta en {file}, línea {line}: tiene {n} columna(s) y no llega a la columna {column}, la de la potencia, así que le falta el valor.": "Incomplete row in {file}, line {line}: it has {n} column(s) and does not reach column {column}, the power column, so its value is missing.",
+    "Potencia no válida en {file}, línea {line}, columna {column}: {value!r}. Cada fila con velocidad debe traer su potencia en kW como un número finito.": "Invalid power in {file}, line {line}, column {column}: {value!r}. Each row with a wind speed must have its power in kW as a finite number.",
+    "La columna {column} de {file}, la del Ct, está vacía en todas las filas. Si el archivo no trae Ct, no configures esa columna y el Ct se estimará.": "Column {column} of {file}, the Ct column, is empty in every row. If the file has no Ct, do not set that column and the Ct will be estimated.",
+    "No se han leído datos válidos de {path}": "No valid data were read from {path}",
+
+    "Modelo «{name}»: {warning}": "Model “{name}”: {warning}",
+    "Densidad del aire: {summary}.": "Air density: {summary}.",
+    "La altitud de referencia": "The reference altitude",
+    "La cota de buje": "The hub altitude",
+    "{label} contiene {n} valor(es) no numérico(s).": "{label} contains {n} non-numeric value(s).",
+    "{label} queda fuera del rango plausible ({low:g} a {high:g} m s.n.m.): p. ej. {value:g} m. Revisa las unidades de la elevación (¿pies en vez de metros?) o el origen de cotas.": "{label} lies outside the plausible range ({low:g} to {high:g} m asl): e.g. {value:g} m. Check the elevation units (feet instead of metres?) or the altitude datum.",
+    "La altitud de referencia debe ser un número finito; se recibió {value!r}.": "The reference altitude must be a finite number; received {value!r}.",
+    "La densidad de referencia debe ser un número positivo; se recibió {value!r}.": "The reference density must be a positive number; received {value!r}.",
+    "Todas las alturas de buje deben ser números positivos.": "All hub heights must be positive numbers.",
+    "Se recibieron {n_terrain} cotas de terreno y {n_hubs} alturas de buje; deben coincidir (una por turbina).": "{n_terrain} terrain elevations and {n_hubs} hub heights were received; they must match (one per turbine).",
+    "El recurso cargado no incluye una superficie de elevación, así que no se puede deducir la cota de cada buje. Usa un WRG con elevación o fija una densidad de aire uniforme.": "The loaded resource does not include an elevation surface, so the altitude of each hub cannot be derived. Use a WRG with elevation or set a uniform air density.",
+    "No hay posiciones de turbina para calcular la densidad de aire.": "There are no turbine positions to calculate the air density.",
+    "Se recibieron {nx} coordenadas X y {ny} coordenadas Y.": "{nx} X coordinates and {ny} Y coordinates were received.",
+    "{n_out} de {n} turbina(s) caen fuera de la malla de elevación del recurso (X[{x0:.1f}, {x1:.1f}], Y[{y0:.1f}, {y1:.1f}]); por ejemplo la turbina {index} en ({x:.1f}, {y:.1f}). Amplía el WRG o corrige el layout.": "{n_out} of {n} turbine(s) fall outside the elevation grid of the resource (X[{x0:.1f}, {x1:.1f}], Y[{y0:.1f}, {y1:.1f}]); for example turbine {index} at ({x:.1f}, {y:.1f}). Extend the WRG or correct the layout.",
+    "No se pudo consultar la elevación del recurso en las posiciones del layout: {error}": "The resource elevation could not be queried at the layout positions: {error}",
+    "El recurso no devolvió una cota válida para cada una de las {n} turbina(s). Amplía el WRG o corrige el layout.": "The resource did not return a valid elevation for each of the {n} turbine(s). Extend the WRG or correct the layout.",
+    "{n} turbina(s) sin cota de terreno válida. Comprueba que el recurso cubre todas las posiciones del layout.": "{n} turbine(s) without a valid terrain elevation. Check that the resource covers every layout position.",
+    "La turbina necesita un nombre no vacío.": "The turbine needs a non-empty name.",
+    "El diámetro de rotor": "The rotor diameter",
+    "La altura de buje": "The hub height",
+    "La densidad por defecto": "The default density",
+    "La potencia nominal": "The rated power",
+    "El cut-in": "The cut-in",
+    "El cut-out": "The cut-out",
+    "La lista de velocidades de viento": "The list of wind speeds",
+    "La lista de densidades de aire": "The list of air densities",
+    "potencia": "power",
+    "Ct": "Ct",
+    "{label} debe ser un número positivo; se recibió {value!r}.": "{label} must be a positive number; received {value!r}.",
+    "{label} debe ser un número finito no negativo; se recibió {value!r}.": "{label} must be a finite, non-negative number; received {value!r}.",
+    "{label} debe ser estrictamente creciente, pero el valor {index} ({value:g}) no es mayor que el anterior ({previous:g}).": "{label} must be strictly increasing, but value {index} ({value:g}) is not greater than the previous one ({previous:g}).",
+    "La curva necesita al menos 2 velocidades de viento; se recibieron {n}.": "The curve needs at least 2 wind speeds; {n} received.",
+    "Velocidad de viento no válida en la posición {index}: {value!r}.": "Invalid wind speed at position {index}: {value!r}.",
+    "La curva necesita al menos una densidad de aire.": "The curve needs at least one air density.",
+    "Densidad de aire no válida en la posición {index}: {value!r}.": "Invalid air density at position {index}: {value!r}.",
+    "Densidad de aire no numérica: {value!r}.": "Non-numeric air density: {value!r}.",
+    "La curva de {label} a {rho:g} kg/m³ es cero en todos los puntos: con ella la turbina no produce ni genera estela.": "The {label} curve at {rho:g} kg/m³ is zero at every point: with it the turbine neither produces nor generates a wake.",
+    "El cut-in ({cut_in:g} m/s) debe ser menor que el cut-out ({cut_out:g} m/s).": "The cut-in ({cut_in:g} m/s) must be lower than the cut-out ({cut_out:g} m/s).",
+    "{label} declarado ({value:g} m/s) queda fuera de las velocidades tabuladas ({low:g}–{high:g} m/s): la tabla no cubre su propia banda de operación.": "{label} ({value:g} m/s, as declared) lies outside the tabulated wind speeds ({low:g}–{high:g} m/s): the table does not cover its own operating band.",
+    "La tabla de {label} tiene {rows} filas y se esperaban {expected} (una por velocidad de viento).": "The {label} table has {rows} rows and {expected} were expected (one per wind speed).",
+    "La fila de {ws:g} m/s de la tabla de {label} tiene {columns} columnas y se esperaban {expected} (una por densidad de aire).": "The {ws:g} m/s row of the {label} table has {columns} columns and {expected} were expected (one per air density).",
+    "Valor de {label} no numérico a {ws:g} m/s y {rho:g} kg/m³: {value!r}.": "Non-numeric {label} value at {ws:g} m/s and {rho:g} kg/m³: {value!r}.",
+    "Valor de {label} negativo a {ws:g} m/s y {rho:g} kg/m³: {value:g}.": "Negative {label} value at {ws:g} m/s and {rho:g} kg/m³: {value:g}.",
+    "Valor de {label} fuera de rango a {ws:g} m/s y {rho:g} kg/m³: {value:g} > {maximum:g}. {maximum:g} no es un techo físico, sino el umbral de admisión a partir del cual hay que revisar el dato.": "Out-of-range {label} value at {ws:g} m/s and {rho:g} kg/m³: {value:g} > {maximum:g}. {maximum:g} is not a physical ceiling but the admission threshold above which the data must be reviewed.",
+    "Curva recortada a la banda declarada por el propio fichero ({cut_in}–{cut_out} m/s): fuera de ella la potencia y el Ct son cero.": "Curve trimmed to the band declared by the file itself ({cut_in}–{cut_out} m/s): outside it, power and Ct are zero.",
+    "{name}: D={diameter:g} m, HH={hub:g} m, {n_ws} velocidades {ws_low:g}–{ws_high:g} m/s, densidad única {low:.3f} kg/m³": "{name}: D={diameter:g} m, HH={hub:g} m, {n_ws} wind speeds {ws_low:g}–{ws_high:g} m/s, single density {low:.3f} kg/m³",
+    "{name}: D={diameter:g} m, HH={hub:g} m, {n_ws} velocidades {ws_low:g}–{ws_high:g} m/s, {n_rho} densidades {low:.3f}–{high:.3f} kg/m³": "{name}: D={diameter:g} m, HH={hub:g} m, {n_ws} wind speeds {ws_low:g}–{ws_high:g} m/s, {n_rho} densities {low:.3f}–{high:.3f} kg/m³",
+    "Modo de densidad de aire no reconocido: {mode!r}.": "Unrecognised air-density mode: {mode!r}.",
+    "El vector de tipos tiene {n_types} elementos para {n} turbinas.": "The type vector has {n_types} elements for {n} turbines.",
+    "El vector de tipos no corresponde a los {n} tipos del parque.": "The type vector does not match the {n} types of the wind farm.",
+    "El recurso define su propia variable 'Air_density', que PyWake antepone a la densidad de cada turbina: el cálculo no usaría la densidad que dice usar. Elimina esa variable del recurso.": "The resource defines its own 'Air_density' variable, which PyWake puts before the density of each turbine: the calculation would not use the density it claims to use. Remove that variable from the resource.",
+    "Se pidió ajustar las curvas a la densidad del aire, pero ninguna curva del parque está tabulada por densidad: se usan tal cual, sin corregir.": "Adjusting the curves to the air density was requested, but no curve of the wind farm is tabulated by density: they are used as they are, without correction.",
+    "ajuste por densidad desactivado: cada turbina usa la densidad por defecto de su curva ({densities})": "density adjustment off: each turbine uses the default density of its curve ({densities})",
+    "Las curvas de potencia están tabuladas por densidad, pero el ajuste está desactivado: cada turbina se evalúa a la densidad por defecto de su curva ({densities}), sin tener en cuenta la cota de su buje.": "The power curves are tabulated by density, but the adjustment is off: each turbine is evaluated at the default density of its curve ({densities}), regardless of its hub altitude.",
+    "La curva de {names} no está tabulada por densidad pero acepta 'Air_density' para reescalar su potencia y su Ct: recibiría la densidad de cada turbina y se corregiría sin pedirlo.": "The curve of {names} is not tabulated by density but accepts 'Air_density' to rescale its power and Ct: it would receive each turbine’s density and be corrected without being asked to.",
+    "Falta la densidad de aire de referencia del proyecto.": "The project’s reference air density is missing.",
+    "Falta la altitud (m s.n.m.) a la que está dada la densidad de referencia; sin ella no se puede calcular la densidad en la cota de cada buje.": "The altitude (m asl) at which the reference density is given is missing; without it the density at each hub altitude cannot be calculated.",
+    "No se pudo leer la altura de buje de la turbina, y sin ella la cota de cada buje (y por tanto su densidad de aire) sería inventada. Define la altura de buje en el modelo de turbina o desactiva el ajuste por densidad.": "The turbine’s hub height could not be read, and without it each hub altitude (and therefore its air density) would be made up. Define the hub height in the turbine model or turn off the density adjustment.",
+    "{n} turbina(s) quedan fuera del rango de densidad tabulado por su curva y se acotan a su extremo, sin extrapolar.": "{n} turbine(s) fall outside the density range tabulated by their curve and are clamped to its end, without extrapolating.",
+    "densidad por turbina (ISA calibrado, referencia {reference:.4f} kg/m³ a {altitude:g} m s.n.m.): {densities}; cota de buje {low:.0f}–{high:.0f} m s.n.m.": "per-turbine density (calibrated ISA, reference {reference:.4f} kg/m³ at {altitude:g} m asl): {densities}; hub altitude {low:.0f}–{high:.0f} m asl",
+    "densidad uniforme {reference:.4f} kg/m³": "uniform density {reference:.4f} kg/m³",
+    "{summary}; {n} turbina(s) acotada(s) al rango de su curva": "{summary}; {n} turbine(s) clamped to the range of their curve",
+    "Las turbinas de {names} tienen una curva de una sola densidad: no se corrigen con la densidad del aire.": "The turbines of {names} have a single-density curve: they are not corrected for the air density.",
+    "la raíz": "the root",
+    "Variante de .wtg no soportada: {where}/@{attribute} no es un número finito: {raw!r}.": "Unsupported .wtg variant: {where}/@{attribute} is not a finite number: {raw!r}.",
+    "Variante de .wtg no soportada: falta el atributo {attribute} en {where}.": "Unsupported .wtg variant: attribute {attribute} is missing in {where}.",
+    "Variante de .wtg no soportada: falta el elemento <{tag}> en {where}.": "Unsupported .wtg variant: element <{tag}> is missing in {where}.",
+    "Variante de .wtg no soportada: {where} tiene {n} elementos <{tag}> donde se espera uno.": "Unsupported .wtg variant: {where} has {n} <{tag}> elements where one is expected.",
+    "Variante de .wtg no soportada: SuggestedHeights no contiene ningún <Height>.": "Unsupported .wtg variant: SuggestedHeights contains no <Height>.",
+    "Variante de .wtg no soportada: SuggestedHeights/Height[{index}] no es una altura positiva: {text!r}.": "Unsupported .wtg variant: SuggestedHeights/Height[{index}] is not a positive height: {text!r}.",
+    "La altura elegida ({chosen:g} m) no es una de las alturas sugeridas del fichero ({heights}).": "The chosen height ({chosen:g} m) is not one of the heights suggested by the file ({heights}).",
+    "El fichero sugiere varias alturas de buje ({heights}): hay que elegir una explícitamente.": "The file suggests several hub heights ({heights}): one must be chosen explicitly.",
+    "Variante de .wtg no soportada: {where} declara histéresis ({stop}={stop_value:g} frente a {start}={start_value:g}), que este cálculo no modela.": "Unsupported .wtg variant: {where} declares hysteresis ({stop}={stop_value:g} versus {start}={start_value:g}), which this calculation does not model.",
+    "Variante de .wtg no soportada: {where} declara LowSpeedCutIn={cut_in:g} y HighSpeedCutOut={cut_out:g}; deben ser no negativos y el primero menor que el segundo.": "Unsupported .wtg variant: {where} declares LowSpeedCutIn={cut_in:g} and HighSpeedCutOut={cut_out:g}; they must be non-negative and the first lower than the second.",
+    "Variante de .wtg no soportada: {where}/@AirDensity debe ser positiva: {value:g}.": "Unsupported .wtg variant: {where}/@AirDensity must be positive: {value:g}.",
+    "Variante de .wtg no soportada: {where}/DataTable tiene {n} DataPoint; hacen falta al menos 2.": "Unsupported .wtg variant: {where}/DataTable has {n} DataPoint; at least 2 are needed.",
+    "Variante de .wtg no soportada: {where}/@WindSpeed={value:g} no es mayor que la velocidad anterior ni positiva: las velocidades deben ser crecientes y no negativas.": "Unsupported .wtg variant: {where}/@WindSpeed={value:g} is neither greater than the previous wind speed nor positive: wind speeds must be increasing and non-negative.",
+    "Variante de .wtg no soportada: {where}/@PowerOutput es negativa: {value:g}.": "Unsupported .wtg variant: {where}/@PowerOutput is negative: {value:g}.",
+    "No existe el fichero .wtg: {path!r}.": "The .wtg file does not exist: {path!r}.",
+    "No se pudo leer el XML de {file}: {error}": "The XML of {file} could not be read: {error}",
+    "{file} no tiene los campos de un .wtg (<PerformanceTable>) y su raíz es <TurbineType>: parece un .owtg, que se lee con su propio lector.": "{file} does not have the fields of a .wtg (<PerformanceTable>) and its root is <TurbineType>: it looks like a .owtg, which is read with its own reader.",
+    "Variante de .wtg no soportada: {file} no tiene ningún <PerformanceTable> (raíz <{root}>).": "Unsupported .wtg variant: {file} has no <PerformanceTable> (root <{root}>).",
+    "La raíz del fichero es <{root}> y no <WindTurbineGenerator>; se lee porque tiene los campos de un .wtg.": "The root of the file is <{root}> and not <WindTurbineGenerator>; it is read because it has the fields of a .wtg.",
+    "FormatVersion del fichero: {version}.": "FormatVersion of the file: {version}.",
+    "Variante de .wtg no soportada: @RotorDiameter debe ser positivo: {value:g}.": "Unsupported .wtg variant: @RotorDiameter must be positive: {value:g}.",
+    "El fichero no trae Description; se usa el nombre del fichero.": "The file has no Description; the file name is used.",
+    "Variante de .wtg no soportada: las tablas {i} y {j} tienen la misma densidad ({rho:g} kg/m³). Es ambiguo qué curva usar: no se puede saber cuántos juegos completos de tablas contiene.": "Unsupported .wtg variant: tables {i} and {j} have the same density ({rho:g} kg/m³). Which curve to use is ambiguous: there is no way to tell how many complete sets of tables it contains.",
+    "Variante de .wtg no soportada: los comentarios de las tablas nombran modos de operación distintos ({modes}); solo se admite un modo.": "Unsupported .wtg variant: the table comments name different operating modes ({modes}); only one mode is supported.",
+    "Variante de .wtg no soportada: la tabla {index} ({rho:g} kg/m³) no tiene las mismas velocidades que la primera; no se interpola entre mallas distintas.": "Unsupported .wtg variant: table {index} ({rho:g} kg/m³) does not have the same wind speeds as the first one; there is no interpolation between different grids.",
+    "Variante de .wtg no soportada: la tabla {index} ({rho:g} kg/m³) declara la banda {cut_in:g}–{cut_out:g} m/s y la primera, {first_in:g}–{first_out:g} m/s; todas deben tener la misma.": "Unsupported .wtg variant: table {index} ({rho:g} kg/m³) declares the band {cut_in:g}–{cut_out:g} m/s and the first one {first_in:g}–{first_out:g} m/s; all of them must have the same.",
+    "Todas las tablas declaran el mismo modo en sus comentarios: {mode}.": "All tables declare the same mode in their comments: {mode}.",
+    "Densidad por defecto: la de la primera tabla ({rho:g} kg/m³), por convención; el formato no declara una densidad de diseño.": "Default density: that of the first table ({rho:g} kg/m³), by convention; the format does not declare a design density.",
+    "Hay valores no nulos fuera de la banda declarada en {n} tabla(s); la banda manda y fuera de ella la potencia y el Ct son cero (un Ct fuera de banda puede ser el empuje con la turbina parada).": "There are non-zero values outside the declared band in {n} table(s); the band prevails and outside it power and Ct are zero (a Ct outside the band may be the thrust with the turbine stopped).",
+    "No se usa el StationaryThrustCoEfficient (Ct con la turbina parada): fuera de la banda el modelo impone Ct = 0, una aproximación que afecta a las estelas.": "The StationaryThrustCoEfficient (Ct with the turbine stopped) is not used: outside the band the model imposes Ct = 0, an approximation that affects the wakes.",
+    "Cp implícito máximo de {cp:.3f} en la tabla de {rho:g} kg/m³, fuera de {low:g}–{high:g}: potencia, diámetro o densidad sospechosos. El formato no trae potencia nominal con la que contrastarlo.": "Maximum implied Cp of {cp:.3f} in the {rho:g} kg/m³ table, outside {low:g}–{high:g}: suspicious power, diameter or density. The format has no rated power to check it against.",
+    "No se usan estos atributos de las tablas: {names}.": "These table attributes are not used: {names}.",
+    "Variante de .wtg no soportada en {file}: {error}": "Unsupported .wtg variant in {file}: {error}",
+    "de la intensidad de turbulencia": "on the turbulence intensity",
+    "de la clase de turbulencia Iref": "on the turbulence class Iref",
+    "la histéresis de viento fuerte": "the high-wind hysteresis",
+    "la reducción de potencia por temperatura y altitud": "the power derating for temperature and altitude",
+    "el ajuste de la curva de potencia": "the power-curve adjustment",
+    "el consumo propio de la turbina": "the turbine’s own consumption",
+    "la parada por temperatura": "the temperature shutdown",
+    "el desplazamiento de la curva en velocidad": "the wind-speed shift of the curve",
+    "velocidades": "wind speeds",
+    "densidades": "densities",
+    "Variante de .owtg no soportada: {where} no es un número finito: {raw!r}.": "Unsupported .owtg variant: {where} is not a finite number: {raw!r}.",
+    "Variante de .owtg no soportada: falta el elemento <{tag}> en {where}.": "Unsupported .owtg variant: element <{tag}> is missing in {where}.",
+    "Variante de .owtg no soportada: {where} tiene {n} elementos <{tag}> donde se espera uno.": "Unsupported .owtg variant: {where} has {n} <{tag}> elements where one is expected.",
+    "Variante de .owtg no soportada: {where}/{tag} no tiene valor.": "Unsupported .owtg variant: {where}/{tag} has no value.",
+    "Variante de .owtg no soportada: {where}/{tag} debe ser un entero no negativo: {value:g}.": "Unsupported .owtg variant: {where}/{tag} must be a non-negative integer: {value:g}.",
+    "Variante de .owtg no soportada: índice duplicado <{tag}> en {where}.": "Unsupported .owtg variant: duplicate index <{tag}> in {where}.",
+    "Variante de .owtg no soportada: {where} declara Count={count} y contiene los índices {indices} de <{prefix}N>; deben ir de 0 a {last} sin huecos.": "Unsupported .owtg variant: {where} declares Count={count} and contains the indices {indices} of <{prefix}N>; they must run from 0 to {last} without gaps.",
+    "Variante de .owtg no soportada: elemento inesperado <{tag}> en {where}.": "Unsupported .owtg variant: unexpected element <{tag}> in {where}.",
+    "Variante de .owtg no soportada: {where} declara Columns={columns} y contiene {found} columnas <RhoX>, pero AirDensities declara {expected} densidades.": "Unsupported .owtg variant: {where} declares Columns={columns} and contains {found} <RhoX> columns, but AirDensities declares {expected} densities.",
+    "Variante de .owtg no soportada: la columna {index} de {where} es <{tag}>, pero AirDensities declara {expected:g} kg/m³ en esa posición.": "Unsupported .owtg variant: column {index} of {where} is <{tag}>, but AirDensities declares {expected:g} kg/m³ at that position.",
+    "Variante de .owtg no soportada: la celda <{tag}> está en la columna {index} de {where}.": "Unsupported .owtg variant: cell <{tag}> is in column {index} of {where}.",
+    "Variante de .owtg no soportada: celda duplicada <{tag}> en {where}.": "Unsupported .owtg variant: duplicate cell <{tag}> in {where}.",
+    "Variante de .owtg no soportada: {where} declara Rows={rows} y contiene las filas {indices}; Velocities declara {expected} velocidades.": "Unsupported .owtg variant: {where} declares Rows={rows} and contains the rows {indices}; Velocities declares {expected} wind speeds.",
+    "Variante de .owtg no soportada: {where}/Type es {kind!r}; solo se admite {expected!r}.": "Unsupported .owtg variant: {where}/Type is {kind!r}; only {expected!r} is supported.",
+    "Variante de .owtg no soportada: {tag}={value:g}. Las curvas de potencia dependen {what}, que este cálculo no representa.": "Unsupported .owtg variant: {tag}={value:g}. The power curves depend {what}, which this calculation does not represent.",
+    "Variante de .owtg no soportada: {where}={value:g} activa {what}, que este cálculo no representa; las curvas del fichero sin esa modificación describirían otra máquina.": "Unsupported .owtg variant: {where}={value:g} enables {what}, which this calculation does not represent; the file’s curves without that modification would describe another machine.",
+    "No existe el fichero .owtg: {path!r}.": "The .owtg file does not exist: {path!r}.",
+    "{file} tiene la raíz <{root}> y tablas <PerformanceTable>: parece un .wtg, que se lee con su propio lector.": "{file} has the root <{root}> and <PerformanceTable> tables: it looks like a .wtg, which is read with its own reader.",
+    "Variante de .owtg no soportada: la raíz de {file} es <{root}> y se esperaba <{expected}>.": "Unsupported .owtg variant: the root of {file} is <{root}> and <{expected}> was expected.",
+    "El fichero no trae Name; se usa el nombre del fichero.": "The file has no Name; the file name is used.",
+    "Variante de .owtg no soportada: {where} declara Count={count} y contiene {n} tablas de potencia; solo se admite una. Varias tablas hacen depender la curva de la turbulencia, que este cálculo no representa.": "Unsupported .owtg variant: {where} declares Count={count} and contains {n} power tables; only one is supported. Several tables make the curve depend on turbulence, which this calculation does not represent.",
+    "Variante de .owtg no soportada: {where} declara Count={count} y contiene las tablas {indices}; se espera una sola, <Power_Table0>.": "Unsupported .owtg variant: {where} declares Count={count} and contains the tables {indices}; a single one, <Power_Table0>, is expected.",
+    "Variante de .owtg no soportada: las {label} de la tabla de empuje ({n_thrust} valores) no coinciden con las de la tabla de potencia ({n_power} valores); no se interpola entre mallas distintas.": "Unsupported .owtg variant: the {label} of the thrust table ({n_thrust} values) do not match those of the power table ({n_power} values); there is no interpolation between different grids.",
+    "El fichero se contradice: declara CapacityKW={capacity:g} kW y PeakOutputKW={peak:g} kW. Se toma CapacityKW como potencia nominal.": "The file contradicts itself: it declares CapacityKW={capacity:g} kW and PeakOutputKW={peak:g} kW. CapacityKW is taken as the rated power.",
+    "Variante de .owtg no soportada: la tabla de potencia llega a {max:g} y el fichero no declara CapacityKW ni PeakOutputKW con los que contrastarla. Supera los {ceiling:g} kW de la mayor turbina plausible: la tabla parece estar en W y no en kW.": "Unsupported .owtg variant: the power table reaches {max:g} and the file declares neither CapacityKW nor PeakOutputKW to check it against. It exceeds the {ceiling:g} kW of the largest plausible turbine: the table seems to be in W, not in kW.",
+    "El fichero no declara potencia nominal (CapacityKW ni PeakOutputKW); se toma el máximo de la tabla, {max:g} kW.": "The file declares no rated power (neither CapacityKW nor PeakOutputKW); the table maximum, {max:g} kW, is taken.",
+    "Variante de .owtg no soportada: la tabla de potencia llega a {max:g}, más de un {margin:g} % por encima de la potencia nominal declarada ({tag}={rated:g} kW). Revisa las unidades de la tabla.": "Unsupported .owtg variant: the power table reaches {max:g}, more than {margin:g} % above the declared rated power ({tag}={rated:g} kW). Check the units of the table.",
+    "La tabla de potencia llega a {max:g} kW, menos de la mitad de los {rated:g} kW nominales declarados.": "The power table reaches {max:g} kW, less than half of the declared rated {rated:g} kW.",
+    "Densidad por defecto: la densidad de diseño del fichero (DesignAirDensity, {rho:g} kg/m³).": "Default density: the file’s design density (DesignAirDensity, {rho:g} kg/m³).",
+    "Variante de .owtg no soportada: IEC_adjustment={value:g}; solo se admiten 0 y 1.": "Unsupported .owtg variant: IEC_adjustment={value:g}; only 0 and 1 are supported.",
+    "El fichero declara IEC_adjustment; se usan directamente sus curvas tabuladas por densidad, sin aplicar además la corrección IEC.": "The file declares IEC_adjustment; its density-tabulated curves are used directly, without also applying the IEC correction.",
+    "La tabla de potencia declara validez para una turbulencia entre {low} % y {high} %; no se comprueba.": "The power table declares validity for a turbulence between {low} % and {high} %; this is not checked.",
+    "Variante de .owtg no soportada en {file}: {error}": "Unsupported .owtg variant in {file}: {error}",
+    "Densidad del aire:": "Air density:",
+    "El ráster se ha calculado con las entradas actuales del diálogo, que difieren del último AEP en: {categories}. Vuelve a calcular el AEP para que el informe corresponda al mapa.": "The raster was calculated with the current inputs of the dialog, which differ from the last AEP in: {categories}. Calculate the AEP again so that the report matches the map.",
+    "turbinas y posiciones": "turbines and positions",
+    "recurso eólico y turbulencia": "wind resource and turbulence",
+    "modelo de estela": "wake model",
+    "densidad del aire": "air density",
+    "sistema de coordenadas del proyecto": "coordinate reference system of the project",
+    "No se aplicó la densidad del aire al ráster: {error} El mapa se calcula con la densidad del recurso, que puede no coincidir con la del informe de energía.": "The air density was not applied to the raster: {error} The map is calculated with the resource density, which may not match the one in the energy report.",
+    "No se aplicó la densidad del aire al ráster: {error} El mapa se calcula con la densidad por defecto de cada curva, que puede no coincidir con la del informe de energía.": "The air density was not applied to the raster: {error} The map is calculated with the default density of each curve, which may not match the one in the energy report.",
+}
+# Their calculation notes, shown in the results already filled in: the fixed parts, as fragments.
+_TURBINE_PLAN_NOTE_FRAGMENTS_TO_EN = {
+
+    "Se pidió ajustar las curvas a la densidad del aire, pero ninguna curva del parque está tabulada por densidad: se usan tal cual, sin corregir.": "Adjusting the curves to the air density was requested, but no curve of the wind farm is tabulated by density: they are used as they are, without correction.",
+    "Modelo «": "Model “",
+
+    "Densidad del aire: ": "Air density: ",
+    "densidad por turbina (ISA calibrado, referencia ": "per-turbine density (calibrated ISA, reference ",
+    " kg/m³ a ": " kg/m³ at ",
+    " m s.n.m.): ": " m asl): ",
+    "; cota de buje ": "; hub altitude ",
+    " m s.n.m..": " m asl.",
+    " m s.n.m.; ": " m asl; ",
+    " turbina(s) acotada(s) al rango de su curva": " turbine(s) clamped to the range of their curve",
+    "densidad uniforme ": "uniform density ",
+    "ajuste por densidad desactivado: cada turbina usa la densidad por defecto de su curva (": "density adjustment off: each turbine uses the default density of its curve (",
+    "Las curvas de potencia están tabuladas por densidad, pero el ajuste está desactivado: cada turbina se evalúa a la densidad por defecto de su curva (": "The power curves are tabulated by density, but the adjustment is off: each turbine is evaluated at the default density of its curve (",
+    "), sin tener en cuenta la cota de su buje.": "), regardless of its hub altitude.",
+    " turbina(s) quedan fuera del rango de densidad tabulado por su curva y se acotan a su extremo, sin extrapolar.": " turbine(s) fall outside the density range tabulated by their curve and are clamped to its end, without extrapolating.",
+    "Las turbinas de ": "The turbines of ",
+    " tienen una curva de una sola densidad: no se corrigen con la densidad del aire.": " have a single-density curve: they are not corrected for the air density.",
+}
+try:
+    register_language(LANG_EN, _TURBINE_PLAN_TO_EN, _TURBINE_PLAN_NOTE_FRAGMENTS_TO_EN, label="English")
+except Exception:  # nosec B110
+    pass
+
+# Turbine layer of each energy row: reading the layers and writing the results into them
+_TURBINE_LAYER_TO_EN = {
+    "Modelo {n}, capa «{layer}»: {reason}": "Model {n}, layer “{layer}”: {reason}",
+    "{n} entidad(es) sin un punto legible (sin geometría o multipunto de varias partes).": "{n} feature(s) without a readable point (without geometry or a multipoint of several parts).",
+    "no tiene un sistema de coordenadas válido.": "it has no valid CRS.",
+    "no se pudieron transformar sus coordenadas al sistema del proyecto: {error}": "its coordinates could not be transformed to the project CRS: {error}",
+    "[Layer] No se pudieron crear los campos de resultados en la capa '{layer}': no se han escrito los resultados.": "[Layer] The result fields could not be created in layer '{layer}': the results have not been written.",
+    "[Layer] La capa '{layer}' no admite los campos de resultados con su nombre completo ({fields}): no se han escrito los resultados.": "[Layer] Layer '{layer}' does not support the result fields with their full names ({fields}): the results have not been written.",
+    "[Layer] La capa '{layer}' está en modo edición: no se han escrito los resultados.": "[Layer] Layer '{layer}' is in edit mode: the results have not been written.",
+    "[Layer] La capa '{layer}' no guarda textos de más de {limit} bytes, y los campos {fields} los necesitan: no se han escrito los resultados.": "[Layer] Layer '{layer}' does not keep texts longer than {limit} bytes, and the fields {fields} need them: the results have not been written.",
+    "[Layer] La capa '{layer}' no admite añadir o cambiar sus campos: no se han escrito los resultados.": "[Layer] Layer '{layer}' does not allow adding or changing its fields: the results have not been written.",
+    "[Layer] No se pudieron escribir los resultados en la capa '{layer}'.": "[Layer] The results could not be written to layer '{layer}'.",
+    "[Layer] No se pudieron escribir los resultados en la capa '{layer}': {error}": "[Layer] The results could not be written to layer '{layer}': {error}",
+    "[Layer] Ningún resultado de '{model}' está a {tol} m o menos de un punto de la capa '{layer}': no se ha escrito nada.": "[Layer] No result of '{model}' is within {tol} m of a point of layer '{layer}': nothing has been written.",
+    "[Layer] Solo se han escrito {written} de {total} resultados en la capa '{layer}'; sus otros puntos conservan los valores anteriores.": "[Layer] Only {written} of {total} results have been written to layer '{layer}'; its other points keep their previous values.",
+    "[Layer] No se pudo editar la capa '{layer}': no se han escrito los resultados.": "[Layer] Layer '{layer}' could not be edited: the results have not been written.",
+    "[Layer] No se pudieron guardar los cambios en la capa '{layer}' ({errors}).": "[Layer] The changes to layer '{layer}' could not be saved ({errors}).",
+    "[Layer] Los campos de resultados {fields} de la capa '{layer}' no son de la propia capa (uniones o expresiones): no se han escrito los resultados.": "[Layer] The result fields {fields} of layer '{layer}' are not the layer's own (joins or expressions): the results have not been written.",
+    "[Layer] Los campos de resultados {fields} de la capa '{layer}' no guardarían los valores tal cual (otro tipo, menos decimales o un texto más corto): no se han escrito los resultados.": "[Layer] The result fields {fields} of layer '{layer}' would not keep the values as they are (another type, fewer decimals or a shorter text): the results have not been written.",
+    "{error} Además, la capa '{layer}' tiene ahora los campos de resultados {fields}, que pueden tener valores a medias.": "{error} Also, layer '{layer}' now has the result fields {fields}, which may hold half-written values.",
+    "{error} Además, {count} punto(s) de la capa '{layer}' pueden tener resultados escritos a medias: revísalos.": "{error} Also, {count} point(s) of layer '{layer}' may hold half-written results: check them.",
+    "[Layer] El proyecto edita sus capas en grupo (modo de transacción): no se han escrito los resultados en la capa '{layer}' para no guardar ni descartar cambios de otras capas.": "[Layer] The project edits its layers in groups (transaction mode): the results have not been written to layer '{layer}' so as not to save or discard changes of other layers.",
+    "Importar layout de turbinas": "Import turbine layout",
+    "Nombre de la capa:": "Layer name:",
+    "Ejemplo: Proyecto A · layout de aerogeneradores": "Example: Project A · WT layout",
+    "Fichero de coordenadas:": "Coordinates file:",
+    "CSV/XLSX con columnas X,Y o easting,northing": "CSV/XLSX with X,Y or easting,northing columns",
+    "Examinar…": "Browse…",
+    "Sistema de coordenadas:": "Coordinates CRS:",
+    "Ejemplo: EPSG:4326": "Example: EPSG:4326",
+    "Selecciona el fichero de coordenadas de las turbinas": "Select the turbine coordinates file",
+    "Ficheros de coordenadas (*.csv *.txt *.xlsx);;CSV/TXT (*.csv *.txt);;Libro de Excel (*.xlsx);;Todos los ficheros (*.*)": "Coordinate files (*.csv *.txt *.xlsx);;CSV/TXT (*.csv *.txt);;Excel workbook (*.xlsx);;All files (*.*)",
+    "El fichero de coordenadas está vacío.": "The coordinate file is empty.",
+    "No se han encontrado coordenadas XY válidas. Usa columnas llamadas X/Y, easting/northing o longitude/latitude, o un fichero de dos columnas.": "No valid XY coordinates were found. Use columns named X/Y, easting/northing or longitude/latitude, or a two-column file.",
+    "No se encuentra el fichero de coordenadas.": "Coordinate file not found.",
+    "Para importar un XLSX hace falta openpyxl en el Python de QGIS. Guarda el fichero como CSV o instala esa dependencia opcional.": "Importing an XLSX requires openpyxl in the QGIS Python. Save the file as CSV or install that optional dependency.",
+    "Sistema de coordenadas no válido: {crs}": "Invalid CRS: {crs}",
+    "No se pudo crear la capa en memoria del layout de turbinas.": "Could not create the turbine layout memory layer.",
+    "No se pudieron transformar las coordenadas de las turbinas ({source} → {target}): {error}": "Could not transform the turbine coordinates ({source} → {target}): {error}",
+    "sistema de origen": "source CRS",
+    "sistema del proyecto": "project CRS",
+    "El sistema de coordenadas elegido no es válido.": "The chosen CRS is not valid.",
+    "No se pudo leer el fichero de coordenadas: {error}": "The coordinate file could not be read: {error}",
+    "Capa de turbinas:": "Turbine layer:",
+    "Cargar nueva capa": "Load new layer",
+    "Importar un fichero de coordenadas como capa nueva y elegirla en esta fila": "Import a coordinates file as a new layer and choose it in this row",
+    "● editado en el mapa": "● edited on the map",
+
+
+    "Guardar a CSV los puntos editados en el mapa interactivo.\nPor defecto: <nombre de la capa>_edited.csv.": "Save the points edited on the interactive map to CSV.\nDefault: <layer name>_edited.csv.",
+    "Ninguna fila tiene una capa de turbinas para editar.\n\nElige una capa en el selector «Capa de turbinas» de una fila o pulsa «Generar capas de puntos».": "No row has a turbine layer to edit.\n\nChoose a layer in the “Turbine layer” selector of a row or click “Generate point layers”.",
+    "Elige la capa de turbinas del Modelo {n}.": "Choose the turbine layer of Model {n}.",
+    "El Modelo {n} no tiene capa de turbinas: elige una en su selector «Capa de turbinas» o pulsa «Cargar nueva capa».": "Model {n} has no turbine layer: choose one in its “Turbine layer” selector or click “Load new layer”.",
+    "La capa «{layer}» del Modelo {n} no tiene turbinas.": "Layer “{layer}” of Model {n} has no turbines.",
+    "Modelo {n}: «{layer}»": "Model {n}: “{layer}”",
+    "Capas de turbinas usadas: {layers}": "Turbine layers used: {layers}",
+    "Hay varios modelos llamados «{name}». Usa un nombre distinto para cada modelo: sus resultados se agrupan por nombre.": "Several models are named “{name}”. Use a different name for each model: their results are grouped by name.",
+    "{label}: faltan coordenadas. Elige su capa de turbinas o añade puntos en el mapa.": "{label}: coordinates are missing. Choose its turbine layer or add points on the map.",
+    "Define en el proyecto un sistema de coordenadas proyectado y en metros antes de calcular el AEP.": "Set a projected coordinate reference system in metres in the project before calculating the AEP.",
+    "El proyecto usa un sistema de coordenadas no proyectado. El AEP necesita un sistema proyectado y en metros: cambia el del proyecto.": "The project uses a non-projected coordinate reference system. The AEP needs a projected one in metres: change the project's.",
+    "El sistema de coordenadas del proyecto no está en metros. El AEP necesita un sistema proyectado y en metros: cambia el del proyecto.": "The project's coordinate reference system is not in metres. The AEP needs a projected one in metres: change the project's.",
+    "Capas en modo edición": "Layers in edit mode",
+    "Estas capas de turbinas están en modo edición:\n{layers}\n\nLos resultados no se escriben en una capa con la edición abierta.": "These turbine layers are in edit mode:\n{layers}\n\nThe results are not written to a layer with an open edit session.",
+    "Guardar cambios y calcular": "Save changes and calculate",
+    "Calcular sin escribir en la capa": "Calculate without writing to the layer",
+    "No se pudieron guardar los cambios de la capa «{layer}»:\n{errors}\n\nNo se ha calculado el AEP.": "The changes of layer “{layer}” could not be saved:\n{errors}\n\nThe AEP has not been calculated.",
+    "El proyecto edita sus capas en grupo (modo de transacción): guardar estas capas guardaría también los cambios de otras. Guárdalas desde QGIS o calcula sin escribir en la capa. No se ha calculado el AEP.": "The project edits its layers in groups (transaction mode): saving these layers would also save the changes of others. Save them from QGIS or calculate without writing to the layer. The AEP has not been calculated.",
+}
+try:
+    register_language(LANG_EN, _TURBINE_LAYER_TO_EN, {}, label="English")
+except Exception:  # nosec B110
+    pass
+
+
+# Complete WRG error templates; translate before inserting paths and values.
+_WRG_ERRORS_TO_EN = {
+    "{source}: {reason}": "{source}: {reason}",
+    "{source}, línea {line}: {reason}": "{source}, line {line}: {reason}",
+    "Fila WRG inválida: el número de campos no coincide con los sectores declarados.": "Invalid WRG row: the field count does not match the declared sectors.",
+    "Identificador WRG convertible a número finito no admitido: puede confundirse con los datos de una fila sin identificador.": "WRG identifiers convertible to a finite number are not supported: they can be confused with the data of a row without an identifier.",
+    "Nº sectores inconsistente: esperado {expected}, leído {actual}.": "Inconsistent sector count: expected {expected}, read {actual}.",
+    "los campos del nodo deben ser números finitos.": "node fields must be finite numbers.",
+    "campos WRG no numéricos.": "non-numeric WRG fields.",
+    "campos WRG no finitos.": "non-finite WRG fields.",
+}
+register_language(LANG_EN, _WRG_ERRORS_TO_EN, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Apoya el mantenimiento, la documentación, las pruebas y el futuro desarrollo de código abierto.": "Support maintenance, documentation, testing and future open-source development.",
+    "Energía\nAEP y estelas": "Energy\nAEP and wakes",
+    "Escritura completada en: {out_dir}\nFicheros escritos: {n_out}  | omitidos: {n_skipped}\nSectores: {n_sectors}  Alturas: {n_heights}  Variables: {n_vars}\nCRS de trabajo (EPSG): {epsg}\nControlador: {driver}\nCarpeta py_wake: {pywake_dir}\nMovidos a _bad_for_pywake (para evitar un fallo): {n_moved}\n": "Writing completed in: {out_dir}\nFiles written: {n_out}  | skipped: {n_skipped}\nSectors: {n_sectors}  Heights: {n_heights}  Variables: {n_vars}\nWorking CRS (EPSG): {epsg}\nDriver: {driver}\npy_wake folder: {pywake_dir}\nMoved to _bad_for_pywake (to avoid a crash): {n_moved}\n",
+    "GDAL no ha podido construir el mosaico (BuildVRT); revisa las rutas.": "GDAL could not build the mosaic (BuildVRT); check the paths.",
+    "Grupo fuente acústico": "Acoustic source group",
+    "Grupo fuente de ruido:": "Noise source group:",
+    "Introduce el EPSG en el que están las coordenadas de las teselas.\nPor ejemplo:\n  • 25829 → ETRS89 / UTM 29N (Galicia oeste)\n  • 25830 → ETRS89 / UTM 30N (gran parte de España)\n\nDeja vacío para usar {epsg}.": "Enter the EPSG of the tile coordinates.\nFor example:\n  • 25829 → ETRS89 / UTM 29N (western Galicia)\n  • 25830 → ETRS89 / UTM 30N (most of Spain)\n\nLeave empty to use {epsg}.",
+    "La capa se añadirá a QGIS como layout de turbinas de VelantisWind. Antes de calcular, aún puedes editar los valores propios del módulo en su tabla.": "The layer will be added to QGIS as a VelantisWind turbine layout. You can still edit module-specific values in the module table before calculating.",
+    "LwA fijo por defecto:": "Default fixed LwA:",
+    "Modelo / familia de aerogenerador:": "Wind turbine model / family:",
+    "Modelo de aerogenerador": "Wind turbine model",
+    "Mosaico: la lista de entrada está vacía.": "Mosaic: the input list is empty.",
+    "No se encontraron GRD válidos en las carpetas indicadas.": "No valid GRD files were found in the given folders.",
+    "No se han indicado coordenadas de turbinas.": "No turbine coordinates were provided.",
+    "No se puede abrir: {path}": "Cannot open: {path}",
+    "No seleccionado (TI=10% por defecto en el flujo WRG)": "Not selected (TI=10% by default in the WRG flow)",
+    "Opcional": "Optional",
+    "Parque eólico:": "Wind farm:",
+    "Rejillas WAsP:": "WAsP grids:",
+    "Se generará UNA carpeta con GRD mosaico (Sector/Altura/Variable).\nSelecciona 2 o más carpetas de teselas exportadas desde WAsP.\n• 'Sector All': se tomarán TODAS las variables presentes (mosaico por altura).\n• Además, se crea subcarpeta 'pywake_compat' estricta (sin necesidad de parches).\n• Salida en Surfer ASCII (DSAA) con formato WAsP.": "ONE folder with a GRD mosaic (Sector/Height/Variable) will be generated.\nSelect 2 or more tile folders exported from WAsP.\n• 'Sector All': ALL present variables will be taken (mosaic by height).\n• In addition, a strict 'pywake_compat' subfolder is created (no patches needed).\n• Output in Surfer ASCII (DSAA) with WAsP format.",
+    "Selecciona carpetas de teselas (WAsP)": "Select tile folders (WAsP)",
+    "Selecciona el módulo de trabajo. Los módulos están operativos: Energía (AEP y estelas), Ruido y Sombras y parpadeo.": "Select the work module. The available modules are: Energy (AEP and wakes), Noise and Shadow flicker.",
+    "Separación longitudinal:": "Downwind spacing:",
+    "Separación transversal:": "Crosswind spacing:",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    " · Aviso: {n} altura(s) para {count} ráster(s)": " · Warning: {n} height(s) for {count} raster(s)",
+    ", {low}–{high} m/s cada {step} m/s": ", {low}–{high} m/s every {step} m/s",
+    "<b>Qué es TI</b><br><br>TI significa <b>turbulence intensity</b>. En simple: mide cuánto fluctúa el viento alrededor de su velocidad media. Más TI suele significar más mezcla del flujo y una recuperación de estela distinta.<br><br><b>Dos turbulencias diferentes</b><br>• <b>TI ambiente</b>: viene del recurso eólico o de un ráster TI. Es el viento que llega al parque antes de las turbinas.<br>• <b>TI añadida por estela</b>: la genera cada turbina detrás de sí. La calcula el modelo de turbulencia de PyWake, si lo activas.<br><br><b>Qué hace el plugin</b><br>• Si cargas ráster TI, se usa como turbulencia ambiente espacial.<br>• Si no cargas ráster TI, se usa el valor manual de la interfaz como hipótesis uniforme.<br>• Si tienes varios ráster a distintas alturas, puedes indicar 90;120;... para interpolar por altura de buje.<br><br><b>Cuándo importa más</b><br>BG/NOJ son robustos pero poco sensibles a TI. Niayifar, Zong, TurboGaussian y TurboNOJ hacen que la TI afecte más a la recuperación de estela y al AEP.<br><br><b>Idea sencilla</b><br>Si no tienes datos de turbulencia, una TI manual uniforme permite ejecutar el cálculo. Para más realismo en tierra, terreno complejo o varias alturas de buje, usa ráster TI, idealmente por altura.": "<b>What TI is</b><br><br>TI means <b>turbulence intensity</b>. In simple terms, it measures how much the wind fluctuates around its mean speed. Higher TI usually means more flow mixing and a different wake recovery.<br><br><b>Two different turbulence concepts</b><br>• <b>Ambient TI</b>: comes from the wind resource or from a TI raster. It is the wind that reaches the wind farm before the turbines.<br>• <b>Wake-added TI</b>: generated by each turbine behind itself. It is calculated by the PyWake turbulence model if you activate one.<br><br><b>What the plugin does</b><br>• If you load a TI raster, it is used as spatial ambient turbulence.<br>• If you do not load a TI raster, the manual value in the interface is used as a uniform assumption.<br>• If you have several rasters at different heights, you can enter 90;120;... to interpolate by hub height.<br><br><b>When it matters most</b><br>BG/NOJ are robust but not very sensitive to TI. Niayifar, Zong, TurboGaussian and TurboNOJ make TI affect wake recovery and AEP more strongly.<br><br><b>Simple idea</b><br>If you do not have turbulence data, a uniform manual TI lets you run the calculation. For more realism onshore, in complex terrain or with several hub heights, use TI rasters, ideally per height.",
+
+    "Activa edición en el lienzo del mapa: clic izq añade turbina, clic der borra. Las ediciones se escriben en la capa de turbinas seleccionada, y en su fichero si lo tiene; el cálculo de AEP usa esa capa.": "Enables editing on the map canvas: left click adds a turbine, right click deletes it. The edits are written to the selected turbine layer, and to its file if it has one; the AEP calculation uses that layer.",
+    "Altura manual de cada ráster TI, en el mismo orden que los archivos. Útil si el nombre del archivo no indica claramente 90 m, 120 m, etc.": "Manual height of each TI raster, in the same order as the files. Useful when the file name does not clearly indicate 90 m, 120 m, etc.",
+    "Clic izq: añadir turbina · Clic der: borrar · ESC: salir": "Left click: add turbine · Right click: delete · ESC: exit",
+    "Configura la separación mínima entre turbinas: elipse semitransparente por aerogenerador (7D/4D por defecto), orientada al sector más energético o definida en pantalla, con detección de conflictos de separación.": "Configures the minimum spacing between turbines: a semi-transparent ellipse per wind turbine (7D/4D by default), aligned with the most energetic sector or defined on screen, with spacing-conflict detection.",
+
+    "Dirección de viento [°] (0–359,9):": "Wind direction [°] (0–359.9):",
+    "El/los ráster(s) TI no existen:\n{paths}": "The TI raster(s) do not exist:\n{paths}",
+    "Elegir ráster(s) TI…": "Choose TI raster(s)…",
+    "Explica qué es la TI, cuándo usar ráster de turbulencia y cómo afecta al AEP": "Explains what TI is, when to use a turbulence raster and how it affects the AEP",
+    "Has definido varias alturas de buje pero no has seleccionado ráster(s) TI. El cálculo seguirá con TI uniforme = {ti} %. Es válido para una prueba, pero no representa variación vertical de turbulencia.": "You have defined several hub heights but have not selected any TI raster. The calculation will continue with a uniform TI = {ti} %. This is valid for a test, but it does not represent the vertical variation of turbulence.",
+    "Has definido varias alturas de buje pero solo un ráster TI a {height} m. El plugin aplicará esa TI a todas las alturas como aproximación.": "You have defined several hub heights but only one TI raster at {height} m. The plugin will apply that TI to all heights as an approximation.",
+    "Has definido varias alturas de buje pero solo un ráster TI. El plugin aplicará esa TI a todas las alturas como aproximación.": "You have defined several hub heights but only one TI raster. The plugin will apply that TI to all heights as an approximation.",
+    "La TI es la intensidad de turbulencia ambiente: una medida de lo variable o 'mezclado' que llega el viento al rotor. Si no cargas ráster TI, se usa el valor manual de arriba como hipótesis uniforme. La TI no siempre cambia mucho el AEP: se nota sobre todo en modelos sensibles a la TI como Niayifar, Zong, TurboGaussian o TurboNOJ. Los ráster(s) TI se reproyectarán al CRS del proyecto actual ({crs}) si hace falta.": "TI is ambient turbulence intensity: a measure of how variable or mixed the wind is when it reaches the rotor. If you do not load a TI raster, the manual value above is used as a uniform assumption. TI does not always change AEP strongly: it is mainly visible in TI-sensitive models such as Niayifar, Zong, TurboGaussian or TurboNOJ. TI raster(s) will be reprojected to the current project CRS ({crs}) if needed.",
+    "Malla: {nx}×{ny} | celda={cell} m | h={heights} m | sectores={sectors} | extensión={extent}": "Grid: {nx}×{ny} | cell={cell} m | h={heights} m | sectors={sectors} | extent={extent}",
+    "Modelo {n}: <b>{name}</b>{extra}": "Model {n}: <b>{name}</b>{extra}",
+    "Modelo {n}: <i>(sin definir)</i>": "Model {n}: <i>(not defined)</i>",
+    "No se ha seleccionado ráster TI para WRG; se usará TI fija/de respaldo si el modelo lo necesita.": "No TI raster was selected for WRG; a fixed/fallback TI will be used if the model needs it.",
+    "No se pudo obtener el lienzo del mapa de QGIS.": "Could not access the QGIS map canvas.",
+    "Opcional: altura de cada ráster TI, ej. 90;120": "Optional: height of each TI raster, e.g. 90;120",
+    "Ráster TI no existe: {path}": "TI raster does not exist: {path}",
+    "Ráster(s) TI no encontrado(s): {files}": "TI raster(s) not found: {files}",
+    "Ráster(s) TI no seleccionado(s) → respaldo automático a {ti}% si usas WRG.": "No TI raster selected → automatic fallback to {ti}% if you use WRG.",
+    "Ráster(s) TI: {files} · CRS destino previsto: {crs}": "TI raster(s): {files} · Expected target CRS: {crs}",
+    "Ráster(s) de turbulencia TI (opcional):": "TI turbulence raster(s) (optional):",
+    "Rásteres (*.asc *.tif *.tiff *.vrt)": "Rasters (*.asc *.tif *.tiff *.vrt)",
+    "Se han seleccionado varios ráster(s) TI, pero no he podido identificar al menos dos alturas distintas en sus nombres. El plugin no podrá reconstruir una TI vertical fiable; revisa nombres como TImean.90.asc o TI_120m.tif.": "Several TI rasters were selected, but at least two different heights could not be identified in their names. The plugin will not be able to reconstruct a reliable vertical TI; check names such as TImean.90.asc or TI_120m.tif.",
+    "Selecciona ráster(s) de turbulencia (TI)": "Select turbulence raster(s) (TI)",
+    "TI ambiente manual si no hay ráster:": "Manual ambient TI without a raster:",
+    "Valor de turbulencia ambiente que se usa si no cargas un ráster TI. Ejemplo: 10 % significa TI = 0,10 dentro del Site de PyWake.": "Ambient turbulence value used if you do not load a TI raster. Example: 10% means TI = 0.10 inside the PyWake Site.",
+    "{file} ({height} m, manual)": "{file} ({height} m, manual)",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "(opcional)": "(optional)",
+    "Aproximación paramétrica físicamente plausible a ρ=1,225 kg/m³, construida con potencia nominal, diámetro y control genérico de Cp/CT. No es una curva OEM ni certificada.": "Physically plausible parametric approximation at ρ=1.225 kg/m³, built from the rated power, the diameter and a generic Cp/CT control. It is not an OEM or certified curve.",
+    "CT (0–1,2):": "CT (0–1.2):",
+    "Columna potencia kW (contando desde 0):": "Power kW column (0-based):",
+    "Columna ws (contando desde 0):": "ws column (0-based):",
+    "Coma (,)": "Comma (,)",
+    "Ej.: 3 4 5 6 7 8 9 10 11 12 13 14": "E.g. 3 4 5 6 7 8 9 10 11 12 13 14",
+    "El Ct de esta turbina es estimado: la curva no lo trae y se ha calculado con una heurística que no depende de la curva de potencia ni del rotor (0,8 hasta 8 m/s, bajando hasta 0,2 a 25 m/s, y 0 donde la potencia es 0). Las pérdidas por estela calculadas con él son aproximadas; si tienes el Ct del fabricante, inclúyelo.": "This turbine’s Ct is estimated: the curve does not include it, and it has been calculated with a heuristic that depends neither on the power curve nor on the rotor (0.8 up to 8 m/s, falling to 0.2 at 25 m/s, and 0 where the power is 0). The wake losses calculated with it are approximate; if you have the manufacturer’s Ct, include it.",
+    "El WindTurbines combinado no conserva el mapeo type→diámetro/altura.": "The combined WindTurbines does not keep the type→diameter/height mapping.",
+    "Espacio ( )": "Space ( )",
+    "La PowerCtFunction no es invocable tras normalizarla.": "The PowerCtFunction is not callable after normalising it.",
+    "La altura de buje queda fuera del rango vertical cubierto por el WRG. WRG=[{hmin:.1f}, {hmax:.1f}] m; HH fuera de rango={outside}. No se modifica la turbina ni se extrapola el recurso automáticamente. Añade WRG que cubran la HH o define explícitamente un modelo de shear/extrapolación.": "The hub height lies outside the vertical range covered by the WRG. WRG=[{hmin:.1f}, {hmax:.1f}] m; HH out of range={outside}. The turbine is not modified and the resource is not extrapolated automatically. Add WRG files that cover the HH or explicitly define a shear/extrapolation model.",
+    "La curva CT del modelo {n} devolvió valores no válidos.": "The CT curve of model {n} returned invalid values.",
+    "La curva CT del modelo {n} no puede evaluarse como tipo independiente ({kind}: {error}).": "The CT curve of model {n} cannot be evaluated as an independent type ({kind}: {error}).",
+    "La curva de la turbina no es válida: {file}": "The turbine curve is not valid: {file}",
+    "La versión instalada de PyWake no expone un constructor nativo compatible para parques con varios tipos de turbina.": "The installed PyWake version does not provide a compatible native constructor for wind farms with several turbine types.",
+    "Las velocidades del viento no son estrictamente crecientes: {file}": "The wind speeds are not strictly increasing: {file}",
+    "Modelo paramétrico de cribado de Velantis": "Velantis parametric screening model",
+    "No se conoce la altura de buje real; cálculo energético detenido.": "The actual hub height is unknown; energy calculation stopped.",
+    "No se encuentra la curva de la turbina: {path}": "The turbine curve was not found: {path}",
+    "No se proporcionaron modelos de turbina.": "No turbine models were provided.",
+    "No se pudo cargar PyWake para construir la turbina. Comprueba que py_wake está instalado en el Python de QGIS.": "PyWake could not be loaded to build the turbine. Check that py_wake is installed in the QGIS Python.",
+    "No se pudo identificar la rama física de un WindTurbines ya combinado: índice_origen={index!r}, ramas={n}. Indica un índice de tipo válido o geometría que identifique una sola rama.": "The physical branch of an already combined WindTurbines could not be identified: source_index={index!r}, branches={n}. Specify a valid type index or a geometry that identifies a single branch.",
+    "No se pueden agrupar en un mismo tipo de turbina entradas cuyas coordenadas vienen solo de un CSV (se perderían turbinas): «{name}».": "Entries whose coordinates come only from a CSV cannot be grouped into the same turbine type (turbines would be lost): “{name}”.",
+    "Punto y coma (;)": "Semicolon (;)",
+    "PyWake no pudo seleccionar diámetro/altura mediante el argumento 'type'.": "PyWake could not select the diameter/height through the 'type' argument.",
+    "Se esperaba un TurbineCurveTable y se recibió {kind}.": "A TurbineCurveTable was expected and {kind} was received.",
+    "TXT/CSV (*.txt *.csv);;Todos (*.*)": "TXT/CSV (*.txt *.csv);;All (*.*)",
+    "Tabulación (\\t)": "Tab (\\t)",
+    "Turbina": "Turbine",
+    "Turbina personalizada": "Custom turbine",
+    "Turbina personalizada (CSV)": "Custom turbine (CSV)",
+    "Velocidad del viento (m/s):": "Wind speed (m/s):",
+    "aerogenerador de referencia": "reference turbine",
+    "aproximación por ficha pública": "approximation from public specifications",
+    "caso de referencia": "benchmark",
+    "ficha técnica pública": "public datasheet",
+    "{modes} / sin modo": "{modes} / no mode",
+    "{name}: falta el índice de tipo para obtener {accessor} de una turbina combinada.": "{name}: the type index needed to get {accessor} from a combined turbine is missing.",
+    "{name}: no se pudo determinar {accessor} real. Indica explícitamente diámetro y altura de buje o carga una turbina válida.": "{name}: the actual {accessor} could not be determined. Specify the diameter and hub height explicitly or load a valid turbine.",
+    "{name}: {key} debe ser finito y positivo.": "{name}: {key} must be finite and positive.",
+    "{name}: {key} no es numérico.": "{name}: {key} is not numeric.",
+    "«{dato}»": "“{dato}”",
+    "«{valor}» no es un número.": "“{valor}” is not a number.",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+_APLICAR_PARES_EN_FRAG = {
+    "El Ct de esta turbina es estimado: la curva no lo trae y se ha calculado con una heurística que no depende de la curva de potencia ni del rotor (0,8 hasta 8 m/s, bajando hasta 0,2 a 25 m/s, y 0 donde la potencia es 0). Las pérdidas por estela calculadas con él son aproximadas; si tienes el Ct del fabricante, inclúyelo.": "This turbine’s Ct is estimated: the curve does not include it, and it has been calculated with a heuristic that depends neither on the power curve nor on the rotor (0.8 up to 8 m/s, falling to 0.2 at 25 m/s, and 0 where the power is 0). The wake losses calculated with it are approximate; if you have the manufacturer’s Ct, include it.",
+    "»: El Ct de esta turbina es estimado: la curva no lo trae y se ha calculado con una heurística que no depende de la curva de potencia ni del rotor (0,8 hasta 8 m/s, bajando hasta 0,2 a 25 m/s, y 0 donde la potencia es 0). Las pérdidas por estela calculadas con él son aproximadas; si tienes el Ct del fabricante, inclúyelo.": "”: This turbine’s Ct is estimated: the curve does not include it, and it has been calculated with a heuristic that depends neither on the power curve nor on the rotor (0.8 up to 8 m/s, falling to 0.2 at 25 m/s, and 0 where the power is 0). The wake losses calculated with it are approximate; if you have the manufacturer’s Ct, include it.",
+}
+_FRAGMENT_TO_EN.update(_APLICAR_PARES_EN_FRAG)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, _APLICAR_PARES_EN_FRAG, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "El complemento solo admite la referencia del escalado «{reference}» con PropagateDownwind, TurboGaussianDeficit con use_effective_ws = False y SquaredSum, sin bloqueo (la composición de TurbOPark).": "The plugin only accepts the scaling reference «{reference}» with PropagateDownwind, TurboGaussianDeficit with use_effective_ws = False and SquaredSum, without blockage (the TurbOPark composition).",
+    "El modelo predefinido guardado «{value}» ya no es una opción: se abre con {default}.": "The saved predefined model «{value}» is no longer an option: it opens with {default}.",
+    "La configuración no es la del modelo predefinido {preset} (revisión {revision}) que dice su procedencia.": "The configuration is not that of the predefined model {preset} (revision {revision}) stated in its provenance.",
+    "Marca use_effective_ws en los parámetros del bloqueo.": "Set use_effective_ws in the blockage parameters.",
+    "Modelo predefinido: {preset}": "Predefined model: {preset}",
+    "Parámetros del bloqueo": "Blockage parameters",
+    "Procedencia de modelo predefinido no reconocida: {value!r}.": "Unrecognised predefined model provenance: {value!r}.",
+    "Referencia del escalado: {reference} ({key})": "Scaling reference: {reference} ({key})",
+    "Se hereda la superposición de estelas ({cls})": "The wake superposition is inherited ({cls})",
+    "Se hereda la superposición del bloqueo ({cls})": "The blockage superposition is inherited ({cls})",
+    "velocidad libre de la turbina de destino": "free-stream speed of the destination turbine",
+    "wake_physics.deficit_ws_reference: {value!r} no es una opción ({options}, o None).": "wake_physics.deficit_ws_reference: {value!r} is not an option ({options}, or None).",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "<b>AEP bruto (flujo libre):</b>": "<b>Gross AEP (free-stream):</b>",
+    "<b>Rosa de pérdidas por sector.</b> Distribución del AEP bruto y neto por dirección del viento. La diferencia entre cada barra es la pérdida total en ese sector (estelas, turbulencia y bloqueo), con su signo: negativa si el sector gana producción.": "<b>Losses by wind direction.</b> Distribution of the gross and net AEP by wind direction. The difference between the bars of each sector is its total loss (wakes, turbulence and blockage), with its sign: negative if the sector gains production.",
+    "<b>Rosa de pérdidas por sector.</b> Distribución del AEP bruto y neto por dirección del viento. La diferencia entre cada barra representa las pérdidas por estela en ese sector — útil para ver qué direcciones limitan más el rendimiento del parque.": "<b>Losses by wind direction.</b> Distribution of the gross and net AEP by wind direction. The difference between the bars of each sector represents the wake losses in that sector — useful to see which directions limit the wind farm performance most.",
+    "<b>Total sectores:</b> AEP bruto {gross} MWh · AEP neto {net} MWh · pérdidas {loss} MWh. Comparación con resumen: Δ neto = {delta} MWh ({check}).": "<b>Sector totals:</b> Gross AEP {gross} MWh · Net AEP {net} MWh · losses {loss} MWh. Comparison with the summary: Δ net = {delta} MWh ({check}).",
+    "AEP bruto (flujo libre)": "Gross AEP (free-stream)",
+    "AEP neto del cluster: {aep} MWh": "Net AEP of the cluster: {aep} MWh",
+    "AEP neto final": "Final net AEP",
+    "Bloqueo:": "Blockage:",
+    "Bruto: <b>{gross} MWh</b> · Neto + pérdidas: <b>{balance} MWh</b> · Δ = {delta} MWh ({check})": "Gross: <b>{gross} MWh</b> · Net + losses: <b>{balance} MWh</b> · Δ = {delta} MWh ({check})",
+    "Diagnóstico incremental: positivo = recupera AEP frente al caso con solo estelas; negativo = reduce AEP. No se debe interpretar siempre como pérdida contable.": "Incremental diagnostic: positive = recovers AEP compared with the wakes-only case; negative = reduces AEP. It should not always be read as an accounting loss.",
+    "Efecto suelo (estela)": "Ground effect (wake)",
+    "Factor de capacidad neto:": "Net capacity factor:",
+    "La de la clase (use_effective_ws)": "The class default (use_effective_ws)",
+    "Modelos / clusters de aerogeneradores": "Turbine models / clusters",
+    "Métricas adicionales no disponibles: no se pudo determinar la potencia nominal de las turbinas. Vuelve a definir el modelo desde «Definir…» para que la curva de potencia se guarde con la metadata.": "Additional metrics not available: the rated power of the turbines could not be determined. Define the model again from “Define…” so that the power curve is saved with the metadata.",
+    "No se pudo generar el gráfico total: {error}": "Could not generate the total chart: {error}",
+    "No se pudo generar la rosa de sectores: {error}": "Could not generate the sector rose: {error}",
+    "No se pudo renderizar el balance total: {error}": "Could not render the total balance: {error}",
+    "Nº de aerogeneradores": "No. of turbines",
+    "Otras": "Others",
+    "Por sector de viento": "By wind sector",
+    "Pérdida total (estelas/TI/bloqueo): {loss} MWh ({pct} % sobre AEP bruto del cluster)": "Total loss (wakes/TI/blockage): {loss} MWh ({pct} % of the cluster gross AEP)",
+    "Referencia del escalado": "Scaling reference",
+    "Sin datos disponibles.": "No data available.",
+    "Tabla truncada en el informe HTML: se muestran {shown} de {total} filas. La exportación CSV contiene el detalle completo.": "Table truncated in the HTML report: showing {shown} of {total} rows. The CSV export contains the full detail.",
+    "no se ha proporcionado un ráster de TI. El cálculo ha usado <b>TI = {ti} %</b> uniforme como valor de respaldo. Este valor afecta directamente al AEP con los modelos de estela que dependen de la TI (Niayifar, Zong, TurboGaussian, TurboNOJ). Para resultados representativos, carga un ráster de TI en la sección de recurso o revisa la sensibilidad de turbulencia.": "no TI raster has been provided. The calculation used a uniform <b>TI = {ti} %</b> as a fallback value. This value directly affects the AEP with the wake models that depend on the TI (Niayifar, Zong, TurboGaussian, TurboNOJ). For representative results, load a TI raster in the resource section or review the turbulence sensitivity.",
+    "{n} aerogenerador(es)": "{n} turbine(s)",
+    "{pct} % del AEP neto del parque": "{pct} % of the wind farm net AEP",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "'ti' debe ser unitario (0,10 ≡ 10%).": "'ti' must be a fraction (0.10 ≡ 10%).",
+    "Banda de operación no válida: {low}–{high} m/s.": "Invalid operating band: {low}–{high} m/s.",
+    "CSV de coordenadas corrupto para «{name}»: {path}": "Corrupt coordinates CSV for “{name}”: {path}",
+    "CSV de coordenadas no válido para «{name}»: {path}": "Invalid coordinates CSV for “{name}”: {path}",
+    "Cabecera WRG inválida (nx,ny,dx): nx={nx} ny={ny} dx={dx}": "Invalid WRG header (nx,ny,dx): nx={nx} ny={ny} dx={dx}",
+    "Cabecera WRG inválida: '{line}'": "Invalid WRG header: '{line}'",
+    "Cabecera WRG inválida: {header}": "Invalid WRG header: {header}",
+    "Dataset WRG no disponible para inyectar TI": "WRG dataset not available to inject the TI",
+    "Dimensiones de Elevation no compatibles: {dims}; se esperaba (x, y).": "Incompatible Elevation dimensions: {dims}; (x, y) was expected.",
+    "El 'site' cargado no expone 'ds'/'dataset'.": "The loaded 'site' does not expose 'ds'/'dataset'.",
+    "El 'site' no expone 'ds'/'dataset'.": "The 'site' does not expose 'ds'/'dataset'.",
+    "El WRG «{source}» necesita la turbina de cada modelo para sus velocidades de cálculo: define los modelos.": "The WRG “{source}” needs the turbine of each model for its calculation wind speeds: define the models.",
+    "El ZIP no contiene ningún .wrg: {path}": "The ZIP does not contain any .wrg: {path}",
+    "El eje {axis} del mapa de flujo no es regular.": "The {axis} axis of the flow map is not regular.",
+    "El mapa de flujo no contiene la coordenada '{name}'.": "The flow map does not contain the coordinate '{name}'.",
+    "Extensión WRG no soportada (use .wrg o .zip): {path}": "Unsupported WRG extension (use .wrg or .zip): {path}",
+    "Extensión no soportada: {path} (use .wrg o .zip)": "Unsupported extension: {path} (use .wrg or .zip)",
+    "Extensión no válida: {extent}": "Invalid extent: {extent}",
+    "GDAL WriteRaster falló con el código de error {code}.": "GDAL WriteRaster failed with error code {code}.",
+    "GDAL devolvió un búfer incompleto al leer la banda del ráster.": "GDAL returned an incomplete raster-band buffer.",
+    "GDAL devolvió un búfer incompleto al leer una celda del ráster.": "GDAL returned an incomplete raster-cell buffer.",
+    "GDAL no devolvió datos al leer la banda del ráster.": "GDAL returned no data while reading the raster band.",
+    "GDAL no devolvió datos al leer una celda del ráster.": "GDAL returned no data while reading a raster cell.",
+    "GDAL no dispone del driver GTiff.": "GDAL does not have the GTiff driver.",
+    "GDAL no está disponible en el Python de QGIS: {error}": "GDAL is not available in the QGIS Python: {error}",
+    "GDAL no pudo crear el GeoTIFF: {path}": "GDAL could not create the GeoTIFF: {path}",
+    "GDAL.Warp devolvió None al alinear el ráster TI al grid WRG": "GDAL.Warp returned None while aligning the TI raster to the WRG grid",
+    "GDAL/OSR no disponible para leer el ráster de turbulencia": "GDAL/OSR not available to read the turbulence raster",
+    "Hay WRG duplicados para la altura {height} m con contenido distinto: '{first}' y '{second}'": "There are duplicate WRG files for the height {height} m with different content: '{first}' and '{second}'",
+    "Hay varias alturas de buje pero solo una TI ambiente verticalmente uniforme; el cálculo sigue siendo válido, aunque es una aproximación en altura.": "There are several hub heights but only one vertically uniform ambient TI; the calculation is still valid, although it is an approximation in height.",
+    "Hay {n} nombres que no casan con py_wake en: {folder}": "There are {n} names that do not match py_wake in: {folder}",
+    "Interpolación direccional no válida: {method} para el WRG «{source}» ({n} sectores, {count} direcciones). Se admiten {first} y {second}.": "Invalid directional interpolation: {method} for the WRG “{source}” ({n} sectors, {count} directions). {first} and {second} are accepted.",
+    "La banda del ráster debe tener al menos una celda.": "The raster band must contain at least one cell.",
+    "La coordenada '{name}' no contiene una malla ráster válida.": "The coordinate '{name}' does not contain a valid raster grid.",
+    "La curva de la turbina no da su banda de velocidades de cálculo: {kind}.": "The turbine curve does not give its band of calculation wind speeds: {kind}.",
+    "La curva de la turbina no sirve para las velocidades de cálculo: {error}": "The turbine curve cannot be used for the calculation wind speeds: {error}",
+    "La curva de la turbina no tiene velocidades tabuladas válidas.": "The turbine curve has no valid tabulated wind speeds.",
+    "La curva de la turbina tiene potencia cero en todos sus nodos: no hay banda que cubrir.": "The turbine curve has zero power at all its nodes: there is no band to cover.",
+    "La elevación interpolada no coincide con el grid y no se exportó: {terrain} != {field}.": "The interpolated elevation does not match the grid and was not exported: {terrain} != {field}.",
+    "La forma de {field} no coincide con las coordenadas del grid: array={shape}, y={ny}, x={nx}.": "The shape of {field} does not match the grid coordinates: array={shape}, y={ny}, x={nx}.",
+    "La matriz ráster debe tener al menos una celda.": "The raster array must contain at least one cell.",
+    "Las capas de flujo libre, velocidad efectiva y déficit, junto con el terreno cuando está disponible, se han añadido al grupo ‘{group}’.": "The free-stream, effective wind speed and deficit layers, together with the terrain when available, have been added to the group ‘{group}’.",
+    "Las coordenadas de WS y WS_eff no coinciden.": "The coordinates of WS and WS_eff do not match.",
+    "Los WRG contienen superficies de elevación distintas entre alturas; no se puede construir un terreno único y coherente.": "The WRG files contain different elevation surfaces between heights; a single, consistent terrain cannot be built.",
+    "Los WRG no tienen los mismos sectores: {n_first} en «{first}» y {n} en «{source}». No se pueden combinar por altura.": "The WRG files do not have the same sectors: {n_first} in “{first}” and {n} in “{source}”. They cannot be combined by height.",
+    "Malla de direcciones imposible: {count} direcciones con {n} sectores.": "Impossible direction grid: {count} directions with {n} sectors.",
+    "No se encontró ningún WRG legible en: {path}": "No readable WRG was found in: {path}",
+    "No se encuentra '{path}'. Selecciona los CSV de coordenadas por modelo en el diálogo o crea un turbines.csv con columnas x,y[,model_id].": "'{path}' was not found. Select the per-model coordinate CSVs in the dialog or create a turbines.csv with x,y[,model_id] columns.",
+    "No se ha podido encontrar una subcarpeta válida para PyWake en '{folder}'. Revisa la estructura exportada de WAsP.": "Could not find a valid PyWake subfolder in '{folder}'. Check the exported WAsP structure.",
+    "No se han definido modelos de aerogeneradores": "No wind turbine models have been defined",
+    "No se han indicado ráster(es) TI válidos": "No valid TI raster(s) were provided",
+    "No se han podido leer ráster(es) TI": "No TI raster could be read",
+    "No se proporcionaron rutas WRG": "No WRG paths were provided",
+    "No se pudo abrir el ráster TI: {path}": "Could not open the TI raster: {path}",
+    "No se pudo convertir {field} a una matriz 2-D: {error}": "{field} could not be converted to a 2-D array: {error}",
+    "No se pudo determinar la resolución del eje {axis}.": "The resolution of the {axis} axis could not be determined.",
+    "No se pudo importar el escritor ráster seguro: {error}": "The safe raster writer could not be imported: {error}",
+    "No se pudo importar la API de QGIS: {error}": "The QGIS API could not be imported: {error}",
+    "No se pudo importar la API ráster de QGIS: {error}": "The QGIS raster API could not be imported: {error}",
+    "No se pudo leer la coordenada '{name}': {error}": "The coordinate '{name}' could not be read: {error}",
+    "No se pudo leer ningún WRG desde: {path}": "No WRG could be read from: {path}",
+    "No se pudo resolver el CRS destino del WRG/proyecto para el ráster TI": "Could not resolve the target WRG/project CRS for the TI raster",
+    "Número de direcciones no válido: {count}. Debe ser un múltiplo entero positivo de {n}, el número de sectores del WRG «{source}», sin superar {max}.": "Invalid number of directions: {count}. It must be a positive integer multiple of {n}, the number of sectors of the WRG “{source}”, not exceeding {max}.",
+    "Número de direcciones no válido: {count}. El WRG «{source}» contiene {n} sectores; al superar el límite de {max}, la única opción admitida es conservar sus {n} direcciones.": "Invalid number of directions: {count}. The WRG “{source}” contains {n} sectors; as it exceeds the limit of {max}, the only accepted option is to keep its {n} directions.",
+    "Número de sectores no válido: {n_sectors} en el WRG «{source}» (direcciones pedidas: {count}). Debe ser un entero positivo.": "Invalid number of sectors: {n_sectors} in the WRG “{source}” (requested directions: {count}). It must be a positive integer.",
+    "Paso de velocidad no válido: {step} para «{source}». Se admiten {steps} m/s.": "Invalid wind-speed step: {step} for “{source}”. {steps} m/s are accepted.",
+    "PyWake no devolvió el campo {field}. Variables disponibles: {names}.": "PyWake did not return the field {field}. Available variables: {names}.",
+    "QGIS no pudo abrir el GeoTIFF generado: {path}": "QGIS could not open the generated GeoTIFF: {path}",
+    "Ráster TI no válido: {path}": "Invalid TI raster: {path}",
+    "Se necesita una matriz ráster 2-D; se ha recibido la forma {shape}.": "A 2-D raster array is required; received shape {shape}.",
+    "Speedup no válido: {method}. Con un WRG solo se admite none: se conservan en cada punto las Weibull y frecuencias locales del WRG.": "Invalid Speedup: {method}. With a WRG only none is accepted: the local Weibull distributions and frequencies of the WRG are kept at each point.",
+    "WRG con distinta resolución/extensión: no se pueden combinar por altura": "WRG files with different resolution/extent: they cannot be combined by height",
+    "WRG incompleto: cabecera + {expected} líneas esperadas; hay {lines}": "Incomplete WRG: header + {expected} lines expected; there are {lines}",
+    "WRG: alturas climáticas disponibles {heights}; PyWake interpola linealmente en altura cuando la HH está dentro del rango.": "WRG: available climate heights {heights}; PyWake interpolates linearly in height when the HH is within the range.",
+
+    "WRG: se ha usado un único ráster de TI ambiente; si mezclas varias alturas de buje, esa TI se replica/interpola como aproximación vertical.": "WRG: a single ambient TI raster was used; if you mix several hub heights, that TI is replicated/interpolated as a vertical approximation.",
+    "WRG: se han usado {n} rásteres de TI ambiente para reconstruir TI por altura cuando es posible.": "WRG: {n} ambient TI rasters were used to reconstruct the TI by height where possible.",
+    "WRG: solo hay una altura climática ({heights}); se usa como referencia vertical sin modificar la altura de buje ni inferir shear.": "WRG: there is only one climate height ({heights}); it is used as the vertical reference without changing the hub height or inferring shear.",
+    "ZIP no contiene .wrg: {path}": "The ZIP does not contain a .wrg: {path}",
+    "[REPORT] Modelo predefinido {preset}, revisión {revision}: {reference} de PyWake {reference_version}, calculado con PyWake {executed_version}.": "[REPORT] Predefined model {preset}, revision {revision}: {reference} of PyWake {reference_version}, calculated with PyWake {executed_version}.",
+    "[WRG][TI] Altura TI duplicada {height} m en '{file}'; se conserva el primer ráster para esa altura.": "[WRG][TI] Duplicate TI height {height} m in '{file}'; the first raster for that height is kept.",
+    "[WRG][TI] El ráster TI ha quedado completamente fuera de cobertura tras reproyección/alineado; se usará TI uniforme={ti} en toda la malla.": "[WRG][TI] The TI raster is completely out of coverage after reprojection/alignment; a uniform TI={ti} will be used over the whole grid.",
+    "[WRG][TI] No se ha seleccionado ráster de turbulencia. Se usará TI fija={ti}.": "[WRG][TI] No turbulence raster has been selected. A fixed TI={ti} will be used.",
+    "[WRG][TI] No se han identificado al menos dos alturas TI distintas; se usará el primer ráster para todas las alturas.": "[WRG][TI] At least two different TI heights could not be identified; the first raster will be used for all heights.",
+    "[WRG][TI] No se pudieron aplicar los ráster(es) TI '{paths}': {error}. Se usará fallback fijo.": "[WRG][TI] The TI raster(s) '{paths}' could not be applied: {error}. A fixed fallback will be used.",
+    "[WRG][TI] Ráster TI con {n} celdas fuera de cobertura tras reproyección/alineado; se rellenan con {ti}.": "[WRG][TI] TI raster with {n} cells out of coverage after reprojection/alignment; they are filled with {ti}.",
+    "[WRG][TI] Ráster sin CRS explícito; por su cabecera parece lon/lat y se asume EPSG:4326.": "[WRG][TI] Raster without an explicit CRS; its header looks like lon/lat, so EPSG:4326 is assumed.",
+    "[WRG][TI] Ráster sin CRS explícito; se asume el CRS del WRG/proyecto.": "[WRG][TI] Raster without an explicit CRS; the WRG/project CRS is assumed.",
+    "[WRG][TI] Solo hay un ráster TI ({file}) a {height} m; se aplicará a todas las alturas del WRG como aproximación.": "[WRG][TI] There is only one TI raster ({file}) at {height} m; it will be applied to all WRG heights as an approximation.",
+    "[WRG][TI] Solo hay un ráster TI ({file}) sin altura identificable; se aplicará a todas las alturas del WRG como aproximación.": "[WRG][TI] There is only one TI raster ({file}) with no identifiable height; it will be applied to all WRG heights as an approximation.",
+    "coords_xy corrupto para «{name}» (longitudes distintas)": "Corrupt coords_xy for “{name}” (different lengths)",
+    "coords_xy inválido para «{name}»: {error}": "Invalid coords_xy for “{name}”: {error}",
+    "desconocidas": "unknown",
+    "xarray no disponible para construir TI por altura: {error}": "xarray not available to build the TI by height: {error}",
+    "{field} tiene una forma no compatible con ráster: {shape}.": "{field} has a shape that is not compatible with a raster: {shape}.",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "<b>Grupo fuente:</b> {name}": "<b>Source group:</b> {name}",
+    "Archivo no encontrado: {path}": "File not found: {path}",
+    "Cada fila representa un grupo fuente acústico. Puedes renombrar el grupo o el parque y editar su LwA fijo directamente en la tabla.": "Each row represents an acoustic source group. You can rename the group or the wind farm and edit its fixed LwA directly in the table.",
+    "Calculando ruido en segundo plano… {pct}%": "Calculating noise in the background… {pct}%",
+    "Calculando ruido y ráster…": "Calculating noise and raster…",
+    "Configuración acústica inválida:": "Invalid acoustic configuration:",
+    "Creando ráster de ruido de respaldo…": "Creating fallback noise raster…",
+    "Curva @ {speed} m/s ({file})": "Curve @ {speed} m/s ({file})",
+    "Curva acústica LwA(ws)": "Acoustic curve LwA(ws)",
+    "Curva acústica vacía": "Empty acoustic curve",
+    "Curva acústica ws/LwA": "Acoustic curve ws/LwA",
+    "Curva inválida -> LwA fijo de respaldo ({error})": "Invalid curve -> fixed LwA fallback ({error})",
+    "Curva peor caso ({file})": "Worst-case curve ({file})",
+    "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el ráster, si estaba activado, ya se han añadido al proyecto.": "Acoustic calculation completed in the background.\n\nThe receiver/source layers and the raster, if it was enabled, have already been added to the project.",
+    "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el ráster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.": "Acoustic calculation completed.\n\nThe receiver/source layers have already been added to the project. If the raster was enabled and does not use land use, it is being generated in the background when it is safe to do so.",
+    "Datos preparados. Lanzando QgsTask…": "Data prepared. Starting QgsTask…",
+    "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros programas). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.": "Off: the absolute OEM spectrum is used as is and the operational LwA of the group becomes the A-weighted sum of the spectrum (recommended for comparison with other software). On: the spectrum is used only as a shape and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+    "Detectado desde la capa fuente del proyecto": "Detected from the project source layer",
+    "Edita el LwA fijo de este grupo fuente acústico.": "Edit the fixed LwA for this acoustic source group.",
+    "El MDT/DSM seleccionado no es un ráster válido y se ignorará.": "The selected DEM/DSM is not a valid raster and will be ignored.",
+    "Espectro inválido: {errors}": "Invalid spectrum: {errors}",
+    "Espectro relativo requiere lwa_global": "Relative spectrum requires lwa_global",
+    "Explica cómo influyen las condiciones atmosféricas en la absorción por bandas del motor ISO": "Explain how atmospheric conditions affect the band absorption of the ISO engine",
+    "Explica el LwA fijo, las curvas acústicas y el modo de peor caso": "Explain fixed LwA, acoustic curves and worst-case mode",
+    "Explica el mapa GIS de ruido, la resolución del ráster y las isófonas": "Explain the GIS noise map, raster resolution and isophones",
+    "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM": "Explain receiver height, maximum radius and DEM/DSM use",
+    "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo": "Explain simplified atmospheric attenuation, ground factor G and land-use layers",
+    "Explica la tabla de grupos fuente acústicos": "Explain the acoustic source-group table",
+    "Explica las capas de receptores, las categorías y los límites de día y de noche": "Explain receiver layers, categories and day/night limits",
+    "Explica los límites de receptor manual, diurno y nocturno": "Explain manual, day and night receiver limits",
+    "Explica los motores de ruido rápido e ISO": "Explain the fast and ISO noise engines",
+    "Explica qué capas de turbinas se usan como fuentes acústicas": "Explain which turbine layers are used as acoustic sources",
+    "Falta banda {freq} Hz": "Missing band {freq} Hz",
+    "Formato: {format}": "Format: {format}",
+    "Generando ráster de ruido… {pct}%": "Generating noise raster… {pct}%",
+
+    "La capa de receptores '{layer}' está vacía.": "The receiver layer '{layer}' is empty.",
+    "La capa de receptores no contiene entidades válidas para el cálculo.": "The receiver layer contains no valid features for the calculation.",
+    "La capa de receptores no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.": "The receiver layer is not in the same CRS as the project. Reproject it before calculating.",
+    "La columna ponderada A contiene valores pequeños que parecen una forma relativa. Para formas relativas usa la cabecera Lw_dB_rel.": "The A-weighted column contains small values that look like a relative shape. For relative shapes, use the Lw_dB_rel header.",
+    "La resolución del ráster debe ser mayor que 0.": "The raster resolution must be greater than 0.",
+    "Mallas WAsP: {path}": "WAsP grids: {path}",
+    "Modelo sin nombre": "Unnamed model",
+    "Método ISO: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))": "ISO method: ISO 9613-2 with octave bands (Adiv + Aatm(T,RH,P) + Agr(f))",
+
+    "Nivel de emisión acústica fijo de este grupo fuente. Edítalo aquí antes de lanzar el cálculo.": "Fixed acoustic emission level for this source group. Edit it here before running the calculation.",
+    "No se ha detectado ninguna disposición en el grupo de coordenadas por modelo": "No layout detected in the coordinate-by-model group",
+    "No se ha indicado una capa de receptores válida.": "No valid receiver layer was provided.",
+    "No se pudieron leer datos válidos de {path}": "Could not read valid data from {path}",
+    "No se pudieron leer pares ws/LwA válidos de {path}": "Could not read valid ws/LwA pairs from {path}",
+    "No se pudo completar el cálculo: {error}": "Could not complete the calculation: {error}",
+    "No se pudo generar el ráster: {error}": "Could not generate the raster: {error}",
+    "No se pudo importar el layout de turbinas:": "Could not import the turbine layout:",
+    "No se pudo leer la curva acústica:": "Could not read the acoustic curve:",
+    "No se puede lanzar el cálculo:": "The calculation cannot be started:",
+    "No se reconocen las columnas de {file}. Cabeceras aceptadas: freq_hz + Lw_dB (absoluto), LwA_dB/dBA/dB(A) (ponderado A) o Lw_dB_rel (forma relativa).": "The columns of {file} are not recognised. Accepted headers: freq_hz + Lw_dB (absolute), LwA_dB/dBA/dB(A) (A-weighted) or Lw_dB_rel (relative shape).",
+    "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101,325 kPa. Usa un dato medido o ajustado por altitud si está disponible.": "Local atmospheric pressure in kPa. Usual sea-level reference value: 101.325 kPa. Use a measured or altitude-adjusted value if available.",
+    "Revisa la emisión acústica asignada a cada grupo fuente antes de lanzar el cálculo.": "Review the acoustic emission assigned to each source group before running the calculation.",
+    "Ruido · Curva acústica": "Noise · Acoustic curve",
+    "Ruido · Cálculo": "Noise · Calculation",
+    "Ruido · Importar layout": "Noise · Import layout",
+    "Ruido · Ráster": "Noise · Raster",
+    "Ruta síncrona: {reason}.": "Synchronous path: {reason}.",
+    "Ráster de respaldo creado con G global porque el ráster exacto con uso del suelo no se pudo materializar.": "Fallback raster created with global G because the exact land-use raster could not be materialised.",
+    "Ráster de ruido completado.": "Noise raster completed.",
+    "Ráster de ruido finalizado con aviso.": "Noise raster finished with a warning.",
+    "Ráster de ruido generado y añadido al proyecto.": "Noise raster generated and added to the project.",
+    "Ráster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.": "Noise raster started in the background. You can follow it in the QGIS task manager.",
+    "Se ha importado «{layer}» con {n} turbina(s).": "Imported “{layer}” with {n} turbine(s).",
+    "Selecciona una o varias capas fuente detectadas/importadas en VelantisWind. Si marcas varias, el cálculo de ruido usará todas ellas a la vez.": "Select one or more source layers detected/imported in VelantisWind. If you tick several, the noise calculation will use all of them at once.",
+    "Temperatura, humedad y presión que usa el motor ISO.": "Temperature, humidity and pressure used by the ISO engine.",
+    "Todavía no hay ningún recurso seleccionado": "No resource selected yet",
+
+    "Valor inválido en banda {freq} Hz: {value}": "Invalid value in band {freq} Hz: {value}",
+    "Velantis Wind · cálculo de ruido": "Velantis Wind · noise calculation",
+    "Velantis Wind · ráster de ruido": "Velantis Wind · noise raster",
+    "absoluto": "absolute",
+    "error desconocido": "unknown error",
+    "espectro OEM: {file}": "OEM spectrum: {file}",
+    "layout importado desde CSV": "layout imported from CSV",
+    "layout importado desde {source}": "layout imported from {source}",
+    "relativo": "relative",
+    "ruta no compatible con tarea en segundo plano": "the path is not compatible with a background task",
+    "sin curva -> LwA fijo de respaldo": "no curve -> fixed LwA fallback",
+    "sin detalle": "no detail",
+    "vectorial": "vector",
+    "{models} modelo(s) WT · {turbines} turbina(s)": "{models} WT model(s) · {turbines} turbine(s)",
+    "{name}: LwA efectivo = {lwa} dB(A)": "{name}: effective LwA = {lwa} dB(A)",
+    "{name}: LwA fijo no válido.": "{name}: invalid fixed LwA.",
+    "{name}: altura de buje no válida.": "{name}: invalid hub height.",
+    "{name}: falta nombre de grupo fuente.": "{name}: source group name missing.",
+    "{name}: modo curva activo pero sin CSV de curva acústica.": "{name}: curve mode is active but there is no acoustic curve CSV.",
+    "{name}: no existe la curva acústica '{path}'.": "{name}: the acoustic curve “{path}” does not exist.",
+    "{name}: nombre de grupo fuente duplicado '{group}'.": "{name}: duplicate source group name “{group}”.",
+    "{name}: {detail}": "{name}: {detail}",
+    "{n} turbina(s)": "{n} turbine(s)",
+    "α se calcula automáticamente por banda en el motor ISO": "α is calculated automatically per band in the ISO engine",
+    "— Selecciona la capa de receptores —": "— Select receiver layer —",
+    "• AVISO: el ráster en segundo plano no se pudo generar: {error}": "• WARNING: the background raster could not be generated: {error}",
+    "• AVISO: el ráster exacto no se añadió al proyecto; intentando crear un GeoTIFF de respaldo.": "• WARNING: the exact raster was not added to the project; trying to create a fallback GeoTIFF.",
+    "• AVISO: esta configuración usa ruta síncrona porque {reason}.": "• WARNING: this configuration uses the synchronous path because {reason}.",
+    "• AVISO: no se pudo lanzar el ráster en segundo plano: {error}": "• WARNING: the background raster could not be started: {error}",
+    "• AVISO: se solicitó el ráster pero no se pudo generar. Revisa la resolución, el CRS y la extensión de las fuentes.": "• WARNING: the raster was requested but could not be generated. Check the resolution, the CRS and the extent of the sources.",
+    "• AVISO: tampoco se pudo crear el ráster de respaldo: {error}": "• WARNING: the fallback raster could not be created either: {error}",
+    "• AVISO: {message}": "• WARNING: {message}",
+    "• Capa GIS de enlaces dominantes creada: {layer} ({n} enlace(s)).": "• GIS dominant-links layer created: {layer} ({n} link(s)).",
+    "• Capa GIS de fuentes creada: {layer}": "• GIS source layer created: {layer}",
+    "• Capa GIS de isófonas creada: {layer} ({n} entidades).": "• GIS isophone layer created: {layer} ({n} features).",
+    "• Capa GIS de receptores fuera de radio creada: {layer} ({n} receptor(es)).": "• GIS layer of receivers outside the radius created: {layer} ({n} receiver(s)).",
+    "• Capa de salida principal: {layer}": "• Main output layer: {layer}",
+    "• Escenario acústico efectivo por grupo fuente:": "• Effective acoustic scenario by source group:",
+    "• G usado: {g}": "• G used: {g}",
+    "• Isófonas terminadas en segundo plano: {n} entidades.": "• Isophones finished in the background: {n} features.",
+    "• Isófonas: se generarán al finalizar el ráster en segundo plano.": "• Isophones: they will be generated when the background raster finishes.",
+    "• Mapa GIS creado: {layer} (ráster de {cells} celdas | resolución pedida {requested} m | efectiva {effective} m{extra}).": "• GIS map created: {layer} (raster of {cells} cells | requested resolution {requested} m | effective {effective} m{extra}).",
+    "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con LwA fijo por grupo fuente acústico.": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with fixed LwA by acoustic source group.",
+    "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas a {speed} m/s.": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with acoustic curves at {speed} m/s.",
+    "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas en peor caso.": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with worst-case acoustic curves.",
+    "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas.": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with acoustic curves.",
+    "• Nivel máximo calculado: {level} dB(A)": "• Maximum calculated level: {level} dB(A)",
+    "• Receptores calculados: {n}": "• Calculated receivers: {n}",
+    "• Receptores con al menos una turbina dentro del radio: {n}": "• Receivers with at least one turbine inside the radius: {n}",
+    "• Receptores por categoría: {counts}": "• Receivers by category: {counts}",
+    "• Receptores por categoría: {n} grupo(s) activos con criterio {criterion}.": "• Receivers by category: {n} active group(s) with the {criterion} criterion.",
+    "• Receptores que superan el límite: {n} / {total}": "• Receivers exceeding the limit: {n} / {total}",
+    "• Ráster de ruido terminado en segundo plano: {layer} ({cells} celdas, resolución efectiva {resolution} m).": "• Noise raster finished in the background: {layer} ({cells} cells, effective resolution {resolution} m).",
+    "• Ráster de ruido: lanzado en segundo plano con QgsTask. Los resultados por receptor ya están disponibles; la capa «{layer}» se añadirá al terminar.": "• Noise raster: started in the background with QgsTask. The results per receiver are already available; the layer “{layer}” will be added when it finishes.",
+    "• Se ha usado el MDT/DSM para muestrear la cota del terreno en fuentes y receptores.": "• The DEM/DSM was used to sample the terrain elevation at sources and receivers.",
+    "• Sin MDT/DSM: el cálculo usa coordenadas planas con alturas relativas de fuente/receptor.": "• No DEM/DSM: the calculation uses flat coordinates with relative source/receiver heights.",
+    "• Suelo efectivo: G_eff medio {mean} | G_eff crítico {critical}.": "• Effective ground: mean G_eff {mean} | critical G_eff {critical}.",
+    "• Suelo efectivo: modo global, G={g} aplicado en todos los trayectos.": "• Effective ground: global mode, G={g} applied on all paths.",
+    "• Trazabilidad del suelo: {landuse} receptor(es) con G distinto del global y {fallback} con el G global de respaldo.": "• Ground traceability: {landuse} receiver(s) with a G different from the global one and {fallback} with the fallback global G.",
+    "• α usado: {alpha} dB/m": "• α used: {alpha} dB/m",
+    "⛅ Condiciones atmosféricas (motor ISO)": "⛅ Atmospheric conditions (ISO engine)",
+    "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101,325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.": "💡 Use typical site conditions. If you do not have measured pressure, 101.325 kPa is a standard sea-level reference; at altitude it is usually lower.",
+    "📊 ISO - ISO 9613-2 por bandas": "📊 ISO - octave-band ISO 9613-2",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Curva acústica activa": "Active acoustic curve",
+    "Exportar excedencias CSV": "Export exceedances CSV",
+    "Exportar receptores CSV": "Export receivers CSV",
+    "Guarda únicamente los receptores que superan su límite acústico.": "Save only the receivers that exceed their acoustic limit.",
+    "HTML (*.html);;Texto (*.txt)": "HTML (*.html);;Text (*.txt)",
+    "La carpeta de destino no existe: {parent}": "The destination folder does not exist: {parent}",
+    "LwA fijo por grupo de fuente acústica": "Fixed LwA per acoustic source group",
+    "Ningún receptor supera el límite en este cálculo.": "No receiver exceeds the limit in this calculation.",
+    "Ruido · Resumen técnico": "Noise · Technical summary",
+    "Tabla sintética para consultoría: resultados acústicos por receptor, cumplimiento, fuente dominante y atenuaciones principales. Los diagnósticos internos MDT por pares se conservan en memoria, pero no se muestran por defecto.": "Summary table for consultancy: acoustic results per receiver, compliance, dominant source and main attenuations. The internal pairwise DEM diagnostics are kept in memory but are not shown by default.",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Sombras": "Shadow flicker",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Crear mapa ráster de sombras y parpadeo": "Create shadow flicker raster map",
+
+    "Filtrar el ráster generado por mes y/u hora": "Filter the generated raster by month and/or hour",
+    "Filtrar ráster por mes/hora (después de generarlo)": "Filter raster by month/hour (after generation)",
+    "Fracción del tiempo durante la que el aerogenerador está en funcionamiento (0,97 = 97 %)": "Fraction of time the wind turbine is operating (0.97 = 97%)",
+    "Genera un mapa ráster continuo de horas de sombra y parpadeo\nMuestra un gradiente de colores en toda la zona de análisis\nATENCIÓN: puede tardar varios minutos según la zona": "Generates a continuous raster map of shadow flicker hours\nDisplays a colour gradient over the whole analysis area\nWARNING: this can take several minutes depending on the area",
+    "Latitud del emplazamiento (ej. 42,465 para Logroño)": "Site latitude (e.g. 42.465 for Logroño)",
+    "Longitud del emplazamiento (ej. -2,445 para Logroño)": "Site longitude (e.g. -2.445 for Logroño)",
+    "Mapa ráster, resolución y paso temporal del ráster": "Raster map, resolution and raster time step",
+    "Paso temporal SOLO para el ráster (independiente de los receptores).\n1 min = precisión máxima, MUY lento\n5 min = recomendado (precisión >98 %, 5× más rápido)\n10 min = muy rápido, precisión ~95 %\n20 min = ultrarrápido para previsualizar": "Time step ONLY for the raster (independent from receivers).\n1 min = maximum accuracy, VERY slow\n5 min = recommended (accuracy >98%, 5× faster)\n10 min = very fast, ~95% accuracy\n20 min = ultra-fast for previewing",
+    "Ráster MDT/DEM (opcional):": "DEM raster (optional):",
+    "Ráster de elevación opcional para geometría con terreno": "Optional elevation raster for terrain-aware geometry",
+    "Tamaño de celda del ráster\n100 m = rápido, menos detalle\n50 m = intermedio\n25 m = lento, máximo detalle": "Raster cell size\n100 m = fast, less detail\n50 m = intermediate\n25 m = slow, maximum detail",
+    "Una vez generado el ráster, puedes regenerar TIF filtrados por mes y/o hora\nsin recalcular toda la geometría anual.": "Once the raster has been generated, you can regenerate TIFs filtered by month and/or hour\nwithout recalculating the full annual geometry.",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Aún no hay turbinas en esta capa: haz clic izq en el mapa para añadirlas.": "There are no turbines in this layer yet: left-click the map to add them.",
+    "Clic izq: añadir · Clic der: borrar · ESC: salir": "Left click: add · Right click: delete · ESC: exit",
+    "Configuración aplicada al modelo «{model_name}» · {spacing_dims} · capa de elipses actualizada.": "Configuration applied to model “{model_name}” · {spacing_dims} · ellipse layer updated.",
+    "Configuración guardada para el modelo «seleccionado» · se utilizará automáticamente al elegir su capa de turbinas.": "Configuration saved for the selected model · it will be used automatically when its turbine layer is chosen.",
+    "Configuración guardada para el modelo «{model_name}» · se utilizará automáticamente al elegir su capa de turbinas.": "Configuration saved for model “{model_name}” · it will be used automatically when its turbine layer is chosen.",
+    "Conflicto de separación": "Spacing conflict",
+    "Deja la lista de ráster(es) TI vacía.": "Clear the TI raster list.",
+    "Eje mayor · Ángulo: {angle_deg}° · Long: {long_d} · Ctrl=ajuste a 5°/sector, Mayús=ajuste a 0,5D": "Major axis · Angle: {angle_deg}° · Downwind: {long_d} · Ctrl=snap to 5°/sector, Shift=snap to 0.5D",
+    "Eje menor · Ángulo: {angle_deg}° · Long: {long_d} · Trans: {trans_d} · Clic para confirmar": "Minor axis · Angle: {angle_deg}° · Downwind: {long_d} · Crosswind: {trans_d} · Click to confirm",
+    "Elegir ráster TI…": "Choose TI raster…",
+    "Elige qué capa/modelo editas con el clic izquierdo/derecho del mapa. Esto permite modificar cualquiera de las capas cargadas, no solo la última creada.": "Choose the layer/model edited with left/right map clicks. Any loaded turbine layer can be edited, not only the most recently created one.",
+    "Excepciones del modelo «activo» eliminadas · usando su plantilla de modelo.": "Exceptions of the active model cleared · using its model template.",
+    "Excepciones del modelo «{model_name}» eliminadas · usando su plantilla de modelo.": "Exceptions of model “{model_name}” cleared · using its model template.",
+    "Excepción guardada para la turbina {turbine_id} del modelo «{model_name}».": "Exception saved for turbine {turbine_id} of model “{model_name}”.",
+    "La disposición multimodelo incumple la separación mínima en {n} turbina(s).": "The multi-model layout violates the minimum spacing at {n} turbine(s).",
+    "La turbina invade la envolvente de una turbina del modelo «otro modelo» · inserción bloqueada.": "The turbine intrudes into the envelope of a turbine of another model · insertion blocked.",
+    "La turbina invade la envolvente de una turbina del modelo «{model_name}» · inserción bloqueada.": "The turbine intrudes into the envelope of a turbine of model “{model_name}” · insertion blocked.",
+    "No se pudo exportar: {error_text}": "Could not export: {error_text}",
+    "Se exportaron {layer_count} capas de modelo a {file_path}": "Exported {layer_count} model layers to {file_path}",
+
+    "Sin conflicto": "No conflict",
+    "Sin ráster TI": "No TI raster",
+    "TI ambiente (ráster)": "Ambient TI (raster)",
+    "dimensiones: {spacing_dims}": "dimensions: {spacing_dims}",
+    "sector más energético: {angle_deg}°": "most energetic sector: {angle_deg}°",
+    "{layer_count} capa(s) de modelo exportadas: {file_path}": "{layer_count} model layer(s) exported: {file_path}",
+    "{n} cerca del límite": "{n} near the limit",
+    "{n} envolvente(s)": "{n} envelope(s)",
+    "{n} modelo": "{n} model",
+    "{n} modelos": "{n} models",
+    "⚠ {n} conflicto(s) de separación": "⚠ {n} spacing conflict(s)",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por dirección del viento. La diferencia entre cada barra representa las pérdidas por estela en ese sector — útil para ver qué direcciones limitan más el rendimiento del parque.": "<b>Loss rose by sector.</b> Distribution of free-stream and net AEP by wind direction. The difference between each pair of bars represents the wake losses in that sector — useful to see which directions limit the wind farm performance the most.",
+    "Apoya voluntariamente el desarrollo, el mantenimiento y la validación de VelantisWind.": "Optionally support the development, maintenance and validation of VelantisWind.",
+    "Columna potencia kW (0-based):": "Power kW column (0-based):",
+    "El MDT/DSM seleccionado no es raster válido y se ignorará.": "The selected DEM/DSM is not a valid raster and will be ignored.",
+    "Las capas de flujo libre, velocidad efectiva y déficit, junto con el terreno cuando está disponible, se han añadido al grupo ‘VelantisWind · Estelas’.": "The free-stream, effective-speed and deficit layers, together with terrain when available, were added to the ‘VelantisWind · Estelas’ group.",
+    "Raster MDT/DEM (opcional):": "DEM raster (optional):",
+    "♥ Sponsors": "♥ Sponsors",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+_APLICAR_PARES_EN_FRAG = {
+    " % sobre AEP bruto del cluster)": " % of the cluster gross AEP)",
+    "<b>Rosa de pérdidas por sector.</b> Distribución del AEP libre y neto por dirección del viento. La diferencia entre cada barra representa las pérdidas por estela en ese sector — útil para ver qué direcciones limitan más el rendimiento del parque.": "<b>Loss rose by sector.</b> Distribution of free-stream and net AEP by wind direction. The difference between each pair of bars represents the wake losses in that sector — useful to see which directions limit the wind farm performance the most.",
+    "AEP neta del cluster:": "Cluster net AEP:",
+    "Columna potencia kW (0-based):": "Power kW column (0-based):",
+    "El MDT/DSM seleccionado no es raster válido y se ignorará.": "The selected DEM/DSM is not a valid raster and will be ignored.",
+    "Modelo de estela (PyWake)": "Wake model (PyWake)",
+    "Pérdida total (wake/TI/bloqueo):": "Total loss (wake/TI/blockage):",
+    "Raster MDT/DEM (opcional):": "DEM raster (optional):",
+}
+_FRAGMENT_TO_EN.update(_APLICAR_PARES_EN_FRAG)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, _APLICAR_PARES_EN_FRAG, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Comparar con y sin bloqueo\nEs un análisis de sensibilidad del modelo. Mantén la disposición del parque, las turbinas, el recurso y su discretización, las curvas de Ct y de potencia, el motor (el mismo, compatible con bloqueo, en los dos cálculos) y los ajustes de estela, turbulencia y rotor; cambia solo el bloqueo y sus componentes: modelo, superposición y suelo del bloqueo. La diferencia cuantifica el efecto de ese cambio dentro de la simulación; no mide el bloqueo real ni valida el resultado.\n\nComprobar los resultados\nTerminar sin error no garantiza la convergencia ni la exactitud. Los avisos del resultado indican si un bucle iterativo (All2AllIterative, PropagateUpDownIterative o WeightedSum) no convergió o no pudo comprobarse. Revisa además que las velocidades y la producción sean plausibles y cómo cambian con otras elecciones de modelo; validarlas exige contrastarlas con observaciones o referencias independientes apropiadas.": "Comparing with and without blockage\nThis is a sensitivity analysis of the model. Keep the layout, the turbines, the wind resource and its discretisation, the Ct and power curves, the engine (the same one, supporting blockage, in both calculations) and the wake, turbulence and rotor settings; change only the blockage and its components: blockage model, superposition and ground. The difference quantifies the effect of that change within the simulation; it does not measure the real blockage or validate the result.\n\nChecking the results\nFinishing without an error does not guarantee convergence or accuracy. The result warnings indicate whether an iterative loop (All2AllIterative, PropagateUpDownIterative or WeightedSum) did not converge or could not be checked. Also check that wind speeds and production are plausible and how they change with other model choices; validating them requires comparing them with appropriate observations or independent references.",
+    "Definición de caso de referencia": "Benchmark definition",
+    "Ejemplos de configuración\nVelantis propone dos ejemplos para explorar el comportamiento de los modelos; cada uno indica las hipótesis y los datos que requiere.\n• Expansión constante: BastankhahGaussianDeficit, sin turbulencia añadida. k controla cuánto se ensancha la estela con la distancia; su valor debe justificarse con datos, referencias aplicables o un análisis de sensibilidad, no ajustarse hasta obtener el resultado deseado. Añadir un modelo de turbulencia no cambia este déficit: con k fijo no responde a la TI calculada, y estudiar esa dependencia exige otra formulación o un tratamiento justificado de k.\n• Expansión dependiente de la TI: NiayifarGaussianDeficit (k = a₁·TI + a₂), con use_effective_ti = True y CrespoHernandez como turbulencia añadida. Requiere una TI ambiente representativa en el recurso. Con use_effective_ti = True la expansión usa la TI efectiva, la ambiente más la añadida por las estelas que estima CrespoHernandez; con False usa solo la ambiente y la turbulencia añadida no cambia el déficit.\n\nEmplazamientos marinos y terrestres\nEn emplazamientos marinos, normalmente asociados con una menor turbulencia, la «Expansión constante» es un buen punto de partida. En los terrestres, donde el relieve influye en la turbulencia, una selección como la «Expansión dependiente de la TI» suele ajustarse mejor.\n\nEstudiar el bloqueo\nEl bloqueo es el efecto de inducción de las turbinas sobre el flujo: lo frenan sobre todo aguas arriba del rotor. No son las estelas aguas abajo ni los efectos del relieve. Para estudiarlo, cambia el motor a All2AllIterative o PropagateUpDownIterative y elige un modelo de bloqueo; con «Ninguno» no se calcula. Su superposición es independiente de la de las estelas y puede usar la misma regla.\n\nPara una primera prueba recomendamos All2AllIterative con SelfSimilarityDeficit2020; con ellos, el resto de recomendaciones de los ejemplos anteriores se puede mantener.": "Configuration examples\nVelantis proposes two examples to explore how the models behave; each states the assumptions and data it requires.\n• Constant expansion: BastankhahGaussianDeficit, without added turbulence. k controls how much the wake widens with distance; its value must be justified with data, applicable references or a sensitivity analysis, not tuned until the desired result is obtained. Adding a turbulence model does not change this deficit: with a fixed k it does not respond to the calculated TI, and studying that dependence requires another formulation or a justified treatment of k.\n• TI-dependent expansion: NiayifarGaussianDeficit (k = a₁·TI + a₂), with use_effective_ti = True and CrespoHernandez as added turbulence. It requires a representative ambient TI in the wind resource. With use_effective_ti = True the expansion uses the effective TI, the ambient TI plus the turbulence added by the wakes as estimated by CrespoHernandez; with False it uses the ambient TI only and the added turbulence does not change the deficit.\n\nOffshore and onshore sites\nAt offshore sites, usually associated with lower turbulence, “Constant expansion” is a good starting point. At onshore sites, where the terrain affects turbulence, a selection such as the “TI-dependent expansion” usually fits better.\n\nStudying blockage\nBlockage is the induction effect of the turbines on the flow: they slow it down, mainly upstream of the rotor. It is neither the wakes downstream nor terrain effects. To study it, change the engine to All2AllIterative or PropagateUpDownIterative and choose a blockage model; with “None” it is not calculated. Its superposition is independent of the wake superposition and may use the same rule.\n\nFor a first test we recommend All2AllIterative with SelfSimilarityDeficit2020; with them, the other recommendations of the examples above can be kept.",
+    "Guardar la disposición (CSV)…": "Save layout (CSV)…",
+    "LwA efectivo": "Effective LwA",
+    "Potencia nominal": "Rated power",
+    "Receptor: {name}": "Receiver: {name}",
+    "Variante simplificada de Bastankhah definida para los casos de estudio 1 y 2 de optimización de la disposición del parque de IEA Wind Task 37: k = 0,0324555 fijo y anchura inicial D/√8. La clase de PyWake usa SquaredSum.": "Simplified Bastankhah variant defined for case studies 1 and 2 of the IEA Wind Task 37 layout optimisation: fixed k = 0.0324555 and initial width D/√8. The PyWake class uses SquaredSum.",
+    "WRG: no se ha proporcionado ráster TI, así que la TI ambiente se ha fijado al valor de respaldo definido por el usuario como campo uniforme.": "WRG: no TI raster was provided, so the ambient TI was set to the user-defined fallback value as a uniform field.",
+    "{slot}: {text}": "{slot}: {text}",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Abar max contrib. dB": "max. contributing Abar dB",
+    "Abar ponderado dB": "weighted Abar dB",
+    "Abre la web de VelantisWind, donde está disponible el documento técnico.": "Opens the VelantisWind website, where the white paper is available.",
+    "Apantallamiento topográfico: si hay MDT/MDS, el complemento revisa la trayectoria fuente–receptor y estima Abar para obstáculos relevantes. Sin MDT/MDS u obstáculo relevante, Abar se fija en 0 dB.": "Apantallamiento topográfico: si hay MDT/MDS, el plugin revisa la trayectoria source–receptor y estima Abar para obstáculos relevantes. Sin MDT/MDS u obstáculo relevante, Abar se fija en 0 dB.",
+    "Calcula latitud/longitud desde el centroide de la disposición e intenta detectar la zona IANA": "Calculates latitude/longitude from the layout centroid and tries to detect the IANA zone",
+    "Cierra el módulo de energía y vuelve al panel principal de Velantis Wind sin borrar las capas ni los resultados cargados en el proyecto.": "Close the energy module and return to the Velantis Wind main hub without deleting project layers or loaded results.",
+    "Copia el correo electrónico de contacto al portapapeles.": "Copies the contact email to the clipboard.",
+    "Cálculo de AEP con PyWake: define los modelos de aerogenerador, selecciona el recurso eólico (mallas WAsP/Surfer o WRG), elige los modelos físicos (estela, turbulencia, bloqueo, promedio sobre el rotor) y lanza el cálculo. Los resultados se vuelcan automáticamente sobre las capas de coordenadas del proyecto.": "AEP calculation with PyWake: define the wind turbine models, select the wind resource (WAsP/Surfer grids or WRG), choose the physical models (wake, turbulence, blockage, rotor averaging) and run the calculation. The results are written automatically to the coordinate layers of the project.",
+    "Desplazar a la derecha": "Scroll right",
+    "Desplazar a la izquierda": "Scroll left",
+    "Dibuja una capa temporal con los límites del WRG o de las mallas WAsP/Surfer. Sirve para comprobar si la disposición queda dentro del dominio del recurso.": "Draws a temporary layer with the boundaries of the WRG or the WAsP/Surfer grids. It is used to check whether the layout lies inside the resource domain.",
+    "Disposición activa:": "Active layout:",
+    "El idioma seleccionado se aplicará al panel principal, módulos, avisos y resúmenes generados.": "The selected language will be applied to the hub, modules, warnings and generated summaries.",
+    "El recurso eólico describe el viento que llega al parque antes de aplicar estelas: frecuencia por dirección, velocidades y, según el formato, parámetros Weibull. Puedes usar mallas WAsP/Surfer o WRG/ZIP. Si aportas varios WRG a distintas alturas, PyWake podrá interpolar por altura cuando sea necesario.": "The wind resource describes the wind arriving at the wind farm before wake effects: directional frequency, wind speeds and, depending on the format, Weibull parameters. You can use WAsP/Surfer grids or WRG/ZIP. If you provide WRG files at several heights, PyWake can interpolate by height when needed.",
+    "Esta sección explica el flujo real seguido por el complemento para que el resultado por receptor sea trazable. El nivel final no procede de una resta única, sino de calcular todas las contribuciones fuente–receptor dentro del radio y sumarlas energéticamente.": "Esta sección explica el flujo real seguido por el plugin para que el resultado por receptor sea trazable. El nivel finale no procede de una resta única, sino de calcular todas las contribuciones source–receptor within the radius y sumarlas energéticamente.",
+    "Exportar disposición editada": "Export edited layout",
+    "Exportar disposición editada…": "Export edited layout…",
+    "Fuentes / disposición acústica:": "Sources / acoustic layout:",
+    "Has movido/añadido/borrado turbinas en el mapa interactivo.\nLos cambios están en la capa seleccionada en esta fila, y en su fichero si lo tiene.\nPulsa «Exportar disposición editada…» si quieres guardarlos en un CSV.": "You have moved/added/deleted turbines on the interactive map.\nThe changes are in the layer selected in this row, and in its file if it has one.\nClick “Export edited layout…” if you want to save them to a CSV.",
+    "ID fuente Abar max": "max. Abar source ID",
+    "ID fuente obstáculo max": "max. obstacle source ID",
+    "Idioma del complemento:": "Plugin language:",
+    "Importar disposición CSV…": "Import CSV layout…",
+    "Importar disposición de aerogeneradores desde CSV…": "Import wind-turbine layout from CSV…",
+    "Las ecuaciones de este apartado describen la lógica de cálculo implementada por el complemento en el motor ISO preliminar. Los símbolos están definidos en el glosario anterior.": "The equations in this section describe the calculation logic implemented by the plugin in the preliminary ISO engine. The symbols are defined in the glossary above.",
+    "Los motores de PyWake llaman a la superposición del bloqueo con una única matriz y CumulativeWakeSum necesita más datos: PyWake se detiene al evaluar el bloqueo entre turbinas (con All2AllIterative, siempre; con PropagateUpDownIterative, desde la segunda turbina).": "The PyWake engines call the blockage superposition with a single array and CumulativeWakeSum needs more data: PyWake stops when it evaluates the blockage between turbines (with All2AllIterative, always; with PropagateUpDownIterative, from the second turbine).",
+    "Los motores de PyWake llaman a la superposición del bloqueo con una única matriz y WeightedSum necesita más datos: PyWake se detiene al evaluar el bloqueo entre turbinas (con All2AllIterative, siempre; con PropagateUpDownIterative, desde la segunda turbina).": "The PyWake engines call the blockage superposition with a single array and WeightedSum needs more data: PyWake stops when it evaluates the blockage between turbines (with All2AllIterative, always; with PropagateUpDownIterative, from the second turbine).",
+    "Mallas WAsP/Surfer:": "WAsP/Surfer grids:",
+    "Motor avanzado de disposición + orientación de estelas": "Advanced layout + wake steering engine",
+    "Módulo de ruido: conectado a la disposición y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores rápido e ISO, mapas ráster y salidas GIS. La física actual es un flujo de cribado experimental con limitaciones documentadas.": "Noise module: connected to the project layout and WT models, with calculation at receivers, per-model emission table, fast and ISO engines, raster maps and GIS outputs. The current physics is an experimental screening workflow with documented limitations.",
+    "Módulo de sombras y parpadeo para aerogeneradores. Conectado a la disposición del proyecto, calcula receptores puntuales y genera capas QGIS de salida detalladas por receptor.": "Shadow flicker module for wind turbines. Connected to the project layout, it calculates point receivers and generates detailed QGIS output layers per receiver.",
+    "Optimización avanzada de disposición y orientación de estelas para capturar más energía": "Advanced layout and wake-steering optimization to capture more energy",
+    "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el complemento evaluará la emisión a una velocidad concreta o en peor caso.": "You can edit the fixed LwA directly in the acoustic source-group table or import a ws/LwA acoustic curve per group. If you enable curve mode, the plugin will evaluate the emission at a specific wind speed or in the worst case.",
+    "Receptores principales": "Top receivers",
+    "Recurso eólico (mallas WAsP / WRG)": "Wind resource (WAsP grids / WRG)",
+    "Selecciona una carpeta con mallas WAsP/Surfer compatibles con PyWake. Si el recurso ya viene preparado en formato pywake_compat, el complemento lo priorizará automáticamente.": "Select a folder with WAsP/Surfer grids compatible with PyWake. If the resource is already prepared in pywake_compat format, the plugin will prioritize it automatically.",
+    "Solicita una revisión del caso: info@velantiswind.com · Documento técnico en velantiswind.com": "Request a case review: info@velantiswind.com · White paper at velantiswind.com",
+    "Usar disposiciones de turbinas seleccionadas/detectadas": "Use selected/detected turbine layouts",
+    "Velantis Wind · Panel principal": "Velantis Wind · Main hub",
+    "VelantisWind permite explorar disposiciones desde recurso, restricciones y objetivos del proyecto, y cooptimizar la orientación de estelas junto a la disposición para reducir pérdidas por estela, elevar la producción neta y mejorar el retorno del activo. Pensado para comparar alternativas defendibles y acelerar decisiones de diseño.": "VelantisWind can explore layouts from wind resource, constraints and project targets, and co-optimize wake steering together with the layout to reduce wake losses, lift net production and improve asset returns. Built to compare defensible alternatives and speed up design decisions.",
+    "Velocidades de viento consideradas en el Site, con las que se integra el AEP. El rango se ajusta a la banda de operación de la turbina, de su arranque a su parada (con varios tipos, la unión de sus bandas): fuera de ella la turbina no produce. El paso se elige; al principio, el de su curva de potencia. Cada velocidad representa el intervalo que llega hasta la mitad de la distancia a sus vecinas. Mientras no se conozca la curva de cada turbina, «—».": "Wind speeds considered in the Site, with which the AEP is integrated. The range fits the operating band of the turbine, from its cut-in to its cut-out (with several types, the union of their bands): outside it the turbine does not produce. The step is chosen; initially, that of its power curve. Each wind speed represents the interval that reaches halfway to its neighbours. Until the curve of every turbine is known, “—”.",
+    "Ver documento técnico": "Read white paper",
+    "Ver propuesta comercial, contacto y documento técnico de optimización.": "View the commercial proposal, contact details and optimization white paper.",
+    "Zona horaria IANA, por ejemplo Europe/Madrid, America/Santiago o Asia/Tokyo.\nEl complemento incluye un catálogo IANA ampliado y una base TZif local para aplicar el horario de verano sin timezonefinder.": "IANA time zone, for example Europe/Madrid, America/Santiago or Asia/Tokyo.\nThe plugin includes an extended IANA catalogue and a local TZif database to apply daylight saving time without timezonefinder.",
+    "aerogeneradores apantallados": "screened wind turbines",
+    "d1 obstáculo max m": "max. obstacle d1 m",
+    "d2 obstáculo max m": "max. obstacle d2 m",
+    "estado Abar max": "max. Abar status",
+    "estado MDT dom.": "dominant DEM status",
+    "estado obstáculo max": "max. obstacle status",
+    "obs. Abar max m": "max. Abar obstacle m",
+    "obs. obstáculo max m": "max. obstacle height m",
+    "umbral Abar max m": "max. Abar threshold m",
+    "umbral obstáculo max m": "max. obstacle threshold m",
+    "z acústica aerogenerador Abar max m": "max. Abar wind turbine acoustic z m",
+    "z acústica aerogenerador dom. m": "dominant wind turbine acoustic z m",
+    "z terreno aerogenerador Abar max m": "max. Abar wind turbine terrain z m",
+    "z terreno aerogenerador dom. m": "dominant wind turbine terrain z m",
+    "{note} {url}": "{note} {url}",
+    "⚡ Optimizar disposición": "⚡ Optimize layout",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "Aceleración: ninguna ⓘ": "Speedup: none ⓘ",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, {}, label="English")
+
+
+# Adiciones de _tools/aplicar_pares.py.
+_APLICAR_PARES_EN_FULL = {
+    "AEP con estelas: {wake} MWh | AEP bruto: {free} MWh | Pérdidas: {loss} MWh ({pct} %)": "AEP with wakes: {wake} MWh | Gross AEP: {free} MWh | Losses: {loss} MWh ({pct} %)",
+    "AEP neto: {net} MWh | AEP bruto: {free} MWh | Pérdida total: {loss} MWh ({pct} %)": "Net AEP: {net} MWh | Gross AEP: {free} MWh | Total loss: {loss} MWh ({pct} %)",
+    "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, una distancia de cribado conservadora.\nSe usa para filtrar receptores y para la extensión/máscara del ráster.": "Maximum distance from a wind turbine to consider shadow flicker.\nDefault value: 2000 m, a conservative screening distance.\nUsed to filter receivers and for the raster extent/mask.",
+    "Selecciona uno o varios rásteres .asc/.tif de TI ambiente. Si no hay ninguno, se usa TI = 10 % como respaldo.": "Select one or more ambient TI rasters (.asc/.tif). If none are supplied, TI = 10 % is used as a fallback.",
+    "TurbOPark: descripción y código de referencia.": "TurbOPark: description and reference code.",
+    "TurboGaussianDeficit es el déficit: gaussiano, con una expansión que combina la intensidad de turbulencia (TI) ambiente y la generada por la propia estela (expresión de Frandsen), con A = 0,04 calibrado con datos. Nygaard_2022 es la composición completa: además, GaussianOverlapAvgModel, Mirror(SquaredSum()) en la estela, SquaredSum, ninguna turbulencia añadida y el déficit escalado con la velocidad libre de la turbina que recibe la estela (WS_jlk), como en la implementación de referencia.\n\nEn este plugin esa referencia de velocidad solo existe dentro de este modelo predefinido, que usa PropagateDownwind: el modo manual no permite elegirla, así que TurboGaussianDeficit con otro motor o con bloqueo no reproduce Nygaard_2022. Es una restricción actual del plugin, no del modelo.": "TurboGaussianDeficit is the deficit: Gaussian, with an expansion that combines the ambient turbulence intensity (TI) and the turbulence generated by the wake itself (Frandsen's expression), with A = 0.04 calibrated from data. Nygaard_2022 is the complete composition: in addition, GaussianOverlapAvgModel, Mirror(SquaredSum()) in the wake, SquaredSum, no added turbulence and the deficit scaled with the free wind speed of the turbine the wake reaches (WS_jlk), as in the reference implementation.\n\nIn this plugin that speed reference exists only inside this predefined model, which uses PropagateDownwind: manual mode does not allow choosing it, so TurboGaussianDeficit with another engine or with blockage does not reproduce Nygaard_2022. This is a current restriction of the plugin, not of the model.",
+}
+_TO_EN.update(_APLICAR_PARES_EN_FULL)
+_APLICAR_PARES_EN_FRAG = {
+    "Distancia máxima desde un aerogenerador para considerar sombras y parpadeo.\nValor por defecto: 2000 m, una distancia de cribado conservadora.\nSe usa para filtrar receptores y para la extensión/máscara del ráster.": "Maximum distance from a wind turbine to consider shadow flicker.\nDefault value: 2000 m, a conservative screening distance.\nUsed to filter receivers and for the raster extent/mask.",
+    "Déficit gaussiano TurbOPark (Nygaard, 2022): la expansión combina la TI ambiente y la generada por la propia estela.": "Gaussian TurbOPark deficit (Nygaard, 2022): the expansion combines ambient TI and TI generated by the wake itself.",
+}
+_FRAGMENT_TO_EN.update(_APLICAR_PARES_EN_FRAG)
+register_language(LANG_EN, _APLICAR_PARES_EN_FULL, _APLICAR_PARES_EN_FRAG, label="English")

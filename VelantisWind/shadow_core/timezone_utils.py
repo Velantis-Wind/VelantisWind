@@ -95,7 +95,7 @@ def _read_simple_zone_list(path: str, zones: set) -> None:
                 z = line.strip()
                 if z and not z.startswith("#"):
                     zones.add(z)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -109,7 +109,7 @@ def _read_zone_tab(path: str, zones: set) -> None:
                 parts = line.split("\t")
                 if len(parts) >= 3:
                     zones.add(parts[2].strip())
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -158,7 +158,7 @@ def load_iana_timezones() -> List[str]:
         for z in available_timezones():
             if z and not z.startswith(("posix/", "right/")) and z not in {"localtime", "posixrules", "Factory"}:
                 zones.add(z)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     common = [z for z in COMMON_TIMEZONES if z in zones]
@@ -234,11 +234,11 @@ def get_tzinfo(tz_name: Optional[str]):
         tzinfo = tz.gettz(name)
         if tzinfo is not None:
             return tzinfo
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     raise ValueError(_ml(
-        "No se pudo cargar la zona horaria IANA '{}'. La repo incluye una base IANA local, pero esa zona no se encontró o no pudo abrirse. Prueba con una zona como 'Europe/Madrid' o usa el modo UTC offset fijo. Error zoneinfo: {}; error de la base incluida: {}",
+        "No se pudo cargar la zona horaria IANA '{}'. El plugin incluye una base IANA local, pero esa zona no se encontró o no pudo abrirse. Prueba con una zona como 'Europe/Madrid' o usa el modo de desfase UTC fijo. Error zoneinfo: {}; error de la base incluida: {}",
         "Could not load IANA timezone '{}'. The plugin includes a local IANA database, but this zone was not found or could not be opened. Try a zone such as 'Europe/Madrid' or use fixed UTC-offset mode. zoneinfo error: {}; bundled database error: {}",
         "Impossible de charger le fuseau horaire IANA '{}'. Le plugin inclut une base IANA locale, mais cette zone est introuvable ou n’a pas pu être ouverte. Essayez une zone comme 'Europe/Madrid' ou utilisez le mode décalage UTC fixe. Erreur zoneinfo : {}; erreur de la base incluse : {}",
         "Die IANA-Zeitzone '{}' konnte nicht geladen werden. Das Plugin enthält eine lokale IANA-Datenbank, aber diese Zone wurde nicht gefunden oder konnte nicht geöffnet werden. Versuchen Sie eine Zone wie 'Europe/Madrid' oder verwenden Sie den festen UTC-Offset-Modus. zoneinfo-Fehler: {}; Fehler der mitgelieferten Datenbank: {}",
@@ -392,7 +392,7 @@ def detect_timezone_name(latitude: float, longitude: float) -> Tuple[Optional[st
         return "Pacific/Auckland", "bundled approximate bbox", _approx_warning()
 
     return None, "manual required", _ml(
-        "No se pudo detectar una zona horaria fiable sin una base mundial de polígonos. Selecciona manualmente la zona IANA en el desplegable; la repo incluye un catálogo amplio y una base TZif con reglas DST.",
+        "No se pudo detectar una zona horaria fiable sin una base mundial de polígonos. Selecciona manualmente la zona IANA en el desplegable; el plugin incluye un catálogo amplio y una base TZif con reglas DST.",
         "A reliable timezone could not be detected without a worldwide polygon database. Select the IANA zone manually in the dropdown; the plugin includes a broad catalogue and a TZif database with DST rules.",
         "Impossible de détecter un fuseau horaire fiable sans base mondiale de polygones. Sélectionnez manuellement la zone IANA dans la liste ; le plugin inclut un vaste catalogue et une base TZif avec règles DST.",
         "Ohne weltweite Polygondatenbank konnte keine zuverlässige Zeitzone erkannt werden. Wählen Sie die IANA-Zone manuell in der Auswahlliste; das Plugin enthält einen breiten Katalog und eine TZif-Datenbank mit DST-Regeln.",

@@ -6,13 +6,14 @@ potencia sin ensuciar el orquestador AEP. No depende directamente de QGIS.
 """
 from __future__ import annotations
 
-import csv
+from ..curve_text import read_power_pairs
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
 from ..physics.common.compat import emit
+from ..log_text import log_text
 from .factory import ensure_wt_entry
 
 F32 = np.float32
@@ -62,7 +63,7 @@ def tabular_from_pcf(pcf: Any) -> Optional[Tuple[np.ndarray, np.ndarray]]:
             try:
                 ws = np.asarray(v, dtype=F32).ravel()
                 break
-            except Exception:
+            except Exception:  # nosec B110
                 pass
     for k in p_keys:
         v = getattr(pcf, k, None)
@@ -70,7 +71,7 @@ def tabular_from_pcf(pcf: Any) -> Optional[Tuple[np.ndarray, np.ndarray]]:
             try:
                 P = np.asarray(v, dtype=F32).ravel()
                 break
-            except Exception:
+            except Exception:  # nosec B110
                 pass
     if ws is not None and P is not None and len(ws) == len(P) and len(ws) > 1:
         return ws, P
@@ -107,28 +108,15 @@ def read_curve_from_model_dict(m: Dict[str, Any]) -> Optional[Tuple[np.ndarray, 
     delimiter = str(meta.get("delimiter", m.get("delimiter", ",")))
     skip_header = int(meta.get("skip_header", m.get("skip_header", 1)))
 
-    ws, P = [], []
     try:
-        with open(path, newline="", encoding="utf-8") as f:
-            r = csv.reader(f, delimiter=delimiter)
-            for _ in range(max(skip_header, 0)):
-                next(r, None)
-            for row in r:
-                if len(row) <= max(ws_col, power_col):
-                    continue
-                try:
-                    ws.append(float(row[ws_col]))
-                    P.append(float(row[power_col]))
-                except Exception:
-                    continue
+        curve = read_power_pairs(path, ws_col, power_col, delimiter, skip_header)
     except Exception as e:
-        _log(f"[WT] Error leyendo CSV de curva '{path}': {e}", Qgis.Warning)
+        _log(log_text("[WT] Error leyendo CSV de curva '{path}': {error}", path=path, error=e), Qgis.Warning)
         return None
-
-    if len(ws) < 2:
+    if curve is None:
         return None
-
-    return np.array(ws, dtype=F32), np.array(P, dtype=F32)
+    ws, power = curve
+    return np.array(ws, dtype=F32), np.array(power, dtype=F32)
 
 
 def print_power_curve_info(models: List[Dict[str, Any]]) -> None:
@@ -162,7 +150,7 @@ def print_power_curve_info(models: List[Dict[str, Any]]) -> None:
             _log(f"[WT] {name} | Hub={HH} m | D={D} m | Curva (CSV): {pairs}")
         else:
             _log(
-                f"[WT] {name} | Hub={HH} m | D={D} m | Curva: no se pudo evaluar ni leer del CSV.",
+                log_text("[WT] {name} | Hub={hh} m | D={d} m | Curva: no se pudo evaluar ni leer del CSV.", name=name, hh=HH, d=D),
                 Qgis.Warning,
             )
 
@@ -187,3 +175,4 @@ __all__ = [
     "_read_curve_from_model_dict",
     "_print_power_curve_info",
 ]
+

@@ -10,6 +10,8 @@ import time
 
 from qgis.PyQt import QtCore, QtWidgets
 
+from ..i18n import tr_text
+
 
 _QT_PROCESS_EVENTS_ACTIVE = False
 _LAST_QT_PROCESS_EVENTS_MS = 0.0
@@ -37,7 +39,7 @@ def _safe_qt_process_events(min_interval_ms: int = 150) -> None:
             QtWidgets.QApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
         except TypeError:
             QtWidgets.QApplication.processEvents()
-    except Exception:
+    except Exception:  # nosec B110
         pass
     finally:
         _QT_PROCESS_EVENTS_ACTIVE = False
@@ -50,7 +52,7 @@ def _show_task_progress_dialog(dialog, title: str, label: str, cancel_callback=N
     in the same spirit as the shadow/flicker raster task.
     """
     try:
-        dlg = QtWidgets.QProgressDialog(str(label), "Cancelar", 0, 100, dialog)
+        dlg = QtWidgets.QProgressDialog(str(label), tr_text("Cancelar"), 0, 100, dialog)
         dlg.setWindowTitle(str(title))
         dlg.setWindowModality(QtCore.Qt.NonModal)
         dlg.setAutoClose(False)
@@ -60,7 +62,7 @@ def _show_task_progress_dialog(dialog, title: str, label: str, cancel_callback=N
         if cancel_callback is not None:
             try:
                 dlg.canceled.connect(cancel_callback)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
         dlg.show()
         _safe_qt_process_events()
@@ -77,7 +79,7 @@ def _update_task_progress_dialog(progress_dlg, label: str, value: float) -> None
         progress_dlg.setLabelText(str(label))
         progress_dlg.setValue(v)
         _safe_qt_process_events()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -88,14 +90,14 @@ def _close_task_progress_dialog(progress_dlg, value: int = 100) -> None:
         progress_dlg.setValue(int(value))
         progress_dlg.close()
         progress_dlg.deleteLater()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 def _append_status_line(dialog, text: str) -> None:
     try:
         current = dialog.txt_status.toPlainText().rstrip()
         dialog.txt_status.setPlainText((current + "\n" + text).strip())
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -107,7 +109,7 @@ def _notify_qgis(title: str, message: str, level_name: str = "Info") -> None:
             return
         level = getattr(Qgis, level_name, Qgis.Info)
         iface.messageBar().pushMessage(title, message, level, duration=6)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -124,7 +126,7 @@ def _set_dialog_busy(dialog, text: str) -> None:
             pb.setRange(0, 0)
             pb.setFormat("")
         _safe_qt_process_events()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -143,7 +145,7 @@ def _set_dialog_progress(dialog, text: str, value: float) -> None:
             pb.setFormat("%p%")
             pb.setValue(int(round(value)))
         _safe_qt_process_events()
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -157,7 +159,7 @@ def _hide_dialog_progress(dialog) -> None:
             pb.setVisible(False)
         if lbl is not None:
             lbl.setVisible(False)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -165,7 +167,7 @@ def _finish_dialog_progress(dialog, text: str, *, hide_after_ms: int = 3500) -> 
     try:
         _set_dialog_progress(dialog, text, 100.0)
         QtCore.QTimer.singleShot(int(hide_after_ms), lambda: _hide_dialog_progress(dialog))
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
 
@@ -174,5 +176,5 @@ def _set_calculate_enabled(dialog, enabled: bool) -> None:
         btn = getattr(dialog, "btn_calc", None)
         if btn is not None:
             btn.setEnabled(bool(enabled))
-    except Exception:
+    except Exception:  # nosec B110
         pass

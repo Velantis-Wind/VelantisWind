@@ -36,6 +36,7 @@ from ..noise_engine_iso import (
 )
 from ..propagation.ground import _bbox_from_point, _lp_from_source
 from ..qgis_io.common import _is_valid_dem_value, _remove_existing_layers_by_name, _sample_dem, _unique_temp_output
+from ...crs_utils import preferred_wkt
 from ..qgis_io.layers import _apply_raster_heatmap_style
 from ...raster_io import write_float32_band
 
@@ -476,7 +477,7 @@ def _build_noise_grid_layer(
                             lp_a = lw - adiv_cell - aatm - agr - abar + float(A_WEIGHTING.get(freq, 0.0))
                             corrected_energy += 10.0 ** (lp_a / 10.0)
                         source_energy[ly, lx] = corrected_energy
-                    except Exception:
+                    except Exception:  # nosec B112
                         # Fallback seguro: conservar valor vectorizado sin Abar.
                         continue
             else:
@@ -523,7 +524,7 @@ def _build_noise_grid_layer(
                     try:
                         src_idx = int(f['src_idx'])
                         src = sources[src_idx]
-                    except Exception:
+                    except Exception:  # nosec B112
                         continue
 
                     # Branch according to the selected acoustic engine
@@ -577,9 +578,9 @@ def _build_noise_grid_layer(
     ds.SetGeoTransform(gt)
     srs = osr.SpatialReference()
     try:
-        srs.ImportFromWkt(prj.crs().toWkt())
-        ds.SetProjection(srs.ExportToWkt())
-    except Exception:
+        srs.ImportFromWkt(preferred_wkt(prj.crs()))
+        ds.SetProjection(srs.ExportToWkt(["FORMAT=WKT2_2019"]))
+    except Exception:  # nosec B110
         pass
     band = ds.GetRasterBand(1)
     write_float32_band(
@@ -598,7 +599,7 @@ def _build_noise_grid_layer(
         return None, diag
     try:
         lyr.setCustomProperty('velantis/noise_output', True)
-    except Exception:
+    except Exception:  # nosec B110
         pass
     if covered > 0 and math.isfinite(min_noise) and math.isfinite(max_noise):
         _apply_raster_heatmap_style(lyr, float(min_noise), float(max_noise))
@@ -608,13 +609,13 @@ def _build_noise_grid_layer(
         if iface is not None:
             try:
                 iface.layerTreeView().refreshLayerSymbology(lyr.id())
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 iface.mapCanvas().refreshAllLayers()
             except Exception:
                 iface.mapCanvas().refresh()
-    except Exception:
+    except Exception:  # nosec B110
         pass
     diag.update({'grid_covered_cells': int(covered), 'grid_min_noise': float(min_noise if math.isfinite(min_noise) else 0.0), 'grid_max_noise': float(max_noise if math.isfinite(max_noise) else 0.0), 'grid_path': out_path})
     _log(f"[Noise][GRID] Raster de mapa creado: {layer_name} | celdas={n_cells} | resolución efectiva={effective_resolution:.1f} m | cobertura={covered}/{n_cells}")

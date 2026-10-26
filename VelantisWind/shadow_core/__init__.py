@@ -65,6 +65,6 @@ __all__ = [
 try:
     from .domain import ShadowRunConfig
     from .runner import ShadowRunner
-except Exception:
+except Exception:  # nosec B110
     # Keep plugin import tolerant in partial QGIS environments.
     pass

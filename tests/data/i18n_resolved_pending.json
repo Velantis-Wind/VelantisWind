@@ -1,0 +1,87 @@
+{
+  "El complemento solo admite la referencia del escalado «{reference}» con PropagateDownwind, TurboGaussianDeficit con use_effective_ws = False y SquaredSum, sin bloqueo (la composición de TurbOPark).": {
+    "en": "The plugin only accepts the scaling reference «{reference}» with PropagateDownwind, TurboGaussianDeficit with use_effective_ws = False and SquaredSum, without blockage (the TurbOPark composition).",
+    "fr": "L’extension n’admet la référence de mise à l’échelle « {reference} » qu’avec PropagateDownwind, TurboGaussianDeficit avec use_effective_ws = False et SquaredSum, sans blocage (la composition de TurbOPark).",
+    "de": "Das Plugin lässt die Skalierungsreferenz «{reference}» nur mit PropagateDownwind, TurboGaussianDeficit mit use_effective_ws = False und SquaredSum ohne Blockade zu (die Zusammensetzung von TurbOPark)."
+  },
+  "El modelo predefinido guardado «{value}» ya no es una opción: se abre con {default}.": {
+    "en": "The saved predefined model «{value}» is no longer an option: it opens with {default}.",
+    "fr": "Le modèle prédéfini enregistré « {value} » n’est plus une option : il s’ouvre avec {default}.",
+    "de": "Das gespeicherte vordefinierte Modell «{value}» ist keine Option mehr: es wird mit {default} geöffnet."
+  },
+  "La configuración no es la del modelo predefinido {preset} (revisión {revision}) que dice su procedencia.": {
+    "en": "The configuration is not that of the predefined model {preset} (revision {revision}) stated in its provenance.",
+    "fr": "La configuration n’est pas celle du modèle prédéfini {preset} (révision {revision}) qu’indique sa provenance.",
+    "de": "Die Konfiguration ist nicht die des vordefinierten Modells {preset} (Revision {revision}), das in ihrer Herkunftsangabe genannt wird."
+  },
+  "La de la clase (use_effective_ws)": {
+    "en": "The class default (use_effective_ws)",
+    "fr": "Celle de la classe (use_effective_ws)",
+    "de": "Die der Klasse (use_effective_ws)"
+  },
+  "Marca use_effective_ws en los parámetros del bloqueo.": {
+    "en": "Set use_effective_ws in the blockage parameters.",
+    "fr": "Cochez use_effective_ws dans les paramètres du blocage.",
+    "de": "Setzen Sie use_effective_ws in den Parametern der Blockade."
+  },
+  "Modelo predefinido: {preset}": {
+    "en": "Predefined model: {preset}",
+    "fr": "Modèle prédéfini : {preset}",
+    "de": "Vordefiniertes Modell: {preset}"
+  },
+  "Parámetros del bloqueo": {
+    "en": "Blockage parameters",
+    "fr": "Paramètres du blocage",
+    "de": "Parameter der Blockade"
+  },
+  "Procedencia de modelo predefinido no reconocida: {value!r}.": {
+    "en": "Unrecognised predefined model provenance: {value!r}.",
+    "fr": "Provenance de modèle prédéfini non reconnue : {value!r}.",
+    "de": "Nicht erkannte Herkunft eines vordefinierten Modells: {value!r}."
+  },
+  "Referencia del escalado": {
+    "en": "Scaling reference",
+    "fr": "Référence de la mise à l’échelle",
+    "de": "Skalierungsreferenz"
+  },
+  "Referencia del escalado: {reference} ({key})": {
+    "en": "Scaling reference: {reference} ({key})",
+    "fr": "Référence de mise à l’échelle : {reference} ({key})",
+    "de": "Skalierungsreferenz: {reference} ({key})"
+  },
+  "Se hereda la superposición de estelas ({cls})": {
+    "en": "The wake superposition is inherited ({cls})",
+    "fr": "La superposition des sillages est héritée ({cls})",
+    "de": "Die Nachlaufüberlagerung wird geerbt ({cls})"
+  },
+  "Se hereda la superposición del bloqueo ({cls})": {
+    "en": "The blockage superposition is inherited ({cls})",
+    "fr": "La superposition du blocage est héritée ({cls})",
+    "de": "Die Überlagerung der Blockade wird geerbt ({cls})"
+  },
+  "Superposición": {
+    "en": "Superposition",
+    "fr": "Superposition",
+    "de": "Überlagerung"
+  },
+  "[REPORT] Modelo predefinido {preset}, revisión {revision}: {reference} de PyWake {reference_version}, calculado con PyWake {executed_version}.": {
+    "en": "[REPORT] Predefined model {preset}, revision {revision}: {reference} of PyWake {reference_version}, calculated with PyWake {executed_version}.",
+    "fr": "[REPORT] Modèle prédéfini {preset}, révision {revision} : {reference} de PyWake {reference_version}, calculé avec PyWake {executed_version}.",
+    "de": "[REPORT] Vordefiniertes Modell {preset}, Revision {revision}: {reference} von PyWake {reference_version}, berechnet mit PyWake {executed_version}."
+  },
+  "velocidad libre de la turbina de destino": {
+    "en": "free-stream speed of the destination turbine",
+    "fr": "vitesse en écoulement libre de l’éolienne de destination",
+    "de": "Geschwindigkeit der freien Anströmung an der Zielturbine"
+  },
+  "wake_physics.deficit_ws_reference: {value!r} no es una opción ({options}, o None).": {
+    "en": "wake_physics.deficit_ws_reference: {value!r} is not an option ({options}, or None).",
+    "fr": "wake_physics.deficit_ws_reference : {value!r} n’est pas une option ({options}, ou None).",
+    "de": "wake_physics.deficit_ws_reference: {value!r} ist keine Option ({options} oder None)."
+  },
+  "{note} {url}": {
+    "en": "{note} {url}",
+    "fr": "{note} {url}",
+    "de": "{note} {url}"
+  }
+}

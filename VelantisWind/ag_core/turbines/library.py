@@ -12,6 +12,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Tuple
 
+from ..turbine import _error
+
 
 def _catalogue_root() -> Path:
     # .../VelantisWind/ag_core/turbines/library.py -> .../VelantisWind
@@ -71,7 +73,7 @@ def load_candidate_curve(candidate: Mapping[str, Any]) -> Tuple[List[float], Lis
     """Read ``ws, power_kW, ct`` for a catalogue candidate."""
     path = Path(str(candidate.get("curve_path") or ""))
     if not path.is_file():
-        raise FileNotFoundError(f"Turbine curve not found: {path}")
+        raise _error(FileNotFoundError, "No se encuentra la curva de la turbina: {path}", path=path)
 
     ws: List[float] = []
     power_kw: List[float] = []
@@ -87,9 +89,9 @@ def load_candidate_curve(candidate: Mapping[str, Any]) -> Tuple[List[float], Lis
                 continue
 
     if len(ws) < 2 or len(ws) != len(power_kw) or len(ws) != len(ct):
-        raise ValueError(f"Invalid turbine screening curve: {path.name}")
+        raise _error(ValueError, "La curva de la turbina no es válida: {file}", file=path.name)
     if any(b <= a for a, b in zip(ws, ws[1:])):
-        raise ValueError(f"Wind-speed values are not strictly increasing: {path.name}")
+        raise _error(ValueError, "Las velocidades del viento no son estrictamente crecientes: {file}", file=path.name)
     return ws, power_kw, ct
 
 

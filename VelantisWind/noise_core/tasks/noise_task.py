@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, Optional
 
 from qgis.core import QgsApplication, QgsTask
 
+from ...i18n import tr_text
 from .pure_engine import evaluate_noise_snapshot
 from ..raster.task import compute_noise_grid_file_from_snapshot
 
@@ -21,7 +22,7 @@ class NoiseCalculationTask(QgsTask):
     """QgsTask that evaluates receivers and optional raster in the background."""
 
     def __init__(self, *, snapshot: Dict[str, Any], on_finished: Optional[NoiseFinishedCallback] = None):
-        super().__init__("Velantis Wind · Noise calculation", QgsTask.CanCancel)
+        super().__init__(tr_text("Velantis Wind · cálculo de ruido"), QgsTask.CanCancel)
         self.snapshot = dict(snapshot)
         self.on_finished_callback = on_finished
         self.result: Dict[str, Any] = {}
@@ -66,7 +67,7 @@ class NoiseCalculationTask(QgsTask):
                 def _grid_progress(value: float) -> None:
                     try:
                         self.setProgress(receiver_end + (98.0 - receiver_end) * max(0.0, min(100.0, float(value))) / 100.0)
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
 
                 grid_diag = compute_noise_grid_file_from_snapshot(
@@ -86,7 +87,7 @@ class NoiseCalculationTask(QgsTask):
         if self.on_finished_callback is not None:
             try:
                 self.on_finished_callback(ok, self.result or {}, self.error)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
 
@@ -105,7 +106,7 @@ def start_noise_calculation_task(
     if on_progress is not None:
         try:
             task.progressChanged.connect(on_progress)
-        except Exception:
+        except Exception:  # nosec B110
             pass
     QgsApplication.taskManager().addTask(task)
     return task

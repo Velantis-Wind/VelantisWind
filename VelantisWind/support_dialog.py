@@ -10,17 +10,19 @@ from __future__ import annotations
 
 from qgis.PyQt import QtCore, QtGui, QtWidgets
 
-from .i18n import current_language
+from .i18n import current_language, tr_text as _tr
 
 
 # -----------------------------------------------------------------------------
 # Public links. Keep them here so they are easy to update before release.
-# Contact uses mailto only; donation/support information is hosted in GitHub docs.
+# Contact uses mailto only; donations go to the GitHub Sponsors profile of
+# .github/FUNDING.yml, the support information is in SUPPORT.md and the
+# supporters list in VelantisWind/SUPPORTERS.md.
 # -----------------------------------------------------------------------------
 GITHUB_PROJECT_URL = "https://github.com/Velantis-Wind/VelantisWind"
-SPONSOR_URL = "https://github.com/Velantis-Wind/VelantisWind/blob/main/SUPPORT.md"
-SUPPORTERS_URL = "https://github.com/Velantis-Wind/VelantisWind/blob/main/SUPPORTERS.md"
+SPONSOR_URL = "https://github.com/sponsors/VelantisWind"
 SUPPORT_DOC_URL = "https://github.com/Velantis-Wind/VelantisWind/blob/main/SUPPORT.md"
+SUPPORTERS_URL = "https://github.com/Velantis-Wind/VelantisWind/blob/main/VelantisWind/SUPPORTERS.md"
 CONTACT_EMAIL = "info@velantiswind.com"
 CONTACT_URL = f"mailto:{CONTACT_EMAIL}?subject=VelantisWind%20support"
 
@@ -28,10 +30,10 @@ CONTACT_URL = f"mailto:{CONTACT_EMAIL}?subject=VelantisWind%20support"
 _TEXTS = {
     "es": {
         "title": "Apoyar VelantisWind",
-        "hero": "Flujos de trabajo eólicos open source, directamente dentro de QGIS.",
+        "hero": "Flujos de trabajo eólicos de código abierto, directamente dentro de QGIS.",
         "subtitle": (
-            "VelantisWind es un plugin gratuito y open source para QGIS orientado al análisis preliminar "
-            "de parques eólicos, validación técnica y tareas GIS de preevaluación. Tu apoyo ayuda a convertirlo "
+            "VelantisWind es un plugin gratuito y de código abierto para QGIS orientado al análisis preliminar "
+            "de parques eólicos, validación técnica y tareas SIG de preevaluación. Tu apoyo ayuda a convertirlo "
             "en una herramienta más robusta, documentada y validada para flujos de trabajo reales."
         ),
         "why_title": "¿Qué ayuda a financiar el apoyo?",
@@ -40,50 +42,55 @@ _TEXTS = {
             "Documentación, tutoriales, ejemplos y traducciones.",
             "Validación con casos reales de parques eólicos.",
             "Mejoras en los módulos de AEP, estelas, ruido y sombras.",
-            "Soporte para beta testers, early adopters y partners técnicos.",
-            "Nuevas funcionalidades solicitadas por usuarios, consultoras, universidades y partners.",
+            "Soporte para quienes prueban las versiones beta, los primeros usuarios y los socios técnicos.",
+            "Nuevas funcionalidades solicitadas por usuarios, consultoras, universidades y socios.",
         ],
         "company_title": "Validación y apoyo de la comunidad",
         "company_text": (
-            "El apoyo de usuarios, consultoras, universidades y beta testers ayuda a mejorar la documentación, "
-            "la estabilidad, la validación con casos reales y las funcionalidades futuras del proyecto open source."
+            "El apoyo de usuarios, consultoras, universidades y probadores de versiones beta ayuda a mejorar la documentación, "
+            "la estabilidad, la validación con casos reales y las funcionalidades futuras del proyecto de código abierto."
         ),
         "academic_title": "Colaboración académica e investigación",
         "academic_text": (
             "VelantisWind está abierto a universidades y grupos de investigación. TFG, TFM o trabajos aplicados pueden "
             "ayudar a validar, documentar o ampliar el plugin con nuevos módulos, siempre que estén técnicamente alineados "
-            "con el proyecto open source."
+            "con el proyecto de código abierto."
         ),
         "tiers_title": "Opciones de apoyo",
         "tiers": [
             ("Open Supporter", "desde 1 €", "Apoyo puntual con reconocimiento opcional."),
-            ("Project Supporter", "25 €", "Nombre opcional en la lista de supporters."),
+            ("Project Supporter", "25 €", "Nombre opcional en la lista de patrocinadores."),
             ("Professional Backer", "100 €", "Nombre y enlace opcional."),
             ("Organization Backer", "500 €", "Logo pequeño o mención de organización."),
             ("Major Backer", "2.500 €", "Reconocimiento destacado y conversación técnica opcional."),
-            ("Community Sponsor", "5 €/mes", "Nombre opcional en la lista de supporters."),
+            ("Community Sponsor", "5 €/mes", "Nombre opcional en la lista de patrocinadores."),
             ("Professional Sponsor", "25 €/mes", "Nombre y enlace opcional."),
             ("Workflow Sponsor", "100 €/mes", "Logo pequeño o mención de organización."),
-            ("Validation Sponsor", "250 €/mes", "Logo y mención como sponsor de validación."),
+            ("Validation Sponsor", "250 €/mes", "Logo y mención como patrocinador de validación."),
             ("Partner Sponsor", "500 €/mes", "Logo destacado en GitHub, documentación o sección About/Sponsors."),
         ],
         "partnerships_title": "Otras formas de colaborar",
         "partnerships": [
-            "Beta testing y feedback técnico.",
-            "Validación frente a proyectos reales o workflows internos.",
+            "Pruebas de versiones beta y comentarios técnicos.",
+            "Validación frente a proyectos reales o flujos de trabajo internos.",
             "Contribuciones técnicas, documentación o ejemplos.",
-            "Casos de uso, ejemplos de validación y feedback de documentación.",
+            "Casos de uso, ejemplos de validación y comentarios sobre la documentación.",
             "Colaboración académica mediante TFG/TFM, investigación aplicada o material docente.",
         ],
         "disclaimer": (
-            "VelantisWind seguirá siendo gratuito y open source. El apoyo es opcional y no implica propiedad, exclusividad "
-            "ni control sobre el roadmap. El reconocimiento público es opcional y puede omitirse si el supporter desea permanecer anónimo. "
+            "VelantisWind seguirá siendo gratuito y de código abierto. El apoyo es opcional y no implica propiedad, exclusividad "
+            "ni control sobre la hoja de ruta. El reconocimiento público es opcional y puede omitirse si el patrocinador desea permanecer anónimo. "
             f"Contacto: {CONTACT_EMAIL}"
         ),
         "btn_sponsor": "Patrocinar / donar",
         "btn_support": CONTACT_EMAIL,
         "btn_support_doc": "Ver SUPPORT.md",
-        "btn_supporters": "Supporters",
+        "btn_project": "Documentación del proyecto",
+        "btn_supporters": "Patrocinadores",
+        "sponsor_tooltip": "Abre el perfil de VelantisWind en GitHub Sponsors. Las condiciones de pago se muestran en GitHub.",
+        "tiers_show": "Ver niveles de apoyo",
+        "tiers_hide": "Ocultar niveles de apoyo",
+        "url_fallback": "No se ha podido abrir el enlace. Copia esta dirección:",
         "btn_close": "Cerrar",
     },
     "en": {
@@ -94,7 +101,6 @@ _TEXTS = {
             "validation workflows and geospatial pre-assessment tasks. Your support helps transform it "
             "into a more robust, documented and validated tool for practical wind energy workflows."
         ),
-        "why_title": "What does your support help fund?",
         "why_items": [
             "Plugin maintenance, stability and QGIS compatibility.",
             "Documentation, tutorials, examples and translations.",
@@ -143,18 +149,22 @@ _TEXTS = {
         "btn_sponsor": "Sponsor / donate",
         "btn_support": CONTACT_EMAIL,
         "btn_support_doc": "View SUPPORT.md",
+        "btn_project": "Project documentation",
         "btn_supporters": "Supporters",
+        "sponsor_tooltip": "Opens the VelantisWind profile on GitHub Sponsors. Payment details are shown on GitHub.",
+        "tiers_show": "Show support levels",
+        "tiers_hide": "Hide support levels",
+        "url_fallback": "The link could not be opened. Copy this address:",
         "btn_close": "Close",
     },
     "fr": {
         "title": "Soutenir VelantisWind",
-        "hero": "Des workflows éoliens open source, directement dans QGIS.",
+        "hero": "Des flux de travail éoliens open source, directement dans QGIS.",
         "subtitle": (
             "VelantisWind est un plugin QGIS gratuit et open source destiné à l’analyse préliminaire "
-            "des parcs éoliens, aux workflows de validation et aux tâches de préévaluation géospatiale. "
-            "Votre soutien aide à en faire un outil plus robuste, mieux documenté et mieux validé pour des workflows réels."
+            "des parcs éoliens, aux flux de validation et aux tâches de préévaluation géospatiale. "
+            "Votre soutien aide à en faire un outil plus robuste, mieux documenté et mieux validé pour des flux de travail réels."
         ),
-        "why_title": "Que permet de financer votre soutien ?",
         "why_items": [
             "Maintenance du plugin, stabilité et compatibilité avec QGIS.",
             "Documentation, tutoriels, exemples et traductions.",
@@ -189,8 +199,8 @@ _TEXTS = {
         ],
         "partnerships_title": "Autres formes de collaboration",
         "partnerships": [
-            "Bêta-test et feedback technique.",
-            "Validation sur des projets réels ou des workflows internes.",
+            "Bêta-test et retours techniques.",
+            "Validation sur des projets réels ou des flux de travail internes.",
             "Contributions techniques, documentation ou exemples.",
             "Cas d’usage, exemples de validation et retours sur la documentation.",
             "Collaboration académique via projets de fin d’études, recherche appliquée ou matériel pédagogique.",
@@ -203,7 +213,12 @@ _TEXTS = {
         "btn_sponsor": "Sponsoriser / faire un don",
         "btn_support": CONTACT_EMAIL,
         "btn_support_doc": "Voir SUPPORT.md",
+        "btn_project": "Documentation du projet",
         "btn_supporters": "Supporters",
+        "sponsor_tooltip": "Ouvre le profil de VelantisWind sur GitHub Sponsors. Les modalités de paiement figurent sur GitHub.",
+        "tiers_show": "Voir les niveaux de soutien",
+        "tiers_hide": "Masquer les niveaux de soutien",
+        "url_fallback": "Le lien n’a pas pu être ouvert. Copiez cette adresse :",
         "btn_close": "Fermer",
     },
     "de": {
@@ -211,10 +226,9 @@ _TEXTS = {
         "hero": "Open-Source-Workflows für Windenergie, direkt in QGIS.",
         "subtitle": (
             "VelantisWind ist ein kostenloses Open-Source-QGIS-Plugin für die frühe Analyse von Windparks, "
-            "Validierungsworkflows und georäumliche Vorbewertungen. Deine Unterstützung hilft dabei, daraus "
+            "Validierungsworkflows und georäumliche Vorbewertungen. Ihre Unterstützung hilft dabei, daraus "
             "ein robusteres, besser dokumentiertes und besser validiertes Werkzeug für praktische Windenergie-Workflows zu machen."
         ),
-        "why_title": "Was hilft deine Unterstützung zu finanzieren?",
         "why_items": [
             "Wartung des Plugins, Stabilität und QGIS-Kompatibilität.",
             "Dokumentation, Tutorials, Beispiele und Übersetzungen.",
@@ -263,7 +277,12 @@ _TEXTS = {
         "btn_sponsor": "Sponsern / spenden",
         "btn_support": CONTACT_EMAIL,
         "btn_support_doc": "SUPPORT.md ansehen",
+        "btn_project": "Projektdokumentation",
         "btn_supporters": "Unterstützer",
+        "sponsor_tooltip": "Öffnet das Profil von VelantisWind auf GitHub Sponsors. Die Zahlungsdetails finden Sie auf GitHub.",
+        "tiers_show": "Unterstützungsstufen anzeigen",
+        "tiers_hide": "Unterstützungsstufen ausblenden",
+        "url_fallback": "Der Link konnte nicht geöffnet werden. Kopieren Sie diese Adresse:",
         "btn_close": "Schließen",
     },
 }
@@ -276,13 +295,6 @@ def _lang() -> str:
         lang = "es"
     short = lang.replace("-", "_").split("_", 1)[0]
     return short if short in _TEXTS else "es"
-
-
-def _open_url(url: str) -> None:
-    try:
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(url))
-    except Exception:
-        pass
 
 
 class SupportDialog(QtWidgets.QDialog):
@@ -343,18 +355,29 @@ class SupportDialog(QtWidgets.QDialog):
 
         two_cols = QtWidgets.QHBoxLayout()
         two_cols.setSpacing(12)
-        two_cols.addWidget(self._info_card(t["why_title"], self._bullets_html(t["why_items"])), 1)
+        two_cols.addWidget(self._info_card(_tr(_TEXTS["es"]["why_title"]), self._bullets_html(t["why_items"])), 1)
         two_cols.addWidget(self._info_card(t["company_title"], t["company_text"]), 1)
         root.addLayout(two_cols)
 
         root.addWidget(self._info_card(t["academic_title"], t["academic_text"]))
 
-        tiers_title = QtWidgets.QLabel(t["tiers_title"], content)
+        # The levels are optional reading: folded until asked for.
+        self.btn_toggle_tiers = QtWidgets.QPushButton(t["tiers_show"], content)
+        self.btn_toggle_tiers.setObjectName("supportTierToggle")
+        self.btn_toggle_tiers.setCheckable(True)
+        root.addWidget(self.btn_toggle_tiers)
+        self.tiers_panel = QtWidgets.QWidget(content)
+        tiers_layout = QtWidgets.QVBoxLayout(self.tiers_panel)
+        tiers_layout.setContentsMargins(0, 0, 0, 0)
+        tiers_layout.setSpacing(6)
+        tiers_title = QtWidgets.QLabel(t["tiers_title"], self.tiers_panel)
         tiers_title.setObjectName("supportTiersTitle")
-        root.addWidget(tiers_title)
-
+        tiers_layout.addWidget(tiers_title)
         for name, amount, description in t["tiers"]:
-            root.addWidget(self._tier_row(name, amount, description))
+            tiers_layout.addWidget(self._tier_row(name, amount, description))
+        self.tiers_panel.setVisible(False)
+        self.btn_toggle_tiers.toggled.connect(self._toggle_tiers)
+        root.addWidget(self.tiers_panel)
 
         root.addWidget(self._info_card(t["partnerships_title"], self._bullets_html(t["partnerships"])))
 
@@ -363,34 +386,66 @@ class SupportDialog(QtWidgets.QDialog):
         disclaimer.setWordWrap(True)
         root.addWidget(disclaimer)
 
+        # Two rows: the five buttons do not fit whole in one at the dialog's width.
         button_row = QtWidgets.QHBoxLayout()
         button_row.setSpacing(8)
 
-        btn_sponsor = QtWidgets.QPushButton(t["btn_sponsor"], self)
-        btn_sponsor.setObjectName("primarySupportButton")
-        btn_sponsor.clicked.connect(lambda: _open_url(SPONSOR_URL))
-        button_row.addWidget(btn_sponsor)
+        self.btn_sponsor = QtWidgets.QPushButton(t["btn_sponsor"], self)
+        self.btn_sponsor.setObjectName("primarySupportButton")
+        self.btn_sponsor.setToolTip(t["sponsor_tooltip"])
+        self.btn_sponsor.clicked.connect(lambda: self._open_url(SPONSOR_URL))
+        button_row.addWidget(self.btn_sponsor)
 
-        btn_support = QtWidgets.QPushButton(t["btn_support"], self)
-        btn_support.clicked.connect(lambda: _open_url(CONTACT_URL))
-        button_row.addWidget(btn_support)
+        self.btn_support_doc = QtWidgets.QPushButton(t["btn_support_doc"], self)
+        self.btn_support_doc.clicked.connect(lambda: self._open_url(SUPPORT_DOC_URL))
+        button_row.addWidget(self.btn_support_doc)
 
-        btn_doc = QtWidgets.QPushButton(t["btn_support_doc"], self)
-        btn_doc.clicked.connect(lambda: _open_url(SUPPORT_DOC_URL))
-        button_row.addWidget(btn_doc)
-
-        btn_supporters = QtWidgets.QPushButton(t["btn_supporters"], self)
-        btn_supporters.clicked.connect(lambda: _open_url(SUPPORTERS_URL))
-        button_row.addWidget(btn_supporters)
-
+        self.btn_project = QtWidgets.QPushButton(t["btn_project"], self)
+        self.btn_project.clicked.connect(lambda: self._open_url(GITHUB_PROJECT_URL))
+        button_row.addWidget(self.btn_project)
         button_row.addStretch(1)
 
+        second_row = QtWidgets.QHBoxLayout()
+        second_row.setSpacing(8)
+        self.btn_contact = QtWidgets.QPushButton(t["btn_support"], self)
+        self.btn_contact.clicked.connect(lambda: self._open_url(CONTACT_URL))
+        second_row.addWidget(self.btn_contact)
+        self.btn_supporters = QtWidgets.QPushButton(t["btn_supporters"], self)
+        self.btn_supporters.clicked.connect(lambda: self._open_url(SUPPORTERS_URL))
+        second_row.addWidget(self.btn_supporters)
+
+        second_row.addStretch(1)
         btn_close = QtWidgets.QPushButton(t["btn_close"], self)
         btn_close.clicked.connect(self.close)
-        button_row.addWidget(btn_close)
+        second_row.addWidget(btn_close)
 
         outer.addLayout(button_row)
+        outer.addLayout(second_row)
         self._apply_style()
+
+    def _open_url(self, url: str) -> bool:
+        """Open ``url`` in the browser; if it does not open, show it so that it can be copied."""
+        try:
+            opened = bool(QtGui.QDesktopServices.openUrl(QtCore.QUrl(url)))
+        except Exception:
+            opened = False
+        if not opened:
+            msg = QtWidgets.QMessageBox(self)
+            msg.setWindowTitle(self._texts["title"])
+            msg.setIcon(QtWidgets.QMessageBox.Information)
+            msg.setText(f"{self._texts['url_fallback']}\n{url}")
+            msg.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse |
+                                        QtCore.Qt.TextInteractionFlag.TextSelectableByKeyboard)
+            label = msg.findChild(QtWidgets.QLabel, "qt_msgbox_label")
+            if label is not None:
+                label.setFocusPolicy(QtCore.Qt.StrongFocus)
+            msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msg.exec_()
+        return opened
+
+    def _toggle_tiers(self, expanded: bool) -> None:
+        self.tiers_panel.setVisible(expanded)
+        self.btn_toggle_tiers.setText(self._texts["tiers_hide" if expanded else "tiers_show"])
 
     def _bullets_html(self, items: list[str]) -> str:
         lis = "".join(f"<li>{item}</li>" for item in items)

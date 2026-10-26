@@ -1,0 +1,3845 @@
+[
+  {
+    "idioma": "en",
+    "es": "Módulo de ruido: conectado a la disposición y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores rápido e ISO, mapas ráster y salidas GIS. La física actual es un flujo de cribado experimental con limitaciones documentadas.",
+    "valor": "Noise module: connected to the project layout and WT models, with calculation at receivers, per-model emission table, fast and ISO engines, raster maps and GIS outputs. The current physics is an experimental screening workflow with documented limitations.",
+    "tabla": "full",
+    "motivo": "L7-3, L7-4, S4-8: subtítulo sin entrada en inglés; fuente con inglés (glosario: motor rápido/ISO, ráster, cribado)",
+    "antes": "Módulo de ruido: conectado al layout y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores fast e ISO-aligned, mapas raster y salidas GIS. La física actual es un flujo de screening experimental con limitaciones documentadas."
+  },
+  {
+    "idioma": "fr",
+    "es": "Módulo de ruido: conectado a la disposición y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores rápido e ISO, mapas ráster y salidas GIS. La física actual es un flujo de cribado experimental con limitaciones documentadas.",
+    "valor": "Module de bruit : connecté à l’implantation et aux modèles d’éolienne du projet, avec calcul aux récepteurs, tableau d’émission par modèle, moteur rapide et moteur ISO, cartes raster et sorties SIG. La physique actuelle est un flux de présélection expérimental avec des limitations documentées.",
+    "tabla": "full",
+    "motivo": "L7-3, L7-4, S4-8: subtítulo sin entrada en inglés; fuente con inglés (glosario: motor rápido/ISO, ráster, cribado)",
+    "antes": "Módulo de ruido: conectado al layout y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores fast e ISO-aligned, mapas raster y salidas GIS. La física actual es un flujo de screening experimental con limitaciones documentadas."
+  },
+  {
+    "idioma": "de",
+    "es": "Módulo de ruido: conectado a la disposición y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores rápido e ISO, mapas ráster y salidas GIS. La física actual es un flujo de cribado experimental con limitaciones documentadas.",
+    "valor": "Schallmodul: mit dem Layout und den WT-Modellen des Projekts verbunden, mit Berechnung an Rezeptoren, Emissionstabelle je Modell, schnellem Rechenkern und ISO-Rechenkern, Rasterkarten und GIS-Ausgaben. Die aktuelle Physik ist ein experimenteller Screening-Workflow mit dokumentierten Einschränkungen.",
+    "tabla": "full",
+    "motivo": "L7-3, L7-4, S4-8: subtítulo sin entrada en inglés; fuente con inglés (glosario: motor rápido/ISO, ráster, cribado)",
+    "antes": "Módulo de ruido: conectado al layout y modelos WT del proyecto, con cálculo sobre receptores, tabla de emisión por modelo, motores fast e ISO-aligned, mapas raster y salidas GIS. La física actual es un flujo de screening experimental con limitaciones documentadas."
+  },
+  {
+    "idioma": "en",
+    "es": "Explica qué capas de turbinas se usan como fuentes acústicas",
+    "valor": "Explain which turbine layers are used as acoustic sources",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain which turbine layers are used as acoustic sources"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica qué capas de turbinas se usan como fuentes acústicas",
+    "valor": "Explique quelles couches d’éoliennes sont utilisées comme sources acoustiques",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain which turbine layers are used as acoustic sources"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica qué capas de turbinas se usan como fuentes acústicas",
+    "valor": "Erklärt, welche Windturbinen-Layer als akustische Quellen verwendet werden",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain which turbine layers are used as acoustic sources"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica las capas de receptores, las categorías y los límites de día y de noche",
+    "valor": "Explain receiver layers, categories and day/night limits",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain receiver layers, categories and day/night limits"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica las capas de receptores, las categorías y los límites de día y de noche",
+    "valor": "Explique les couches de récepteurs, les catégories et les limites de jour et de nuit",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain receiver layers, categories and day/night limits"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica las capas de receptores, las categorías y los límites de día y de noche",
+    "valor": "Erklärt Rezeptor-Layer, Kategorien sowie Tages- und Nachtgrenzwerte",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain receiver layers, categories and day/night limits"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica los límites de receptor manual, diurno y nocturno",
+    "valor": "Explain manual, day and night receiver limits",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain manual, day and night receiver limits"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica los límites de receptor manual, diurno y nocturno",
+    "valor": "Explique les limites manuelles, diurnes et nocturnes des récepteurs",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain manual, day and night receiver limits"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica los límites de receptor manual, diurno y nocturno",
+    "valor": "Erklärt manuelle Grenzwerte sowie Tages- und Nachtgrenzwerte der Rezeptoren",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain manual, day and night receiver limits"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM",
+    "valor": "Explain receiver height, maximum radius and DEM/DSM use",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain receiver height, maximum radius and DEM/DSM use"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM",
+    "valor": "Explique la hauteur du récepteur, le rayon maximal et l’utilisation du MNT/MNS",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain receiver height, maximum radius and DEM/DSM use"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica la altura de receptor, el radio máximo y el uso del MDT/DSM",
+    "valor": "Erklärt Rezeptorhöhe, maximalen Radius und DGM/DOM-Nutzung",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain receiver height, maximum radius and DEM/DSM use"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica el mapa GIS de ruido, la resolución del ráster y las isófonas",
+    "valor": "Explain the GIS noise map, raster resolution and isophones",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the GIS noise map, raster resolution and isophones"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica el mapa GIS de ruido, la resolución del ráster y las isófonas",
+    "valor": "Explique la carte SIG de bruit, la résolution du raster et les isophones",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the GIS noise map, raster resolution and isophones"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica el mapa GIS de ruido, la resolución del ráster y las isófonas",
+    "valor": "Erklärt die GIS-Schallkarte, die Rasterauflösung und die Isophonen",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the GIS noise map, raster resolution and isophones"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo",
+    "valor": "Explain simplified atmospheric attenuation, ground factor G and land-use layers",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain simplified atmospheric attenuation, ground factor G and land-use layers"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo",
+    "valor": "Explique l’atténuation atmosphérique simplifiée, le facteur de sol G et les couches d’occupation du sol",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain simplified atmospheric attenuation, ground factor G and land-use layers"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica la atenuación atmosférica simplificada, el factor de suelo G y las capas de uso del suelo",
+    "valor": "Erklärt die vereinfachte atmosphärische Dämpfung, den Bodenfaktor G und die Landnutzungs-Layer",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain simplified atmospheric attenuation, ground factor G and land-use layers"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica los motores de ruido rápido e ISO",
+    "valor": "Explain the fast and ISO noise engines",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the fast and ISO-aligned noise engines"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica los motores de ruido rápido e ISO",
+    "valor": "Explique les moteurs de bruit rapide et ISO",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the fast and ISO-aligned noise engines"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica los motores de ruido rápido e ISO",
+    "valor": "Erklärt den schnellen Rechenkern und den ISO-Rechenkern",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the fast and ISO-aligned noise engines"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica cómo influyen las condiciones atmosféricas en la absorción por bandas del motor ISO",
+    "valor": "Explain how atmospheric conditions affect the band absorption of the ISO engine",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain how atmospheric conditions affect ISO-band absorption"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica cómo influyen las condiciones atmosféricas en la absorción por bandas del motor ISO",
+    "valor": "Explique comment les conditions atmosphériques influent sur l’absorption par bandes du moteur ISO",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain how atmospheric conditions affect ISO-band absorption"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica cómo influyen las condiciones atmosféricas en la absorción por bandas del motor ISO",
+    "valor": "Erklärt, wie die atmosphärischen Bedingungen die bandweise Absorption des ISO-Rechenkerns beeinflussen",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain how atmospheric conditions affect ISO-band absorption"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica el LwA fijo, las curvas acústicas y el modo de peor caso",
+    "valor": "Explain fixed LwA, acoustic curves and worst-case mode",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain fixed LwA, acoustic curves and worst-case mode"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica el LwA fijo, las curvas acústicas y el modo de peor caso",
+    "valor": "Explique le LwA fixe, les courbes acoustiques et le mode du cas le plus défavorable",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain fixed LwA, acoustic curves and worst-case mode"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica el LwA fijo, las curvas acústicas y el modo de peor caso",
+    "valor": "Erklärt den festen LwA, die akustischen Kurven und den Modus des ungünstigsten Falls",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain fixed LwA, acoustic curves and worst-case mode"
+  },
+  {
+    "idioma": "en",
+    "es": "Explica la tabla de grupos fuente acústicos",
+    "valor": "Explain the acoustic source-group table",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the acoustic source-group table"
+  },
+  {
+    "idioma": "fr",
+    "es": "Explica la tabla de grupos fuente acústicos",
+    "valor": "Explique le tableau des groupes de sources acoustiques",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the acoustic source-group table"
+  },
+  {
+    "idioma": "de",
+    "es": "Explica la tabla de grupos fuente acústicos",
+    "valor": "Erklärt die Tabelle der akustischen Quellgruppen",
+    "tabla": "full",
+    "motivo": "S5-14, S6-7, S7-3: tooltip del botón de ayuda, fuente en inglés pasada a español",
+    "antes": "Explain the acoustic source-group table"
+  },
+  {
+    "idioma": "en",
+    "es": "Selecciona una o varias capas fuente detectadas/importadas en VelantisWind. Si marcas varias, el cálculo de ruido usará todas ellas a la vez.",
+    "valor": "Select one or more source layers detected/imported in VelantisWind. If you tick several, the noise calculation will use all of them at once.",
+    "tabla": "full",
+    "motivo": "S4-8: tooltip de la lista de fuentes sin entrada en inglés"
+  },
+  {
+    "idioma": "en",
+    "es": "Importar disposición CSV…",
+    "valor": "Import CSV layout…",
+    "tabla": "full",
+    "motivo": "S4-8: sin entrada en inglés"
+  },
+  {
+    "idioma": "en",
+    "es": "Usar disposiciones de turbinas seleccionadas/detectadas",
+    "valor": "Use selected/detected turbine layouts",
+    "tabla": "full",
+    "motivo": "S4-8, L7-4: sin entrada en inglés; concordancia en francés; glosario alemán (Windturbine)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Usar disposiciones de turbinas seleccionadas/detectadas",
+    "valor": "Utiliser les implantations d’éoliennes sélectionnées/détectées",
+    "tabla": "full",
+    "motivo": "S4-8, L7-4: sin entrada en inglés; concordancia en francés; glosario alemán (Windturbine) (sustituye a «Utiliser les implantations d’éoliennes sélectionnés/détectés»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Usar disposiciones de turbinas seleccionadas/detectadas",
+    "valor": "Ausgewählte/erkannte Windturbinenlayouts verwenden",
+    "tabla": "full",
+    "motivo": "S4-8, L7-4: sin entrada en inglés; concordancia en francés; glosario alemán (Windturbine) (sustituye a «Ausgewählte/erkannte Turbinenlayouts verwenden»)"
+  },
+  {
+    "idioma": "en",
+    "es": "📊 ISO - ISO 9613-2 por bandas",
+    "valor": "📊 ISO - octave-band ISO 9613-2",
+    "tabla": "full",
+    "motivo": "S6-6: sin entrada en alemán; glosario (motor ISO)",
+    "antes": "📊 ISO-aligned - ISO 9613-2 por bandas"
+  },
+  {
+    "idioma": "fr",
+    "es": "📊 ISO - ISO 9613-2 por bandas",
+    "valor": "📊 ISO - ISO 9613-2 par bandes",
+    "tabla": "full",
+    "motivo": "S6-6: sin entrada en alemán; glosario (motor ISO)",
+    "antes": "📊 ISO-aligned - ISO 9613-2 por bandas"
+  },
+  {
+    "idioma": "de",
+    "es": "📊 ISO - ISO 9613-2 por bandas",
+    "valor": "📊 ISO - ISO 9613-2 nach Bändern",
+    "tabla": "full",
+    "motivo": "S6-6: sin entrada en alemán; glosario (motor ISO)",
+    "antes": "📊 ISO-aligned - ISO 9613-2 por bandas"
+  },
+  {
+    "idioma": "en",
+    "es": "⛅ Condiciones atmosféricas (motor ISO)",
+    "valor": "⛅ Atmospheric conditions (ISO engine)",
+    "tabla": "full",
+    "motivo": "Mayúsculas del español y glosario (motor ISO)",
+    "antes": "⛅ Condiciones Atmosféricas (Motor ISO)"
+  },
+  {
+    "idioma": "fr",
+    "es": "⛅ Condiciones atmosféricas (motor ISO)",
+    "valor": "⛅ Conditions atmosphériques (moteur ISO)",
+    "tabla": "full",
+    "motivo": "Mayúsculas del español y glosario (motor ISO)",
+    "antes": "⛅ Condiciones Atmosféricas (Motor ISO)"
+  },
+  {
+    "idioma": "de",
+    "es": "⛅ Condiciones atmosféricas (motor ISO)",
+    "valor": "⛅ Atmosphärische Bedingungen (ISO-Rechenkern)",
+    "tabla": "full",
+    "motivo": "Mayúsculas del español y glosario (motor ISO)",
+    "antes": "⛅ Condiciones Atmosféricas (Motor ISO)"
+  },
+  {
+    "idioma": "en",
+    "es": "Temperatura, humedad y presión que usa el motor ISO.",
+    "valor": "Temperature, humidity and pressure used by the ISO engine.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Temperature, humidity and pressure used by the ISO-aligned engine."
+  },
+  {
+    "idioma": "fr",
+    "es": "Temperatura, humedad y presión que usa el motor ISO.",
+    "valor": "Température, humidité et pression utilisées par le moteur ISO.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Temperature, humidity and pressure used by the ISO-aligned engine."
+  },
+  {
+    "idioma": "de",
+    "es": "Temperatura, humedad y presión que usa el motor ISO.",
+    "valor": "Temperatur, Luftfeuchte und Druck, die der ISO-Rechenkern verwendet.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Temperature, humidity and pressure used by the ISO-aligned engine."
+  },
+  {
+    "idioma": "en",
+    "es": "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101,325 kPa. Usa un dato medido o ajustado por altitud si está disponible.",
+    "valor": "Local atmospheric pressure in kPa. Usual sea-level reference value: 101.325 kPa. Use a measured or altitude-adjusted value if available.",
+    "tabla": "full",
+    "motivo": "S7-10, S5-15: separador decimal en texto fijo",
+    "antes": "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible."
+  },
+  {
+    "idioma": "fr",
+    "es": "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101,325 kPa. Usa un dato medido o ajustado por altitud si está disponible.",
+    "valor": "Pression atmosphérique locale en kPa. Valeur de référence habituelle au niveau de la mer : 101,325 kPa. Utilisez une valeur mesurée ou corrigée de l’altitude si elle est disponible.",
+    "tabla": "full",
+    "motivo": "S7-10, S5-15: separador decimal en texto fijo",
+    "antes": "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible."
+  },
+  {
+    "idioma": "de",
+    "es": "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101,325 kPa. Usa un dato medido o ajustado por altitud si está disponible.",
+    "valor": "Lokaler Luftdruck in kPa. Üblicher Referenzwert auf Meereshöhe: 101,325 kPa. Verwenden Sie einen gemessenen oder an die Höhe angepassten Wert, falls verfügbar.",
+    "tabla": "full",
+    "motivo": "S7-10, S5-15: separador decimal en texto fijo",
+    "antes": "Presión atmosférica local en kPa. Valor de referencia habitual a nivel del mar: 101.325 kPa. Usa un dato medido o ajustado por altitud si está disponible."
+  },
+  {
+    "idioma": "en",
+    "es": "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101,325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.",
+    "valor": "💡 Use typical site conditions. If you do not have measured pressure, 101.325 kPa is a standard sea-level reference; at altitude it is usually lower.",
+    "tabla": "full",
+    "motivo": "S7-10, S5-15: separador decimal en texto fijo; sin entrada completa",
+    "antes": "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor."
+  },
+  {
+    "idioma": "fr",
+    "es": "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101,325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.",
+    "valor": "💡 Utilisez des conditions typiques du site. Si vous n’avez pas de pression mesurée, 101,325 kPa est une référence standard au niveau de la mer ; en altitude, elle est généralement plus faible.",
+    "tabla": "full",
+    "motivo": "S7-10, S5-15: separador decimal en texto fijo; sin entrada completa",
+    "antes": "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor."
+  },
+  {
+    "idioma": "de",
+    "es": "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101,325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor.",
+    "valor": "💡 Verwenden Sie typische Standortbedingungen. Wenn kein gemessener Druck vorliegt, ist 101,325 kPa ein Standardreferenzwert auf Meereshöhe; in der Höhe ist er meist geringer.",
+    "tabla": "full",
+    "motivo": "S7-10, S5-15: separador decimal en texto fijo; sin entrada completa",
+    "antes": "💡 Usa condiciones típicas del emplazamiento. Si no tienes presión medida, 101.325 kPa es una referencia estándar a nivel del mar; en altitud suele ser menor."
+  },
+  {
+    "idioma": "en",
+    "es": "Curva acústica LwA(ws)",
+    "valor": "Acoustic curve LwA(ws)",
+    "tabla": "full",
+    "motivo": "S7-2: fuente en inglés",
+    "antes": "Acoustic curve LwA(ws)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Curva acústica LwA(ws)",
+    "valor": "Courbe acoustique LwA(ws)",
+    "tabla": "full",
+    "motivo": "S7-2: fuente en inglés",
+    "antes": "Acoustic curve LwA(ws)"
+  },
+  {
+    "idioma": "de",
+    "es": "Curva acústica LwA(ws)",
+    "valor": "Akustische Kurve LwA(ws)",
+    "tabla": "full",
+    "motivo": "S7-2: fuente en inglés",
+    "antes": "Acoustic curve LwA(ws)"
+  },
+  {
+    "idioma": "en",
+    "es": "Revisa la emisión acústica asignada a cada grupo fuente antes de lanzar el cálculo.",
+    "valor": "Review the acoustic emission assigned to each source group before running the calculation.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Review the acoustic emission assigned to each source group before running the calculation."
+  },
+  {
+    "idioma": "fr",
+    "es": "Revisa la emisión acústica asignada a cada grupo fuente antes de lanzar el cálculo.",
+    "valor": "Vérifiez l’émission acoustique attribuée à chaque groupe de sources avant de lancer le calcul.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Review the acoustic emission assigned to each source group before running the calculation."
+  },
+  {
+    "idioma": "de",
+    "es": "Revisa la emisión acústica asignada a cada grupo fuente antes de lanzar el cálculo.",
+    "valor": "Prüfen Sie die jeder Quellgruppe zugewiesene akustische Emission, bevor Sie die Berechnung starten.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Review the acoustic emission assigned to each source group before running the calculation."
+  },
+  {
+    "idioma": "en",
+    "es": "Cada fila representa un grupo fuente acústico. Puedes renombrar el grupo o el parque y editar su LwA fijo directamente en la tabla.",
+    "valor": "Each row represents an acoustic source group. You can rename the group or the wind farm and edit its fixed LwA directly in the table.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table."
+  },
+  {
+    "idioma": "fr",
+    "es": "Cada fila representa un grupo fuente acústico. Puedes renombrar el grupo o el parque y editar su LwA fijo directamente en la tabla.",
+    "valor": "Chaque ligne représente un groupe de sources acoustiques. Vous pouvez renommer le groupe ou le parc et modifier son LwA fixe directement dans le tableau.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table."
+  },
+  {
+    "idioma": "de",
+    "es": "Cada fila representa un grupo fuente acústico. Puedes renombrar el grupo o el parque y editar su LwA fijo directamente en la tabla.",
+    "valor": "Jede Zeile steht für eine akustische Quellgruppe. Sie können die Gruppe oder den Windpark umbenennen und ihren festen LwA direkt in der Tabelle bearbeiten.",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "Each row represents an acoustic source group. You can rename the group/wind farm and edit its fixed LwA directly in the table."
+  },
+  {
+    "idioma": "en",
+    "es": "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros programas). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.",
+    "valor": "Off: the absolute OEM spectrum is used as is and the operational LwA of the group becomes the A-weighted sum of the spectrum (recommended for comparison with other software). On: the spectrum is used only as a shape and is shifted to reproduce the group LwA. In acoustic-curve mode the spectrum is always used as a shape.",
+    "tabla": "full",
+    "motivo": "S7-15: errata del español («otros software»)",
+    "antes": "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma."
+  },
+  {
+    "idioma": "fr",
+    "es": "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros programas). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.",
+    "valor": "Désactivé : le spectre OEM absolu est utilisé tel quel et le LwA opérationnel du groupe devient la somme pondérée A du spectre (recommandé pour comparer avec d’autres logiciels). Activé : le spectre n’est utilisé que comme forme et il est décalé pour reproduire le LwA du groupe. En mode courbe acoustique, le spectre est toujours utilisé comme forme.",
+    "tabla": "full",
+    "motivo": "S7-15: errata del español («otros software»)",
+    "antes": "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma."
+  },
+  {
+    "idioma": "de",
+    "es": "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros programas). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma.",
+    "valor": "Deaktiviert: Das absolute OEM-Spektrum wird unverändert verwendet, und der betriebliche LwA der Gruppe wird zur A-bewerteten Summe des Spektrums (empfohlen für den Vergleich mit anderer Software). Aktiviert: Das Spektrum wird nur als Form verwendet und so verschoben, dass es den LwA der Gruppe wiedergibt. Im Modus akustische Kurve wird das Spektrum immer als Form verwendet.",
+    "tabla": "full",
+    "motivo": "S7-15: errata del español («otros software»)",
+    "antes": "Desactivado: el espectro OEM absoluto se usa tal cual y el LwA operativo del grupo pasa a ser la suma ponderada A del espectro (recomendado para comparar con otros software). Activado: el espectro se usa solo como forma y se desplaza para reproducir el LwA del grupo. En modo curva acústica el espectro se usa siempre como forma."
+  },
+  {
+    "idioma": "de",
+    "es": "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el complemento evaluará la emisión a una velocidad concreta o en peor caso.",
+    "valor": "Sie können den festen LwA direkt in der Tabelle der akustischen Quellgruppen bearbeiten oder je Gruppe eine akustische ws/LwA-Kurve importieren. Wenn Sie den Kurvenmodus aktivieren, bewertet das Plugin die Emission bei einer bestimmten Windgeschwindigkeit oder im ungünstigsten Fall.",
+    "tabla": "full",
+    "motivo": "L7-2, S6-6: sin entrada en alemán (salía a medias); glosario francés (groupe de sources, cas le plus défavorable)"
+  },
+  {
+    "idioma": "de",
+    "es": "LwA fijo [dB(A)]",
+    "valor": "Fester LwA [dB(A)]",
+    "tabla": "full",
+    "motivo": "S6-6: cabecera sin entrada en alemán"
+  },
+  {
+    "idioma": "de",
+    "es": "Parque",
+    "valor": "Windpark",
+    "tabla": "full",
+    "motivo": "S6-6: cabecera sin entrada en alemán"
+  },
+  {
+    "idioma": "de",
+    "es": "Turbinas",
+    "valor": "Windturbinen",
+    "tabla": "full",
+    "motivo": "Glosario alemán (Windturbine); cabecera de la tabla de grupos fuente (sustituye a «Turbinen»)"
+  },
+  {
+    "idioma": "en",
+    "es": "Velocidad eval. [m/s]:",
+    "valor": "Evaluation wind speed [m/s]:",
+    "tabla": "full",
+    "motivo": "S4-14: es la velocidad del viento; alemán a medias («Geschwindigkeit eval.») (sustituye a «Evaluation speed [m/s]:»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Velocidad eval. [m/s]:",
+    "valor": "Vitesse du vent d’évaluation [m/s] :",
+    "tabla": "full",
+    "motivo": "S4-14: es la velocidad del viento; alemán a medias («Geschwindigkeit eval.») (sustituye a «Vitesse d’évaluation [m/s] :»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Velocidad eval. [m/s]:",
+    "valor": "Auswertungs-Windgeschwindigkeit [m/s]:",
+    "tabla": "full",
+    "motivo": "S4-14: es la velocidad del viento; alemán a medias («Geschwindigkeit eval.») (sustituye a «Geschwindigkeit eval. [m/s]:»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Usar peor caso de la curva",
+    "valor": "Utiliser le cas le plus défavorable de la courbe",
+    "tabla": "full",
+    "motivo": "S5-11: glosario (peor caso) (sustituye a «Utiliser le pire cas de la courbe»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Usar peor caso de la curva",
+    "valor": "Ungünstigsten Fall der Kurve verwenden",
+    "tabla": "full",
+    "motivo": "S5-11: glosario (peor caso) (sustituye a «Schlechtesten Fall der Kurve verwenden»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "LwA fijo por grupo fuente",
+    "valor": "LwA fixe par groupe de sources",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «LwA fixe par groupe source»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Grupo fuente",
+    "valor": "Groupe de sources",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Groupe source»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Limpiar curva del grupo fuente seleccionado",
+    "valor": "Effacer la courbe du groupe de sources sélectionné",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Effacer la courbe du groupe source sélectionné»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Limpiar espectro del grupo seleccionado",
+    "valor": "Effacer le spectre du groupe de sources sélectionné",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Effacer le spectre du groupe source sélectionné»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Desde capa de uso del suelo",
+    "valor": "Depuis une couche d’occupation du sol",
+    "tabla": "full",
+    "motivo": "S5-11: glosario francés (occupation du sol) (sustituye a «Depuis une couche d’usage du sol»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Capa uso del suelo (opcional):",
+    "valor": "Couche d’occupation du sol (optionnelle) :",
+    "tabla": "full",
+    "motivo": "S5-11: glosario francés (occupation du sol) (sustituye a «Couche d’usage du sol (optionnelle) :»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "MDT / DSM (opcional):",
+    "valor": "MNT / MNS (optionnel) :",
+    "tabla": "full",
+    "motivo": "S5-11, S6-9: glosario (MNT/MNS, DGM/DOM) (sustituye a «MNT / DSM (optionnel) :»)"
+  },
+  {
+    "idioma": "de",
+    "es": "MDT / DSM (opcional):",
+    "valor": "DGM / DOM (optional):",
+    "tabla": "full",
+    "motivo": "S5-11, S6-9: glosario (MNT/MNS, DGM/DOM) (sustituye a «DEM / DSM (optional):»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Motor de cálculo:",
+    "valor": "Rechenkern:",
+    "tabla": "full",
+    "motivo": "S6-9: glosario alemán (Rechenkern) (sustituye a «Berechnungs-Engine:»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Motor rápido: cálculo simplificado para cribado acústico\nMotor ISO: cálculo por bandas según ISO 9613-2:2024",
+    "valor": "Moteur rapide : calcul simplifié pour la présélection acoustique\nMoteur ISO : calcul par bandes selon ISO 9613-2:2024",
+    "tabla": "full",
+    "motivo": "S5-11, S6-9: glosario (présélection, Rechenkern) (sustituye a «Moteur rapide : calcul simplifié pour le pré-diagnostic acoustique\nMoteur ISO : calcul par bandes selon ISO 9613-2:2024»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Motor rápido: cálculo simplificado para cribado acústico\nMotor ISO: cálculo por bandas según ISO 9613-2:2024",
+    "valor": "Schneller Rechenkern: vereinfachte Berechnung für akustisches Screening\nISO-Rechenkern: Berechnung nach Bändern gemäß ISO 9613-2:2024",
+    "tabla": "full",
+    "motivo": "S5-11, S6-9: glosario (présélection, Rechenkern) (sustituye a «Schnelle Engine: vereinfachte Berechnung für akustisches Screening\nISO-Engine: Berechnung nach Bändern gemäß ISO 9613-2:2024»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "En modo curva, cada grupo fuente puede usar un CSV ws/LwA distinto.",
+    "valor": "En mode courbe, chaque groupe de sources peut utiliser un CSV ws/LwA différent.",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «En mode courbe, chaque groupe source peut utiliser un CSV ws/LwA différent.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Configuración de grupos fuente acústicos",
+    "valor": "Configuration des groupes de sources acoustiques",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Configuration des groupes source acoustiques»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Importar curva acústica para el grupo fuente seleccionado…",
+    "valor": "Importer une courbe acoustique pour le groupe de sources sélectionné…",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Importer une courbe acoustique pour le groupe source sélectionné…»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Importar espectro OEM (CSV por bandas de octava) para el grupo seleccionado…",
+    "valor": "Importer le spectre OEM (CSV par bandes d’octave) pour le groupe de sources sélectionné…",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Importer le spectre OEM (CSV par bandes d’octave) pour le groupe source sélectionné…»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Editar espectro del grupo seleccionado…",
+    "valor": "Modifier le spectre du groupe de sources sélectionné…",
+    "tabla": "full",
+    "motivo": "Glosario francés (groupe de sources) (sustituye a «Modifier le spectre du groupe source sélectionné…»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "— Sin capa de uso del suelo —",
+    "valor": "— Aucune couche d’occupation du sol —",
+    "tabla": "full",
+    "motivo": "S4-5: concordancia en francés («Aucun couche») (sustituye a «— Aucun couche d’occupation du sol —»)"
+  },
+  {
+    "idioma": "de",
+    "es": "No seleccionado",
+    "valor": "Nicht ausgewählt",
+    "tabla": "full",
+    "motivo": "S6-6: alemán mezclado («No ausgewählt») (sustituye a «No ausgewählt»)",
+    "antes": "Not selected"
+  },
+  {
+    "idioma": "en",
+    "es": "— Sin MDT/DSM —",
+    "valor": "— No DEM/DSM —",
+    "tabla": "full",
+    "motivo": "S4-8, S5-7, S6-6: sin entrada"
+  },
+  {
+    "idioma": "fr",
+    "es": "— Sin MDT/DSM —",
+    "valor": "— Aucun MNT/MNS —",
+    "tabla": "full",
+    "motivo": "S4-8, S5-7, S6-6: sin entrada"
+  },
+  {
+    "idioma": "de",
+    "es": "— Sin MDT/DSM —",
+    "valor": "— Kein DGM/DOM —",
+    "tabla": "full",
+    "motivo": "S4-8, S5-7, S6-6: sin entrada"
+  },
+  {
+    "idioma": "en",
+    "es": "— Selecciona la capa de receptores —",
+    "valor": "— Select receiver layer —",
+    "tabla": "full",
+    "motivo": "S7-2, S8-11: fuente en inglés",
+    "antes": "— Select receiver layer —"
+  },
+  {
+    "idioma": "fr",
+    "es": "— Selecciona la capa de receptores —",
+    "valor": "— Sélectionnez la couche de récepteurs —",
+    "tabla": "full",
+    "motivo": "S7-2, S8-11: fuente en inglés",
+    "antes": "— Select receiver layer —"
+  },
+  {
+    "idioma": "de",
+    "es": "— Selecciona la capa de receptores —",
+    "valor": "— Rezeptor-Layer auswählen —",
+    "tabla": "full",
+    "motivo": "S7-2, S8-11: fuente en inglés",
+    "antes": "— Select receiver layer —"
+  },
+  {
+    "idioma": "en",
+    "es": "Nivel de emisión acústica fijo de este grupo fuente. Edítalo aquí antes de lanzar el cálculo.",
+    "valor": "Fixed acoustic emission level for this source group. Edit it here before running the calculation.",
+    "tabla": "full",
+    "motivo": "S4-10, S7-2: fuente en inglés",
+    "antes": "Fixed acoustic emission level for this source group. Edit it here before running the calculation."
+  },
+  {
+    "idioma": "fr",
+    "es": "Nivel de emisión acústica fijo de este grupo fuente. Edítalo aquí antes de lanzar el cálculo.",
+    "valor": "Niveau d’émission acoustique fixe de ce groupe de sources. Modifiez-le ici avant de lancer le calcul.",
+    "tabla": "full",
+    "motivo": "S4-10, S7-2: fuente en inglés",
+    "antes": "Fixed acoustic emission level for this source group. Edit it here before running the calculation."
+  },
+  {
+    "idioma": "de",
+    "es": "Nivel de emisión acústica fijo de este grupo fuente. Edítalo aquí antes de lanzar el cálculo.",
+    "valor": "Fester akustischer Emissionspegel dieser Quellgruppe. Bearbeiten Sie ihn hier, bevor Sie die Berechnung starten.",
+    "tabla": "full",
+    "motivo": "S4-10, S7-2: fuente en inglés",
+    "antes": "Fixed acoustic emission level for this source group. Edit it here before running the calculation."
+  },
+  {
+    "idioma": "en",
+    "es": "Edita el LwA fijo de este grupo fuente acústico.",
+    "valor": "Edit the fixed LwA for this acoustic source group.",
+    "tabla": "full",
+    "motivo": "S4-10, S7-2: fuente en inglés",
+    "antes": "Edit the fixed LwA for this acoustic source group."
+  },
+  {
+    "idioma": "fr",
+    "es": "Edita el LwA fijo de este grupo fuente acústico.",
+    "valor": "Modifiez le LwA fixe de ce groupe de sources acoustiques.",
+    "tabla": "full",
+    "motivo": "S4-10, S7-2: fuente en inglés",
+    "antes": "Edit the fixed LwA for this acoustic source group."
+  },
+  {
+    "idioma": "de",
+    "es": "Edita el LwA fijo de este grupo fuente acústico.",
+    "valor": "Bearbeiten Sie den festen LwA dieser akustischen Quellgruppe.",
+    "tabla": "full",
+    "motivo": "S4-10, S7-2: fuente en inglés",
+    "antes": "Edit the fixed LwA for this acoustic source group."
+  },
+  {
+    "idioma": "de",
+    "es": "polígonos",
+    "valor": "Polygone",
+    "tabla": "full",
+    "motivo": "S8-11: etiqueta de geometría del combo de receptores, fuente en inglés",
+    "antes": "polygons"
+  },
+  {
+    "idioma": "en",
+    "es": "vectorial",
+    "valor": "vector",
+    "tabla": "full",
+    "motivo": "S8-11: etiqueta de geometría del combo de receptores, fuente en inglés",
+    "antes": "vector"
+  },
+  {
+    "idioma": "fr",
+    "es": "vectorial",
+    "valor": "vecteur",
+    "tabla": "full",
+    "motivo": "S8-11: etiqueta de geometría del combo de receptores, fuente en inglés",
+    "antes": "vector"
+  },
+  {
+    "idioma": "de",
+    "es": "vectorial",
+    "valor": "Vektor",
+    "tabla": "full",
+    "motivo": "S8-11: etiqueta de geometría del combo de receptores, fuente en inglés",
+    "antes": "vector"
+  },
+  {
+    "idioma": "en",
+    "es": "Curva acústica ws/LwA",
+    "valor": "Acoustic curve ws/LwA",
+    "tabla": "full",
+    "motivo": "S7-2: título del diálogo de archivo, fuente en inglés",
+    "antes": "Acoustic curve ws/LwA"
+  },
+  {
+    "idioma": "fr",
+    "es": "Curva acústica ws/LwA",
+    "valor": "Courbe acoustique ws/LwA",
+    "tabla": "full",
+    "motivo": "S7-2: título del diálogo de archivo, fuente en inglés",
+    "antes": "Acoustic curve ws/LwA"
+  },
+  {
+    "idioma": "de",
+    "es": "Curva acústica ws/LwA",
+    "valor": "Akustische Kurve ws/LwA",
+    "tabla": "full",
+    "motivo": "S7-2: título del diálogo de archivo, fuente en inglés",
+    "antes": "Acoustic curve ws/LwA"
+  },
+  {
+    "idioma": "en",
+    "es": "Método ISO: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))",
+    "valor": "ISO method: ISO 9613-2 with octave bands (Adiv + Aatm(T,RH,P) + Agr(f))",
+    "tabla": "full",
+    "motivo": "S4-5, S5-7: se ponía sin traducir al cambiar de motor; glosario (motor ISO)",
+    "antes": "Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))"
+  },
+  {
+    "idioma": "fr",
+    "es": "Método ISO: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))",
+    "valor": "Méthode ISO : ISO 9613-2 par bandes d’octave (Adiv + Aatm(T,RH,P) + Agr(f))",
+    "tabla": "full",
+    "motivo": "S4-5, S5-7: se ponía sin traducir al cambiar de motor; glosario (motor ISO)",
+    "antes": "Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))"
+  },
+  {
+    "idioma": "de",
+    "es": "Método ISO: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))",
+    "valor": "ISO-Methode: ISO 9613-2 mit Oktavbändern (Adiv + Aatm(T,RH,P) + Agr(f))",
+    "tabla": "full",
+    "motivo": "S4-5, S5-7: se ponía sin traducir al cambiar de motor; glosario (motor ISO)",
+    "antes": "Método ISO-aligned: ISO 9613-2 con bandas de octava (Adiv + Aatm(T,RH,P) + Agr(f))"
+  },
+  {
+    "idioma": "en",
+    "es": "α se calcula automáticamente por banda en el motor ISO",
+    "valor": "α is calculated automatically per band in the ISO engine",
+    "tabla": "full",
+    "motivo": "S4-5, S5-7: se ponía sin traducir al cambiar de motor",
+    "antes": "α se calcula automáticamente por banda en Motor ISO"
+  },
+  {
+    "idioma": "fr",
+    "es": "α se calcula automáticamente por banda en el motor ISO",
+    "valor": "α est calculé automatiquement par bande dans le moteur ISO",
+    "tabla": "full",
+    "motivo": "S4-5, S5-7: se ponía sin traducir al cambiar de motor",
+    "antes": "α se calcula automáticamente por banda en Motor ISO"
+  },
+  {
+    "idioma": "de",
+    "es": "α se calcula automáticamente por banda en el motor ISO",
+    "valor": "α wird im ISO-Rechenkern automatisch je Band berechnet",
+    "tabla": "full",
+    "motivo": "S4-5, S5-7: se ponía sin traducir al cambiar de motor",
+    "antes": "α se calcula automáticamente por banda en Motor ISO"
+  },
+  {
+    "idioma": "en",
+    "es": "No se ha detectado ninguna disposición en el grupo de coordenadas por modelo",
+    "valor": "No layout detected in the coordinate-by-model group",
+    "tabla": "full",
+    "motivo": "S7-2, L7-4: fuente en inglés; concordancia en francés",
+    "antes": "No layout detected in the coordinate-by-model group"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se ha detectado ninguna disposición en el grupo de coordenadas por modelo",
+    "valor": "Aucune implantation détectée dans le groupe des coordonnées par modèle",
+    "tabla": "full",
+    "motivo": "S7-2, L7-4: fuente en inglés; concordancia en francés",
+    "antes": "No layout detected in the coordinate-by-model group"
+  },
+  {
+    "idioma": "de",
+    "es": "No se ha detectado ninguna disposición en el grupo de coordenadas por modelo",
+    "valor": "Kein Layout in der Gruppe der Koordinaten je Modell erkannt",
+    "tabla": "full",
+    "motivo": "S7-2, L7-4: fuente en inglés; concordancia en francés",
+    "antes": "No layout detected in the coordinate-by-model group"
+  },
+  {
+    "idioma": "en",
+    "es": "{models} modelo(s) WT · {turbines} turbina(s)",
+    "valor": "{models} WT model(s) · {turbines} turbine(s)",
+    "tabla": "full",
+    "motivo": "S7-2, S8-11: fuente en inglés; plantilla antes de los datos"
+  },
+  {
+    "idioma": "fr",
+    "es": "{models} modelo(s) WT · {turbines} turbina(s)",
+    "valor": "{models} modèle(s) d’éolienne · {turbines} éolienne(s)",
+    "tabla": "full",
+    "motivo": "S7-2, S8-11: fuente en inglés; plantilla antes de los datos"
+  },
+  {
+    "idioma": "de",
+    "es": "{models} modelo(s) WT · {turbines} turbina(s)",
+    "valor": "{models} WT-Modell(e) · {turbines} Windturbine(n)",
+    "tabla": "full",
+    "motivo": "S7-2, S8-11: fuente en inglés; plantilla antes de los datos"
+  },
+  {
+    "idioma": "en",
+    "es": "Mallas WAsP: {path}",
+    "valor": "WAsP grids: {path}",
+    "tabla": "full",
+    "motivo": "S8-11: fuente en inglés; plantilla antes de la ruta"
+  },
+  {
+    "idioma": "fr",
+    "es": "Mallas WAsP: {path}",
+    "valor": "Grilles WAsP : {path}",
+    "tabla": "full",
+    "motivo": "S8-11: fuente en inglés; plantilla antes de la ruta"
+  },
+  {
+    "idioma": "de",
+    "es": "Mallas WAsP: {path}",
+    "valor": "WAsP-Gitter: {path}",
+    "tabla": "full",
+    "motivo": "S8-11: fuente en inglés; plantilla antes de la ruta"
+  },
+  {
+    "idioma": "en",
+    "es": "Todavía no hay ningún recurso seleccionado",
+    "valor": "No resource selected yet",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "No resource selected yet"
+  },
+  {
+    "idioma": "fr",
+    "es": "Todavía no hay ningún recurso seleccionado",
+    "valor": "Aucune ressource sélectionnée pour l’instant",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "No resource selected yet"
+  },
+  {
+    "idioma": "de",
+    "es": "Todavía no hay ningún recurso seleccionado",
+    "valor": "Noch keine Ressource ausgewählt",
+    "tabla": "full",
+    "motivo": "S5-14, S7-2: fuente en inglés",
+    "antes": "No resource selected yet"
+  },
+  {
+    "idioma": "en",
+    "es": "{n} turbina(s)",
+    "valor": "{n} turbine(s)",
+    "tabla": "full",
+    "motivo": "S6-7: lista de fuentes, fuente en inglés"
+  },
+  {
+    "idioma": "fr",
+    "es": "{n} turbina(s)",
+    "valor": "{n} éolienne(s)",
+    "tabla": "full",
+    "motivo": "S6-7: lista de fuentes, fuente en inglés"
+  },
+  {
+    "idioma": "de",
+    "es": "{n} turbina(s)",
+    "valor": "{n} Windturbine(n)",
+    "tabla": "full",
+    "motivo": "S6-7: lista de fuentes, fuente en inglés"
+  },
+  {
+    "idioma": "en",
+    "es": "Detectado desde la capa fuente del proyecto",
+    "valor": "Detected from the project source layer",
+    "tabla": "full",
+    "motivo": "S4-10: fuente en inglés",
+    "antes": "Detected from project source layer"
+  },
+  {
+    "idioma": "fr",
+    "es": "Detectado desde la capa fuente del proyecto",
+    "valor": "Détecté depuis la couche source du projet",
+    "tabla": "full",
+    "motivo": "S4-10: fuente en inglés",
+    "antes": "Detected from project source layer"
+  },
+  {
+    "idioma": "de",
+    "es": "Detectado desde la capa fuente del proyecto",
+    "valor": "Aus dem Quell-Layer des Projekts erkannt",
+    "tabla": "full",
+    "motivo": "S4-10: fuente en inglés",
+    "antes": "Detected from project source layer"
+  },
+  {
+    "idioma": "en",
+    "es": "sin curva -> LwA fijo de respaldo",
+    "valor": "no curve -> fixed LwA fallback",
+    "tabla": "full",
+    "motivo": "S4-10: fuente en inglés"
+  },
+  {
+    "idioma": "fr",
+    "es": "sin curva -> LwA fijo de respaldo",
+    "valor": "pas de courbe -> LwA fixe de secours",
+    "tabla": "full",
+    "motivo": "S4-10: fuente en inglés"
+  },
+  {
+    "idioma": "de",
+    "es": "sin curva -> LwA fijo de respaldo",
+    "valor": "keine Kurve -> fester LwA als Rückfall",
+    "tabla": "full",
+    "motivo": "S4-10: fuente en inglés"
+  },
+  {
+    "idioma": "en",
+    "es": "layout importado desde {source}",
+    "valor": "layout imported from {source}",
+    "tabla": "full",
+    "motivo": "S6-7: notas de la tabla, fuente en inglés",
+    "antes": "layout imported from "
+  },
+  {
+    "idioma": "fr",
+    "es": "layout importado desde {source}",
+    "valor": "implantation importée depuis {source}",
+    "tabla": "full",
+    "motivo": "S6-7: notas de la tabla, fuente en inglés",
+    "antes": "layout imported from "
+  },
+  {
+    "idioma": "de",
+    "es": "layout importado desde {source}",
+    "valor": "Layout importiert aus {source}",
+    "tabla": "full",
+    "motivo": "S6-7: notas de la tabla, fuente en inglés",
+    "antes": "layout imported from "
+  },
+  {
+    "idioma": "en",
+    "es": "layout importado desde CSV",
+    "valor": "layout imported from CSV",
+    "tabla": "full",
+    "motivo": "S6-7: notas de la tabla, fuente en inglés",
+    "antes": "layout imported from CSV"
+  },
+  {
+    "idioma": "fr",
+    "es": "layout importado desde CSV",
+    "valor": "implantation importée depuis un CSV",
+    "tabla": "full",
+    "motivo": "S6-7: notas de la tabla, fuente en inglés",
+    "antes": "layout imported from CSV"
+  },
+  {
+    "idioma": "de",
+    "es": "layout importado desde CSV",
+    "valor": "Layout aus CSV importiert",
+    "tabla": "full",
+    "motivo": "S6-7: notas de la tabla, fuente en inglés",
+    "antes": "layout imported from CSV"
+  },
+  {
+    "idioma": "fr",
+    "es": "peor caso",
+    "valor": "cas le plus défavorable",
+    "tabla": "full",
+    "motivo": "Sin entrada en alemán; glosario francés (sustituye a «pire cas»)"
+  },
+  {
+    "idioma": "de",
+    "es": "peor caso",
+    "valor": "ungünstigster Fall",
+    "tabla": "full",
+    "motivo": "Sin entrada en alemán; glosario francés"
+  },
+  {
+    "idioma": "de",
+    "es": "inválida",
+    "valor": "ungültig",
+    "tabla": "full",
+    "motivo": "Sin entrada en alemán"
+  },
+  {
+    "idioma": "en",
+    "es": "Ruido · Curva acústica",
+    "valor": "Noise · Acoustic curve",
+    "tabla": "full",
+    "motivo": "S10-3: título en inglés",
+    "antes": "Noise · Acoustic curve"
+  },
+  {
+    "idioma": "fr",
+    "es": "Ruido · Curva acústica",
+    "valor": "Bruit · Courbe acoustique",
+    "tabla": "full",
+    "motivo": "S10-3: título en inglés",
+    "antes": "Noise · Acoustic curve"
+  },
+  {
+    "idioma": "de",
+    "es": "Ruido · Curva acústica",
+    "valor": "Schall · Akustische Kurve",
+    "tabla": "full",
+    "motivo": "S10-3: título en inglés",
+    "antes": "Noise · Acoustic curve"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo leer la curva acústica:",
+    "valor": "Could not read the acoustic curve:",
+    "tabla": "full",
+    "motivo": "S10-3: fuente en inglés",
+    "antes": "Could not read the acoustic curve:\n"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo leer la curva acústica:",
+    "valor": "Impossible de lire la courbe acoustique :",
+    "tabla": "full",
+    "motivo": "S10-3: fuente en inglés",
+    "antes": "Could not read the acoustic curve:\n"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo leer la curva acústica:",
+    "valor": "Die akustische Kurve konnte nicht gelesen werden:",
+    "tabla": "full",
+    "motivo": "S10-3: fuente en inglés",
+    "antes": "Could not read the acoustic curve:\n"
+  },
+  {
+    "idioma": "en",
+    "es": "Ruido · Importar layout",
+    "valor": "Noise · Import layout",
+    "tabla": "full",
+    "motivo": "S10-3: título en inglés",
+    "antes": "Noise · Import layout"
+  },
+  {
+    "idioma": "fr",
+    "es": "Ruido · Importar layout",
+    "valor": "Bruit · Importer une implantation",
+    "tabla": "full",
+    "motivo": "S10-3: título en inglés",
+    "antes": "Noise · Import layout"
+  },
+  {
+    "idioma": "de",
+    "es": "Ruido · Importar layout",
+    "valor": "Schall · Layout importieren",
+    "tabla": "full",
+    "motivo": "S10-3: título en inglés",
+    "antes": "Noise · Import layout"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo importar el layout de turbinas:",
+    "valor": "Could not import the turbine layout:",
+    "tabla": "full",
+    "motivo": "S10-3: fuente en inglés",
+    "antes": "Could not import the turbine layout:\n"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo importar el layout de turbinas:",
+    "valor": "Impossible d’importer l’implantation d’éoliennes :",
+    "tabla": "full",
+    "motivo": "S10-3: fuente en inglés",
+    "antes": "Could not import the turbine layout:\n"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo importar el layout de turbinas:",
+    "valor": "Das Windturbinenlayout konnte nicht importiert werden:",
+    "tabla": "full",
+    "motivo": "S10-3: fuente en inglés",
+    "antes": "Could not import the turbine layout:\n"
+  },
+  {
+    "idioma": "en",
+    "es": "Se ha importado «{layer}» con {n} turbina(s).",
+    "valor": "Imported “{layer}” with {n} turbine(s).",
+    "tabla": "full",
+    "motivo": "S10-3, S6-7: fuente en inglés; plantilla antes de los datos"
+  },
+  {
+    "idioma": "fr",
+    "es": "Se ha importado «{layer}» con {n} turbina(s).",
+    "valor": "« {layer} » a été importé avec {n} éolienne(s).",
+    "tabla": "full",
+    "motivo": "S10-3, S6-7: fuente en inglés; plantilla antes de los datos"
+  },
+  {
+    "idioma": "de",
+    "es": "Se ha importado «{layer}» con {n} turbina(s).",
+    "valor": "„{layer}“ wurde mit {n} Windturbine(n) importiert.",
+    "tabla": "full",
+    "motivo": "S10-3, S6-7: fuente en inglés; plantilla antes de los datos"
+  },
+  {
+    "idioma": "en",
+    "es": "espectro OEM: {file}",
+    "valor": "OEM spectrum: {file}",
+    "tabla": "full",
+    "motivo": "S10-13: plantilla, para la puntuación francesa"
+  },
+  {
+    "idioma": "fr",
+    "es": "espectro OEM: {file}",
+    "valor": "spectre OEM : {file}",
+    "tabla": "full",
+    "motivo": "S10-13: plantilla, para la puntuación francesa"
+  },
+  {
+    "idioma": "de",
+    "es": "espectro OEM: {file}",
+    "valor": "OEM-Spektrum: {file}",
+    "tabla": "full",
+    "motivo": "S10-13: plantilla, para la puntuación francesa"
+  },
+  {
+    "idioma": "en",
+    "es": "Formato: {format}",
+    "valor": "Format: {format}",
+    "tabla": "full",
+    "motivo": "S10-13: plantilla, para la puntuación francesa"
+  },
+  {
+    "idioma": "fr",
+    "es": "Formato: {format}",
+    "valor": "Format : {format}",
+    "tabla": "full",
+    "motivo": "S10-13: plantilla, para la puntuación francesa"
+  },
+  {
+    "idioma": "de",
+    "es": "Formato: {format}",
+    "valor": "Format: {format}",
+    "tabla": "full",
+    "motivo": "S10-13: plantilla, para la puntuación francesa"
+  },
+  {
+    "idioma": "en",
+    "es": "absoluto",
+    "valor": "absolute",
+    "tabla": "full",
+    "motivo": "S10-13: el formato salía en inglés («absolute»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "absoluto",
+    "valor": "absolu",
+    "tabla": "full",
+    "motivo": "S10-13: el formato salía en inglés («absolute»)"
+  },
+  {
+    "idioma": "de",
+    "es": "absoluto",
+    "valor": "absolut",
+    "tabla": "full",
+    "motivo": "S10-13: el formato salía en inglés («absolute»)"
+  },
+  {
+    "idioma": "en",
+    "es": "relativo",
+    "valor": "relative",
+    "tabla": "full",
+    "motivo": "S10-13: el formato salía en inglés («relative»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "relativo",
+    "valor": "relatif",
+    "tabla": "full",
+    "motivo": "S10-13: el formato salía en inglés («relative»)"
+  },
+  {
+    "idioma": "de",
+    "es": "relativo",
+    "valor": "relativ",
+    "tabla": "full",
+    "motivo": "S10-13: el formato salía en inglés («relative»)"
+  },
+  {
+    "idioma": "en",
+    "es": "Ruido · Cálculo",
+    "valor": "Noise · Calculation",
+    "tabla": "full",
+    "motivo": "S7-6: título en inglés",
+    "antes": "Noise · Calculation"
+  },
+  {
+    "idioma": "fr",
+    "es": "Ruido · Cálculo",
+    "valor": "Bruit · Calcul",
+    "tabla": "full",
+    "motivo": "S7-6: título en inglés",
+    "antes": "Noise · Calculation"
+  },
+  {
+    "idioma": "de",
+    "es": "Ruido · Cálculo",
+    "valor": "Schall · Berechnung",
+    "tabla": "full",
+    "motivo": "S7-6: título en inglés",
+    "antes": "Noise · Calculation"
+  },
+  {
+    "idioma": "en",
+    "es": "Ruido · Ráster",
+    "valor": "Noise · Raster",
+    "tabla": "full",
+    "motivo": "S7-6: título en inglés",
+    "antes": "Noise · Raster"
+  },
+  {
+    "idioma": "fr",
+    "es": "Ruido · Ráster",
+    "valor": "Bruit · Raster",
+    "tabla": "full",
+    "motivo": "S7-6: título en inglés",
+    "antes": "Noise · Raster"
+  },
+  {
+    "idioma": "de",
+    "es": "Ruido · Ráster",
+    "valor": "Schall · Raster",
+    "tabla": "full",
+    "motivo": "S7-6: título en inglés",
+    "antes": "Noise · Raster"
+  },
+  {
+    "idioma": "en",
+    "es": "No se puede lanzar el cálculo:",
+    "valor": "The calculation cannot be started:",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; S4-19",
+    "antes": "No se puede lanzar el cálculo:\n- "
+  },
+  {
+    "idioma": "fr",
+    "es": "No se puede lanzar el cálculo:",
+    "valor": "Impossible de lancer le calcul :",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; S4-19",
+    "antes": "No se puede lanzar el cálculo:\n- "
+  },
+  {
+    "idioma": "de",
+    "es": "No se puede lanzar el cálculo:",
+    "valor": "Die Berechnung kann nicht gestartet werden:",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; S4-19",
+    "antes": "No se puede lanzar el cálculo:\n- "
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: esta configuración usa ruta síncrona porque {reason}.",
+    "valor": "• WARNING: this configuration uses the synchronous path because {reason}.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: esta configuración usa ruta síncrona porque {reason}.",
+    "valor": "• AVERTISSEMENT : cette configuration utilise le traitement synchrone car {reason}.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: esta configuración usa ruta síncrona porque {reason}.",
+    "valor": "• HINWEIS: Diese Konfiguration verwendet den synchronen Ablauf, weil {reason}.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Ruta síncrona: {reason}.",
+    "valor": "Synchronous path: {reason}.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Ruta síncrona: {reason}.",
+    "valor": "Traitement synchrone : {reason}.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Ruta síncrona: {reason}.",
+    "valor": "Synchroner Ablauf: {reason}.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "uso del suelo / G efectivo por polígonos todavía usa intersecciones de capas QGIS",
+    "valor": "die Landnutzung / das effektive G je Polygon noch Verschneidungen von QGIS-Layern verwendet",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "ruta no compatible con tarea en segundo plano",
+    "valor": "the path is not compatible with a background task",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "ruta no compatible con tarea en segundo plano",
+    "valor": "le traitement n’est pas compatible avec une tâche en arrière-plan",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "ruta no compatible con tarea en segundo plano",
+    "valor": "der Ablauf nicht mit einer Hintergrundaufgabe kompatibel ist",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Calculando ruido y ráster…",
+    "valor": "Calculating noise and raster…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; glosario (ráster)",
+    "antes": "Calculando ruido y raster…"
+  },
+  {
+    "idioma": "fr",
+    "es": "Calculando ruido y ráster…",
+    "valor": "Calcul du bruit et du raster…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; glosario (ráster)",
+    "antes": "Calculando ruido y raster…"
+  },
+  {
+    "idioma": "de",
+    "es": "Calculando ruido y ráster…",
+    "valor": "Schall und Raster werden berechnet…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; glosario (ráster)",
+    "antes": "Calculando ruido y raster…"
+  },
+  {
+    "idioma": "fr",
+    "es": "Calculando receptores y resumen…",
+    "valor": "Calcul des récepteurs et du résumé…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado («Calculating récepteurs») (sustituye a «Calculating récepteurs et résumé…»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo calcular el ruido:",
+    "valor": "Impossible de calculer le bruit :",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado («Could ne pas calculate») (sustituye a «Could ne pas calculate bruit:»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Resultados por receptor calculados.",
+    "valor": "Résultats par récepteur calculés.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir (sustituye a «Récepteur résultats calculé.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Resultados por receptor calculados.",
+    "valor": "Ergebnisse je Rezeptor berechnet.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Cálculo de ruido completado.",
+    "valor": "Calcul du bruit terminé.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir (sustituye a «Bruit calcul terminé.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Cálculo de ruido completado.",
+    "valor": "Schallberechnung abgeschlossen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el ráster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.",
+    "valor": "Acoustic calculation completed.\n\nThe receiver/source layers have already been added to the project. If the raster was enabled and does not use land use, it is being generated in the background when it is safe to do so.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; glosario (ráster)",
+    "antes": "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el raster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo."
+  },
+  {
+    "idioma": "fr",
+    "es": "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el ráster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.",
+    "valor": "Calcul acoustique terminé.\n\nLes couches de récepteurs/sources ont déjà été ajoutées au projet. Si le raster était activé et n’utilise pas l’occupation du sol, il est généré en arrière-plan lorsque cela est sûr.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; glosario (ráster)",
+    "antes": "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el raster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo."
+  },
+  {
+    "idioma": "de",
+    "es": "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el ráster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo.",
+    "valor": "Schallberechnung abgeschlossen.\n\nDie Rezeptor-/Quellen-Layer wurden dem Projekt bereits hinzugefügt. Wenn das Raster aktiviert war und keine Landnutzung verwendet, wird es im Hintergrund erzeugt, sobald dies sicher möglich ist.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; glosario (ráster)",
+    "antes": "Cálculo acústico completado.\n\nLas capas de receptores/fuentes ya se han añadido al proyecto. Si el raster estaba activado y no usa uso del suelo, se está generando en segundo plano cuando es seguro hacerlo."
+  },
+  {
+    "idioma": "fr",
+    "es": "Configura al menos una capa válida en la tabla de receptores por categoría.",
+    "valor": "Configurez au moins une couche valide dans le tableau des récepteurs par catégorie.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Configure auast un valide couche dans le récepteur-category tableau.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Configura al menos una capa válida en la tabla de receptores por categoría.",
+    "valor": "Konfigurieren Sie mindestens einen gültigen Layer in der Tabelle der Rezeptoren nach Kategorie.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "fr",
+    "es": "Selecciona una capa válida de receptores.",
+    "valor": "Sélectionnez une couche de récepteurs valide.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado (sustituye a «Sélectionner a valide couche de récepteurs.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Espectro vacío",
+    "valor": "Spectre vide",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir (sustituye a «Empty spectre»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Espectro vacío",
+    "valor": "Leeres Spektrum",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Falta banda {freq} Hz",
+    "valor": "Missing band {freq} Hz",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "Falta banda {freq} Hz",
+    "valor": "Bande {freq} Hz manquante",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "Falta banda {freq} Hz",
+    "valor": "Band {freq} Hz fehlt",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "Valor inválido en banda {freq} Hz: {value}",
+    "valor": "Invalid value in band {freq} Hz: {value}",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "Valor inválido en banda {freq} Hz: {value}",
+    "valor": "Valeur non valide dans la bande {freq} Hz : {value}",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "Valor inválido en banda {freq} Hz: {value}",
+    "valor": "Ungültiger Wert im Band {freq} Hz: {value}",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "No se ha indicado una capa de receptores válida.",
+    "valor": "No valid receiver layer was provided.",
+    "tabla": "full",
+    "motivo": "S10-4, S5-1: excepción en inglés",
+    "antes": "No valid receiver layer was provided."
+  },
+  {
+    "idioma": "fr",
+    "es": "No se ha indicado una capa de receptores válida.",
+    "valor": "Aucune couche de récepteurs valide n’a été indiquée.",
+    "tabla": "full",
+    "motivo": "S10-4, S5-1: excepción en inglés",
+    "antes": "No valid receiver layer was provided."
+  },
+  {
+    "idioma": "de",
+    "es": "No se ha indicado una capa de receptores válida.",
+    "valor": "Es wurde kein gültiger Rezeptor-Layer angegeben.",
+    "tabla": "full",
+    "motivo": "S10-4, S5-1: excepción en inglés",
+    "antes": "No valid receiver layer was provided."
+  },
+  {
+    "idioma": "en",
+    "es": "La capa de receptores no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.",
+    "valor": "The receiver layer is not in the same CRS as the project. Reproject it before calculating.",
+    "tabla": "full",
+    "motivo": "S10-4: excepción en inglés",
+    "antes": "The receiver layer is not in the same CRS as the project. Reproject it before calculating."
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de receptores no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.",
+    "valor": "La couche de récepteurs n’est pas dans le même SCR que le projet. Reprojetez-la avant de calculer.",
+    "tabla": "full",
+    "motivo": "S10-4: excepción en inglés",
+    "antes": "The receiver layer is not in the same CRS as the project. Reproject it before calculating."
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de receptores no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.",
+    "valor": "Der Rezeptor-Layer hat nicht dasselbe KBS wie das Projekt. Projizieren Sie ihn vor der Berechnung um.",
+    "tabla": "full",
+    "motivo": "S10-4: excepción en inglés",
+    "antes": "The receiver layer is not in the same CRS as the project. Reproject it before calculating."
+  },
+  {
+    "idioma": "de",
+    "es": "El MDT/DSM no está en el mismo CRS que el proyecto. Reproyéctalo antes de calcular.",
+    "valor": "Das DGM/DOM hat nicht dasselbe KBS wie das Projekt. Projizieren Sie es vor der Berechnung um.",
+    "tabla": "full",
+    "motivo": "S10-4: sin entrada en alemán"
+  },
+  {
+    "idioma": "en",
+    "es": "La resolución del ráster debe ser mayor que 0.",
+    "valor": "The raster resolution must be greater than 0.",
+    "tabla": "full",
+    "motivo": "S10-2: glosario (ráster); igual que la validación de la página, para que no salga dos veces",
+    "antes": "La resolución del raster debe ser mayor que 0."
+  },
+  {
+    "idioma": "fr",
+    "es": "La resolución del ráster debe ser mayor que 0.",
+    "valor": "La résolution du raster doit être supérieure à 0.",
+    "tabla": "full",
+    "motivo": "S10-2: glosario (ráster); igual que la validación de la página, para que no salga dos veces",
+    "antes": "La resolución del raster debe ser mayor que 0."
+  },
+  {
+    "idioma": "de",
+    "es": "La resolución del ráster debe ser mayor que 0.",
+    "valor": "Die Rasterauflösung muss größer als 0 sein.",
+    "tabla": "full",
+    "motivo": "S10-2: glosario (ráster); igual que la validación de la página, para que no salga dos veces",
+    "antes": "La resolución del raster debe ser mayor que 0."
+  },
+  {
+    "idioma": "fr",
+    "es": "La distancia mínima debe ser mayor que 0.",
+    "valor": "La distance minimale doit être supérieure à 0.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado (sustituye a «Le minimum distance doit être greater que 0.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "La altura de receptor no es válida.",
+    "valor": "La hauteur du récepteur n’est pas valide.",
+    "tabla": "full",
+    "motivo": "S10-2: francés («Le hauteur») (sustituye a «Le hauteur du récepteur n’est pas valide.»)",
+    "antes": "The receiver height is not valid."
+  },
+  {
+    "idioma": "fr",
+    "es": "El límite acústico no es válido.",
+    "valor": "La limite acoustique n’est pas valide.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado (sustituye a «Le acoustique limite n’est pas valide.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "El coeficiente α no es válido.",
+    "valor": "Le coefficient α n’est pas valide.",
+    "tabla": "full",
+    "motivo": "S10-2, S6-5: sin entrada en alemán; francés mezclado (sustituye a «Le α coefficient n’est pas valide.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "El coeficiente α no es válido.",
+    "valor": "Der Koeffizient α ist ungültig.",
+    "tabla": "full",
+    "motivo": "S10-2, S6-5: sin entrada en alemán; francés mezclado"
+  },
+  {
+    "idioma": "de",
+    "es": "No se han detectado turbinas/layout válidos para el cálculo acústico.",
+    "valor": "Für die Schallberechnung wurden keine gültigen Windturbinen/Layouts erkannt.",
+    "tabla": "full",
+    "motivo": "S6-5: alemán deformado («Es wurden keine erkannt:»)"
+  },
+  {
+    "idioma": "en",
+    "es": "La capa de receptores no contiene entidades válidas para el cálculo.",
+    "valor": "The receiver layer contains no valid features for the calculation.",
+    "tabla": "full",
+    "motivo": "S10-4: excepción en inglés",
+    "antes": "The receiver layer contains no valid features for calculation."
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de receptores no contiene entidades válidas para el cálculo.",
+    "valor": "La couche de récepteurs ne contient aucune entité valide pour le calcul.",
+    "tabla": "full",
+    "motivo": "S10-4: excepción en inglés",
+    "antes": "The receiver layer contains no valid features for calculation."
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de receptores no contiene entidades válidas para el cálculo.",
+    "valor": "Der Rezeptor-Layer enthält keine gültigen Objekte für die Berechnung.",
+    "tabla": "full",
+    "motivo": "S10-4: excepción en inglés",
+    "antes": "The receiver layer contains no valid features for calculation."
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de uso del suelo debe ser vectorial poligonal.",
+    "valor": "La couche d’occupation du sol doit être une couche vectorielle polygonale.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado (sustituye a «Le couche d’occupation du sol doit être a polygone vector couche.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de uso del suelo no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.",
+    "valor": "La couche d’occupation du sol n’est pas dans le même SCR que le projet. Reprojetez-la avant de calculer.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; sin alemán (sustituye a «Le couche d’occupation du sol ne pas dans le même SCR comme le projet. Reproject it before calculating.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de uso del suelo no está en el mismo CRS que el proyecto. Reproyéctala antes de calcular.",
+    "valor": "Der Landnutzungs-Layer hat nicht dasselbe KBS wie das Projekt. Projizieren Sie ihn vor der Berechnung um.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; sin alemán"
+  },
+  {
+    "idioma": "en",
+    "es": "Configuración acústica inválida:",
+    "valor": "Invalid acoustic configuration:",
+    "tabla": "full",
+    "motivo": "S6-5: runner.py y noise_compute.py, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Configuración acústica inválida:",
+    "valor": "Configuration acoustique non valide :",
+    "tabla": "full",
+    "motivo": "S6-5: runner.py y noise_compute.py, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Configuración acústica inválida:",
+    "valor": "Ungültige akustische Konfiguration:",
+    "tabla": "full",
+    "motivo": "S6-5: runner.py y noise_compute.py, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Archivo no encontrado: {path}",
+    "valor": "File not found: {path}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Archivo no encontrado: {path}",
+    "valor": "Fichier introuvable : {path}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Archivo no encontrado: {path}",
+    "valor": "Datei nicht gefunden: {path}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudieron leer datos válidos de {path}",
+    "valor": "Could not read valid data from {path}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudieron leer datos válidos de {path}",
+    "valor": "Impossible de lire des données valides depuis {path}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudieron leer datos válidos de {path}",
+    "valor": "Aus {path} konnten keine gültigen Daten gelesen werden",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "La columna ponderada A contiene valores pequeños que parecen una forma relativa. Para formas relativas usa la cabecera Lw_dB_rel.",
+    "valor": "The A-weighted column contains small values that look like a relative shape. For relative shapes, use the Lw_dB_rel header.",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "La columna ponderada A contiene valores pequeños que parecen una forma relativa. Para formas relativas usa la cabecera Lw_dB_rel.",
+    "valor": "La colonne pondérée A contient de petites valeurs qui ressemblent à une forme relative. Pour les formes relatives, utilisez l’en-tête Lw_dB_rel.",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "La columna ponderada A contiene valores pequeños que parecen una forma relativa. Para formas relativas usa la cabecera Lw_dB_rel.",
+    "valor": "Die A-bewertete Spalte enthält kleine Werte, die wie eine relative Form aussehen. Verwenden Sie für relative Formen die Kopfzeile Lw_dB_rel.",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Espectro inválido: {errors}",
+    "valor": "Invalid spectrum: {errors}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Espectro inválido: {errors}",
+    "valor": "Spectre non valide : {errors}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Espectro inválido: {errors}",
+    "valor": "Ungültiges Spektrum: {errors}",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "No se reconocen las columnas de {file}. Cabeceras aceptadas: freq_hz + Lw_dB (absoluto), LwA_dB/dBA/dB(A) (ponderado A) o Lw_dB_rel (forma relativa).",
+    "valor": "The columns of {file} are not recognised. Accepted headers: freq_hz + Lw_dB (absolute), LwA_dB/dBA/dB(A) (A-weighted) or Lw_dB_rel (relative shape).",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se reconocen las columnas de {file}. Cabeceras aceptadas: freq_hz + Lw_dB (absoluto), LwA_dB/dBA/dB(A) (ponderado A) o Lw_dB_rel (forma relativa).",
+    "valor": "Les colonnes de {file} ne sont pas reconnues. En-têtes acceptés : freq_hz + Lw_dB (absolu), LwA_dB/dBA/dB(A) (pondéré A) ou Lw_dB_rel (forme relative).",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "No se reconocen las columnas de {file}. Cabeceras aceptadas: freq_hz + Lw_dB (absoluto), LwA_dB/dBA/dB(A) (ponderado A) o Lw_dB_rel (forma relativa).",
+    "valor": "Die Spalten von {file} werden nicht erkannt. Zulässige Kopfzeilen: freq_hz + Lw_dB (absolut), LwA_dB/dBA/dB(A) (A-bewertet) oder Lw_dB_rel (relative Form).",
+    "tabla": "full",
+    "motivo": "S10-2: espectro, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Curva acústica vacía",
+    "valor": "Empty acoustic curve",
+    "tabla": "full",
+    "motivo": "S10-4: «Acoustic curve vacía»",
+    "antes": "Acoustic curve vacía"
+  },
+  {
+    "idioma": "fr",
+    "es": "Curva acústica vacía",
+    "valor": "Courbe acoustique vide",
+    "tabla": "full",
+    "motivo": "S10-4: «Acoustic curve vacía»",
+    "antes": "Acoustic curve vacía"
+  },
+  {
+    "idioma": "de",
+    "es": "Curva acústica vacía",
+    "valor": "Leere akustische Kurve",
+    "tabla": "full",
+    "motivo": "S10-4: «Acoustic curve vacía»",
+    "antes": "Acoustic curve vacía"
+  },
+  {
+    "idioma": "de",
+    "es": "Sin ruta de curva acústica",
+    "valor": "Kein Pfad zur akustischen Kurve",
+    "tabla": "full",
+    "motivo": "Sin alemán; francés mezclado"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudieron leer pares ws/LwA válidos de {path}",
+    "valor": "Could not read valid ws/LwA pairs from {path}",
+    "tabla": "full",
+    "motivo": "S10-2: curva acústica, sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudieron leer pares ws/LwA válidos de {path}",
+    "valor": "Impossible de lire des paires ws/LwA valides depuis {path}",
+    "tabla": "full",
+    "motivo": "S10-2: curva acústica, sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudieron leer pares ws/LwA válidos de {path}",
+    "valor": "Aus {path} konnten keine gültigen ws/LwA-Paare gelesen werden",
+    "tabla": "full",
+    "motivo": "S10-2: curva acústica, sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: {message}",
+    "valor": "• WARNING: {message}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: {message}",
+    "valor": "• AVERTISSEMENT : {message}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: {message}",
+    "valor": "• HINWEIS: {message}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas en peor caso.",
+    "valor": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with worst-case acoustic curves.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas en peor caso.",
+    "valor": "• Méthode utilisée : modèle éolien source-récepteur (Adiv + Aatm + Aground) avec courbes acoustiques dans le cas le plus défavorable.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas en peor caso.",
+    "valor": "• Verwendete Methode: Windenergie-Quelle-Rezeptor-Modell (Adiv + Aatm + Aground) mit akustischen Kurven im ungünstigsten Fall.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas a {speed} m/s.",
+    "valor": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with acoustic curves at {speed} m/s.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas a {speed} m/s.",
+    "valor": "• Méthode utilisée : modèle éolien source-récepteur (Adiv + Aatm + Aground) avec courbes acoustiques à {speed} m/s.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas a {speed} m/s.",
+    "valor": "• Verwendete Methode: Windenergie-Quelle-Rezeptor-Modell (Adiv + Aatm + Aground) mit akustischen Kurven bei {speed} m/s.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas.",
+    "valor": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with acoustic curves.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas.",
+    "valor": "• Méthode utilisée : modèle éolien source-récepteur (Adiv + Aatm + Aground) avec courbes acoustiques.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con curvas acústicas.",
+    "valor": "• Verwendete Methode: Windenergie-Quelle-Rezeptor-Modell (Adiv + Aatm + Aground) mit akustischen Kurven.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con LwA fijo por grupo fuente acústico.",
+    "valor": "• Method used: wind source-receiver model (Adiv + Aatm + Aground) with fixed LwA by acoustic source group.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con LwA fijo por grupo fuente acústico.",
+    "valor": "• Méthode utilisée : modèle éolien source-récepteur (Adiv + Aatm + Aground) avec LwA fixe par groupe de sources acoustiques.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Método usado: Modelo fuente-receptor eólico (Adiv + Aatm + Aground) con LwA fijo por grupo fuente acústico.",
+    "valor": "• Verwendete Methode: Windenergie-Quelle-Rezeptor-Modell (Adiv + Aatm + Aground) mit festem LwA je akustischer Quellgruppe.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Escenario acústico efectivo por grupo fuente:",
+    "valor": "• Effective acoustic scenario by source group:",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Escenario acústico efectivo por grupo fuente:",
+    "valor": "• Scénario acoustique effectif par groupe de sources :",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Escenario acústico efectivo por grupo fuente:",
+    "valor": "• Effektives akustisches Szenario je Quellgruppe:",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: LwA efectivo = {lwa} dB(A)",
+    "valor": "{name}: effective LwA = {lwa} dB(A)",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: LwA efectivo = {lwa} dB(A)",
+    "valor": "{name} : LwA effectif = {lwa} dB(A)",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: LwA efectivo = {lwa} dB(A)",
+    "valor": "{name}: effektiver LwA = {lwa} dB(A)",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "sin detalle",
+    "valor": "no detail",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "sin detalle",
+    "valor": "sans détail",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "sin detalle",
+    "valor": "ohne Detail",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Capa de salida principal: {layer}",
+    "valor": "• Main output layer: {layer}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Capa de salida principal: {layer}",
+    "valor": "• Couche de sortie principale : {layer}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Capa de salida principal: {layer}",
+    "valor": "• Haupt-Ausgabe-Layer: {layer}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Receptores por categoría: {n} grupo(s) activos con criterio {criterion}.",
+    "valor": "• Receivers by category: {n} active group(s) with the {criterion} criterion.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Receptores por categoría: {n} grupo(s) activos con criterio {criterion}.",
+    "valor": "• Récepteurs par catégorie : {n} groupe(s) actif(s) avec le critère {criterion}.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Receptores por categoría: {n} grupo(s) activos con criterio {criterion}.",
+    "valor": "• Rezeptoren nach Kategorie: {n} aktive Gruppe(n) mit dem Kriterium {criterion}.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Capa GIS de fuentes creada: {layer}",
+    "valor": "• GIS source layer created: {layer}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Capa GIS de fuentes creada: {layer}",
+    "valor": "• Couche SIG des sources créée : {layer}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Capa GIS de fuentes creada: {layer}",
+    "valor": "• GIS-Quellen-Layer erstellt: {layer}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Capa GIS de enlaces dominantes creada: {layer} ({n} enlace(s)).",
+    "valor": "• GIS dominant-links layer created: {layer} ({n} link(s)).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Capa GIS de enlaces dominantes creada: {layer} ({n} enlace(s)).",
+    "valor": "• Couche SIG des liaisons dominantes créée : {layer} ({n} liaison(s)).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Capa GIS de enlaces dominantes creada: {layer} ({n} enlace(s)).",
+    "valor": "• GIS-Layer der dominanten Verbindungen erstellt: {layer} ({n} Verbindung(en)).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Capa GIS de receptores fuera de radio creada: {layer} ({n} receptor(es)).",
+    "valor": "• GIS layer of receivers outside the radius created: {layer} ({n} receiver(s)).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español; S4-15, S7-13: cita el nombre real de la capa"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Capa GIS de receptores fuera de radio creada: {layer} ({n} receptor(es)).",
+    "valor": "• Couche SIG des récepteurs hors rayon créée : {layer} ({n} récepteur(s)).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español; S4-15, S7-13: cita el nombre real de la capa"
+  },
+  {
+    "idioma": "de",
+    "es": "• Capa GIS de receptores fuera de radio creada: {layer} ({n} receptor(es)).",
+    "valor": "• GIS-Layer der Rezeptoren außerhalb des Radius erstellt: {layer} ({n} Rezeptor(en)).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español; S4-15, S7-13: cita el nombre real de la capa"
+  },
+  {
+    "idioma": "en",
+    "es": "• Mapa GIS creado: {layer} (ráster de {cells} celdas | resolución pedida {requested} m | efectiva {effective} m{extra}).",
+    "valor": "• GIS map created: {layer} (raster of {cells} cells | requested resolution {requested} m | effective {effective} m{extra}).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Mapa GIS creado: {layer} (ráster de {cells} celdas | resolución pedida {requested} m | efectiva {effective} m{extra}).",
+    "valor": "• Carte SIG créée : {layer} (raster de {cells} cellules | résolution demandée {requested} m | effective {effective} m{extra}).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Mapa GIS creado: {layer} (ráster de {cells} celdas | resolución pedida {requested} m | efectiva {effective} m{extra}).",
+    "valor": "• GIS-Karte erstellt: {layer} (Raster mit {cells} Zellen | angeforderte Auflösung {requested} m | effektiv {effective} m{extra}).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Ráster de ruido: lanzado en segundo plano con QgsTask. Los resultados por receptor ya están disponibles; la capa «{layer}» se añadirá al terminar.",
+    "valor": "• Noise raster: started in the background with QgsTask. The results per receiver are already available; the layer “{layer}” will be added when it finishes.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Ráster de ruido: lanzado en segundo plano con QgsTask. Los resultados por receptor ya están disponibles; la capa «{layer}» se añadirá al terminar.",
+    "valor": "• Raster de bruit : lancé en arrière-plan avec QgsTask. Les résultats par récepteur sont déjà disponibles ; la couche « {layer} » sera ajoutée à la fin.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Ráster de ruido: lanzado en segundo plano con QgsTask. Los resultados por receptor ya están disponibles; la capa «{layer}» se añadirá al terminar.",
+    "valor": "• Schallraster: im Hintergrund mit QgsTask gestartet. Die Ergebnisse je Rezeptor sind bereits verfügbar; der Layer „{layer}“ wird nach Abschluss hinzugefügt.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Isófonas: se generarán al finalizar el ráster en segundo plano.",
+    "valor": "• Isophones: they will be generated when the background raster finishes.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Isófonas: se generarán al finalizar el ráster en segundo plano.",
+    "valor": "• Isophones : elles seront générées à la fin du raster en arrière-plan.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Isófonas: se generarán al finalizar el ráster en segundo plano.",
+    "valor": "• Isophonen: Sie werden nach Abschluss des Hintergrundrasters erzeugt.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: se solicitó el ráster pero no se pudo generar. Revisa la resolución, el CRS y la extensión de las fuentes.",
+    "valor": "• WARNING: the raster was requested but could not be generated. Check the resolution, the CRS and the extent of the sources.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: se solicitó el ráster pero no se pudo generar. Revisa la resolución, el CRS y la extensión de las fuentes.",
+    "valor": "• AVERTISSEMENT : le raster a été demandé mais n’a pas pu être généré. Vérifiez la résolution, le SCR et l’emprise des sources.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: se solicitó el ráster pero no se pudo generar. Revisa la resolución, el CRS y la extensión de las fuentes.",
+    "valor": "• HINWEIS: Das Raster wurde angefordert, konnte aber nicht erzeugt werden. Prüfen Sie die Auflösung, das KBS und die Ausdehnung der Quellen.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Capa GIS de isófonas creada: {layer} ({n} entidades).",
+    "valor": "• GIS isophone layer created: {layer} ({n} features).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Capa GIS de isófonas creada: {layer} ({n} entidades).",
+    "valor": "• Couche SIG des isophones créée : {layer} ({n} entités).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Capa GIS de isófonas creada: {layer} ({n} entidades).",
+    "valor": "• GIS-Isophonen-Layer erstellt: {layer} ({n} Objekte).",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Receptores por categoría: {counts}",
+    "valor": "• Receivers by category: {counts}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Receptores por categoría: {counts}",
+    "valor": "• Récepteurs par catégorie : {counts}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Receptores por categoría: {counts}",
+    "valor": "• Rezeptoren nach Kategorie: {counts}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Receptores calculados: {n}",
+    "valor": "• Calculated receivers: {n}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Receptores calculados: {n}",
+    "valor": "• Récepteurs calculés : {n}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Receptores calculados: {n}",
+    "valor": "• Berechnete Rezeptoren: {n}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Receptores con al menos una turbina dentro del radio: {n}",
+    "valor": "• Receivers with at least one turbine inside the radius: {n}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Receptores con al menos una turbina dentro del radio: {n}",
+    "valor": "• Récepteurs avec au moins une éolienne dans le rayon : {n}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Receptores con al menos una turbina dentro del radio: {n}",
+    "valor": "• Rezeptoren mit mindestens einer Windturbine innerhalb des Radius: {n}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Receptores que superan el límite: {n} / {total}",
+    "valor": "• Receivers exceeding the limit: {n} / {total}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Receptores que superan el límite: {n} / {total}",
+    "valor": "• Récepteurs dépassant la limite : {n} / {total}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Receptores que superan el límite: {n} / {total}",
+    "valor": "• Rezeptoren über dem Grenzwert: {n} / {total}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Nivel máximo calculado: {level} dB(A)",
+    "valor": "• Maximum calculated level: {level} dB(A)",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Nivel máximo calculado: {level} dB(A)",
+    "valor": "• Niveau maximal calculé : {level} dB(A)",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Nivel máximo calculado: {level} dB(A)",
+    "valor": "• Maximaler berechneter Pegel: {level} dB(A)",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• α usado: {alpha} dB/m",
+    "valor": "• α used: {alpha} dB/m",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• α usado: {alpha} dB/m",
+    "valor": "• α utilisé : {alpha} dB/m",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• α usado: {alpha} dB/m",
+    "valor": "• Verwendetes α: {alpha} dB/m",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• G usado: {g}",
+    "valor": "• G used: {g}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• G usado: {g}",
+    "valor": "• G utilisé : {g}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• G usado: {g}",
+    "valor": "• Verwendetes G: {g}",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Suelo efectivo: G_eff medio {mean} | G_eff crítico {critical}.",
+    "valor": "• Effective ground: mean G_eff {mean} | critical G_eff {critical}.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Suelo efectivo: G_eff medio {mean} | G_eff crítico {critical}.",
+    "valor": "• Sol effectif : G_eff moyen {mean} | G_eff critique {critical}.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Suelo efectivo: G_eff medio {mean} | G_eff crítico {critical}.",
+    "valor": "• Effektiver Boden: mittleres G_eff {mean} | kritisches G_eff {critical}.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Trazabilidad del suelo: {landuse} receptor(es) con G distinto del global y {fallback} con el G global de respaldo.",
+    "valor": "• Ground traceability: {landuse} receiver(s) with a G different from the global one and {fallback} with the fallback global G.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Trazabilidad del suelo: {landuse} receptor(es) con G distinto del global y {fallback} con el G global de respaldo.",
+    "valor": "• Traçabilité du sol : {landuse} récepteur(s) avec un G différent du G global et {fallback} avec le G global de secours.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Trazabilidad del suelo: {landuse} receptor(es) con G distinto del global y {fallback} con el G global de respaldo.",
+    "valor": "• Nachverfolgbarkeit des Bodens: {landuse} Rezeptor(en) mit einem vom globalen abweichenden G und {fallback} mit dem globalen G als Rückfall.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Suelo efectivo: modo global, G={g} aplicado en todos los trayectos.",
+    "valor": "• Effective ground: global mode, G={g} applied on all paths.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Suelo efectivo: modo global, G={g} aplicado en todos los trayectos.",
+    "valor": "• Sol effectif : mode global, G={g} appliqué sur tous les trajets.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Suelo efectivo: modo global, G={g} aplicado en todos los trayectos.",
+    "valor": "• Effektiver Boden: globaler Modus, G={g} auf allen Pfaden angewendet.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Se ha usado el MDT/DSM para muestrear la cota del terreno en fuentes y receptores.",
+    "valor": "• The DEM/DSM was used to sample the terrain elevation at sources and receivers.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Se ha usado el MDT/DSM para muestrear la cota del terreno en fuentes y receptores.",
+    "valor": "• Le MNT/MNS a été utilisé pour échantillonner l’altitude du terrain aux sources et aux récepteurs.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Se ha usado el MDT/DSM para muestrear la cota del terreno en fuentes y receptores.",
+    "valor": "• Das DGM/DOM wurde verwendet, um die Geländehöhe an Quellen und Rezeptoren abzutasten.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "• Sin MDT/DSM: el cálculo usa coordenadas planas con alturas relativas de fuente/receptor.",
+    "valor": "• No DEM/DSM: the calculation uses flat coordinates with relative source/receiver heights.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Sin MDT/DSM: el cálculo usa coordenadas planas con alturas relativas de fuente/receptor.",
+    "valor": "• Sans MNT/MNS : le calcul utilise des coordonnées planes avec des hauteurs relatives source/récepteur.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "de",
+    "es": "• Sin MDT/DSM: el cálculo usa coordenadas planas con alturas relativas de fuente/receptor.",
+    "valor": "• Kein DGM/DOM: Die Berechnung verwendet ebene Koordinaten mit relativen Quell-/Rezeptorhöhen.",
+    "tabla": "full",
+    "motivo": "#37, S10-16, S4-7, S5-2, S7-5: cuadro de estado tras el cálculo, plantilla en español"
+  },
+  {
+    "idioma": "en",
+    "es": "Curva peor caso ({file})",
+    "valor": "Worst-case curve ({file})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Curva peor caso ({file})",
+    "valor": "Courbe, cas le plus défavorable ({file})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Curva peor caso ({file})",
+    "valor": "Kurve, ungünstigster Fall ({file})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Curva @ {speed} m/s ({file})",
+    "valor": "Curve @ {speed} m/s ({file})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Curva @ {speed} m/s ({file})",
+    "valor": "Courbe @ {speed} m/s ({file})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Curva @ {speed} m/s ({file})",
+    "valor": "Kurve @ {speed} m/s ({file})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Curva inválida -> LwA fijo de respaldo ({error})",
+    "valor": "Invalid curve -> fixed LwA fallback ({error})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Curva inválida -> LwA fijo de respaldo ({error})",
+    "valor": "Courbe non valide -> LwA fixe de secours ({error})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Curva inválida -> LwA fijo de respaldo ({error})",
+    "valor": "Ungültige Kurve -> fester LwA als Rückfall ({error})",
+    "tabla": "full",
+    "motivo": "S5-2: nota del grupo fuente sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Preparando datos para cálculo en segundo plano…",
+    "valor": "Préparation des données pour le calcul en arrière-plan…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Preparing data pour arrière-plan calcul…»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Preparando datos para cálculo en segundo plano…",
+    "valor": "Daten für die Hintergrundberechnung werden vorbereitet…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "fr",
+    "es": "Preparando fuentes, receptores y MDT para el cálculo en segundo plano…",
+    "valor": "Préparation des sources, des récepteurs et du MNT pour le calcul en arrière-plan…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Preparing sources, récepteurs et MNT pour arrière-plan calcul…»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Preparando fuentes, receptores y MDT para el cálculo en segundo plano…",
+    "valor": "Quellen, Rezeptoren und DGM werden für die Hintergrundberechnung vorbereitet…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "fr",
+    "es": "Preparando fuentes, receptores y MDT…",
+    "valor": "Préparation des sources, des récepteurs et du MNT…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés y alemán mezclados (sustituye a «Preparing sources, récepteurs et MNT…»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Preparando fuentes, receptores y MDT…",
+    "valor": "Quellen, Rezeptoren und DGM werden vorbereitet…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés y alemán mezclados (sustituye a «Preparando Quellen, Rezeptoren und MDT…»)"
+  },
+  {
+    "idioma": "en",
+    "es": "Datos preparados. Lanzando QgsTask…",
+    "valor": "Data prepared. Starting QgsTask…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Datos preparados. Lanzando QgsTask…",
+    "valor": "Données préparées. Lancement de la QgsTask…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Datos preparados. Lanzando QgsTask…",
+    "valor": "Daten vorbereitet. QgsTask wird gestartet…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo preparar el cálculo en segundo plano:",
+    "valor": "Impossible de préparer le calcul en arrière-plan :",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Could ne pas prepare le arrière-plan calcul:»)"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo preparar el cálculo en segundo plano:",
+    "valor": "Die Hintergrundberechnung konnte nicht vorbereitet werden:",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "en",
+    "es": "error desconocido",
+    "valor": "unknown error",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "error desconocido",
+    "valor": "erreur inconnue",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "error desconocido",
+    "valor": "unbekannter Fehler",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Añadiendo capas de resultados a QGIS…",
+    "valor": "Ajout des couches de résultats à QGIS…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Adding résultat couches à QGIS…»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "Cálculo de ruido completado en segundo plano.",
+    "valor": "Calcul du bruit terminé en arrière-plan.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Bruit calcul terminé dans le arrière-plan.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Cálculo de ruido completado en segundo plano.",
+    "valor": "Schallberechnung im Hintergrund abgeschlossen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "en",
+    "es": "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el ráster, si estaba activado, ya se han añadido al proyecto.",
+    "valor": "Acoustic calculation completed in the background.\n\nThe receiver/source layers and the raster, if it was enabled, have already been added to the project.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; S6-5: alemán deformado; glosario (ráster)",
+    "antes": "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el raster, si estaba activado, ya se han añadido al proyecto."
+  },
+  {
+    "idioma": "fr",
+    "es": "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el ráster, si estaba activado, ya se han añadido al proyecto.",
+    "valor": "Calcul acoustique terminé en arrière-plan.\n\nLes couches de récepteurs/sources et le raster, s’il était activé, ont déjà été ajoutés au projet.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; S6-5: alemán deformado; glosario (ráster)",
+    "antes": "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el raster, si estaba activado, ya se han añadido al proyecto."
+  },
+  {
+    "idioma": "de",
+    "es": "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el ráster, si estaba activado, ya se han añadido al proyecto.",
+    "valor": "Schallberechnung im Hintergrund abgeschlossen.\n\nDie Rezeptor-/Quellen-Layer und das Raster, falls aktiviert, wurden dem Projekt bereits hinzugefügt.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; S6-5: alemán deformado; glosario (ráster)",
+    "antes": "Cálculo acústico completado en segundo plano.\n\nLas capas de receptores/fuentes y el raster, si estaba activado, ya se han añadido al proyecto."
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo completar el cálculo: {error}",
+    "valor": "Could not complete the calculation: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo completar el cálculo: {error}",
+    "valor": "Impossible de terminer le calcul : {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo completar el cálculo: {error}",
+    "valor": "Die Berechnung konnte nicht abgeschlossen werden: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo calcular el ruido en segundo plano:",
+    "valor": "Impossible de calculer le bruit en arrière-plan :",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Could ne pas calculate bruit dans le arrière-plan:»)"
+  },
+  {
+    "idioma": "en",
+    "es": "Velantis Wind · cálculo de ruido",
+    "valor": "Velantis Wind · noise calculation",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; título en inglés",
+    "antes": "Velantis Wind · Noise calculation"
+  },
+  {
+    "idioma": "fr",
+    "es": "Velantis Wind · cálculo de ruido",
+    "valor": "Velantis Wind · calcul du bruit",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; título en inglés",
+    "antes": "Velantis Wind · Noise calculation"
+  },
+  {
+    "idioma": "de",
+    "es": "Velantis Wind · cálculo de ruido",
+    "valor": "Velantis Wind · Schallberechnung",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; título en inglés",
+    "antes": "Velantis Wind · Noise calculation"
+  },
+  {
+    "idioma": "en",
+    "es": "Calculando ruido en segundo plano… {pct}%",
+    "valor": "Calculating noise in the background… {pct}%",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; plantilla del progreso"
+  },
+  {
+    "idioma": "fr",
+    "es": "Calculando ruido en segundo plano… {pct}%",
+    "valor": "Calcul du bruit en arrière-plan… {pct} %",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; plantilla del progreso"
+  },
+  {
+    "idioma": "de",
+    "es": "Calculando ruido en segundo plano… {pct}%",
+    "valor": "Schall wird im Hintergrund berechnet… {pct} %",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; plantilla del progreso"
+  },
+  {
+    "idioma": "en",
+    "es": "Generando ráster de ruido… {pct}%",
+    "valor": "Generating noise raster… {pct}%",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; plantilla del progreso"
+  },
+  {
+    "idioma": "fr",
+    "es": "Generando ráster de ruido… {pct}%",
+    "valor": "Génération du raster de bruit… {pct} %",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; plantilla del progreso"
+  },
+  {
+    "idioma": "de",
+    "es": "Generando ráster de ruido… {pct}%",
+    "valor": "Schallraster wird erzeugt… {pct} %",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; plantilla del progreso"
+  },
+  {
+    "idioma": "fr",
+    "es": "Cálculo de ruido cancelado o fallido.",
+    "valor": "Calcul du bruit annulé ou échoué.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Bruit calcul annulé ou échoué.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "Cálculo de ruido cancelado o fallido.",
+    "valor": "Schallberechnung abgebrochen oder fehlgeschlagen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "de",
+    "es": "Cálculo de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.",
+    "valor": "Schallberechnung im Hintergrund gestartet. Sie können sie im QGIS-Task-Manager verfolgen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• Cálculo pesado lanzado como QgsTask. Puedes seguir usando QGIS mientras avanza.",
+    "valor": "• Rechenintensive Berechnung als QgsTask gestartet. Sie können QGIS währenddessen weiter verwenden.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo lanzar el cálculo en segundo plano:",
+    "valor": "Impossible de lancer le calcul en arrière-plan :",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado (sustituye a «Could ne pas start le arrière-plan calcul:»)"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo lanzar el cálculo en segundo plano:",
+    "valor": "Die Hintergrundberechnung konnte nicht gestartet werden:",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; francés mezclado"
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: el ráster exacto no se añadió al proyecto; intentando crear un GeoTIFF de respaldo.",
+    "valor": "• WARNING: the exact raster was not added to the project; trying to create a fallback GeoTIFF.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: el ráster exacto no se añadió al proyecto; intentando crear un GeoTIFF de respaldo.",
+    "valor": "• AVERTISSEMENT : le raster exact n’a pas été ajouté au projet ; tentative de création d’un GeoTIFF de secours.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: el ráster exacto no se añadió al proyecto; intentando crear un GeoTIFF de respaldo.",
+    "valor": "• HINWEIS: Das exakte Raster wurde dem Projekt nicht hinzugefügt; es wird versucht, ein Ersatz-GeoTIFF zu erstellen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Creando ráster de ruido de respaldo…",
+    "valor": "Creating fallback noise raster…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Creando raster de ruido de respaldo…"
+  },
+  {
+    "idioma": "fr",
+    "es": "Creando ráster de ruido de respaldo…",
+    "valor": "Création du raster de bruit de secours…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Creando raster de ruido de respaldo…"
+  },
+  {
+    "idioma": "de",
+    "es": "Creando ráster de ruido de respaldo…",
+    "valor": "Ersatz-Schallraster wird erstellt…",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Creando raster de ruido de respaldo…"
+  },
+  {
+    "idioma": "en",
+    "es": "Ráster de respaldo creado con G global porque el ráster exacto con uso del suelo no se pudo materializar.",
+    "valor": "Fallback raster created with global G because the exact land-use raster could not be materialised.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de respaldo creado con G global porque el raster exacto con land-use no se pudo materializar."
+  },
+  {
+    "idioma": "fr",
+    "es": "Ráster de respaldo creado con G global porque el ráster exacto con uso del suelo no se pudo materializar.",
+    "valor": "Raster de secours créé avec le G global car le raster exact avec occupation du sol n’a pas pu être matérialisé.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de respaldo creado con G global porque el raster exacto con land-use no se pudo materializar."
+  },
+  {
+    "idioma": "de",
+    "es": "Ráster de respaldo creado con G global porque el ráster exacto con uso del suelo no se pudo materializar.",
+    "valor": "Ersatzraster mit globalem G erstellt, weil das exakte Raster mit Landnutzung nicht erzeugt werden konnte.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de respaldo creado con G global porque el raster exacto con land-use no se pudo materializar."
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: tampoco se pudo crear el ráster de respaldo: {error}",
+    "valor": "• WARNING: the fallback raster could not be created either: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: tampoco se pudo crear el ráster de respaldo: {error}",
+    "valor": "• AVERTISSEMENT : le raster de secours n’a pas non plus pu être créé : {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: tampoco se pudo crear el ráster de respaldo: {error}",
+    "valor": "• HINWEIS: Auch das Ersatzraster konnte nicht erstellt werden: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "• Ráster de ruido terminado en segundo plano: {layer} ({cells} celdas, resolución efectiva {resolution} m).",
+    "valor": "• Noise raster finished in the background: {layer} ({cells} cells, effective resolution {resolution} m).",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Ráster de ruido terminado en segundo plano: {layer} ({cells} celdas, resolución efectiva {resolution} m).",
+    "valor": "• Raster de bruit terminé en arrière-plan : {layer} ({cells} cellules, résolution effective {resolution} m).",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• Ráster de ruido terminado en segundo plano: {layer} ({cells} celdas, resolución efectiva {resolution} m).",
+    "valor": "• Schallraster im Hintergrund fertiggestellt: {layer} ({cells} Zellen, effektive Auflösung {resolution} m).",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "• Isófonas terminadas en segundo plano: {n} entidades.",
+    "valor": "• Isophones finished in the background: {n} features.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• Isófonas terminadas en segundo plano: {n} entidades.",
+    "valor": "• Isophones terminées en arrière-plan : {n} entités.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• Isófonas terminadas en segundo plano: {n} entidades.",
+    "valor": "• Isophonen im Hintergrund fertiggestellt: {n} Objekte.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Ráster de ruido completado.",
+    "valor": "Noise raster completed.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido completado."
+  },
+  {
+    "idioma": "fr",
+    "es": "Ráster de ruido completado.",
+    "valor": "Raster de bruit terminé.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido completado."
+  },
+  {
+    "idioma": "de",
+    "es": "Ráster de ruido completado.",
+    "valor": "Schallraster abgeschlossen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido completado."
+  },
+  {
+    "idioma": "en",
+    "es": "Ráster de ruido generado y añadido al proyecto.",
+    "valor": "Noise raster generated and added to the project.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido generado y añadido al proyecto."
+  },
+  {
+    "idioma": "fr",
+    "es": "Ráster de ruido generado y añadido al proyecto.",
+    "valor": "Raster de bruit généré et ajouté au projet.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido generado y añadido al proyecto."
+  },
+  {
+    "idioma": "de",
+    "es": "Ráster de ruido generado y añadido al proyecto.",
+    "valor": "Schallraster erzeugt und dem Projekt hinzugefügt.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido generado y añadido al proyecto."
+  },
+  {
+    "idioma": "en",
+    "es": "Ráster de ruido finalizado con aviso.",
+    "valor": "Noise raster finished with a warning.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido finalizado con aviso."
+  },
+  {
+    "idioma": "fr",
+    "es": "Ráster de ruido finalizado con aviso.",
+    "valor": "Raster de bruit terminé avec un avertissement.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido finalizado con aviso."
+  },
+  {
+    "idioma": "de",
+    "es": "Ráster de ruido finalizado con aviso.",
+    "valor": "Schallraster mit Hinweis abgeschlossen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido finalizado con aviso."
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: el ráster en segundo plano no se pudo generar: {error}",
+    "valor": "• WARNING: the background raster could not be generated: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: el ráster en segundo plano no se pudo generar: {error}",
+    "valor": "• AVERTISSEMENT : le raster en arrière-plan n’a pas pu être généré : {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: el ráster en segundo plano no se pudo generar: {error}",
+    "valor": "• HINWEIS: Das Hintergrundraster konnte nicht erzeugt werden: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo generar el ráster: {error}",
+    "valor": "Could not generate the raster: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No se pudo generar el ráster: {error}",
+    "valor": "Impossible de générer le raster : {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo generar el ráster: {error}",
+    "valor": "Das Raster konnte nicht erzeugt werden: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "Velantis Wind · ráster de ruido",
+    "valor": "Velantis Wind · noise raster",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; título en inglés",
+    "antes": "Velantis Wind · Noise raster"
+  },
+  {
+    "idioma": "fr",
+    "es": "Velantis Wind · ráster de ruido",
+    "valor": "Velantis Wind · raster de bruit",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; título en inglés",
+    "antes": "Velantis Wind · Noise raster"
+  },
+  {
+    "idioma": "de",
+    "es": "Velantis Wind · ráster de ruido",
+    "valor": "Velantis Wind · Schallraster",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir; título en inglés",
+    "antes": "Velantis Wind · Noise raster"
+  },
+  {
+    "idioma": "en",
+    "es": "Ráster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.",
+    "valor": "Noise raster started in the background. You can follow it in the QGIS task manager.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS."
+  },
+  {
+    "idioma": "fr",
+    "es": "Ráster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.",
+    "valor": "Raster de bruit lancé en arrière-plan. Vous pouvez le suivre dans le gestionnaire de tâches de QGIS.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS."
+  },
+  {
+    "idioma": "de",
+    "es": "Ráster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS.",
+    "valor": "Schallraster im Hintergrund gestartet. Sie können es im QGIS-Task-Manager verfolgen.",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir",
+    "antes": "Raster de ruido lanzado en segundo plano. Puedes verlo en el administrador de tareas de QGIS."
+  },
+  {
+    "idioma": "en",
+    "es": "• AVISO: no se pudo lanzar el ráster en segundo plano: {error}",
+    "valor": "• WARNING: the background raster could not be started: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "• AVISO: no se pudo lanzar el ráster en segundo plano: {error}",
+    "valor": "• AVERTISSEMENT : impossible de lancer le raster en arrière-plan : {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "• AVISO: no se pudo lanzar el ráster en segundo plano: {error}",
+    "valor": "• HINWEIS: Das Hintergrundraster konnte nicht gestartet werden: {error}",
+    "tabla": "full",
+    "motivo": "S10-1, S4-6, S5-1, S6-5: mensaje del cálculo de Ruido sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "No hay configuración acústica de modelos.",
+    "valor": "Il n’y a pas de configuration acoustique des modèles.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado (sustituye a «Il n’y a pas de acoustique modèle configuration.»)"
+  },
+  {
+    "idioma": "en",
+    "es": "Modelo sin nombre",
+    "valor": "Unnamed model",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir"
+  },
+  {
+    "idioma": "fr",
+    "es": "Modelo sin nombre",
+    "valor": "Modèle sans nom",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir"
+  },
+  {
+    "idioma": "de",
+    "es": "Modelo sin nombre",
+    "valor": "Unbenanntes Modell",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: falta nombre de grupo fuente.",
+    "valor": "{name}: source group name missing.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: falta nombre de grupo fuente.",
+    "valor": "{name} : nom du groupe de sources manquant.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: falta nombre de grupo fuente.",
+    "valor": "{name}: Name der Quellgruppe fehlt.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: nombre de grupo fuente duplicado '{group}'.",
+    "valor": "{name}: duplicate source group name “{group}”.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: nombre de grupo fuente duplicado '{group}'.",
+    "valor": "{name} : nom de groupe de sources « {group} » en double.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: nombre de grupo fuente duplicado '{group}'.",
+    "valor": "{name}: doppelter Quellgruppenname „{group}“.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: LwA fijo no válido.",
+    "valor": "{name}: invalid fixed LwA.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; igual que la validación de la página, para que no salga dos veces"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: LwA fijo no válido.",
+    "valor": "{name} : LwA fixe non valide.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; igual que la validación de la página, para que no salga dos veces"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: LwA fijo no válido.",
+    "valor": "{name}: ungültiger fester LwA.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; igual que la validación de la página, para que no salga dos veces"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: modo curva activo pero sin CSV de curva acústica.",
+    "valor": "{name}: curve mode is active but there is no acoustic curve CSV.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: modo curva activo pero sin CSV de curva acústica.",
+    "valor": "{name} : mode courbe actif mais sans CSV de courbe acoustique.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: modo curva activo pero sin CSV de curva acústica.",
+    "valor": "{name}: Kurvenmodus aktiv, aber keine CSV-Datei mit akustischer Kurve.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: no existe la curva acústica '{path}'.",
+    "valor": "{name}: the acoustic curve “{path}” does not exist.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: no existe la curva acústica '{path}'.",
+    "valor": "{name} : la courbe acoustique « {path} » n’existe pas.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: no existe la curva acústica '{path}'.",
+    "valor": "{name}: Die akustische Kurve „{path}“ existiert nicht.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: altura de buje no válida.",
+    "valor": "{name}: invalid hub height.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: altura de buje no válida.",
+    "valor": "{name} : hauteur de moyeu non valide.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: altura de buje no válida.",
+    "valor": "{name}: ungültige Nabenhöhe.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; plantilla"
+  },
+  {
+    "idioma": "en",
+    "es": "La capa de receptores '{layer}' está vacía.",
+    "valor": "The receiver layer '{layer}' is empty.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; igual que la validación de la página, para que no salga dos veces"
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de receptores '{layer}' está vacía.",
+    "valor": "La couche de récepteurs « {layer} » est vide.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; igual que la validación de la página, para que no salga dos veces"
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de receptores '{layer}' está vacía.",
+    "valor": "Der Rezeptor-Layer „{layer}“ ist leer.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; igual que la validación de la página, para que no salga dos veces"
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de receptores no está en el mismo CRS que el proyecto.",
+    "valor": "La couche de récepteurs n’est pas dans le même SCR que le projet.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; glosario alemán (KBS) (sustituye a «Le couche de récepteurs ne pas dans le même SCR comme le projet.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de receptores no está en el mismo CRS que el proyecto.",
+    "valor": "Der Rezeptor-Layer hat nicht dasselbe KBS wie das Projekt.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; glosario alemán (KBS) (sustituye a «Der Rezeptor-Layer hat nicht dasselbe CRS wie das Projekt.»)"
+  },
+  {
+    "idioma": "en",
+    "es": "El MDT/DSM seleccionado no es un ráster válido y se ignorará.",
+    "valor": "The selected DEM/DSM is not a valid raster and will be ignored.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; glosario (ráster)",
+    "antes": "El MDT/DSM seleccionado no es raster válido y se ignorará."
+  },
+  {
+    "idioma": "fr",
+    "es": "El MDT/DSM seleccionado no es un ráster válido y se ignorará.",
+    "valor": "Le MNT/MNS sélectionné n’est pas un raster valide et sera ignoré.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; glosario (ráster)",
+    "antes": "El MDT/DSM seleccionado no es raster válido y se ignorará."
+  },
+  {
+    "idioma": "de",
+    "es": "El MDT/DSM seleccionado no es un ráster válido y se ignorará.",
+    "valor": "Das ausgewählte DGM/DOM ist kein gültiges Raster und wird ignoriert.",
+    "tabla": "full",
+    "motivo": "S10-2: sin traducir; glosario (ráster)",
+    "antes": "El MDT/DSM seleccionado no es raster válido y se ignorará."
+  },
+  {
+    "idioma": "en",
+    "es": "El MDT/DSM no está en el mismo CRS que el proyecto.",
+    "valor": "The DEM/DSM is not in the same CRS as the project.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; sin alemán; glosario inglés (DEM) (sustituye a «The DTM/DSM is not in the same CRS as the project.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "El MDT/DSM no está en el mismo CRS que el proyecto.",
+    "valor": "Le MNT/MNS n’est pas dans le même SCR que le projet.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; sin alemán; glosario inglés (DEM) (sustituye a «Le MNT/MNS ne pas dans le même SCR comme le projet.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "El MDT/DSM no está en el mismo CRS que el proyecto.",
+    "valor": "Das DGM/DOM hat nicht dasselbe KBS wie das Projekt.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; sin alemán; glosario inglés (DEM)"
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de uso del suelo no está en el mismo CRS que el proyecto.",
+    "valor": "La couche d’occupation du sol n’est pas dans le même SCR que le projet.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; glosario alemán (KBS) (sustituye a «Le couche d’occupation du sol ne pas dans le même SCR comme le projet.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de uso del suelo no está en el mismo CRS que el proyecto.",
+    "valor": "Der Landnutzungs-Layer hat nicht dasselbe KBS wie das Projekt.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado; glosario alemán (KBS) (sustituye a «Der Landnutzungs-Layer hat nicht dasselbe CRS wie das Projekt.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "La capa de uso del suelo debe ser poligonal.",
+    "valor": "La couche d’occupation du sol doit être polygonale.",
+    "tabla": "full",
+    "motivo": "S10-2: francés mezclado (sustituye a «Le couche d’occupation du sol doit être polygonal.»)"
+  },
+  {
+    "idioma": "fr",
+    "es": "El factor de suelo G debe estar entre 0 y 1.",
+    "valor": "Le facteur de sol G doit être compris entre 0 et 1.",
+    "tabla": "full",
+    "motivo": "S10-2, S6-5: sin alemán; francés mezclado (sustituye a «Le sol facteur G doit être entre 0 et 1.»)"
+  },
+  {
+    "idioma": "de",
+    "es": "El factor de suelo G debe estar entre 0 y 1.",
+    "valor": "Der Bodenfaktor G muss zwischen 0 und 1 liegen.",
+    "tabla": "full",
+    "motivo": "S10-2, S6-5: sin alemán; francés mezclado"
+  },
+  {
+    "idioma": "de",
+    "es": "La capa de turbinas «{layer}» no está en el sistema de coordenadas del proyecto: reproyéctala.",
+    "valor": "Der Windturbinen-Layer „{layer}“ ist nicht im Koordinatenbezugssystem des Projekts: Projizieren Sie ihn um.",
+    "tabla": "full",
+    "motivo": "Glosario alemán (Windturbine) (sustituye a «Der Turbinen-Layer „{layer}“ ist nicht im Koordinatenbezugssystem des Projekts: Projizieren Sie ihn um.»)"
+  },
+  {
+    "idioma": "en",
+    "es": "Espectro relativo requiere lwa_global",
+    "valor": "Relative spectrum requires lwa_global",
+    "tabla": "full",
+    "motivo": "S10-4: error de importación de espectro relativo"
+  },
+  {
+    "idioma": "fr",
+    "es": "Espectro relativo requiere lwa_global",
+    "valor": "Un spectre relatif nécessite lwa_global",
+    "tabla": "full",
+    "motivo": "S10-4: error de importación de espectro relativo"
+  },
+  {
+    "idioma": "de",
+    "es": "Espectro relativo requiere lwa_global",
+    "valor": "Ein relatives Spektrum erfordert lwa_global",
+    "tabla": "full",
+    "motivo": "S10-4: error de importación de espectro relativo"
+  },
+  {
+    "idioma": "en",
+    "es": "{name}: {detail}",
+    "valor": "{name}: {detail}",
+    "tabla": "full",
+    "motivo": "S10-13: puntuación del detalle acústico"
+  },
+  {
+    "idioma": "fr",
+    "es": "{name}: {detail}",
+    "valor": "{name} : {detail}",
+    "tabla": "full",
+    "motivo": "S10-13: puntuación del detalle acústico"
+  },
+  {
+    "idioma": "de",
+    "es": "{name}: {detail}",
+    "valor": "{name}: {detail}",
+    "tabla": "full",
+    "motivo": "S10-13: puntuación del detalle acústico"
+  },
+  {
+    "idioma": "en",
+    "es": "<b>Grupo fuente:</b> {name}",
+    "valor": "<b>Source group:</b> {name}",
+    "tabla": "full",
+    "motivo": "S10-13: título de espectro con HTML y nombre fuera del traductor"
+  },
+  {
+    "idioma": "fr",
+    "es": "<b>Grupo fuente:</b> {name}",
+    "valor": "<b>Groupe de sources :</b> {name}",
+    "tabla": "full",
+    "motivo": "S10-13: título de espectro con HTML y nombre fuera del traductor"
+  },
+  {
+    "idioma": "de",
+    "es": "<b>Grupo fuente:</b> {name}",
+    "valor": "<b>Quellgruppe:</b> {name}",
+    "tabla": "full",
+    "motivo": "S10-13: título de espectro con HTML y nombre fuera del traductor"
+  },
+  {
+    "idioma": "en",
+    "es": "Ruido",
+    "valor": "Noise",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del título",
+    "antes": "Noise"
+  },
+  {
+    "idioma": "fr",
+    "es": "Ruido",
+    "valor": "Bruit",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del título",
+    "antes": "Noise"
+  },
+  {
+    "idioma": "de",
+    "es": "Ruido",
+    "valor": "Schall",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del título",
+    "antes": "Noise"
+  },
+  {
+    "idioma": "en",
+    "es": "Proyecto sin nombre",
+    "valor": "Unnamed project",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del proyecto sin nombre",
+    "antes": "Unnamed project"
+  },
+  {
+    "idioma": "fr",
+    "es": "Proyecto sin nombre",
+    "valor": "Projet sans nom",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del proyecto sin nombre",
+    "antes": "Unnamed project"
+  },
+  {
+    "idioma": "de",
+    "es": "Proyecto sin nombre",
+    "valor": "Unbenanntes Projekt",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del proyecto sin nombre",
+    "antes": "Unnamed project"
+  },
+  {
+    "idioma": "en",
+    "es": "CRS no disponible",
+    "valor": "CRS unavailable",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del CRS no disponible",
+    "antes": "CRS unavailable"
+  },
+  {
+    "idioma": "fr",
+    "es": "CRS no disponible",
+    "valor": "SCR non disponible",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del CRS no disponible",
+    "antes": "CRS unavailable"
+  },
+  {
+    "idioma": "de",
+    "es": "CRS no disponible",
+    "valor": "KBS nicht verfügbar",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española del CRS no disponible",
+    "antes": "CRS unavailable"
+  },
+  {
+    "idioma": "en",
+    "es": "No seleccionado",
+    "valor": "Not selected",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española de selección vacía",
+    "antes": "Not selected"
+  },
+  {
+    "idioma": "fr",
+    "es": "No seleccionado",
+    "valor": "Non sélectionné",
+    "tabla": "full",
+    "motivo": "S7-2: fuente española de selección vacía",
+    "antes": "Not selected"
+  },
+  {
+    "idioma": "en",
+    "es": "puntos",
+    "valor": "points",
+    "tabla": "full",
+    "motivo": "S7-12: geometría del receptor",
+    "antes": "points"
+  },
+  {
+    "idioma": "fr",
+    "es": "puntos",
+    "valor": "points",
+    "tabla": "full",
+    "motivo": "S7-12: geometría del receptor",
+    "antes": "points"
+  },
+  {
+    "idioma": "de",
+    "es": "puntos",
+    "valor": "Punkte",
+    "tabla": "full",
+    "motivo": "S7-12: geometría del receptor",
+    "antes": "points"
+  },
+  {
+    "idioma": "en",
+    "es": "polígonos",
+    "valor": "polygons",
+    "tabla": "full",
+    "motivo": "S7-12: geometría del receptor",
+    "antes": "polygons"
+  },
+  {
+    "idioma": "fr",
+    "es": "polígonos",
+    "valor": "polygones",
+    "tabla": "full",
+    "motivo": "S7-12: geometría del receptor",
+    "antes": "polygons"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo calcular el ruido:",
+    "valor": "Could not calculate noise:",
+    "tabla": "full",
+    "motivo": "S10-1: prefijo traducido antes de insertar la excepción"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo calcular el ruido:",
+    "valor": "Der Schall konnte nicht berechnet werden:",
+    "tabla": "full",
+    "motivo": "S10-1: prefijo traducido antes de insertar la excepción"
+  },
+  {
+    "idioma": "en",
+    "es": "La altura de receptor no es válida.",
+    "valor": "The receiver height is not valid.",
+    "tabla": "full",
+    "motivo": "S10-4: fuente española del error",
+    "antes": "The receiver height is not valid."
+  },
+  {
+    "idioma": "de",
+    "es": "La altura de receptor no es válida.",
+    "valor": "Die Rezeptorhöhe ist ungültig.",
+    "tabla": "full",
+    "motivo": "S10-4: fuente española del error",
+    "antes": "The receiver height is not valid."
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo calcular el ruido en segundo plano:",
+    "valor": "Could not calculate noise in the background:",
+    "tabla": "full",
+    "motivo": "S10-1: prefijo traducido antes de insertar la excepción"
+  },
+  {
+    "idioma": "de",
+    "es": "No se pudo calcular el ruido en segundo plano:",
+    "valor": "Der Schall konnte nicht im Hintergrund berechnet werden:",
+    "tabla": "full",
+    "motivo": "S10-1: prefijo traducido antes de insertar la excepción"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo lanzar el cálculo en segundo plano:",
+    "valor": "Could not start the background calculation:",
+    "tabla": "full",
+    "motivo": "S10-1: prefijo traducido antes de insertar la excepción"
+  },
+  {
+    "idioma": "en",
+    "es": "No se pudo preparar el cálculo en segundo plano:",
+    "valor": "Could not prepare the background calculation:",
+    "tabla": "full",
+    "motivo": "S10-1: prefijo traducido antes de insertar la excepción"
+  },
+  {
+    "idioma": "en",
+    "es": "inválida",
+    "valor": "invalid",
+    "tabla": "full",
+    "motivo": "S8-5: estado de curva separado del nombre de archivo"
+  },
+  {
+    "idioma": "fr",
+    "es": "inválida",
+    "valor": "non valide",
+    "tabla": "full",
+    "motivo": "S8-5: estado de curva separado del nombre de archivo"
+  },
+  {
+    "idioma": "en",
+    "es": "peor caso",
+    "valor": "worst case",
+    "tabla": "full",
+    "motivo": "S5-11: glosario de la curva acústica"
+  },
+  {
+    "idioma": "fr",
+    "es": "Puedes editar el LwA fijo directamente en la tabla de grupos fuente acústicos o importar una curva acústica ws/LwA por grupo. Si activas el modo curva, el complemento evaluará la emisión a una velocidad concreta o en peor caso.",
+    "valor": "Vous pouvez modifier le LwA fixe directement dans le tableau des groupes de sources acoustiques ou importer une courbe acoustique ws/LwA par groupe. Si le mode courbe est activé, l’extension évaluera l’émission à une vitesse donnée ou dans le cas le plus défavorable.",
+    "tabla": "full",
+    "motivo": "L7-2, S5-11: glosario francés de grupos de fuentes y peor caso"
+  },
+  {
+    "idioma": "en",
+    "es": "Sombras",
+    "valor": "Shadow flicker",
+    "tabla": "full",
+    "motivo": "Revisión Z7: etiqueta visible del módulo de origen, según el glosario"
+  },
+  {
+    "idioma": "fr",
+    "es": "Sombras",
+    "valor": "Ombres portées",
+    "tabla": "full",
+    "motivo": "Revisión Z7: etiqueta visible del módulo de origen, según el glosario"
+  },
+  {
+    "idioma": "de",
+    "es": "Sombras",
+    "valor": "Schattenwurf",
+    "tabla": "full",
+    "motivo": "Revisión Z7: etiqueta visible del módulo de origen, según el glosario"
+  }
+]

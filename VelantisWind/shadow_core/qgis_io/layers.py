@@ -16,6 +16,7 @@ from qgis.core import (
     QgsTextBufferSettings, QgsVectorLayerSimpleLabeling,
 )
 
+from ...crs_utils import memory_layer_with_crs
 from ..shadow_calculator import ShadowFlickerResult
 from ..i18n_local import tr4 as _ml, lang_code, yes_no, hours_per_year_unit
 
@@ -32,7 +33,7 @@ def _result_layer_name() -> str:
 
 def _category(hours: float):
     """Return localized category, severity and 30 h/year exceedance flag."""
-    if hours >= 30:
+    if hours > 30:  # exactly 30 h/year does not exceed, as the summary and the symbology
         return _ml("CRÍTICO", "CRITICAL", "CRITIQUE", "KRITISCH"), 4, True
     if hours >= 20:
         return _ml("ALTO", "HIGH", "ÉLEVÉ", "HOCH"), 3, False
@@ -64,11 +65,7 @@ def create_results_layer_for_page(self, results: List[ShadowFlickerResult], rece
     for month_name in month_names_short:
         fields.append(QgsField(f"h_{month_name}", QtCore.QVariant.Double))
 
-    result_layer = QgsVectorLayer(
-        f"Point?crs={receiver_layer.crs().authid()}",
-        _result_layer_name(),
-        "memory",
-    )
+    result_layer = memory_layer_with_crs("Point", _result_layer_name(), receiver_layer.crs())
     result_layer.dataProvider().addAttributes(fields)
     result_layer.updateFields()
     result_layer.setCustomProperty("velantis/shadow_output", True)
@@ -109,12 +106,13 @@ def apply_result_symbology_for_page(self, layer: QgsVectorLayer):
     """Apply enhanced symbology to the output layer."""
     field_name = "hours_year"
     unit = hours_per_year_unit()
+    # The last class reaches the hours of a leap year (8784): no receiver can have more.
     ranges = [
         (0, 5, _ml(f"MUY BAJO (< 5 {unit})", f"VERY LOW (< 5 {unit})", f"TRÈS FAIBLE (< 5 {unit})", f"SEHR NIEDRIG (< 5 {unit})"), "#90EE90"),
         (5, 10, _ml(f"BAJO (5-10 {unit})", f"LOW (5-10 {unit})", f"FAIBLE (5-10 {unit})", f"NIEDRIG (5-10 {unit})"), "#ADFF2F"),
         (10, 20, _ml(f"MEDIO (10-20 {unit})", f"MEDIUM (10-20 {unit})", f"MOYEN (10-20 {unit})", f"MITTEL (10-20 {unit})"), "#FFFF00"),
         (20, 30, _ml(f"ALTO (20-30 {unit})", f"HIGH (20-30 {unit})", f"ÉLEVÉ (20-30 {unit})", f"HOCH (20-30 {unit})"), "#FFA500"),
-        (30, 999, _ml(f"CRÍTICO (> 30 {unit})", f"CRITICAL (> 30 {unit})", f"CRITIQUE (> 30 {unit})", f"KRITISCH (> 30 {unit})"), "#FF0000"),
+        (30, 8784, _ml(f"CRÍTICO (> 30 {unit})", f"CRITICAL (> 30 {unit})", f"CRITIQUE (> 30 {unit})", f"KRITISCH (> 30 {unit})"), "#FF0000"),
     ]
 
     range_list = []
